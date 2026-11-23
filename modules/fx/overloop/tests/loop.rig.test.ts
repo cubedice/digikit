@@ -869,9 +869,33 @@ describe('Overloop engine: a position stream whose records come again or late (t
         `jitter over ${given.length} blocks: ${again} records seen again, ${gaps.length} gaps (largest ${Math.max(...gaps)}), steps seen late or early ${moved.map(([own, seen]) => `${own}->${seen}`).join(' ')}; loop ${status.loopFrames} frames, exact`,
       );
       expect(again).toBeGreaterThanOrEqual(30);
-      expect(Math.max(...gaps), 'the burst of three: a gap of four').toBe(OL.OL_SKIP);
+      expect(Math.max(...gaps), 'the burst of three: a gap of four').toBe(4);
       expect(moved.length, 'the jitter moved steps of A and B').toBeGreaterThanOrEqual(2);
       expect(moved.some(([own]) => own === LAST || own === CHANGE), 'but neither end of the last cycle').toBe(false);
+    });
+  });
+
+  test('longer bursts between boundaries preserve readiness and the exact clean capture', async () => {
+    const first = LAST + 3 * blocks(STEP) + 2;
+    const last = first + 2 * blocks(STEP);
+    const burst = 7;
+    const delivery = jitter((b) => (b >= first && b < first + burst) || (b >= last && b < last + burst));
+    await withRig({ delivery }, async (rig) => {
+      rig.start(A);
+      const takes = [await rig.run(first - 1, SOUND_A)];
+      rig.arm();
+      rig.changeAtEnd(B);
+      for (let b = first - 1; b <= last + burst; b++) {
+        takes.push(await rig.run(1, SOUND_A));
+        expect(await rig.status(), `armed and ready at block ${b}`).toMatchObject({ armed: true, track: true, nextFrames: CYCLE });
+      }
+      takes.push(await rig.run(CHANGE - blocks(rig.clock), SOUND_A));
+      takes.push(await rig.run(blocks(2 * CYCLE), SOUND_B));
+      expect(await rig.status()).toMatchObject({ loop: true, armed: false, count: 1, loopFrames: CYCLE });
+      const take = join(...takes);
+      const change = CHANGE * BLOCK;
+      expect(maxDifference(take.left, change, take.left, change - CYCLE, 2 * CYCLE)).toBe(0);
+      expect(maxDifference(take.right, change, take.right, change - CYCLE, 2 * CYCLE)).toBe(0);
     });
   });
 
@@ -879,13 +903,35 @@ describe('Overloop engine: a position stream whose records come again or late (t
     ["the last cycle's first step is seen a block late", (b: number) => b === LAST, () => false, -1],
     ['the change is seen a block late', (b: number) => b === CHANGE, () => false, 1],
     ['the change is seen a block early', () => false, (b: number) => b === CHANGE - 1, -1],
-  ])('%s: the loop is one block off', async (what, late, early, off) => {
+    ['the change is seen seven blocks late', (b: number) => b >= CHANGE && b < CHANGE + 7, () => false, 7],
+  ])('%s: the loop follows the delivered boundary', async (what, late, early, off) => {
     await withRig({ delivery: jitter(late, early) }, async (rig) => {
       await armedChange(rig, 4, 1);
       const status = await rig.status();
       note(`${what}: loop ${status.loopFrames} frames for a cycle of ${CYCLE}`);
       expect(status).toMatchObject({ loop: true, armed: false, count: 1, loopSteps: 8 });
       expect(status.loopFrames).toBe(CYCLE + off * BLOCK);
+    });
+  });
+
+  test('the run expires on the 750th repeated record and cannot capture at the next boundary', async () => {
+    const grace = OL.OL_POSITION_GRACE!;
+    expect(grace).toBe(750);
+    // A long step lets the link expire before the next boundary without also losing a boundary count.
+    const stepBlocks = grace + 50;
+    const change = 3 * stepBlocks;
+    const delivery = jitter((b) => b >= change - grace && b < change);
+    await withRig({ delivery, frames: 131072 }, async (rig) => {
+      rig.start({ ...A, steps: 3, stepFrames: stepBlocks * BLOCK });
+      await rig.run(2 * stepBlocks + 1, SOUND_A);
+      rig.arm();
+      rig.changeAtEnd(B);
+      await rig.run(change - blocks(rig.clock) - 1, SOUND_A);
+      expect(await rig.status()).toMatchObject({ armed: true, track: true, nextFrames: change * BLOCK });
+      await rig.run(1, SOUND_A);
+      expect(await rig.status()).toMatchObject({ armed: true, track: false, nextFrames: 0 });
+      await rig.run(1, SOUND_B);
+      expect(await rig.status()).toMatchObject({ loop: false, armed: true, count: 0 });
     });
   });
 
@@ -900,21 +946,21 @@ describe('Overloop engine: a position stream whose records come again or late (t
     await fault(rig);
     await rig.run(1, SOUND_B);
   }
-  const none = () => undefined;
+  test('a forward transmit jump of 17 still captures when only one boundary is new', async () => {
+    await withRig({}, async (rig) => {
+      await faultAtChange(rig, (r) => r.skipFrames(16));
+      expect(await rig.status()).toMatchObject({ loop: true, armed: false, count: 1, loopFrames: CYCLE });
+    });
+  });
+
   test.each([
-    ['a send count that moved by OL_SKIP + 1', (rig: LoopRig) => rig.skipFrames(OL.OL_SKIP!), undefined, false],
-    ['a send count that moved by OL_SKIP', (rig: LoopRig) => rig.skipFrames(OL.OL_SKIP! - 1), undefined, true],
-    ['a send count that went back', async (rig: LoopRig) => rig.patchPosition(2, (await rig.positionWord(2)) - 1), undefined, false],
-    ['two boundaries in one record', async (rig: LoopRig) => rig.patchPosition(3, (await rig.positionWord(3)) + 2), undefined, false],
-    ['OL_SKIP records again in a row before it', none, jitter((b) => b >= CHANGE - 4 && b < CHANGE), false],
-    ['OL_SKIP - 1 records again in a row before it', none, jitter((b) => b >= CHANGE - 3 && b < CHANGE), true],
-  ])('%s, at the armed change: the change keeps a loop: %s', async (_, fault, delivery, kept) => {
-    await withRig({ delivery }, async (rig) => {
+    ['a send count that went back', async (rig: LoopRig) => rig.patchPosition(2, (await rig.positionWord(2)) - 1)],
+    ['two boundaries in one record', async (rig: LoopRig) => rig.patchPosition(3, (await rig.positionWord(3)) + 2)],
+    ['a missing position record', (rig: LoopRig) => rig.patchPosition(0, 0)],
+    ['a running but invalid position', (rig: LoopRig) => rig.patchPosition(5, 2)],
+  ])('%s at the armed change ends the run and keeps the arm', async (_, fault) => {
+    await withRig({}, async (rig) => {
       await faultAtChange(rig, fault);
-      if (kept) {
-        expect(await rig.status()).toMatchObject({ loop: true, armed: false, count: 1, loopFrames: CYCLE });
-        return;
-      }
       // the run ended: no edge is placed with this record, and the change takes nothing; the arm waits for the next change
       expect(await rig.status()).toMatchObject({ loop: false, armed: true, count: 0, track: false });
       await rig.run(blocks(2 * CYCLE), SOUND_B);

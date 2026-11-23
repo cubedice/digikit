@@ -12,7 +12,7 @@
 //   controls   the parameter words: the crossfader, and the counters of ARM and DROP (core/loop-control holds them)
 //   position   the record of core/pattern-position: a step boundary begins with this block or not; a boundary of
 //              another pattern is a change, a boundary of another generation is a START. A record that comes again is
-//              no news, and a few frames that did not arrive end nothing (OL_SKIP). While the transport is stopped or
+//              no news, and gaps between valid consecutive boundaries keep the run. While the transport is stopped or
 //              paused the loop side is silent: it fades out at STOP and in again at the first boundary after the
 //              transport runs, from its first frame after a STOP and from where it stood after a pause
 //   mix        output = input + (loop - input) * crossfader * the transport's weight; LIVE passes the input as it is
@@ -231,13 +231,13 @@ _ol_running:
     R1 = 1;
     R0 = PASS R0;
     IF EQ JUMP _ol_first;
-    // the same record again (a frame that came twice or late): nothing new in this block; OL_SKIP of them in a row end
-    // the run
+    // The position receiver holds its last good record across rejected frames. The audio recording advances even when
+    // the report is repeated. Only expire this record after the receiver's grace period.
     R6 = R2 - R4;
     IF NE JUMP _ol_news;
     R7 = R7 + 1;
     DM(OL_SAME,I5) = R7;
-    R0 = OL_SKIP;
+    R0 = OL_POSITION_GRACE;
     COMP(R7,R0);
     IF LT JUMP _ol_target;
     JUMP _ol_unrun;
@@ -254,15 +254,9 @@ _ol_news:
     DM(OL_BSEQ,I5) = R3;
     R0 = 0;
     DM(OL_SAME,I5) = R0;
-    // a send count that went back, or a gap of more than OL_SKIP frames or blocks since the last new record: no edge can
-    // be placed
+    // The send count orders reports. A forward gap does not lose a musical boundary if its own count is continuous.
     R6 = PASS R6;
     IF LT JUMP _ol_unrun;
-    R0 = OL_SKIP;
-    COMP(R6,R0);
-    IF GT JUMP _ol_unrun;
-    COMP(R7,R0);
-    IF GE JUMP _ol_unrun;
     // stopped, or the timing is not valid
     R0 = DM(5,I4);
     R6 = 3;

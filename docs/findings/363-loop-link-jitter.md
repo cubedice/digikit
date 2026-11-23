@@ -144,6 +144,26 @@ on the idle DTII. Pressing H displayed ARMD, and pressing it again cleared ARMD 
 A second idle check at HALO 126, the setting during the first capture, showed NO LOOP in all 450 samples
 over 28 seconds.
 
+### Overloop loses readiness while armed
+
+**[D]** On DTII image `0e644e7610b0bfa7` with Overloop 0.5.0, a passive screen capture showed
+`NOTHING YET` in 317 of 400 armed samples. A second trace read the ColdFire position record and the DSP's published
+Overloop status. The ColdFire reported valid running position throughout 775 samples with 96 consecutive
+master-step boundaries and one start generation. Overloop stayed armed with its readiness flag clear.
+
+Overloop had its own four-block continuity cutoff even though the position receiver kept its last valid record for
+750 blocks. Overloop 0.5.1 keeps a run across repeated or skipped transport reports until the receiver's grace period
+expires, using the musical boundary count to detect a skipped step. Genuine invalid position and discontinuous
+boundaries still end the run.
+
+All 48 SHARC rig cases passed. Two bursts between steps left the exact stereo capture intact. A delivered
+late boundary, expiry at 750 repeats, and invalid timing were checked separately. The maximum measured
+effect cost was 5,505 instructions per block.
+
+**[D]** After installing 0.5.1 on the same DTII, the armed screen stayed ready for all 97 samples over 6.5 seconds.
+Switching from A02 to A01 captured a 32-step, 5.00-second loop, cleared ARM and moved XFAD to LOOP.
+The test ended on the original pattern and the DigiKit settings matched the pre-update record byte for byte.
+
 ## Proofs
 
 Lowest layer first, at the branch head in the WSL checkout; device tests on the Digitakt II 1.17 image on the emulator with
