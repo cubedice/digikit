@@ -4,13 +4,10 @@
 #include "../src/model.h"
 /* The home: the values as the page sets them, and the engine's status as the home last had it. */
 static uint32_t xfad, arms, drops, st_words[LS_WORDS], st_fresh;
-void dkrt_loop_wave(uint16_t out[LS_WAVE_COLUMNS])
+static uint16_t wave_override[LS_WAVE_COLUMNS];
+void dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS])
 {
-    memset(out, 0, LS_WAVE_COLUMNS * sizeof(*out));
-    out[5] = 0x0ff0; /* left positive only, right negative only */
-    out[6] = 0xf000; /* right positive only */
-    out[7] = 0x000f; /* left negative only */
-    out[8] = 0xa25d; /* right carries the highest peak, left the deepest trough */
+    memcpy(out, wave_override, sizeof(wave_override));
 }
 uint32_t dkrt_loop_status(uint32_t *out)
 {
@@ -367,16 +364,35 @@ static void rendering(void)
     status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
     ld_page(w, 1, 64, &p);
     memset(&d, 0, sizeof(d));
+    wave_override[10] = 0xffff;
+    wave_override[11] = 0xff00;
+    wave_override[12] = 0x00ff;
+    wave_override[13] = 0xa0d0;
     ld_render(&p, &c);
-    /* Every pair of columns spans the independent outer peaks. Silence leaves one centre line. */
-    for (int y = 12; y <= 41; ++y)
-        for (int col = 0; col < 2; ++col) {
-            assert(d.dots[y][12 + col]);
-            assert(d.dots[y][14 + col] == (y <= 27));
-            assert(d.dots[y][16 + col] == (y >= 27));
-            assert(d.dots[y][18 + col] == (y >= 17 && y <= 39));
-            assert(d.dots[y][20 + col] == (y == 27));
-        }
+    /* Adjacent pixels carry different peaks. Silence leaves just one centre pixel. */
+    for (int y = 12; y <= 41; ++y) {
+        assert(d.dots[y][12]);
+        assert(d.dots[y][13] == (y <= 27));
+        assert(d.dots[y][14] == (y >= 27));
+        assert(d.dots[y][15] == (y >= 17 && y <= 39));
+        assert(d.dots[y][16] == (y == 27));
+    }
+    memset(wave_override, 0, sizeof(wave_override));
+    wave_override[10] = 0x2000;
+    wave_override[11] = 0x1000;
+    wave_override[12] = 0x0101;
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c);
+    for (int y = 12; y <= 41; ++y) {
+        assert(d.dots[y][12] == (y <= 27));
+        assert(d.dots[y][13] == (y >= 19 && y <= 27));
+        assert(d.dots[y][14] == (y >= 26 && y <= 28));
+    }
+    wave_override[10] = wave_override[11] = 0;
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c);
+    /* The display gain cap keeps a single quiet LSB from filling the plot. */
+    assert(!d.dots[25][14] && d.dots[26][14] && d.dots[28][14] && !d.dots[29][14]);
     int y_label = 0, y_value = 0;
     assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
            y_value > y_label);

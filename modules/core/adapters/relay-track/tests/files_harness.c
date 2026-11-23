@@ -155,22 +155,22 @@ static unsigned peak_batches, partial_scans, pcm_frames = N;
 static unsigned quantize(int v)
 {
     if (v < 0)
-        return 8 - (-v + 4095) / 4096;
-    return v > 28672 ? 15 : 8 + (v + 4095) / 4096;
+        return 128 - (-v + 255) / 256;
+    return v > 32512 ? 255 : 128 + (v + 255) / 256;
 }
 static unsigned stereo_envelope(unsigned a, unsigned end)
 {
-    int lo[2] = {32767, 32767}, hi[2] = {-32768, -32768};
+    int lo = 32767, hi = -32768;
     for (; a < end; ++a) {
         int ch[2] = {(int16_t)(pcm[a] >> 16), (int16_t)pcm[a]};
         for (unsigned c = 0; c < 2; ++c) {
-            if (ch[c] < lo[c])
-                lo[c] = ch[c];
-            if (ch[c] > hi[c])
-                hi[c] = ch[c];
+            if (ch[c] < lo)
+                lo = ch[c];
+            if (ch[c] > hi)
+                hi = ch[c];
         }
     }
-    return quantize(lo[0]) | quantize(hi[0]) << 4 | quantize(lo[1]) << 8 | quantize(hi[1]) << 12;
+    return quantize(lo) | quantize(hi) << 8;
 }
 static void run(void)
 {
@@ -287,12 +287,12 @@ int main(void)
     assert(relay_file_start(RF_SCAN, 12, 12, 1, 0, 1));
     run();
     assert(relay_files.state == RF_SCANNED && relay_files.overview.slot == 12);
-    assert(relay_files.overview.peaks[55] == 0x92b7 && relay_files.overview.peaks[105] == 0xd790);
+    assert(relay_files.overview.peaks[55] == 0xaf2d && relay_files.overview.peaks[105] == 0xc700);
     assert(peak_batches == 12 && partial_scans && read_count == 0 && nf == 0);
     assert(!rtm_wave_pending(12, relay_files.revision, N));
     unsigned main_revision = relay_files.revision;
     const struct RelayOverview *cached = rtm_wave(12, main_revision, N, 0, 1);
-    assert(cached && cached->peaks[55] == 0x92b7 &&
+    assert(cached && cached->peaks[55] == 0xaf2d &&
            !rtm_wave(12, relay_files.revision + 1, N, 0, 1));
     assert(relay_file_start(RF_SCAN, 6, 6, 1, 1, 5));
     run();
@@ -304,9 +304,9 @@ int main(void)
     assert(relay_file_start(RF_SCAN, 14, 14, 1, 0, 5));
     run();
     const struct RelayOverview *short_take = rtm_wave(14, relay_files.revision, 3, 0, 5);
-    assert(short_take && short_take->peaks[0] == 0x9977 &&
+    assert(short_take && short_take->peaks[0] == 0x817f &&
            short_take->peaks[1] == RELAY_WAVE_EMPTY && short_take->peaks[40] == RELAY_WAVE_SILENT &&
-           short_take->peaks[80] == 0x00ff && short_take->peaks[119] == RELAY_WAVE_EMPTY);
+           short_take->peaks[80] == 0xff00 && short_take->peaks[119] == RELAY_WAVE_EMPTY);
     pcm_frames = N;
 
     const char *full = "RELAY/T02-0001/FULL";

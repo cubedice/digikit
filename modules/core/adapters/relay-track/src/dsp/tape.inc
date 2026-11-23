@@ -212,8 +212,8 @@ _tape_monitor_ready:
     R0 = DM(_rt_mode); R1 = 3; COMP(R0,R1); IF EQ R0 = R0 XOR R0;
 _tape_write_gate:
     DM(_t_gate) = R0;
-    // Only the four saved mixer scratch registers untouched by pool lookup.
-    R9 = 32767; R11 = -32768; R13 = R9; R14 = R11;
+    // The pool lookup preserves these mixer scratch registers.
+    R9 = 32767; R11 = -32768;
     R0 = DM(RT_POS,I4); DM(_t_wave_start) = R0;
     R5 = 0;
 _tape_sample:
@@ -248,7 +248,7 @@ _tape_print:
     DM(_t_wet_l) = R0; DM(_t_wet_r) = R1;
 _tape_pack:
     R2 = 0x47000000; F0 = F0 * F2; F1 = F1 * F2; R0 = FIX F0; R1 = FIX F1;
-    R9 = MIN(R9,R0); R11 = MAX(R11,R0); R13 = MIN(R13,R1); R14 = MAX(R14,R1);
+    R9 = MIN(R9,R0); R11 = MAX(R11,R0); R9 = MIN(R9,R1); R11 = MAX(R11,R1);
     R2 = 65535; R1 = R1 AND R2; R0 = LSHIFT R0 BY 16; R0 = R0 OR R1; DM(_t_word) = R0;
     R12 = DM(RT_POS,I4); CALL _tape_address; R0 = DM(_t_word); DM(0,I0) = R0;
     R2 = DM(_t_delta); R1 = ABS R2; R3 = 2; COMP(R1,R3); IF LT JUMP _tape_advance;

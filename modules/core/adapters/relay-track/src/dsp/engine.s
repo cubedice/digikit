@@ -1,5 +1,6 @@
 #include "dk_relay.inc"
 #include "dk_relay_track.inc"
+#define RT_WAVE_EMPTY 0x00ff
 .SECTION/PM seg_pmco;
 .EXTERN _relay_pool;
 .EXTERN _relay_external;
@@ -581,12 +582,12 @@ _rt_report_row: CALL _rt_row;
     CALL _tape_row; R1 = DM(T_GRID,I5); R1 = LSHIFT R1 BY 8;
     R0 = DM(RT_UNDOABLE,I4); R0 = R0 OR R1; DM(11,I3) = R0;
     R0 = DM(_rt_written); DM(12,I3) = R0;
-    R2 = 0x0f0f;
+    R2 = RT_WAVE_EMPTY;
     R0 = DM(_rt_writer); COMP(R0,R8); IF NE JUMP _rt_report_wave;
     R0 = DM(_rt_wave_start); R0 = PASS R0; IF LT JUMP _rt_report_wave;
     DM(12,I3) = R0;
     CALL _rt_wave_pack;
-    R2 = R0;
+    R2 = R3;
 _rt_report_wave:
     R2 = LSHIFT R2 BY 8; R0 = DM(_rt_error); R0 = R0 OR R2; DM(13,I3) = R0;
     R4 = RLY_AVAILABLE; CALL _relay_pool; I3 = _relay_status; DM(3,I3) = R0;

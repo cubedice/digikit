@@ -217,16 +217,17 @@ static unsigned magnitude(short v)
 }
 static unsigned wave_point(short v)
 {
-    unsigned steps = (magnitude(v) + 4095) >> 12;
-    return v < 0 ? 8 - steps : steps < 8 ? 8 + steps : 15;
+    unsigned steps = (magnitude(v) + 255) >> 8;
+    return v < 0 ? 128 - steps : steps < 128 ? 128 + steps : 255;
 }
 static void analyze(u32 sample)
 {
     short left = (short)(sample >> 16), right = (short)sample;
     u32 l = magnitude(left), r = magnitude(right), e = l > r ? l : r;
     u32 f = analysis_pos++, bin = f * RELAY_WAVE_BINS / frames;
-    unsigned wl = wave_point(left), wr = wave_point(right);
-    analysis.peaks[bin] = relay_wave_join(analysis.peaks[bin], (u16)((wr << 8 | wl) * 17));
+    unsigned low = wave_point(left < right ? left : right);
+    unsigned high = wave_point(left > right ? left : right);
+    analysis.peaks[bin] = relay_wave_join(analysis.peaks[bin], (u16)(high << 8 | low));
     // Look for an attack above a decaying peak. Keep stereo cuts coincident.
     // At most 63 hits plus the compulsory frame zero.
     unsigned floor = (10 - sensitivity) * 220;
@@ -319,7 +320,7 @@ __attribute__((optimize("no-jump-tables"))) static int step(void *arg)
             // Measure every frame of the bin on the DSP, including quiet, narrow attacks.
             unsigned bin = cursor * RELAY_WAVE_BINS / frames;
             if (frames >= RELAY_WAVE_BINS) {
-                // Each endpoint is an exclusive frame offset. Ten stereo envelopes per reply.
+                // Each endpoint is an exclusive frame offset. Ten envelopes per reply.
                 // Bound the batch on long tapes so the DSP job fits the link timeout.
                 unsigned bins = frames > 4000000 ? 4 : 10;
                 if (bins > RELAY_WAVE_BINS - bin)

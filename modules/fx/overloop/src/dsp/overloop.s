@@ -936,6 +936,7 @@ _ol_publish:
     R0 = DM(OL_COUNT,I5);
     R0 = LSHIFT R0 BY LS_COUNT_SHIFT;
     R1 = R1 OR R0;
+    R0 = LS_WAVE_PRECISE; R1 = R1 OR R0;
     DM(LS_STATE,I4) = R1;
     DM(LS_NEXT_FRAMES,I4) = R2;
     DM(LS_CAPACITY,I4) = R4;
@@ -1264,19 +1265,18 @@ _ol_capture_base:
     DM(OL_ROLL,I5) = R0;
     RTS;
 
-// Floor at zero is already included in each accumulated extremum. Round visible nonzero
-// signals outwards. Clamp before conversion so a loud master cannot spill into the next lane.
+// Each polarity uses the outer stereo extreme. Zero stays zero; round nonzero peaks outward.
 _ol_wave_pack:
-    R6 = 0x41600000; // 14
+    R6 = 0x437f0000; // 255
     R2 = 0x3f800000; // 1
-    R0 = DM(OL_WAVE_MAX_R,I5); CALL _ol_wave_q; R3 = R0;
-    R0 = DM(OL_WAVE_MIN_R,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R3 = R3 OR R0;
-    R0 = DM(OL_WAVE_MAX_L,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R3 = R3 OR R0;
-    R0 = DM(OL_WAVE_MIN_L,I5); CALL _ol_wave_q; R3 = LSHIFT R3 BY 4; R0 = R3 OR R0;
+    R0 = DM(OL_WAVE_MAX_L,I5); R1 = DM(OL_WAVE_MAX_R,I5); F0 = MAX(F0,F1);
+    CALL _ol_wave_q; R3 = LSHIFT R0 BY 8;
+    R0 = DM(OL_WAVE_MIN_L,I5); R1 = DM(OL_WAVE_MIN_R,I5); F0 = MIN(F0,F1); F0 = ABS F0;
+    CALL _ol_wave_q; R0 = R3 OR R0;
     RTS;
 _ol_wave_q:
-    F0 = ABS F0; IF EQ RTS;
-    F0 = MIN(F0,F2); F0 = F0 * F6; F0 = F0 + F2; R0 = TRUNC F0;
+    F0 = MIN(F0,F2); F0 = F0 * F6; R1 = TRUNC F0; F4 = FLOAT R1;
+    COMP(F0,F4); IF GT R1 = R1 + 1; R0 = PASS R1;
     RTS;
 
 .SECTION/DM seg_dmda;

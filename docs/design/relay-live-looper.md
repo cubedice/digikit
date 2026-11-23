@@ -52,6 +52,8 @@ The 128 × 64 SRC screen keeps the stock header, track/level strip, show-values 
 
 First capture and punch show a preview from the stereo samples as they are written. The preview stays visible while the completed overview is measured. On recall, measured columns appear as they arrive. LIVE and TAKE use the same completed overview for the main tape. Show READING while measuring a revision, NO WAVE if the overview fails, and SILENT TAKE after both channels measure zero.
 
+Each overview column keeps 8-bit minimum and maximum peaks. The display scales all columns together against the strongest visible peak for clearer quiet material. The scaling adds up to 18 dB to the drawing.
+
 ### Stock MOD destinations
 
 On the stock MOD page, turn DEST and choose a RELAY target in the SRC group. DEP adds a bipolar offset to the current track's LIVE setting. Returning DEP to zero restores the knob value. The stock LFO routing and depth are saved with the Sound. The LIVE pointer follows the modulated playback position, and the knob readouts show the stored settings.

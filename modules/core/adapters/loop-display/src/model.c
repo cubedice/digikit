@@ -246,22 +246,26 @@ void ld_render(const LoopPage *p, const LoopCanvas *c)
     box(c, 0, 0, 124, 64, 0);
     ld_render_header(p, c);
     uint16_t wave[LS_WAVE_COLUMNS];
-    dkrt_loop_wave(wave);
+    dkrt_loop_wave_peaks(wave);
     box(c, 2, 11, 120, 1, 1);
     box(c, 1, 12, 1, 30, 1);
     box(c, 122, 12, 1, 30, 1);
     box(c, 2, 42, 120, 1, 1);
+    unsigned reference = 32; /* limit the visual gain for very quiet material */
     for (int x = 0; x < LS_WAVE_COLUMNS; ++x) {
-        unsigned peaks = wave[x];
-        int down = peaks & 15, up = (peaks >> 4) & 15;
-        int right_down = (peaks >> 8) & 15, right_up = (peaks >> 12) & 15;
-        if (right_down > down)
-            down = right_down;
-        if (right_up > up)
-            up = right_up;
+        unsigned down = wave[x] & 255, up = wave[x] >> 8;
+        if (down > reference)
+            reference = down;
+        if (up > reference)
+            reference = up;
+    }
+    unsigned gain = (15u << 8) / reference;
+    for (int x = 0; x < LS_WAVE_COLUMNS; ++x) {
+        int down = ((wave[x] & 255u) * gain + 255) >> 8;
+        int up = ((wave[x] >> 8) * gain + 255) >> 8;
         /* The interior spans y12..41: 15 pixels above zero, 14 below. */
         down -= down >= 8;
-        box(c, 2 + x * 2, 27 - up, 2, 1 + up + down, 1);
+        box(c, 2 + x, 27 - up, 1, 1 + up + down, 1);
     }
     /* The rolling view ends at now. A retained loop has an absolute playhead. */
     if (p->loop && p->mark != LD_NO_MARK) {

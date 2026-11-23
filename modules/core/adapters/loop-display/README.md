@@ -26,8 +26,10 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
 | LOOP | held audio and playhead | retained cycle or `CUT TO ITS LAST PART` |
 | LOOP+ARM | currently held audio and playhead | the cycle to be captured on the next change |
 
-The waveform spans one plot. Each column extends from the lowest sample on either channel to the highest, with silence
-at the centre line. Opposite-polarity stereo peaks stay visible. The marker on the frame follows the held loop's phase. The crossfader
+The waveform spans 120 one-pixel columns. Each column extends from the lowest sample on either channel to the
+highest, with silence at the centre line. Display gain follows the strongest peak in the visible window down to
+about one eighth of full scale. A quieter phrase uses proportionally less height. This applies only to the
+display. Opposite-polarity stereo peaks stay visible. The marker on the frame follows the held loop's phase. The crossfader
 between the controls follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
 a capture); the text above it is the value of the control. `ON` is drawn inverted. The cells are 26 pixels wide, E's
 centred at x 32 and H's at x 110, as on PRISM's page; x 124 to 127 below the header are left to the FX view's page

@@ -646,9 +646,12 @@ static void num(char *s, unsigned n)
         *s++ = rev[--i];
     *s = 0;
 }
-static int wave_height(unsigned level)
+static int wave_height(unsigned level, unsigned gain)
 {
-    return level < 8 ? (int)((10 * (8 - level) + 4) / 8) : -(int)((10 * (level - 8) + 3) / 7);
+    int sample = (int)level - 128;
+    unsigned amplitude = (unsigned)(sample < 0 ? -sample : sample);
+    int height = (int)((amplitude * gain + 128) >> 8);
+    return sample < 0 ? height : -height;
 }
 static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
                               const struct RelayOverview *hits, unsigned mark, int live,
@@ -667,6 +670,9 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
     fxv_box(b, LEFT + WAVE_COLUMNS, TOP + 1, 1, BOTTOM - TOP - 1, 1);
     fxv_box(b, LEFT, TOP, WAVE_COLUMNS, 1, 1);
     fxv_box(b, LEFT, BOTTOM, WAVE_COLUMNS, 1, 1);
+    uint16_t columns[WAVE_COLUMNS];
+    /* Fit the loudest peak in the view, with a -18 dB reference floor. */
+    unsigned reference = 16;
     for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
         unsigned bin = col * RELAY_WAVE_BINS / WAVE_COLUMNS;
         uint16_t wave = RELAY_WAVE_EMPTY;
@@ -676,18 +682,23 @@ static unsigned draw_waveform(u8 *b, const struct RelayOverview *overview,
                 peak = overview->peaks[bin];
             wave = relay_wave_join(wave, peak);
         }
-        int selected = col >= lo && col < hi;
-        if (selected)
-            fxv_box(b, LEFT + col, TOP + 1, 1, BOTTOM - TOP - 1, 1);
         if (wave != RELAY_WAVE_EMPTY && wave != RELAY_WAVE_SILENT)
             audible = 1;
         else
             wave = RELAY_WAVE_SILENT;
-        /* Use the outer extrema of both channels to preserve out-of-phase peaks. */
-        unsigned lo_l = wave & 15, lo_r = (wave >> 8) & 15;
-        unsigned hi_l = (wave >> 4) & 15, hi_r = wave >> 12;
-        int top = wave_height(hi_l > hi_r ? hi_l : hi_r);
-        int bottom = wave_height(lo_l < lo_r ? lo_l : lo_r);
+        columns[col] = wave;
+        int down = 128 - (int)(wave & 255), up = (int)(wave >> 8) - 128;
+        int peak = down > up ? down : up;
+        if (peak > (int)reference)
+            reference = (unsigned)peak;
+    }
+    unsigned gain = ((10u << 8) + reference / 2) / reference;
+    for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
+        int selected = col >= lo && col < hi;
+        if (selected)
+            fxv_box(b, LEFT + col, TOP + 1, 1, BOTTOM - TOP - 1, 1);
+        int top = wave_height(columns[col] >> 8, gain);
+        int bottom = wave_height(columns[col] & 255, gain);
         fxv_box(b, LEFT + col, MID + top, 1, bottom - top + 1, !selected);
     }
     if (hits)

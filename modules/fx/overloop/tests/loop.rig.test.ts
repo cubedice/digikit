@@ -116,7 +116,12 @@ describe('Overloop engine: an armed change at the pattern end', () => {
       await rig.run(16, (frame) => [frame === 13 ? 1 : 0, frame === 400 ? -0.5 : 0]);
       const w = await rig.statusWords();
       expect(w[LP.LS_WAVE_T!]).toBe(512);
-      expect(w[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0x08f0);
+      expect(w[LP.LS_STATE!]! & LP.LS_WAVE_PRECISE!).toBe(LP.LS_WAVE_PRECISE);
+      expect(w[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0xff80);
+      await rig.run(16, () => [-1 / 1024, 1 / 16]);
+      expect((await rig.statusWords())[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0x1001);
+      await rig.run(16, () => [-2, 2]);
+      expect((await rig.statusWords())[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0xffff);
       await rig.run(16, () => 0);
       expect((await rig.statusWords())[LP.LS_WAVE_PEAK!]! & 0xffff).toBe(0);
     });

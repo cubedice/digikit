@@ -13,19 +13,23 @@ void     dkrt_loop_xfad(uint32_t value);  /* the crossfader: 0 LIVE .. 127 LOOP 
 void     dkrt_loop_arm(void);             /* one press of ARM: arms, or takes the arm back */
 void     dkrt_loop_drop(void);            /* drop the loop */
 uint32_t dkrt_loop_status(uint32_t *out); /* the engine's status (LS_* words); 1 while it is fresh */
-void     dkrt_loop_wave(uint16_t out[LS_WAVE_COLUMNS]); /* rolling or held stereo waveform, 60 ordered columns */
+void     dkrt_loop_wave_peaks(uint16_t out[LS_WAVE_COLUMNS]); /* rolling or held waveform, 120 ordered columns */
 uint32_t dkrt_loop_page(void);            /* the native FX page of the loop effect, 0 while none is loaded */
 ```
 
 The indices and the status words are in `sdk/dsp/contract/dk_loop.inc`, the one file the home, the page and the engine
 share.
 
-The DSP measures both polarities of each recorded stereo channel, before adding the downstream wet return. Every
-512 frames it closes one 16-bit peak group. The existing status carrier repeats the completed group until its
-replacement. The ColdFire keeps four 64-bin histories with successively coarser resolution. The capture edge
-freezes the matching history including the unfinished group, clipping its valid interval to the actual recorded
-audio. The UI reads one bounded snapshot and scales it to the plot after restoring interrupts. Silence and loss
-of status clear the corresponding display data.
+The DSP measures the deepest negative sample and the highest positive sample across both recorded channels before
+adding the downstream wet return. Every 512 frames it closes one 16-bit group with the negative magnitude in the low
+byte and the positive in the high byte. It rounds each nonzero magnitude up on a 0–255 scale. The carrier repeats the
+completed group until its replacement. The `LS_WAVE_PRECISE` state flag identifies this format. With an older engine
+the home combines its four 4-bit channel peaks and expands each polarity to the byte scale.
+
+The ColdFire keeps six 128-bin histories covering 512, 1024, 2048, 4096, 8192 and 16384 frames per bin. At capture,
+it freezes the finest history that covers the cycle, includes the unfinished group and clips the valid interval to
+the audio actually recorded. The UI reads one bounded snapshot, then finds the outer peaks for each of the 120
+pixel intervals after restoring interrupts. Silence and loss of status clear the corresponding display data.
 
 ## How the values reach the engine
 

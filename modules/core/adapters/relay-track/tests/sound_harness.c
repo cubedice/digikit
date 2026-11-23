@@ -218,17 +218,26 @@ int main(void)
     native[0x4a] = 3;
     assert(project_gate(native, 0) == native);
 
-    // Opposite channel excursions span one taller envelope and keep silence centered.
+    // Full-scale peaks fill the envelope and silence stays centered.
     uint8_t pixels[64][128] = {0};
     struct RelayOverview wave = {.frames = RELAY_WAVE_BINS};
     for (unsigned i = 0; i < RELAY_WAVE_BINS; ++i)
         wave.peaks[i] = RELAY_WAVE_SILENT;
-    wave.peaks[0] = 0x60f9;
+    wave.peaks[0] = 0xff00;
     status[5] = 0;
     assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
     for (unsigned y = 29; y <= 49; ++y) {
         assert(pixels[y][17]);
         assert(pixels[y][18] == (y == 39));
+    }
+    // Quiet transients expand while keeping their relative heights.
+    memset(pixels, 0, sizeof(pixels));
+    wave.peaks[0] = 0x8878;
+    wave.peaks[1] = 0x857b;
+    assert(draw_waveform(pixels[0], &wave, 0, 0, 0, 0));
+    for (unsigned y = 29; y <= 49; ++y) {
+        assert(pixels[y][17] == (y >= 34 && y <= 44));
+        assert(pixels[y][18] == (y >= 36 && y <= 42));
     }
 
     // Capture one telemetry window across the loop boundary without losing its
@@ -239,8 +248,9 @@ int main(void)
     status[12] = 1190;
     status[13] = (u32)wave.peaks[0] << 8;
     preview_waveform();
-    assert(live_track == track && live_peaks[0] == 0x60f9 && live_peaks[2] == 0x60f9 &&
-           live_peaks[119] == 0x60f9 && live_peaks[30] == RELAY_WAVE_EMPTY);
+    assert(live_track == track && live_peaks[0] == wave.peaks[0] &&
+           live_peaks[2] == wave.peaks[0] && live_peaks[119] == wave.peaks[0] &&
+           live_peaks[30] == RELAY_WAVE_EMPTY);
     status[2] = 0;
     preview_waveform();
     assert(live_track == 16); // A canceled recording never becomes the fallback waveform.

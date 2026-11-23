@@ -117,7 +117,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     let b = await block(1, 0, 0, 512, 16);
     expect(b.status[5]).toBe(512);
     expect(b.status[12]).toBe(0);
-    expect(wave(b.status)).toBe(0x86c8); // L [0, +4], R [-2, 0].
+    expect(wave(b.status)).toBe(0xc060); // −0.25 from the right and +0.5 from the left.
     input();
     for (const [i, amp] of [0.5, 0.25, 0.125].entries()) {
       if (i === 1) rig.poke(status / 4, 0); // The link handed the previous window to ColdFire.
@@ -125,12 +125,13 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
       expect(b.audio[0]).toBeCloseTo(amp, 5);
       expect(b.audio[32]).toBeCloseTo(-amp / 2, 5);
       expect(b.status[12]).toBe(i === 0 ? 0 : 64);
-      expect(wave(b.status)).toBe(i === 0 ? 0x86c8 : 0x8798);
+      // The stored echo has 50% feedback applied after the read head outputs it.
+      expect(wave(b.status)).toBe(i === 0 ? 0xc060 : 0x9078);
     }
     for (let i = 4; i < 16; ++i) b = await block();
     expect(b.status[2]! & 15).toBe(0);
     expect(b.status[11]! >>> 8).toBe(16);
-    expect(wave(b.status)).toBe(0x0f0f);
+    expect(wave(b.status)).toBe(0x00ff);
     // A panel launch binds the voice first. A played note is an independent reset.
     await reset();
     await controls(65536, 65536, 0);

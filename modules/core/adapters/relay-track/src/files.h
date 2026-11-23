@@ -2,16 +2,14 @@
 #include <stdint.h>
 enum { RF_SCAN = 1, RF_SAVE, RF_LOAD };
 enum { RF_IDLE, RF_WORK, RF_SAVED, RF_LOADED, RF_FAILED, RF_SCANNED };
-// Biased signed nibbles, low to high: left min/max, right min/max.
-#define RELAY_WAVE_EMPTY 0x0f0fu
-#define RELAY_WAVE_SILENT 0x8888u
+// Biased signed bytes: the minimum of either channel is low, the maximum high.
+#define RELAY_WAVE_EMPTY 0x00ffu
+#define RELAY_WAVE_SILENT 0x8080u
 #define RELAY_WAVE_BINS 120u
 static inline uint16_t relay_wave_join(uint16_t a, uint16_t b)
 {
-    return (((a & 0x000f) < (b & 0x000f) ? a : b) & 0x000f) |
-           (((a & 0x00f0) > (b & 0x00f0) ? a : b) & 0x00f0) |
-           (((a & 0x0f00) < (b & 0x0f00) ? a : b) & 0x0f00) |
-           (((a & 0xf000) > (b & 0xf000) ? a : b) & 0xf000);
+    return (((a & 0x00ff) < (b & 0x00ff) ? a : b) & 0x00ff) |
+           (((a & 0xff00) > (b & 0xff00) ? a : b) & 0xff00);
 }
 // Slot = zero-based track + 16 * lane (main, first take, second take).
 struct RelayOverview {
