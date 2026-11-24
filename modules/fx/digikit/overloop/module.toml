@@ -6,7 +6,7 @@ category = "fx"
 type = "fx"
 author = "digikit"
 status = "experimental"
-summary = "Listens all the time; an armed pattern change keeps the last cycle as a loop, and a crossfader brings the new pattern in."
+summary = "Always listening: an armed pattern change keeps the last cycle as a loop, and a crossfader brings the new pattern in."
 dynamic = true
 ports = ["dt2-1.17"]
 # The DSP reads the two buffers of core/loop-storage and the pattern position of core/pattern-position, and writes the status
