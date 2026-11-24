@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { RawRig, f2w, w2f } from '@digi/sharc-rig-kit';
 
 it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes on the real tape path', async () => {
-  const root = path.resolve(import.meta.dirname, '../../../..');
+  const root = path.resolve(import.meta.dirname, '../../../../..');
   const adapter = 'image-modules/adapters/relay-track/src/dsp';
   const files = [
     'image-modules/adapters/relay-storage/src/dsp/storage.s',

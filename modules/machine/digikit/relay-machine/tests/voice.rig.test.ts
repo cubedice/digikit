@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { RawRig, w2f } from '@digi/sharc-rig-kit';
 
 it('renders separate stereo tracks at the recorder phase and retires a cleared track', async () => {
-  const root = path.resolve(import.meta.dirname, '../../../..');
+  const root = path.resolve(import.meta.dirname, '../../../../..');
   const headers = path.join(root, 'sdk/dsp/contract');
   const header = readFileSync(path.join(headers, 'dk_relay.inc'), 'utf8');
   const op = Object.fromEntries([...header.matchAll(/^#define RLY_(\w+) (\d+)$/gm)].map(m => [m[1], Number(m[2])]));

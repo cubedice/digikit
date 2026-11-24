@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import { RawRig, f2w, w2f } from '@digi/sharc-rig-kit';
 
 it('plays two read-only RELAY heads from the leased owner tape at independent pitches', async () => {
-  const root = path.resolve(import.meta.dirname, '../../../..');
+  const root = path.resolve(import.meta.dirname, '../../../../..');
   const read = (file: string) => readFileSync(path.join(root, file), 'utf8').replaceAll('\r\n', '\n');
   const files = [
     'image-modules/adapters/relay-storage/src/dsp/storage.s',
