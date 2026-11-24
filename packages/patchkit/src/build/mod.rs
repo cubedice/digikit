@@ -1,7 +1,7 @@
 //! `patchkit build`: module sources -> `.dko.json` objects.
 //!
 //! For every `[[object]]` of a module's `module.toml` that lists `sources`, the sources are compiled by the pinned toolchain (ColdFire
-//! C and assembly: m68k-elf gcc/as; ColdFire Rust: a `Cargo.toml` as the only source; SHARC+: Selache as a library), turned into
+//! C and assembly: m68k-elf gcc/as; ColdFire Rust: a `Cargo.toml` first, then ColdFire C and assembly linked with the crate; SHARC+: Selache as a library), turned into
 //! the canonical object JSON and written to the object's `path`. Every instruction is re-decoded by our own decoders, so a toolchain
 //! encoding bug cannot reach an image (ColdFire: [`cf::check_isa`]; SHARC+: [`sharc_obj`]); both run in this process.
 //!
@@ -109,6 +109,10 @@ struct ObjectToml {
     path: String,
     #[serde(default)]
     sources: Vec<String>,
+    /// The include directories of the object's ColdFire C and assembler sources, relative to the module directory: they replace the module's
+    /// `build/gen` and `src` (the global directories of pins.toml stay). For a source of another module, its directories.
+    #[serde(default)]
+    include_dirs: Vec<String>,
 }
 
 impl ModuleToml {
@@ -177,7 +181,7 @@ fn object_file_at(env: &Env, moddir: &Path, m: &ModuleToml, o: &ObjectToml, hash
 /// The stored file of the object for the sources now (see [`object_file_at`]); an error when the sources cannot be hashed (a missing
 /// source, or the SDK library does not compile).
 fn object_file(env: &Env, moddir: &Path, m: &ModuleToml, o: &ObjectToml) -> Result<PathBuf> {
-    let hash = source_hash(env, moddir, &o.sources, m.is_content())?;
+    let hash = source_hash(env, moddir, o, m.is_content())?;
     Ok(object_file_at(env, moddir, m, o, &hash))
 }
 
@@ -257,16 +261,80 @@ pub fn cf_include_dirs(root: &Path, moddir: &Path) -> Vec<PathBuf> {
     v
 }
 
+/// The include directories of the C and assembler sources of `o`: its `include_dirs` (relative to the module directory) when it has them, else the
+/// module's `build/gen` and `src`; then the global directories ([`cf_include_dirs`]).
+fn object_include_dirs(root: &Path, moddir: &Path, o: &ObjectToml) -> Vec<PathBuf> {
+    if o.include_dirs.is_empty() {
+        return cf_include_dirs(root, moddir);
+    }
+    let mut v: Vec<PathBuf> = o.include_dirs.iter().map(|d| moddir.join(d)).collect();
+    v.extend(
+        toolchain::global_include_dirs(true)
+            .iter()
+            .map(|d| root.join(d)),
+    );
+    v
+}
+
+fn is_c_or_asm(s: &str) -> bool {
+    matches!(
+        Path::new(s).extension().and_then(|e| e.to_str()),
+        Some("c" | "s" | "S")
+    )
+}
+
+/// The sources of a Rust object: its `Cargo.toml` first, then ColdFire C and assembler sources (paths relative to the module directory, which may
+/// lead outside it). Returns the manifest and the others.
+fn rust_sources(sources: &[String]) -> Result<(&str, &[String])> {
+    let is_manifest = |s: &String| Path::new(s).file_name().is_some_and(|n| n == "Cargo.toml");
+    match sources.split_first() {
+        Some((m, rest))
+            if is_manifest(m)
+                && !rest.iter().any(is_manifest)
+                && rest.iter().all(|s| is_c_or_asm(s)) =>
+        {
+            Ok((m.as_str(), rest))
+        }
+        _ => Err(err!(
+            "a Rust object lists its Cargo.toml first, then only ColdFire C (.c) and assembler (.s) sources: {sources:?}"
+        )),
+    }
+}
+
+/// The C and assembler sources of the Rust object `o` of the module, with their include directories.
+fn c_sources(env: &Env, moddir: &Path, o: &ObjectToml) -> Result<rust::CSources> {
+    let (_, rest) = rust_sources(&o.sources)?;
+    Ok(rust::CSources {
+        files: rest.iter().map(|s| moddir.join(s)).collect(),
+        include_dirs: object_include_dirs(&env.root, moddir, o),
+    })
+}
+
+/// `include_dirs` is for ColdFire C and assembler sources.
+fn check_include_dirs(o: &ObjectToml) -> Result<()> {
+    if !o.include_dirs.is_empty() && kind_of(&o.sources) == Kind::Sharc {
+        return Err(err!(
+            "{}: include_dirs applies to ColdFire C and assembler sources, not to SHARC+ sources",
+            o.path
+        ));
+    }
+    Ok(())
+}
+
 /// The `source_sha256` a build of the object would write, computed the same way as the builders do and without compiling.
-fn source_hash(env: &Env, moddir: &Path, sources: &[String], sdk: bool) -> Result<String> {
-    let paths: Vec<PathBuf> = sources.iter().map(|s| moddir.join(s)).collect();
-    match kind_of(sources) {
+fn source_hash(env: &Env, moddir: &Path, o: &ObjectToml, sdk: bool) -> Result<String> {
+    check_include_dirs(o)?;
+    let paths: Vec<PathBuf> = o.sources.iter().map(|s| moddir.join(s)).collect();
+    match kind_of(&o.sources) {
         Kind::Sharc => {
             let text = sharc::source_text(&env.root, moddir, &paths, &env.defines)?;
             Ok(sharc::source_hash(&text))
         }
-        Kind::Rust => rust::source_sha256(&paths[0]),
-        Kind::Cf => cf::source_digest(env, &paths, &cf_include_dirs(&env.root, moddir), sdk),
+        Kind::Rust => {
+            let (manifest, _) = rust_sources(&o.sources)?;
+            rust::object_sha256(env, &moddir.join(manifest), &c_sources(env, moddir, o)?)
+        }
+        Kind::Cf => cf::source_digest(env, &paths, &object_include_dirs(&env.root, moddir, o), sdk),
     }
 }
 
@@ -289,7 +357,7 @@ fn stored_current(path: &Path, want: &str) -> bool {
 }
 
 fn object_unchanged(env: &Env, moddir: &Path, m: &ModuleToml, o: &ObjectToml) -> Result<bool> {
-    let want = source_hash(env, moddir, &o.sources, m.is_content())?;
+    let want = source_hash(env, moddir, o, m.is_content())?;
     let out = object_file_at(env, moddir, m, o, &want);
     let same = stored_current(&out, &want);
     if same && m.is_content() {
@@ -351,6 +419,7 @@ fn build_object(
     sdk: bool,
     module: &str,
 ) -> Result<Dko> {
+    check_include_dirs(o)?;
     let paths: Vec<PathBuf> = o.sources.iter().map(|s| moddir.join(s)).collect();
     match kind_of(&o.sources) {
         Kind::Sharc => {
@@ -370,16 +439,13 @@ fn build_object(
                 return Err(err!("--define applies to DSP sources only"));
             }
             if k == Kind::Rust {
-                // A Rust crate: the manifest is the only source entry
-                if paths.len() != 1 {
-                    return Err(err!(
-                        "a Rust object lists its Cargo.toml as the only source"
-                    ));
-                }
-                let (proto, sha, toolchain) = rust::object_proto(env, &paths[0])?;
+                // A Rust crate: the manifest first, then the C and assembler sources linked with it
+                let (manifest, _) = rust_sources(&o.sources)?;
+                let (proto, sha, toolchain) =
+                    rust::object_proto(env, &moddir.join(manifest), &c_sources(env, moddir, o)?)?;
                 cf::dko_from_proto(&proto, sha, toolchain)
             } else {
-                cf::cf_object(env, &paths, &cf_include_dirs(&env.root, moddir), sdk)
+                cf::cf_object(env, &paths, &object_include_dirs(&env.root, moddir, o), sdk)
             }
         }
     }
@@ -436,7 +502,7 @@ pub fn load_object(env: &Env, moddir: &Path, m: &ModuleToml, rel: &str) -> Resul
         .iter()
         .find(|o| o.path == rel)
         .ok_or_else(|| err!("{rel}: not an object of the module"))?;
-    let want = source_hash(env, moddir, &o.sources, m.is_content())
+    let want = source_hash(env, moddir, o, m.is_content())
         .map_err(|e| err!("{}: {rel}: cannot hash the sources: {e}", moddir.display()))?;
     let file = object_file_at(env, moddir, m, o, &want);
     if stored_current(&file, &want)
@@ -475,7 +541,7 @@ pub fn build_module(moddir: &Path, opts: &BuildOptions) -> Result<BuildReport> {
     let m = manifest(moddir)?;
     let mut report = BuildReport::default();
     for o in m.object.iter().filter(|o| !o.sources.is_empty()) {
-        let hash = source_hash(&env, moddir, &o.sources, m.is_content())?;
+        let hash = source_hash(&env, moddir, o, m.is_content())?;
         let stored = |h: &str| object_file_at(&env, moddir, &m, o, h);
         if !opts.check
             && opts.defines.is_empty()
@@ -657,6 +723,75 @@ mod tests {
         let _ = std::fs::remove_dir_all(&d);
         std::fs::create_dir_all(&d).unwrap();
         d
+    }
+
+    fn strings(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    fn object(sources: &[&str], include_dirs: &[&str]) -> ObjectToml {
+        ObjectToml {
+            path: "build/x.dko.json".into(),
+            sources: strings(sources),
+            include_dirs: strings(include_dirs),
+        }
+    }
+
+    #[test]
+    fn a_manifest_makes_a_rust_object_and_c_and_assembler_sources_may_follow_it() {
+        let kind = |v: &[&str]| kind_of(&strings(v));
+        assert!(kind(&["Cargo.toml"]) == Kind::Rust);
+        assert!(kind(&["src/rs/Cargo.toml"]) == Kind::Rust);
+        assert!(
+            kind(&[
+                "Cargo.toml",
+                "../../../adapters/instrument-play/src/cf/control.c",
+                "src/hooks.s"
+            ]) == Kind::Rust
+        );
+        assert!(kind(&["src/cf/a.c", "src/cf/b.s"]) == Kind::Cf);
+        assert!(kind(&["src/dsp/a.s", "src/dsp/b.s"]) == Kind::Sharc);
+        let all = strings(&["Cargo.toml", "../x/src/cf/a.c", "src/b.s", "src/c.S"]);
+        let (manifest, rest) = rust_sources(&all).unwrap();
+        assert_eq!(manifest, "Cargo.toml");
+        assert_eq!(rest, &all[1..]);
+        // the manifest comes first and once; after it only .c and .s
+        for bad in [
+            &["../x/a.c", "Cargo.toml"][..],
+            &["Cargo.toml", "src/lib.rs"],
+            &["Cargo.toml", "inc/a.h"],
+            &["Cargo.toml", "../other/Cargo.toml"],
+        ] {
+            let e = rust_sources(&strings(bad)).unwrap_err();
+            assert!(e.0.contains("Cargo.toml first"), "{bad:?}: {e}");
+        }
+        // include_dirs is for ColdFire sources
+        assert!(check_include_dirs(&object(&["src/dsp/a.s"], &["inc"])).is_err());
+        assert!(check_include_dirs(&object(&["Cargo.toml", "a.c"], &["inc"])).is_ok());
+        assert!(check_include_dirs(&object(&["src/a.c"], &["inc"])).is_ok());
+    }
+
+    /// The hash of a Rust object without C or assembler sources is the hash of its crate, as before they existed: every committed service object stays current.
+    #[test]
+    fn a_rust_object_of_its_crate_alone_keeps_the_hash_of_the_crate() {
+        let dir = scratch("rust-hash");
+        std::fs::create_dir_all(dir.join("src")).unwrap();
+        std::fs::write(
+            dir.join("Cargo.toml"),
+            "[package]\nname = \"x\"\nversion = \"0.1.0\"\n",
+        )
+        .unwrap();
+        std::fs::write(dir.join("src/lib.rs"), "#![no_std]\n").unwrap();
+        let env = Env::new(&dir);
+        let crate_sha = rust::source_sha256(&dir.join("Cargo.toml")).unwrap();
+        for o in [
+            object(&["Cargo.toml"], &[]),
+            object(&["Cargo.toml"], &["../elsewhere/src"]),
+        ] {
+            assert_eq!(source_hash(&env, &dir, &o, false).unwrap(), crate_sha);
+            assert_eq!(source_hash(&env, &dir, &o, true).unwrap(), crate_sha);
+        }
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

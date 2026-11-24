@@ -543,6 +543,14 @@ objects. Undefined symbols resolve to anchors (`[object.externs]`), to symbols o
 patchkit defines (registries, sections, hook tails). Objects are committed, so patching and the browser need no
 toolchain.
 
+A Rust object (a service file's crate) may list ColdFire C (`.c`) and assembler (`.s`) sources after its `Cargo.toml`, as
+paths relative to the module directory that may lead into another module; each is compiled as an adapter source (C with
+`-DDK_SERVICE=1`), with the object's `include_dirs` (relative to the module directory) in place of the module's
+`build/gen` and `src` (the global directories of `tools/patchkit/toolchain/pins.toml` stay). They go into the crate's
+`ld -r --gc-sections`, so the crate's exports stay the only roots, compiler helpers come from `compiler_builtins` and only
+`R_68K_32` relocations are allowed. The object's `source_sha256` adds the sources, the headers they read, the C flags and
+the defines to the crate's hash; an object with only `Cargo.toml` keeps the crate's hash.
+
 ### Conflicts, claims and order
 
 - A `[[claim]]` names a scarce resource (`dsp.master.hook`, `cf.machines.sites`). Two modules that claim the same one

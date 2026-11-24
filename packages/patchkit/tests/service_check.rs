@@ -550,6 +550,66 @@ fn assembler_and_firmware_names_stay_in_their_place() {
     assert!(mentions(&found, "names firmware (`dkfw`)"), "{found:?}");
 }
 
+/// A hook is assembler in `dks/src/hooks.rs` or a routine of a C or assembler source that the Rust object lists after its `Cargo.toml`.
+#[test]
+fn a_hook_may_be_a_routine_of_a_c_or_assembler_source_of_the_object() {
+    let (dir, sdk) = service("c-hook", &[]);
+    let manifest = dir.join("dks/module.toml");
+    append(
+        &manifest,
+        "\n[[hook]]\nname = \"cf.x.hook.y\"\nentry = \"x_hook_y\"\n",
+    );
+    assert!(mentions(
+        &problems(&dir, &sdk),
+        "dks/src/hooks.rs is missing (every hook is assembler in that file)"
+    ));
+    let text = fs::read_to_string(&manifest).unwrap();
+    let with = |sources: &str| {
+        fs::write(
+            &manifest,
+            text.replace(
+                "sources = [\"Cargo.toml\"]",
+                &format!("sources = {sources}"),
+            ),
+        )
+        .unwrap()
+    };
+    with(r#"["Cargo.toml", "../csrc/y.c", "../csrc/y.s"]"#);
+    let found = problems(&dir, &sdk);
+    assert!(
+        mentions(
+            &found,
+            "`../csrc/y.c`, a source of the Rust object, is missing"
+        ),
+        "{found:?}"
+    );
+    fs::create_dir_all(dir.join("csrc")).unwrap();
+    fs::write(dir.join("csrc/y.c"), "void x_hook_yz(void) {}\n").unwrap();
+    fs::write(dir.join("csrc/y.s"), "    .text\n").unwrap();
+    let found = problems(&dir, &sdk);
+    assert!(
+        mentions(
+            &found,
+            "no C or assembler source of the object names the [[hook]] entry `x_hook_y`"
+        ),
+        "{found:?}"
+    );
+    fs::write(
+        dir.join("csrc/y.s"),
+        "    .globl x_hook_y\nx_hook_y:\n    rts\n",
+    )
+    .unwrap();
+    let found = problems(&dir, &sdk);
+    assert!(!mentions(&found, "hooks.rs"), "{found:?}");
+    // after the manifest: C and assembler only
+    fs::write(dir.join("csrc/y.h"), "").unwrap();
+    with(r#"["Cargo.toml", "../csrc/y.s", "../csrc/y.h"]"#);
+    assert!(mentions(
+        &problems(&dir, &sdk),
+        "lists only ColdFire C (.c) and assembler (.s) sources"
+    ));
+}
+
 /// The four service crates of the runtime follow the layout today.
 #[test]
 fn the_service_crates_of_the_repository_pass() {
