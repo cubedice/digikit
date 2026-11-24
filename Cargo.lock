@@ -1236,6 +1236,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dkrt-svc-instrument"
+version = "0.1.0"
+dependencies = [
+ "dkrt-abi",
+ "dkrt-sdk",
+]
+
+[[package]]
 name = "dkrt-svc-lfo"
 version = "0.1.0"
 dependencies = [
