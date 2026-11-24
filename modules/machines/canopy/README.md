@@ -434,6 +434,16 @@ callback is 77,017 of the 100,000-instruction ceiling. Descriptor budgets remain
 requires carrier quiescence. The optional adapter packages and admits the V2
 instrument through the normal module protocol.
 
+The factory wavetables are stored by half: every quantized mip level is exactly
+antisymmetric, so `src/dsp/wavetables.s` holds N/4 words of each level (46,084
+bytes of the 92,720-byte table) and `_wt_expand_table` rebuilds the whole table in
+DSP bss, which the package does not carry. `_wt_prepare` expands one table per
+process call over the first five calls after the image loads (10,505 instructions
+a table), and any table a block is about to read first; afterwards the check
+costs a few instructions. The rebuilt table is the generator's full table word for
+word (`test_canopy_wavetable_expand.py`), so the sound is unchanged; `canopy.dkm`
+for the DTII is 102,328 bytes (148,280 with the full table).
+
 
 Stage 2 keyboard modes and learned shape memory are provided by the optional
 `core/instrument-play` adapter. See

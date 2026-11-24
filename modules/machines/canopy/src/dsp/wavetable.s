@@ -10,7 +10,7 @@
 .GLOBAL _wt_render_block;
 .GLOBAL _wt_pm_block;
 .GLOBAL _wt_validate;
-.EXTERN _wt_factory;
+.EXTERN _wt_factory_half;
 .EXTERN _cp_envelopes;
 .EXTERN _fm_bank;
 .EXTERN _fm_ratios;
@@ -73,6 +73,7 @@ _wt_invalid:
 
 // R4=instance, R8=normalized process input, called once after event commit.
 _wt_prepare:
+    CALL _wt_expand_step;
     DM(_wt_state) = R4;
     DM(_wt_input) = R8;
     R0 = 0;
@@ -222,6 +223,11 @@ _wt_crossfade_advance:
     F0 = MIN(F0, F1);
     DM(237, I0) = F0;
 _wt_crossfade_ready:
+    // Both tables this block reads are whole before their bases are taken.
+    R0 = DM(235, I0);
+    CALL _wt_expand_table;
+    R0 = DM(236, I0);
+    CALL _wt_expand_table;
     R0 = DM(235, I0);
     DM(_wt_table_a) = R0;
     R1 = 18544; // 9272 16-bit samples per factory table
@@ -1645,7 +1651,128 @@ _wt_pm_last:
     DM(_wt_read_phase) = F0;
     RTS;
 
+// The factory tables are stored by half (src/dsp/wavetables.s, tools/wavetables.py
+// half_samples): every quantized mip level of N + 1 samples is exactly
+// antisymmetric, w[N-n] = -w[n] with w[0], w[N/2] and w[N] zero, so the image
+// holds N/4 words of each level and _wt_expand_table rebuilds a table's 4636
+// words in _wt_factory, bss that the loader reserves and does not send. It
+// writes the words of the generator's full table (test_canopy_wavetables.py
+// compares them), so the render reads what the full table held. _wt_prepare
+// expands one table a call until all five are whole (the first five calls after
+// the image is loaded) and, before it takes their bases, both tables a block
+// reads. _wt_expanded and _wt_expand_next are data: zero whenever the image loads.
+
+// The next table no call has expanded yet, if one is left.
+_wt_expand_step:
+    R0 = DM(_wt_expand_next);
+    R1 = 5;
+    COMP(R0, R1);
+    IF GE RTS;
+    R1 = R0 + 1;
+    DM(_wt_expand_next) = R1;
+    JUMP _wt_expand_table;
+
+// R0 = table 0..4: make it whole in _wt_factory unless bit R0 of _wt_expanded
+// says it is. About 10,500 instructions a table, 7 when it is whole. Clobbers
+// R0..R3 and ASTAT; saves and restores the other registers it uses (R5..R7,
+// R9..R11, I0..I2, M7). Needs M5 = 0, M6 = 1, L0..L2 = 0.
+_wt_expand_table:
+    R1 = 1;
+    R1 = LSHIFT R1 BY R0;
+    R2 = DM(_wt_expanded);
+    R3 = R1 AND R2;
+    IF NE RTS;
+    R2 = R1 OR R2;
+    DM(_wt_expanded) = R2;
+    DM(_wt_xp_save + 0) = R5;
+    DM(_wt_xp_save + 4) = R6;
+    DM(_wt_xp_save + 8) = R7;
+    DM(_wt_xp_save + 12) = R9;
+    DM(_wt_xp_save + 16) = R10;
+    DM(_wt_xp_save + 20) = R11;
+    R1 = I0;
+    DM(_wt_xp_save + 24) = R1;
+    R1 = I1;
+    DM(_wt_xp_save + 28) = R1;
+    R1 = I2;
+    DM(_wt_xp_save + 32) = R1;
+    R1 = M7;
+    DM(_wt_xp_save + 36) = R1;
+    M7 = -1;
+    R1 = 9216; // 2304 stored words a table, as bytes
+    R1 = R0 * R1 (SSI);
+    R2 = _wt_factory_half;
+    R1 = R1 + R2;
+    I0 = R1;
+    R1 = 18544; // 9272 16-bit samples a table, as bytes
+    R1 = R0 * R1 (SSI);
+    R2 = _wt_factory;
+    R1 = R1 + R2;
+    I1 = R1;
+    R3 = 0xFFFF0000;
+    R7 = 1; // this level starts on an even sample (levels alternate: odd lengths)
+    R6 = 8; // frames
+    R0 = DM(I0, M6); // the first stored word; each level loads the next one's first
+_wt_expand_frame:
+    R9 = 128; // N/4 stored words of the first mip level
+    R10 = 7; // mip levels
+_wt_expand_level:
+    // I2 = the level's last word, N/2 - 1 words on (N/2 when it starts even: its
+    // last sample is the low half of the word the next level starts in).
+    R1 = LSHIFT R9 BY 1;
+    R1 = R1 + R7;
+    R1 = R1 - 1;
+    R1 = LSHIFT R1 BY 2;
+    R2 = I1;
+    R1 = R1 + R2;
+    I2 = R1;
+    R11 = 4;
+    R11 = R1 + R11; // the next level's first word
+    // Each stored word c is the level's next forward word; the backward words run
+    // down from I2: (-lo(c), -hi(previous c)) in 16-bit fields, which the mirror
+    // w[N-n] = -w[n] puts there. R1 = -(previous c AND 0xFFFF0000), 0 at first.
+    R1 = 0;
+    LCNTR = R9, DO _wt_expand_word UNTIL LCE;
+    R2 = -R0, DM(I1, M6) = R0;
+    R1 = R1 OR FDEP R2 BY 0:16;
+    R5 = R0 AND R3, DM(I2, M7) = R1;
+_wt_expand_word:
+    R1 = -R5, R0 = DM(I0, M6);
+    R7 = PASS R7;
+    IF EQ JUMP _wt_expand_odd;
+    DM(I2, M5) = R1; // an even level's middle word: (w[N/2] = 0, -hi(last c))
+_wt_expand_odd:
+    I1 = R11;
+    R1 = 1;
+    R7 = R7 XOR R1;
+    R9 = LSHIFT R9 BY -1;
+    R1 = 16;
+    R9 = MAX(R9, R1); // 128, 64, 32, then 16 for the four levels of 64
+    R10 = R10 - 1;
+    IF NE JUMP _wt_expand_level;
+    R6 = R6 - 1;
+    IF NE JUMP _wt_expand_frame;
+    R1 = DM(_wt_xp_save + 36);
+    M7 = R1;
+    R1 = DM(_wt_xp_save + 32);
+    I2 = R1;
+    R1 = DM(_wt_xp_save + 28);
+    I1 = R1;
+    R1 = DM(_wt_xp_save + 24);
+    I0 = R1;
+    R11 = DM(_wt_xp_save + 20);
+    R10 = DM(_wt_xp_save + 16);
+    R9 = DM(_wt_xp_save + 12);
+    R7 = DM(_wt_xp_save + 8);
+    R6 = DM(_wt_xp_save + 4);
+    R5 = DM(_wt_xp_save + 0);
+    RTS;
+
 .SECTION/DM seg_dmda;
+.PKBSS _wt_factory, 92720; // five tables of 9272 16-bit samples, two to a word
+.PKBSS _wt_xp_save, 40;
+.VAR _wt_expanded = 0;
+.VAR _wt_expand_next = 0;
 .GLOBAL _wt_state;
 .GLOBAL _wt_enabled;
 .VAR _wt_state = 0;
