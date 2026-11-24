@@ -21,11 +21,13 @@ pub(crate) struct Flight {
     placed: Placed,
     /// The package `c` is of.
     package: Option<PackageId>,
+    /// The block of a V2 file (`Checked::v2`): its copies go in at the start (`queue_v2`).
+    v2_block: Block,
 }
 
 impl Flight {
     pub(crate) const fn new() -> Flight {
-        Flight { c: Checked::empty(), placed: Placed { place: PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: 0, image_size: 0, dsp_image: 0, mem: core::ptr::null_mut(), base: 0, bss: 0 }, init: 0, tick: 0 }, package: None }
+        Flight { c: Checked::empty(), placed: Placed { place: PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: 0, image_size: 0, dsp_image: 0, mem: core::ptr::null_mut(), base: 0, bss: 0 }, init: 0, tick: 0 }, package: None, v2_block: Block { ptr: core::ptr::null_mut(), addr: DevAddr::NULL } }
     }
 }
 
@@ -123,6 +125,10 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
             return Err(E_TABLE);
         }
         dsp::init_once();
+        // a V2 instrument transaction drains or owns the DSP link (instrument.rs): no other load starts until it is done
+        if !self.m.instruments_idle() {
+            return Err(E_DSP_XFER);
+        }
         let slot = if rec < MAX_MODULES { Slot::Module(rec) } else { Slot::Provider(rec) };
         self.missing = [0; NEEDS_LEN];
         self.decl_diff = (0, 0);
@@ -149,13 +155,15 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
                 return Err(r);
             }
         }
-        let Some(blk) = self.m.alloc(image_size + bss) else {
+        let allocation = if f.c.v2 { v2_layout(&f.c, image_size + bss).3 } else { image_size + bss };
+        let Some(blk) = self.m.alloc(allocation) else {
             if f.c.dsp_size != 0 {
                 dsp::cancel(rec);
             }
             return Err(E_NOMEM);
         };
         f.placed = self.place_image(rec, path, &f.c, blk, image::Pass::Base);
+        f.v2_block = blk;
         f.package = Some(id);
         Ok(blk.addr.get())
     }
@@ -193,6 +201,13 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         let steps = RoleSteps::<P, M, R>::of(role);
         let image::Head { image_size, .. } = f.c.head;
         let keys = &f.c.keys;
+        // a V2 file: the owner of the instruments loads its DSP side and then publishes its CF side (`publish_v2`); nothing runs now
+        if f.c.v2 {
+            let (c, blk, init, tick) = (&f.c, f.v2_block, f.placed.init, f.placed.tick);
+            self.queue_v2(rec, c, blk, init, tick);
+            *entries = Entries::new();
+            return Ok(());
+        }
         // the records of the loaded service files wait for `package_attach`
         self.split_apply = true;
         let r = self.init_and_commit(rec, keys, f.placed.init, image_size, steps, f.placed.place);
@@ -220,6 +235,10 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
     unsafe fn activate_inner(&mut self, id: PackageId, f: &mut Flight) -> Result<bool, i32> {
         debug_assert!(f.package == Some(id));
         let rec = record_of(id);
+        // a V2 file is published by its owner (`publish_v2`), not here
+        if f.c.v2 {
+            return Ok(false);
+        }
         if f.c.role == 1 {
             match role::service_publish(self, rec) {
                 Ok(q) => self.provs[rec - MAX_MODULES].query_v1 = q.unwrap_or(0),

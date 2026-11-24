@@ -28,32 +28,24 @@ pub(crate) struct Pending {
     was_live: bool,
 }
 static mut PENDING: Option<Pending> = None;
-// UI-owned read-only diagnostics: phase, module record, terminal load result, last progress/failure.
-#[no_mangle]
-pub static mut DKRT_INSTRUMENT_FILE: [u32; 4] = [0; 4];
-#[no_mangle]
-pub unsafe extern "C" fn dkrt_instrument_type() -> u32 {
+/// The machine type and the session generation of the published V2 instrument (0, 0 while none is): what the resident `dkrt_instrument_type` and
+/// `dkrt_instrument_generation` answer (`ui_pass` writes them each UI pass).
+pub(crate) unsafe fn published() -> (u32, u32) {
     if let Some(p) = (&*core::ptr::addr_of!(PENDING)).as_ref() {
-        if p.phase == 3 { return p.type_no; }
+        if p.phase == 3 {
+            return (p.type_no, p.ticket.map_or(0, |t| t.generation()));
+        }
     }
-    0
-}
-#[no_mangle]
-pub unsafe extern "C" fn dkrt_instrument_generation() -> u32 {
-    if let Some(p) = (&*core::ptr::addr_of!(PENDING)).as_ref() {
-        if p.phase == 3 { return p.ticket.map_or(0, |t| t.generation()); }
-    }
-    0
+    (0, 0)
 }
 
 // Admission policy is supplied only by the trusted firmware adapter, never a
 // DKM. Eight words: magic, version, tracks, process, reset, depth, stack, state.
 // Tracks (1..16) is the admitted instance count; process and state are the
 // per-instance ceilings, so the total budget and allocation scale with it.
-extern "C" { fn instrument_runtime_policy() -> *const u32; fn instrument_play_faulted(generation: u32) -> i32; }
 pub(crate) unsafe fn policy() -> Option<[u32; 8]> {
-    if core::hint::black_box(instrument_runtime_policy as usize) == 0 { return None; }
-    let ptr = instrument_runtime_policy();
+    let Some(a) = super::present(super::links().instrument_runtime_policy) else { return None; };
+    let ptr = (core::mem::transmute::<usize, unsafe extern "C" fn() -> *const u32>(a))();
     if ptr.is_null() { return None; }
     let mut words = [0; 8];
     for (i, value) in words.iter_mut().enumerate() { *value = core::ptr::read_volatile(ptr.add(i)); }
@@ -85,16 +77,17 @@ impl Pending {
     }
     unsafe fn discard(&mut self, result: i32) {
         // Only before admission or after release_memory, never on uncertainty.
-        crate::arena::free(crate::st().modules[self.rec].base as *mut u8);
-        crate::st().modules[self.rec].used = 0;
-        (*addr_of_mut!(crate::DKRT_MENUS))[self.rec] = 0;
+        let st = crate::package::resident::state::st();
+        crate::package::resident::arena::free(dkrt_abi::dev_addr::DevAddr::new(st.modules[self.rec].base));
+        st.modules[self.rec].used = 0;
+        (*crate::package::resident::state::menus())[self.rec] = 0;
         self.report(result);
-        crate::invariants::check();
+        crate::package::invariants::check();
     }
     unsafe fn report(&mut self, result: i32) {
         self.result = result;
         if !self.reported {
-            crate::boot::report_dsp(self.selection, result);
+            crate::package::resident::boot::report_dsp(self.selection, result);
             self.reported = true;
         }
     }
@@ -103,8 +96,8 @@ pub(crate) unsafe fn blocked(cause: u32) {
     if let Some(p) = (&mut *addr_of_mut!(PENDING)).as_mut() {
         p.phase = 9;
         if p.result == OK || !p.reported { p.report(E_DSP_XFER); }
-        if (*addr_of_mut!(DKRT_INSTRUMENT_FILE))[0] != 9 {
-            *addr_of_mut!(DKRT_INSTRUMENT_FILE) = [p.phase, p.rec as u32, p.result as u32, cause];
+        if super::file()[0] != 9 {
+            *super::file() = [p.phase, p.rec as u32, p.result as u32, cause];
         }
     }
 }
@@ -113,8 +106,8 @@ pub(crate) unsafe fn tick(owner: &mut Owner, link: LinkProgress, now: u32) {
     tick_inner(owner, link, now);
     if let Some(p) = (&mut *addr_of_mut!(PENDING)).as_mut() {
         if p.phase == 9 && !p.reported { p.report(p.result); }
-        if (*addr_of_mut!(DKRT_INSTRUMENT_FILE))[0] != 9 {
-            *addr_of_mut!(DKRT_INSTRUMENT_FILE) = [p.phase, p.rec as u32, p.result as u32, before];
+        if super::file()[0] != 9 {
+            *super::file() = [p.phase, p.rec as u32, p.result as u32, before];
         }
     }
 }
@@ -122,8 +115,11 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
     let Some(p) = (&mut *addr_of_mut!(PENDING)).as_mut() else { return; };
     if p.phase == 6 || p.phase == 9 { return; }
     if p.phase == 3 {
-        if core::hint::black_box(instrument_play_faulted as usize) != 0 &&
-            instrument_play_faulted(p.ticket.unwrap().generation()) != 0 {
+        let faulted = match super::present(super::links().instrument_play_faulted) {
+            Some(a) => (core::mem::transmute::<usize, unsafe extern "C" fn(u32) -> i32>(a))(p.ticket.unwrap().generation()) != 0,
+            None => false,
+        };
+        if faulted {
             // Revoke readiness before lease acquisition. Retain published CF code
             // until reboot: UI/service readers may still own its addresses.
             p.was_live = true; p.result = E_DSP_XFER;
@@ -141,7 +137,7 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
         if owner.request_link(now, 2000).is_err() { p.phase = 9; return; }
         p.phase = 1; return;
     }
-    let Some(mut ledger) = crate::dsp::instrument_ledger() else { p.phase = 9; return; };
+    let Some(mut ledger) = crate::package::dsp::instrument_ledger() else { p.phase = 9; return; };
     if p.phase == 1 && link == LinkProgress::Owned {
         let result = prepare(owner, p, &mut ledger, now);
         if result != OK {
@@ -153,12 +149,12 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
         match owner.tick(now) {
             Progress::Complete { command: Command::Publish(ticket), recovered: None }
                 if p.phase == 2 && Some(ticket) == p.ticket => {
-                let result = crate::loader::publish_v2(p.rec, p.keys as *const u8, p.keys_size,
+                let result = crate::package::loader::publish_v2(p.rec, p.keys as *const u8, p.keys_size,
                     p.init, p.tick, p.image_size, p.selection);
                 if result == OK {
-                    (*addr_of_mut!(crate::DKRT_MENUS))[p.rec] = p.menu;
+                    (*crate::package::resident::state::menus())[p.rec] = p.menu;
                     p.report(OK);
-                    crate::invariants::check();
+                    crate::package::invariants::check();
                     // Release only the link: published code/state remain owned.
                     p.phase = if owner.request_link_release(now, 2000).is_ok() { 7 } else { 9 };
                 } else {
@@ -176,7 +172,7 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
             }
             Progress::Pending => {}
             Progress::Blocked(cause) => {
-                *addr_of_mut!(DKRT_INSTRUMENT_FILE) = [9, p.rec as u32, p.result as u32, 100 + cause as u32];
+                *super::file() = [9, p.rec as u32, p.result as u32, 100 + cause as u32];
                 p.phase = 9;
             }
             _ => { p.phase = 9; }
@@ -188,8 +184,8 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let Some(policy) = policy() else { return E_CONTRACT; };
     let bytes = core::slice::from_raw_parts(p.section as *const u8, p.section_size as usize);
     let Some(bounds) = descriptor_limits() else { return E_CONTRACT; };
-    let Ok(section) = Section::parse(bytes, crate::device(), bounds) else { return E_FORMAT; };
-    let Ok(types) = crate::instrument::resolve_types(&section, p.selection) else { return E_FORMAT; };
+    let Ok(section) = Section::parse(bytes, crate::package::resident::platform::device(), bounds) else { return E_FORMAT; };
+    let Ok(types) = super::resolve_types(&section, p.selection) else { return E_FORMAT; };
     let limits = Limits { l2: Range { start: 0x20000000, end: 0x20080000 },
         reset_frame: 20000, reset_overhead: 1000,
         process_total: policy[3].saturating_mul(policy[2]),

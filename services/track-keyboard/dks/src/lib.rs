@@ -9,15 +9,15 @@
 // a host build (the assembly test of the runtime) has std; the file is `no_std` on the ColdFire
 #![cfg_attr(target_arch = "m68k", no_std)]
 
-use dkrt_svc_track_keyboard::records::{TrackKeyboard, KINDS};
+use seam::TrackKeyboardFile;
 
 mod seam;
 
 dkrt_svc_rt::service!(
-    TrackKeyboard,
+    TrackKeyboardFile,
     "track-keyboard",
-    &KINDS,
-    setup = seam::setup::<dkrt_svc_rt::ImportCore>,
+    &[],
+    parts = [],
     hooks = [],
     fills = [("tk_vec", seam::tk_vec_table, dt2),]
 );

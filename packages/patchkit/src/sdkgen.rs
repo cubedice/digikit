@@ -566,9 +566,16 @@ fn records_consts(sdk: &Sdk, indent: &str) -> String {
 }
 
 /// `runtime/core/src/rs/src/package/gen_services.rs`: the room of the row table, one cell for each file that can provide a service at once.
-fn rust_services(_sdk: &Sdk) -> String {
+fn rust_services(sdk: &Sdk) -> String {
     let mut s = format!("// {HEADER}\n\n");
     s.push_str("use dkrt_abi::provider::ProviderHandle;\n\n");
+    // the image-declared boot need (`boot_need_<service>`, loader/plan.rs) looks the services up by name: the runtime names none itself
+    let names: Vec<String> = sdk.service.iter().map(|d| format!("{:?}", d.name)).collect();
+    s.push_str(&format!(
+        "/// The name of every `[[service]]`, in file order (the image-declared boot need, `boot_need_<service>`, is searched for each).\npub const ORDER: [&str; {}] = [{}];\n\n",
+        names.len(),
+        names.join(", ")
+    ));
     s.push_str("/// The length of the row table: room for `PROVIDER_MAX` rows of loaded service files.\npub const ROWS_LEN: usize = dkrt_sdk::PROVIDER_MAX;\n\n");
     s.push_str("/// The row table: the loaded rows, in callback order (written by `provider_rows.rs` only; the empty tail is not part of any table).\npub static mut ROWS: [ProviderHandle; ROWS_LEN] = [ProviderHandle::EMPTY; ROWS_LEN];\n");
     s

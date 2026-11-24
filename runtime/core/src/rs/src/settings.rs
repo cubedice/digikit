@@ -383,7 +383,7 @@ pub unsafe extern "C" fn dkrt_settings_put(key: *const u8, value: *const u8, len
 /// routes with it at the first UI pass. UI task.
 #[no_mangle]
 pub unsafe extern "C" fn dkrt_settings_get(key: *const u8, buf: *mut u8, cap: u32) -> i32 {
-    crate::init_once();
+    crate::state::init_once();
     if buf.is_null() && cap != 0 {
         return E_SET_KEY;
     }

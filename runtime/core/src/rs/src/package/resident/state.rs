@@ -44,3 +44,9 @@ pub(crate) unsafe fn menus_held(rec: usize) -> bool {
 pub(crate) unsafe fn init_once() {
     (table().state.init_once)()
 }
+
+/// The resident statics of the fork's persistent V2 instrument host (`InstrumentViews`).
+#[inline(always)]
+pub(crate) fn instrument() -> dkrt_abi::resident::InstrumentViews {
+    table().views.instrument
+}

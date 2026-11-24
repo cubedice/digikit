@@ -90,6 +90,10 @@ unsafe extern "C" fn tick(phase: u32) {
         entry::tick_all();
     } else {
         handlers::services().tick(phase);
+        // the fork's persistent V2 instrument host, after the services' ticks of the last phase (instrument.rs)
+        if phase == tick_phase::LAST {
+            crate::package::instrument::ui_pass(resident::state::st().ticks);
+        }
     }
 }
 

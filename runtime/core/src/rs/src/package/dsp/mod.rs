@@ -607,7 +607,7 @@ pub unsafe fn step() -> Advance {
 /// `step` over a given list of services.
 pub(crate) unsafe fn step_with(l: ServiceTable, slots: &mut dyn FnMut(usize) -> Option<Sequence>) -> Advance {
     // a V2 instrument transaction owns the DSP link (instrument.rs): legacy loads wait
-    if crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
+    if crate::package::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause {
         return Advance::Pending;
     }
     let d = ds();
@@ -749,9 +749,8 @@ pub(super) unsafe fn cleanup_test_first_fit(len: u32, align: u32) -> Option<u32>
     alloc_range(len, align)
 }
 
-/// Includes unpublished legacy reservations, not merely visible machines.
+/// Is `t` a run-time machine type of the device? The DSP voice rows and the types they hold are the machines service's since upstream moved the voice dispatch
+/// there: whether a row holds `t` is its `dk_machines_id_taken` (`instrument::resolve_types` asks both).
 pub unsafe fn type_is_free(t: u32) -> bool {
-    let d = ds();
-    crate::dev::is_dyn_type(t)
-        && !d.row_owner.iter().zip(d.row_type.iter()).any(|(&owner, &ty)| owner != 0 && ty == t)
+    dkrt_abi::platform::DeviceProfile::by_id(crate::package::resident::platform::device()).is_some_and(|p| p.is_dyn_type(t))
 }

@@ -1,6 +1,7 @@
 //! The file's side of the seam: the vector table the fill names (assembler of `seam.s`) and `setup`, which binds the image table
 //! into `tk_img` (the bss words of `seam.s` that the thunks and the C code read) with the check of `dkrt_svc_track_keyboard::seam`.
 use dkrt_abi::core_api::CoreApi;
+use dkrt_abi::provider::{Provider, Status};
 use dkrt_sdk::{E_NO_REGISTRY, OK};
 use dkrt_svc_rt::name_hash;
 use dkrt_svc_track_keyboard::seam::{usable, INFO};
@@ -29,4 +30,18 @@ pub unsafe fn setup<C: CoreApi>(core: &C) -> i32 {
     #[cfg(target_arch = "m68k")]
     dkrt_svc_track_keyboard::seam::copy(src, core::ptr::addr_of_mut!(tk_img) as *mut u32);
     OK
+}
+
+/// The owner of the file: it holds nothing; its `start` binds the image table (`seam::setup`: refused, `E_NO_REGISTRY`, without a usable one), which
+/// the loader runs before it fills the slots, so no forwarder reaches the moved code before the table is bound.
+pub struct TrackKeyboardFile;
+
+impl<C: CoreApi> Provider<C> for TrackKeyboardFile {
+    fn start(core: &C) -> Result<Self, Status> {
+        // SAFETY: `start` runs once, in the file's `init`
+        match unsafe { setup(core) } {
+            dkrt_sdk::OK => Ok(TrackKeyboardFile),
+            e => Err(e),
+        }
+    }
 }

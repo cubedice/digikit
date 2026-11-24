@@ -26,6 +26,8 @@ pub(crate) mod hooks;
 pub(crate) use hooks::attach;
 pub(crate) mod host_dir;
 pub(crate) mod imports;
+// the fork's persistent V2 instrument host (its resident statics are the resident `instrument.rs`)
+pub(crate) mod instrument;
 pub(crate) mod invariants;
 pub(crate) mod lifecycle;
 pub(crate) mod link;

@@ -20,6 +20,30 @@ pub struct LinkRows {
     pub dl_stats_hook: *const (),
     /// `core/dsp-link`: `void dl_tick_cb_drop(u32 start, u32 end)`, clears the per-block callback that points into a range.
     pub dl_tick_cb_drop: *const (),
+    /// The fork's persistent V2 instrument host (appended, minor 5): the providers its coordinator binds once (`instrument_provider::Binding`) and the
+    /// trusted firmware adapter's entries. Each is 0 when its module is not in the image.
+    pub instrument: InstrumentLinks,
+}
+
+/// The image functions of the V2 instrument host (`package/instrument.rs`): `core/dsp-link`'s lease and tagged transfers, `core/midi-events`' registry
+/// replies, `core/instrument-play`'s policy and fault report, and the optional emulator probes.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct InstrumentLinks {
+    pub dl_claim: *const (),
+    pub dl_release: *const (),
+    pub dl_send_owned: *const (),
+    pub dl_poll_tagged: *const (),
+    pub mi_registry_reply: *const (),
+    pub mi_registry_expect_session: *const (),
+    /// `u32 instrument_session_probe(void)` (test/instrument-session only).
+    pub instrument_session_probe: *const (),
+    /// `const u32 *instrument_load_probe(void)` (test/instrument-load only).
+    pub instrument_load_probe: *const (),
+    /// `const u32 *instrument_runtime_policy(void)`: the eight policy words of core/instrument-play.
+    pub instrument_runtime_policy: *const (),
+    /// `i32 instrument_play_faulted(u32 generation)`.
+    pub instrument_play_faulted: *const (),
 }
 
 // The addresses name functions and tables of the image for the whole run of the system; the rows are built once and only read.

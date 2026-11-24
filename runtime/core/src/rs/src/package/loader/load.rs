@@ -24,6 +24,10 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         if !matches!((self.phase, slot), (Phase::Boot, _) | (Phase::Live, Slot::Module(_) | Slot::Free)) {
             return E_BOOT_ONLY;
         }
+        // a V2 instrument transaction drains or owns the DSP link (instrument.rs): no other load starts until it is done
+        if !self.m.instruments_idle() {
+            return E_DSP_XFER;
+        }
         let mut c = Checked::empty();
         let r = self.check_file(path, slot, &mut c);
         if r != OK {
@@ -52,7 +56,8 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
                 return r;
             }
         }
-        let blk = match self.m.alloc(total) {
+        let allocation = if c.v2 { v2_layout(&c, total).3 } else { total };
+        let blk = match self.m.alloc(allocation) {
             Some(b) => b,
             None => {
                 if dsp_size != 0 {
@@ -61,8 +66,12 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
                 return E_NOMEM;
             }
         };
-        let base = blk.addr.get();
+        let _base = blk.addr.get();
         let Placed { place, init: initaddr, tick: tickaddr } = self.place_image(rec, path, &c, blk, image::Pass::Both);
+        if c.v2 {
+            self.queue_v2(rec, &c, blk, initaddr, tickaddr);
+            return LOADING;
+        }
         let image::Head { image_size, .. } = c.head;
         let keys = &c.keys;
         let m: &mut Module = records::module(rec);
@@ -172,6 +181,54 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         Placed { place, init: if init == NONE { 0 } else { base + init }, tick: if tick == NONE { 0 } else { base + tick } }
     }
 
+    /// The V2 file `c` placed into block `blk` of record `rec`: its copies (`v2_layout`) into the block, the record occupied but not published (its menu
+    /// waits for `publish_v2`), and the load handed to the owner of the instruments.
+    pub(super) unsafe fn queue_v2(&mut self, rec: usize, c: &Checked, blk: Block, init: u32, tick: u32) {
+        let image::Head { image_size, bss, menu, .. } = c.head;
+        let (keys_at, section_at, output_at, allocation) = v2_layout(c, image_size + bss);
+        let (mem, base) = (blk.ptr, blk.addr.get());
+        core::ptr::copy_nonoverlapping(c.f.add(c.reg_off as usize), mem.add(keys_at as usize), c.reg_size as usize);
+        core::ptr::copy_nonoverlapping(c.f.add(c.v2_off as usize), mem.add(section_at as usize), c.v2_size as usize);
+        let m: &mut Module = records::module(rec);
+        m.size = allocation;
+        records::set_menu(rec, 0);
+        m.used = 2; // occupied, not published
+        self.m.queue_instruments(InstrumentLoad {
+            rec,
+            selection: boot_idx::get(),
+            image_size,
+            keys: base + keys_at,
+            keys_size: c.reg_size,
+            section: base + section_at,
+            section_size: c.v2_size,
+            output: base + output_at,
+            output_size: c.v2_output,
+            init,
+            tick,
+            menu: if menu == NONE { 0 } else { base + menu },
+        });
+    }
+
+    /// Publish a V2 instrument's CF side (instrument/pending.rs, after the DSP acknowledged the instance): `init` and the commit of [`Self::complete`], from
+    /// the keys table the load kept, for the selection it was loaded for. Storage belongs to the V2 owner: a failure undoes what `init` did but releases no DSP
+    /// or module memory (the owner detaches before it reclaims them).
+    #[allow(clippy::too_many_arguments)]
+    pub(super) unsafe fn publish_v2(&mut self, rec: usize, keys: *const u8, keys_size: u32, init: u32, tick: u32, image_size: u32, selection: u32) -> i32 {
+        let keys = match crate::package::collect::KeysCopy::from_bytes(core::slice::from_raw_parts(keys, keys_size as usize)) {
+            Ok(k) => k,
+            Err(e) => return e,
+        };
+        let m: &Module = records::module(rec);
+        let (base, size) = (m.base, m.size);
+        // a module's role has no place step of its own, so the staged file (gone by now) is not read; a V2 instrument's DSP memory is its owner's
+        let place = PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: keys_size, image_size, dsp_image: 0, mem: base as usize as *mut u8, base, bss: size.saturating_sub(image_size) };
+        // deferred publication can follow other selected modules: the machine keys resolve for the selection of this load
+        self.keep_dsp = true;
+        let r = boot_idx::with(selection, || self.complete(rec, &keys, init, tick, image_size, RoleSteps::MODULE, place));
+        self.keep_dsp = false;
+        r
+    }
+
     /// The end of a load, shared by the immediate and the DSP path (both run in the boot hook; docs/plans/sdk.md 6.3): `init` runs first and its builder calls are collected; then the commit checks them, fills the
     /// voice rows' ranges, writes the registry rows and keeps the record block. Anything that fails undoes what `init` did and writes no row.
     #[allow(clippy::too_many_arguments)]
@@ -274,7 +331,8 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         drop_registrations(rec, m.base, m.size);
         (RoleSteps::<P, M, R>::of(self.roles[rec] as u32).undo)(self, rec);
         self.r.remove(rec);
-        if module && !dsp::release(rec) || held {
+        // a V2 instrument's DSP storage is its owner's (`publish_v2`)
+        if module && !self.keep_dsp && !dsp::release(rec) || held {
             return E_BUSY;
         }
         r

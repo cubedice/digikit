@@ -42,3 +42,9 @@ pub(crate) fn dl_stats_hook() -> usize {
 pub(crate) fn dl_tick_cb_drop() -> usize {
     core::hint::black_box(table().links.dl_tick_cb_drop as usize)
 }
+
+/// The image functions of the fork's persistent V2 instrument host (`InstrumentLinks`): each address is 0 when its module is not in the image.
+#[inline(always)]
+pub(crate) fn instrument() -> dkrt_abi::resident::InstrumentLinks {
+    table().links.instrument
+}

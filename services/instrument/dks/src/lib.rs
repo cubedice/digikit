@@ -9,15 +9,15 @@
 // a host build (the assembly test of the runtime) has std; the file is `no_std` on the ColdFire
 #![cfg_attr(target_arch = "m68k", no_std)]
 
-use dkrt_svc_instrument::records::{Instrument, KINDS};
+use seam::InstrumentFile;
 
 mod seam;
 
 dkrt_svc_rt::service!(
-    Instrument,
+    InstrumentFile,
     "instrument",
-    &KINDS,
-    setup = seam::setup::<dkrt_svc_rt::ImportCore>,
+    &[],
+    parts = [],
     hooks = [],
     fills = [
         ("instrument_vec", seam::instrument_vec_table, dt2),

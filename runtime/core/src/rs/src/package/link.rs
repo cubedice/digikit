@@ -14,11 +14,11 @@ impl Transport for DspTransport {
         // queue keeps it. While it drains, the module loads already queued must finish: they are what the drain waits for (`instrument::tick`
         // takes the link only when the loader is idle with nothing waiting), so their transfers go on. With the loader idle a drain holds
         // every other transfer (a live effect value), as before the queue (`fx_word_start`).
-        match crate::instrument::legacy_policy() {
+        match crate::package::instrument::legacy_policy() {
             dkrt_sdk::instrument_coordinator::LegacyPolicy::Run => {}
             dkrt_sdk::instrument_coordinator::LegacyPolicy::Drain => {
-                let d = crate::dsp::ds();
-                if d.phase == crate::dsp::PH_IDLE && d.nwait == 0 {
+                let d = crate::package::dsp::ds();
+                if d.phase == crate::package::dsp::PH_IDLE && d.nwait == 0 {
                     return Sent::Refused;
                 }
             }

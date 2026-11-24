@@ -50,7 +50,9 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         // the hard needs that no service of the runtime meets
         self.found.n = 0;
         let mut want = [0u32; WANT_MAX];
-        let nw = unmet_needs(&mods[..n], &mut want);
+        let mut nw = unmet_needs(&mods[..n], &mut want);
+        // the services the image asks for itself: an adapter whose code a service file serves without a module that needs it
+        nw = boot_needs(&self.p, &mut want, nw);
         if nw != 0 {
             discover::find(&mut self.m, &want[..nw], dkrt_abi::fw_id::image_fw_id(&self.p), &mut self.found);
             // a limit of the search was passed: a need may be unmet for that reason, not for a missing file; each cause has its own name word (`(tab`, `(fil`, `(nee`) and its `TRUNC_*` bit as the hash word, which `loadFailureText` of runtime-log.ts turns into text
@@ -288,6 +290,49 @@ pub(super) fn unmet_needs(mods: &[Option<Keys>], out: &mut [u32; WANT_MAX]) -> u
             }
         }
         m += 1;
+    }
+    n
+}
+
+/// The prefix of the image's info entry that asks the boot for a service: `boot_need_<service>` (an `[[info]]` of an image adapter; its address is not read),
+/// with each `-` of the service's name written `_` (an info name is `[a-z][a-z0-9_]*`: `boot_need_track_keyboard`).
+pub const BOOT_NEED_PREFIX: &[u8] = b"boot_need_";
+
+/// The name hash of `boot_need_<name>` with `-` as `_`, as the image's info table keys it (FNV-1a over the whole name).
+pub(super) fn boot_need_hash(name: &[u8]) -> Option<u32> {
+    let mut b = [0u8; 48];
+    let len = BOOT_NEED_PREFIX.len() + name.len();
+    if len > b.len() {
+        return None;
+    }
+    b[..BOOT_NEED_PREFIX.len()].copy_from_slice(BOOT_NEED_PREFIX);
+    let mut i = 0;
+    while i < name.len() {
+        b[BOOT_NEED_PREFIX.len() + i] = if name[i] == b'-' { b'_' } else { name[i] };
+        i += 1;
+    }
+    Some(dkneeds::keys::name_hash_bytes(&b[..len]))
+}
+
+/// Add to `out[..n]` each service of the SDK's list (`gen_services::ORDER`) that the image asks for with an info entry `boot_need_<name>`, once; the new count.
+/// An image adapter whose code runs from a service file declares it when an image feature uses that code without a module that needs the file
+/// (docs/plans/fork-image-diet.md section 9: the track keyboard and services/track-keyboard.dks). The boot then finds and loads the file whether or not the
+/// selection names a module, as it does for a module's hard need; a safe boot loads none.
+#[inline(never)]
+pub(super) unsafe fn boot_needs<P: PackagePlatform>(p: &P, out: &mut [u32; WANT_MAX], mut n: usize) -> usize {
+    for name in crate::package::gen_services::ORDER.iter() {
+        let Some(h) = boot_need_hash(name.as_bytes()) else {
+            continue;
+        };
+        if p.info(h).is_null() {
+            continue;
+        }
+        let svc = dkneeds::keys::name_hash_bytes(name.as_bytes());
+        if out[..n].contains(&svc) || n >= WANT_MAX {
+            continue;
+        }
+        out[n] = svc;
+        n += 1;
     }
     n
 }

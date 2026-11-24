@@ -73,7 +73,7 @@ mod unload;
 #[cfg(test)]
 pub(crate) mod tests;
 use dkrt_abi::image::{self, in_file};
-use check::{Checked, Placed};
+use check::{v2_layout, Checked, Placed};
 use plan::{parse_provs, service_import_owner, table_of_file, table_span};
 #[cfg(test)]
 pub(crate) use plan::table_keys;
@@ -90,7 +90,7 @@ pub(crate) use plan::{boot_caps, live_settle_ctx};
 pub(crate) use plan::test_accept;
 pub(crate) use unload::retire_sdk;
 use unload::{drop_registrations, retire_jobs};
-pub use seams::{Block, Images, RealImages, RealRegistry, Registry, Staged};
+pub use seams::{Block, Images, InstrumentLoad, RealImages, RealRegistry, Registry, Staged};
 pub(crate) use seams::{DeviceImages, DEVICE_IMAGES};
 
 /// What a provider record keeps after its load started: the copy of its header table (HOOKS, EXPORTS and SLOTS; for the port file the whole table; the staged file is gone once `init` reads
@@ -205,6 +205,8 @@ pub struct Loader<P: PackagePlatform, M: Images, R: Registry> {
     /// A package the package manager starts applies the records of the services in the table first and leaves those of the loaded service files to `attach`
     /// (`package_attach`): set for the duration of `package_start`.
     split_apply: bool,
+    /// `publish_v2` runs: a failure leaves the record's DSP storage to the owner of the instruments.
+    keep_dsp: bool,
     /// The block of each module's records that `attach` applies (pointer and size), kept from the commit to the take-down.
     reg_block: [(*const u8, u32); MAX_MODULES],
 }
@@ -238,6 +240,17 @@ pub fn resident_query(provider: u32, minimum: u32) -> Result<u32, i32> {
 /// The name part of the module id of the last file whose header a check read (zero: none); a live or reload job reports it.
 pub fn last_name() -> [u8; LOG_NAME] {
     loader().last_name
+}
+
+/// Publish the CF side of the V2 instrument in record `rec` (`Loader::publish_v2`).
+#[allow(clippy::too_many_arguments)]
+pub(crate) unsafe fn publish_v2(rec: usize, keys: *const u8, keys_size: u32, init: u32, tick: u32, image_size: u32, selection: u32) -> i32 {
+    loader().publish_v2(rec, keys, keys_size, init, tick, image_size, selection)
+}
+
+/// The address of the export `hash` a loaded service file published, or `None` (the fork's V2 instrument host asks the machines file for its plan).
+pub(crate) fn export_addr(hash: u32) -> Option<u32> {
+    loader().exports.resolve(hash)
 }
 
 /// Validate and load the `.dkm` at `path`. See `dkrt_load`.
@@ -341,6 +354,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
             saved_tick: [0; MAX_MODULES],
             drain_at: [None; MAX_MODULES],
             split_apply: false,
+            keep_dsp: false,
             reg_block: [(core::ptr::null(), 0); MAX_MODULES],
         }
     }

@@ -171,10 +171,10 @@ impl Images for RealImages {
         }
     }
     unsafe fn instruments_idle(&mut self) -> bool {
-        crate::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Run
+        crate::package::instrument::legacy_policy() == dkrt_sdk::instrument_coordinator::LegacyPolicy::Run
     }
     unsafe fn admit_instruments(&mut self, section: &[u8], selection: u32) -> Result<u32, i32> {
-        use crate::instrument::pending;
+        use crate::package::instrument::pending;
         // the admission policy comes from the firmware adapter only; one V2 file at a time
         if pending::policy().is_none() || pending::occupied() {
             return Err(dkrt_sdk::E_CONTRACT);
@@ -182,16 +182,16 @@ impl Images for RealImages {
         let Some(limits) = pending::descriptor_limits() else {
             return Err(dkrt_sdk::E_CONTRACT);
         };
-        let Ok(section) = dkrt_sdk::instrument_section::Section::parse(section, crate::device(), limits) else {
+        let Ok(section) = dkrt_sdk::instrument_section::Section::parse(section, crate::package::resident::platform::device(), limits) else {
             return Err(dkrt_sdk::E_FORMAT);
         };
-        if crate::instrument::resolve_types(&section, selection).is_err() {
+        if crate::package::instrument::resolve_types(&section, selection).is_err() {
             return Err(dkrt_sdk::E_FORMAT);
         }
         Ok(section.memory_request().image_bytes)
     }
     unsafe fn queue_instruments(&mut self, l: InstrumentLoad) {
-        use crate::instrument::pending;
+        use crate::package::instrument::pending;
         pending::queue(pending::Pending::new(
             l.rec,
             l.selection,

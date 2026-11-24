@@ -14,6 +14,21 @@ pub(super) struct Checked {
     pub(super) keys: crate::package::collect::KeysCopy,
     pub(super) dsp_size: u32,
     pub(super) job: dsp::Job,
+    /// The DSP section holds persistent V2 instruments (version 7 or 8): `v2_off` and `v2_size` are the section in the file and `v2_output` the bytes of
+    /// the output buffer its relocated image takes (the owner's answer). `dsp_size` is 0 for such a file: it has no legacy DSP part.
+    pub(super) v2: bool,
+    pub(super) v2_off: u32,
+    pub(super) v2_size: u32,
+    pub(super) v2_output: u32,
+}
+
+/// Where the copies of a V2 file go in its record's block: the keys table, the DSP section and the output buffer, each 16-byte aligned after the image
+/// and the bss (`total`), and the block's whole size. The staging buffer is reused by the next selected module before the owner is done.
+pub(super) fn v2_layout(c: &Checked, total: u32) -> (u32, u32, u32, u32) {
+    let keys_at = (total + 15) & !15;
+    let section_at = keys_at + ((c.reg_size + 15) & !15);
+    let output_at = section_at + ((c.v2_size + 15) & !15);
+    (keys_at, section_at, output_at, output_at.checked_add(c.v2_output).unwrap_or(u32::MAX))
 }
 
 /// What `place_image` leaves for the steps that follow: the arguments of the role's place step and the addresses of `init` and `tick` (0: none).
@@ -36,6 +51,10 @@ impl Checked {
             keys: crate::package::collect::KeysCopy::empty(),
             dsp_size: 0,
             job: dsp::Job::empty(),
+            v2: false,
+            v2_off: 0,
+            v2_size: 0,
+            v2_output: 0,
         }
     }
 }
@@ -238,7 +257,23 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         // the DSP section, if any
         let (dsp_off, dsp_size) = (rd32(f.add(H_DSP_OFF)), rd32(f.add(H_DSP_SIZE)));
         c.dsp_size = dsp_size;
-        if dsp_size != 0 {
+        // A version 7 or 8 section holds persistent V2 instruments (core/instrument-play): their owner admits and loads it (`Images::admit_instruments`,
+        // instrument/pending.rs on the device); the CF side is published only after the DSP acknowledges the instance. A service file has none
+        // (`service_check` refuses a DSP section).
+        c.v2 = dsp_size >= 8
+            && in_file(dsp_off, dsp_size, size)
+            && rd32(f.add(dsp_off as usize + dkneeds::DSP_H_MAGIC as usize)) == dkneeds::DSP_MAGIC
+            && dkneeds::instrument::is_instrument_version(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)));
+        if c.v2 {
+            let bytes = core::slice::from_raw_parts(f.add(dsp_off as usize), dsp_size as usize);
+            c.v2_output = match self.m.admit_instruments(bytes, boot_idx::get()) {
+                Ok(n) => n,
+                Err(e) => return e,
+            };
+            c.v2_off = dsp_off;
+            c.v2_size = dsp_size;
+            c.dsp_size = 0;
+        } else if dsp_size != 0 {
             let r = dsp::check(f, dsp_off, dsp_size, size, &mut c.job);
             if r != OK {
                 return r;

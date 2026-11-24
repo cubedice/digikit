@@ -1,6 +1,7 @@
 //! The file's side of the seam: the two vector tables the fills name (assembler of `seam.s`) and `setup`, which binds the image
 //! table into `ip_img` (the bss words of `seam.s` that the thunks and the C code read) with the check of `dkrt_svc_instrument::seam`.
 use dkrt_abi::core_api::CoreApi;
+use dkrt_abi::provider::{Provider, Status};
 use dkrt_sdk::{E_NO_REGISTRY, OK};
 use dkrt_svc_instrument::seam::{usable, INFO};
 use dkrt_svc_rt::name_hash;
@@ -50,4 +51,18 @@ pub unsafe fn setup<C: CoreApi>(core: &C) -> i32 {
         ip_seam_rows();
     }
     OK
+}
+
+/// The owner of the file: it holds nothing; its `start` binds the image table (`seam::setup`: refused, `E_NO_REGISTRY`, without a usable one), which
+/// the loader runs before it fills the slots, so no forwarder reaches the moved code before the table is bound.
+pub struct InstrumentFile;
+
+impl<C: CoreApi> Provider<C> for InstrumentFile {
+    fn start(core: &C) -> Result<Self, Status> {
+        // SAFETY: `start` runs once, in the file's `init`
+        match unsafe { setup(core) } {
+            dkrt_sdk::OK => Ok(InstrumentFile),
+            e => Err(e),
+        }
+    }
 }

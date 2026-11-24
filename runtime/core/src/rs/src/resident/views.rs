@@ -2,7 +2,8 @@
 use crate::boot::{BOOT_NAME, DKRT_BOOT};
 use crate::state::{DKRT_MENUS, DKRT_MENU_OBJS, DKRT_MODULE_RUNTIME, DKRT_PATHS, DKRT_STATE};
 use core::ptr::{addr_of, addr_of_mut};
-use dkrt_abi::resident::{Group, Views};
+use crate::instrument::{DKRT_INSTRUMENT_BINDING, DKRT_INSTRUMENT_FILE, DKRT_INSTRUMENT_LOAD, DKRT_INSTRUMENT_SESSION, DKRT_INSTRUMENT_WORDS};
+use dkrt_abi::resident::{Group, InstrumentViews, Views};
 use dkrt_abi::runtime_state::PackageState;
 
 pub(super) static VIEWS: Group<Views> = Group::new(Views {
@@ -14,4 +15,11 @@ pub(super) static VIEWS: Group<Views> = Group::new(Views {
     menus: addr_of_mut!(DKRT_MENUS),
     menu_objs: addr_of_mut!(DKRT_MENU_OBJS),
     module_runtime: addr_of_mut!(DKRT_MODULE_RUNTIME),
+    instrument: InstrumentViews {
+        words: addr_of_mut!(DKRT_INSTRUMENT_WORDS),
+        file: addr_of_mut!(DKRT_INSTRUMENT_FILE),
+        session: addr_of_mut!(DKRT_INSTRUMENT_SESSION),
+        load: addr_of_mut!(DKRT_INSTRUMENT_LOAD),
+        binding: addr_of_mut!(DKRT_INSTRUMENT_BINDING),
+    },
 });

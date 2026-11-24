@@ -32,7 +32,7 @@ pub mod boot;
 mod boot_env;
 pub mod fault;
 pub mod dlog;
-// the fork's persistent V2 instrument host binding (policy, capacity and pending loads; docs/plans/fork-image-diet.md)
+// the resident statics of the fork's persistent V2 instrument host (its coordinator is the package's: package/instrument.rs)
 mod instrument;
 mod gen_abi_check;
 mod resident_query;

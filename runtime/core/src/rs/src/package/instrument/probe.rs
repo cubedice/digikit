@@ -6,29 +6,30 @@ use core::ptr::{addr_of_mut, read_volatile};
 use dkrt_sdk::{instrument_admission::{Limits, Range}, instrument_descriptor,
     instrument_load::Command, instrument_registry::Ticket,
     instrument_section::Section};
-extern "C" { fn instrument_load_probe() -> *const u32; }
+/// `const u32 *instrument_load_probe(void)` of test/instrument-load, or `None` without it.
+fn probe() -> Option<usize> {
+    super::present(super::links().instrument_load_probe)
+}
 pub(super) fn present() -> bool {
-    core::hint::black_box(instrument_load_probe as usize) != 0
+    probe().is_some()
 }
 static mut IMAGE: [u8; 256] = [0; 256];
 static mut TICKET: Option<Ticket> = None;
-#[no_mangle]
-pub static mut DKRT_INSTRUMENT_LOAD: [u32; 6] = [0; 6];
-const SLOT: usize = crate::MAX_MODULES - 1;
+const SLOT: usize = dkrt_abi::MAX_MODULES - 1;
 
 pub(super) unsafe fn tick(owner: &mut Owner, link: LinkProgress, now: u32) {
-    if !present() { return; }
-    let input = instrument_load_probe();
+    let Some(a) = probe() else { return; };
+    let input = (core::mem::transmute::<usize, unsafe extern "C" fn() -> *const u32>(a))();
     let request = read_volatile(input);
-    let status = &mut *addr_of_mut!(DKRT_INSTRUMENT_LOAD);
+    let status = super::load_status();
     if status[0] == 6 || status[0] == 9 { return; }
     // Use the production allocator bounds and shared legacy/V2 reservation table.
-    let Some(mut ledger) = crate::dsp::instrument_ledger() else {
+    let Some(mut ledger) = crate::package::dsp::instrument_ledger() else {
         status[0] = 9; return;
     };
     if status[0] == 0 {
         if request != 1 { return; }
-        if crate::st().modules[SLOT].used != 0 || ledger.lengths[SLOT] != 0
+        if crate::package::resident::state::st().modules[SLOT].used != 0 || ledger.lengths[SLOT] != 0
             || owner.request_link(now, 2000).is_err() {
             status[0] = 9; return;
         }

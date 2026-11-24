@@ -55,7 +55,9 @@ pub unsafe extern "C" fn dkrt_capacity(out: *mut DkrtCap, max: u32) -> u32 {
     // the services declare their own counts (machine, voice, parameter and page rows, effect and send slots, map entries), per kind
     let table = services();
     // the values of each kind (a table, not a `match`: a jump table would put data in .text)
-    let entries: [(u8, u32, u32, u32); 10] = [
+    // the fork's persistent V2 instruments: the rows and the tracks the firmware adapter's policy admits (zeros without it)
+    let (irows, itracks) = crate::package::instrument::capacity();
+    let entries: [(u8, u32, u32, u32); 12] = [
         (CAPK_MODULES, MAX_MODULES as u32, mods, 0),
         (CAPK_SELECTION, dkrt_sdk::SEL_MAX as u32, boot::selected(), 0),
         (CAPK_ARENA, arena, arena - af, al),
@@ -67,6 +69,8 @@ pub unsafe extern "C" fn dkrt_capacity(out: *mut DkrtCap, max: u32) -> u32 {
         (CAPK_DSP_VOICES, PLATFORM.dsp_voices(), 0, 0),
         // the system package block, apart from the arena: its bytes and what the placed package takes of them
         (CAPK_PACKAGE, PACKAGE_BYTES as u32, s.package_bytes, 0),
+        (CAPK_INSTRUMENT_ROWS, irows.0, irows.1, irows.2),
+        (CAPK_INSTRUMENT_TRACKS, itracks.0, itracks.1, 0),
     ];
     // one entry per kind of `[capacity.kinds]`, in its order; a kind with no row above reports zeros
     let mut k = 0;

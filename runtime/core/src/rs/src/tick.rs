@@ -39,7 +39,6 @@ pub(crate) unsafe fn poll_all() {
 pub unsafe extern "C" fn dkrt_tick() {
     crate::resident_query::note_ui_task();
     init_once();
-    crate::instrument::bind_once();
     let s = st();
     s.ticks = s.ticks.wrapping_add(1);
     intro::ui_pass();
@@ -57,7 +56,6 @@ pub unsafe extern "C" fn dkrt_tick() {
     hooks::tick(tick_phase::FILES);
     phase(tick_phase::LATE);
     phase(tick_phase::LAST);
-    crate::instrument::tick(s.ticks);
     // the UI ticks of the image adapters (`[[info]] tick = true`): image features that run without a module or service to start them
     crate::platform::image_ticks();
     // optional (core/instrument-play): zero when the adapter is absent

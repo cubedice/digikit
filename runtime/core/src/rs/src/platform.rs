@@ -678,7 +678,7 @@ pub use dkrt_abi::mem::{cstr_eq, cstr_len, rd32, wr32};
 /// On the UI task; each entry is the address of a `void f(void)` of the image.
 pub unsafe fn image_ticks() {
     use core::ptr::read_volatile;
-    let table = crate::dsp::fn_addr(dkrt_info_table) as *const u32;
+    let table = dkrt_abi::dev_addr::fn_addr(dkrt_info_table) as *const u32;
     if table.is_null() || read_volatile(table) != dkrt_abi::platform::INFO_MAGIC {
         return;
     }
