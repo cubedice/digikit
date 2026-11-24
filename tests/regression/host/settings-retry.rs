@@ -1,4 +1,6 @@
 // Execute the production runtime store and codec with an in-memory block device.
+// The stubs stand in for what settings.rs takes from the resident core's crate (upstream's split: `platform`, `state`, `hooks`, and the storage
+// re-exports `block_write`, `card`, `store`, `store_writer`, and `dlog`); `dkrt_abi` is the real crate (`MAX_MODULES`, `mem::cstr_len`).
 #![allow(dead_code)]
 use dkrt_sdk::{proto::*, *};
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
@@ -7,9 +9,49 @@ mod settings;
 static ERROR: AtomicI32 = AtomicI32::new(0);
 static WRITES: AtomicU32 = AtomicU32::new(0);
 static mut CARD: [u8; 65536] = [0; 65536];
-pub fn init_once() {}
-pub fn fw_blocks() -> Option<u32> {
-    None
+/// The platform of the core: the card read, no firmware block counter (the UI-loop passes are the clock) and the module table.
+pub mod platform {
+    pub use super::block_read;
+    pub fn fw_blocks() -> Option<u32> {
+        None
+    }
+    pub struct ModuleRec {
+        pub used: u32,
+        pub name: [u8; 32],
+    }
+    pub struct State {
+        pub modules: [ModuleRec; dkrt_abi::MAX_MODULES],
+    }
+    static mut STATE: State = State {
+        modules: [const {
+            ModuleRec {
+                used: 0,
+                name: [0; 32],
+            }
+        }; dkrt_abi::MAX_MODULES],
+    };
+    pub fn st() -> &'static mut State {
+        unsafe { &mut *std::ptr::addr_of_mut!(STATE) }
+    }
+}
+pub mod state {
+    pub fn init_once() {}
+}
+/// The hooks of the system package: no package is loaded, so each gives its default, as `hooks.rs` does without one.
+pub mod hooks {
+    pub unsafe fn files_in_init(_: usize) -> bool {
+        false
+    }
+    pub unsafe fn settings_opened(_: usize) {}
+    pub unsafe fn overlay_get(_: &[u8], _: &[u8], _: &mut [u8]) -> Option<i32> {
+        None
+    }
+    pub unsafe fn overlay_put(_: &[u8], _: &[u8], _: &[u8]) -> i32 {
+        dkrt_sdk::OK
+    }
+    pub unsafe fn overlay_remove(_: &[u8], _: &[u8]) -> i32 {
+        dkrt_sdk::OK
+    }
 }
 pub mod card {
     pub fn state() -> u32 {
@@ -24,37 +66,12 @@ pub mod dlog {
         0
     }
 }
-pub mod files {
-    pub unsafe fn in_init(_: usize) -> bool {
-        false
-    }
-}
 /// The store lock of the runtime: this test is single-threaded, so it is always free.
 pub mod store_writer {
     pub unsafe fn acquire() -> bool {
         true
     }
     pub fn unlock() {}
-}
-pub const MAX_MODULES: usize = 1;
-pub struct ModuleRec {
-    pub used: u32,
-    pub name: [u8; 32],
-}
-pub struct State {
-    pub modules: [ModuleRec; MAX_MODULES],
-}
-static mut STATE: State = State {
-    modules: [ModuleRec {
-        used: 0,
-        name: [0; 32],
-    }],
-};
-pub fn st() -> &'static mut State {
-    unsafe { &mut *std::ptr::addr_of_mut!(STATE) }
-}
-pub unsafe fn cstr_len(a: *const u8, max: usize) -> usize {
-    (0..max).find(|&i| *a.add(i) == 0).unwrap_or(max)
 }
 pub mod store {
     pub fn open() -> Result<(), i32> {
