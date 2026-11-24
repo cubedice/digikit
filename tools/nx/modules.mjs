@@ -35,6 +35,14 @@ import { pythonImportInputs } from './py-imports.mjs';
 
 export { createDependencies } from './module-dependencies.mjs';
 
+// The manifests whose private inputs select the emulator load of the content module `id` (`test-conformance`): its requires closure without the shared
+// loader, which core/runtime-fixture-tests covers: the runtime and its platform adapters (runtime/) and the plug-in points (image-modules/points/). Upstream's
+// content modules require nothing, so this is the module itself; a fork module keeps the image adapters it requires (image-modules/adapters/: CANOPY's
+// instrument host, PRISM's phrase page, ...), whose change schedules its load.
+const SHARED_LOADER = ['runtime/', 'image-modules/points/'];
+const privateClosure = (byId, id) =>
+  manifestClosure(byId, [id]).filter((file) => !SHARED_LOADER.some((prefix) => file.startsWith(prefix)));
+
 export const createNodesV2 = [
   '**/{module.toml,project.json}',
   (matched, _opts, ctx) => {
@@ -187,7 +195,7 @@ export const createNodesV2 = [
             ? {
                 executor: 'nx:noop',
                 cache: false,
-                inputs: packSourceInputs(ctx.workspaceRoot, byId, manifestClosure(byId, [m.id]), { privateOnly: true }),
+                inputs: packSourceInputs(ctx.workspaceRoot, byId, privateClosure(byId, m.id), { privateOnly: true }),
                 dependsOn: [{ target: 'test-conformance-all', params: 'forward' }],
               }
             : conformanceTarget(ctx.workspaceRoot, root, m, f, importInputs);

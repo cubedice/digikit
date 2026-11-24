@@ -18,15 +18,21 @@ conflicts = []
 "dt2-1.17" = "experimental"
 "dn2-1.12" = "experimental"
 
-# The hook is a routine of a C source of the object (`../csrc/hook.c`), not assembler in `src/hooks.rs`.
+# The hook is a routine of an assembler source of the object (`../csrc/hook.s`, which calls the C handler of `../csrc/hook.c`), not assembler in `src/hooks.rs`.
+# It is the raw test hook on the site of the SETTINGS list rebuild (ports/fw/menu.toml): a production port file does not list it (core/ui hooks the same site),
+# the port file of the test image does (`patchkit port build --with-test-hooks`).
 [[hook]]
-name = "cf.menu.hook.settings_list.tail"
-entry = "svc_test_settings_tail"
+name = "cf.menu.hook.settings_list.test"
+entry = "svc_test_hook"
 
-# The crate, then a C and an assembler source outside dks/: compiled as adapter sources (C with -DDK_SERVICE=1), with the directory of their header in
+# The crate, then a C and two assembler sources outside dks/: compiled as adapter sources (C with -DDK_SERVICE=1), with the directory of their header in
 # place of dks/build/gen and dks/src, and linked with the crate, which keeps what its exports reach (`patchkit build`).
 [[object]]
 path = "build/svc-test.dko.json"
-sources = ["Cargo.toml", "../csrc/hook.c", "../csrc/exports.s"]
+sources = ["Cargo.toml", "../csrc/hook.c", "../csrc/hook.s", "../csrc/exports.s"]
 include_dirs = ["../csrc/include"]
 place = "cf.expansion"
+
+# The tail of the hook (`hook.<hook>.tail`: the displaced instructions, then the end of the site), as an alias `patchkit pack` makes into an import.
+[object.externs]
+svc_test_t_tail = "hook.cf.menu.hook.settings_list.test.tail"

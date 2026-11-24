@@ -18,9 +18,7 @@ SEAM = REPO_ROOT / "services/track-keyboard/seam.toml"
 IMAGE_OBJECT = (
     REPO_ROOT / "image-modules/adapters/track-keyboard/build/track-keyboard.dko.json"
 )
-SERVICE_OBJECT = (
-    REPO_ROOT / "services/track-keyboard/dks/build/track-keyboard.dko.json"
-)
+SERVICE_OBJECT = REPO_ROOT / "services/track-keyboard/dks/build/track-keyboard.dko.json"
 
 
 def plan_of(tmp_path, modules):
@@ -58,9 +56,7 @@ def defined(obj):
 
 
 def test_the_track_keyboard_links_without_canopys_host_and_has_its_tick(tmp_path):
-    plan = plan_of(
-        tmp_path, ["core/track-keyboard", "core/health"]
-    )
+    plan = plan_of(tmp_path, ["core/track-keyboard", "core/health"])
     assert "core/instrument-play" not in ids(plan)
     assert {"core/keyboard-panel", "core/midi-events"} <= ids(plan)
     ticks = [i["name"] for i in plan["info"] if i["kind"] == TICK_KIND]

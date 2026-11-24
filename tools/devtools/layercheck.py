@@ -774,10 +774,24 @@ SC_CHECKER = ("tools/devtools/layercheck.py",)
 # the adapter's settings hook (dk_app_instrument_module_settings) and its host
 # harness compare that module's id. Only these files and only this id; remove the
 # exception once the runtime publishes the instrument's module record.
+#
+# The same holds for the track keyboard's pool admission and RELAY: it hands the
+# shared sample-helper routes to RELAY's recorder only while the module with RELAY's
+# head package (version 0.5.1 or later) is loaded, and the runtime names the module
+# only by its id in `dkrt_module`. Only that file and only that id.
 SC_POLICY_ID = {
     "image-modules/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
+    "image-modules/adapters/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
 }
+# The track keyboard's device test with CANOPY (the one instrument that plays through
+# the shared track keyboard on the DT2) loads the module, and the test project's
+# runtimeAcceptance record lists it: only that test, only that id, and only the
+# acceptance metadata of the project (its other fields are checked).
+SC_TRACK_KEYBOARD_TEST = {
+    "image-modules/adapters/track-keyboard/tests/canopy.device.test.ts": "digikit/canopy",
+}
+SC_TRACK_KEYBOARD_PROJECT = "image-modules/adapters/track-keyboard/tests/project.json"
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
 # of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
 # page plays), and the acceptance records list them: only these files.
@@ -1420,7 +1434,9 @@ def check_service_crates(root: Path) -> list[Violation]:
 
 def kind_free_builders(root: Path) -> list[str]:
     """The builder calls of the services machines and fx: their `provided` imports in the sdk/sdk.toml of `root` (the core does not name them).
-    An import with `wrapper = "fw"` (`dk_param_get`, `dk_param_set`) reads a value, it builds nothing."""
+    An import with `wrapper = "fw"` (`dk_param_get`, `dk_param_set`) reads a value, it builds nothing. Nor does an `internal = true` one: an answer of the service
+    file that only the runtime asks for, by name through the loader's export table and in no module's import table (the fork's V2 instrument loader asks the machines
+    file `dk_machines_planned_ids` and `dk_machines_id_taken`, package/instrument.rs); it builds no machine, and the core holds no machine state for it."""
     sdk = tomllib.loads((root / "sdk/sdk.toml").read_text(encoding="utf-8"))
     return [
         i["name"]
@@ -1428,6 +1444,7 @@ def kind_free_builders(root: Path) -> list[str]:
         if i.get("provided")
         and i.get("service") in ("machines", "fx")
         and i.get("wrapper") != "fw"
+        and not i.get("internal")
     ]
 
 
@@ -1594,7 +1611,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
         if b"\0" in data[:4096]:
             continue
         text = data.decode("utf-8", "replace")
-        if f == SC_RUNTIME_PROJECT:
+        if f in (SC_RUNTIME_PROJECT, SC_TRACK_KEYBOARD_PROJECT):
             acceptance = re.search(r'"runtimeAcceptance"\s*:\s*', text)
             if acceptance:
                 start = acceptance.end()
@@ -1604,7 +1621,11 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
                     text[:start] + re.sub(r"[^\n]", " ", text[start:end]) + text[end:]
                 )
         for m, d, pat in pats:
-            if f.startswith(d + "/") or SC_POLICY_ID.get(f) == m.id:
+            if (
+                f.startswith(d + "/")
+                or SC_POLICY_ID.get(f) == m.id
+                or SC_TRACK_KEYBOARD_TEST.get(f) == m.id
+            ):
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if pat.search(line):

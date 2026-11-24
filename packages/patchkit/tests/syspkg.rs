@@ -116,15 +116,17 @@ mod build {
         let mut image = body[BODY_HEADER..BODY_HEADER + b.image as usize].to_vec();
         relocate(&mut image, b.reloc_table(body), 0x1000).unwrap();
         let word = |at: usize| u32::from_be_bytes(image[at..at + 4].try_into().unwrap());
-        // data starts after the 4-byte text: its pointer to the entry is the entry's address, its pointer to the bss lies behind the image
-        let data = 4;
+        // data starts on the cache line after the 4-byte text (the fork's ColdFire rule in `link`: the first section that is not code of an object with code starts on a
+        // new 16-byte line): its pointer to the entry is the entry's address, its pointer to the bss lies behind the image
+        let data = 16;
         assert_eq!(word(data + 4), 0x1000);
         assert_eq!(word(data + 8), 0x1000 + b.image + 4);
     }
 
     #[test]
     fn a_package_larger_than_the_package_block_is_refused_and_one_that_fills_it_is_built() {
-        // placed bytes: 32 header + image + the larger of bss and relocation table; the fixture image is 16 bytes
+        // placed bytes: 32 header + image + the larger of bss and relocation table; the fixture image is 28 bytes: the 4-byte text, then the 12 bytes of data on the
+        // next 16-byte cache line (the fork's ColdFire rule in `link`; upstream's image was 16 bytes)
         let with_bss = |bss: u32| {
             let mut o = package();
             o.sections
@@ -134,7 +136,7 @@ mod build {
                 .size = bss;
             o
         };
-        let fits = dkrt_sdk::PACKAGE_BYTES as u32 - 32 - 16;
+        let fits = dkrt_sdk::PACKAGE_BYTES as u32 - 32 - 28;
         assert!(
             build(&with_bss(fits)).is_ok(),
             "a package that fills the block exactly is built"
@@ -388,16 +390,30 @@ mod menu_part {
             needed.iter().any(|n| n.starts_with("dkrt_")),
             "the menu calls the runtime: {needed:?}"
         );
-        // a runtime call of the menu is an export of abi.toml; the rest are core/ui calls
+        // a runtime call of the menu is an export of abi.toml; the rest are core/ui calls, and, in the fork, the instrument settings rows of core/instrument-play
+        // (`dk_app_instrument_settings_rows`, `dk_app_instrument_module_settings`), which the package itself defines (`package/menu_link.rs`, through the
+        // `instrument` link rows of the resident table)
         let exported = exports();
+        let package = package();
+        let own: Vec<&str> = package
+            .symbols
+            .iter()
+            .filter(|s| s.section.is_some())
+            .map(|s| s.name.as_str())
+            .collect();
+        assert!(
+            needed.iter().any(|n| n.starts_with("dk_app_instrument_")),
+            "the menu calls the fork's instrument settings rows: {needed:?}"
+        );
         for n in &needed {
             assert!(
-                n.starts_with("dk_ui_") || exported.contains(n),
-                "{n} is neither a core/ui call nor an export of abi.toml"
+                n.starts_with("dk_ui_")
+                    || exported.contains(n)
+                    || (n.starts_with("dk_app_instrument_") && own.contains(&n.as_str())),
+                "{n} is neither a core/ui call, an export of abi.toml nor an instrument row the package defines"
             );
         }
         // the package alone does not define them (it would link without the menu, and have no menu); with the part every one is defined
-        let package = package();
         assert!(
             body(&package).is_err(),
             "the package needs the menu's entry: its hook points at dk_app_settings_rows"

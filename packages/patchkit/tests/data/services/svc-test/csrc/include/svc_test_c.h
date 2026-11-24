@@ -10,6 +10,8 @@
 int dk_svctest_ping(void);
 uint32_t dk_svctest_hits(void);
 void svc_test_settings_tail(uint8_t *menu);
+/* hook.s: the raw hook, entered at the site (not a C function). */
+void svc_test_hook(void);
 uint32_t svc_test_unused(void);
 
 #endif

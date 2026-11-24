@@ -3,12 +3,8 @@
 #include "dk_machine.inc"
 #include "dk_relay.inc"
 #include "dk_relay_track.inc"
-.EXTERN _rtm_tracks;
-.EXTERN _rtm_tapes;
-.EXTERN _rtm_read_head_owner;
-.EXTERN _rtm_group_amp_done;
+#include "dk_relay_imports.inc"
 .SECTION/PM seg_pmco;
-.EXTERN _relay_pool;
 .EXTERN _dv_exp2;
 .GLOBAL _relay_note_on;
 .GLOBAL _relay_render;

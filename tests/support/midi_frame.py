@@ -52,7 +52,8 @@ def composed_frame(
             source += (
                 "\n"
                 + (
-                    ROOT / f"image-modules/adapters/instrument-registry/src/dsp/{name}.s"
+                    ROOT
+                    / f"image-modules/adapters/instrument-registry/src/dsp/{name}.s"
                 ).read_text()
             )
     obj = pk_sharc.assemble(source)

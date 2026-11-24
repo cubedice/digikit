@@ -1,7 +1,7 @@
 // A fake digikit device that speaks the SysEx protocol of docs/design/digikit-upload.md byte for byte (framing included), as a `DkTransport` for
 // `DkSession`: files, a selection, a log, modules, and a RESTART that is silent for a while and then boots again. Shared by the site's dktransfer.test.ts and
 // the screenshot runs of the site's Transfer page (tools/devtools/web_transfer_shots.mjs).
-import { decode8in7, encode8in7, fileHash, type DkTransport } from '@digi/dk-session';
+import { decode8in7, encode8in7, fileHash, serviceHash, type DkTransport } from '@digi/dk-session';
 import { CAP, CAPACITY_KINDS, CMD, LOG_KIND, SERVICE_CMD } from '@digi/dk-session/gen_proto';
 
 /** The store's hash slot of a file (the host's `fileHash`: what the real runtime keeps in its table). */
@@ -240,6 +240,8 @@ export class FakeDevice implements DkTransport {
         this.loaded = this.selection.map((p) => `mod:${p}`);
         return ok();
       case CMD.MODULES: {
+        // the record of runtime 0.13.0 (`MODULE_SECTIONS`, packages/dk-session/src/modules-reply.ts): the fixed part to dsp_len, then the sections; one machine
+        // type, 17, in the `machines` section (rows, faults, the type count with the guard flag in bit 8, types 0 to 3, types 4 to 7)
         const entry = (name: string, i: number) => {
           const nm = new Uint8Array(32);
           nm.set(Buffer.from(name));
@@ -248,15 +250,19 @@ export class FakeDevice implements DkTransport {
             nm,
             be32(0x10000),
             be32(0x204), // needs: the runtime version
-            [0, 0, 0, 0],
+            [0, 0, 0, 0], // no UI instance token
             be32(0x47e8b000),
             be32(256),
             be32(0),
             be32(0),
-            be32(1),
-            [1, 17],
-            be32(0),
-            [0],
+            [1], // one section
+            be32(serviceHash('machines')),
+            [5],
+            be32(1), // rows
+            be32(0), // faults
+            be32(1), // one type, guard on
+            be32(17), // types 0 to 3
+            be32(0), // types 4 to 7
           );
         };
         return ok(

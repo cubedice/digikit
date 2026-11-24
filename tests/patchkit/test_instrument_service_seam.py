@@ -1,6 +1,6 @@
 """The seam between the image adapters core/instrument-play, core/midi-events, core/keyboard-panel and services/instrument.dks
 (docs/plans/fork-image-diet.md): the generated files are current and every forwarder is a symbol of its image object. That CANOPY
-needs the service is a test of modules/machine/digikit/canopy."""
+needs the service is a test in the module's own directory."""
 
 import json
 import subprocess

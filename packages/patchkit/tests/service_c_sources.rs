@@ -1,6 +1,7 @@
 //! A Rust service object that also lists ColdFire C and assembler sources after its `Cargo.toml` (`packages/patchkit/src/build/rust.rs`): the
-//! fixture `tests/data/services/svc-test` (its README) through build, pack, service-check and bind for the DT2, and the checks of the link.
-//! The tests skip without the m68k-elf toolchain or the Rust-for-ColdFire toolchain; bind also skips without the stock DT2 image.
+//! fixture `tests/data/services/svc-test` (its README) through build, pack for the DT2, service-check and the check against the port files (services go on
+//! the card packed with a port file; there is no bind), and the checks of the link. The tests skip without the m68k-elf toolchain or the Rust-for-ColdFire
+//! toolchain.
 
 use dkneeds::keys::{Keys, name_hash};
 use patchkit::build::toolchain::{Env, TempDir};
@@ -54,12 +55,12 @@ fn ok(what: &str, o: &std::process::Output) {
 }
 
 #[test]
-fn a_service_object_with_c_and_assembler_sources_builds_packs_checks_and_binds() {
+fn a_service_object_with_c_and_assembler_sources_builds_packs_and_checks_against_the_port_files() {
     let Some(_) = toolchains() else { return };
     let dks = fixture().join("dks");
     let t = TempDir::new("pk-svc-c-").unwrap();
 
-    // build: the crate, hook.c (with DK_SERVICE) and exports.s in one object; what the crate's exports reach stays
+    // build: the crate, hook.c (with DK_SERVICE), hook.s and exports.s in one object; what the crate's exports reach stays
     let r = build::build_module(
         &dks,
         &BuildOptions {
@@ -82,6 +83,7 @@ fn a_service_object_with_c_and_assembler_sources_builds_packs_checks_and_binds()
     for n in [
         "dk_module",
         "dk_svc_abi",
+        "svc_test_hook",
         "svc_test_settings_tail",
         "dk_svctest_hits",
         "dk_svctest_ping",
@@ -101,7 +103,7 @@ fn a_service_object_with_c_and_assembler_sources_builds_packs_checks_and_binds()
         [("build/svc-test.dko.json".to_string(), true)]
     );
 
-    // pack: a .dks that provides svc-test, exports both functions and takes the C hook
+    // pack: a .dks that provides svc-test, exports both functions and takes the hook of the assembler source
     let manifest = dks.join("module.toml");
     let out = t.path().join("svc-test.dks");
     let map = t.path().join("svc-test.addrmap.json");
@@ -136,10 +138,10 @@ fn a_service_object_with_c_and_assembler_sources_builds_packs_checks_and_binds()
     assert!(k.exports().all(|e| (e.b as usize) < dkm.image.len()));
     let hooks: Vec<_> = k.hooks().collect();
     assert_eq!(hooks.len(), 1);
-    assert_eq!(hooks[0].a, name_hash("cf.menu.hook.settings_list.tail"));
+    assert_eq!(hooks[0].a, name_hash("cf.menu.hook.settings_list.test"));
     assert!((hooks[0].b as usize) < dkm.image.len());
 
-    // service-check: the layout of a service folder, the hook a routine of a listed C source
+    // service-check: the layout of a service folder, the hook a routine of a listed assembler source
     let sdk = root().join("sdk/sdk.toml");
     let check = patchkit(&[
         "service-check",
@@ -150,33 +152,29 @@ fn a_service_object_with_c_and_assembler_sources_builds_packs_checks_and_binds()
     ok("service-check", &check);
     assert!(String::from_utf8_lossy(&check.stdout).contains(": ok"));
 
-    // bind to the stock DT2 firmware: the trampoline of the C hook is appended
-    let firmware = root().join("firmware/Digitakt_II_OS1.17.syx");
-    if !firmware.is_file() {
-        eprintln!("SKIP bind: {} is not here", firmware.display());
-        return;
-    }
-    let bound = t.path().join("bound.dks");
-    ok(
-        "bind",
-        &patchkit(&[
-            "bind",
-            out.to_str().unwrap(),
-            "--firmware",
-            firmware.to_str().unwrap(),
-            "-o",
-            bound.to_str().unwrap(),
-            "--addrmap",
-            map.to_str().unwrap(),
-        ]),
+    assert!(map.is_file(), "pack writes the address map");
+
+    // the port files, in place of bind (the file goes on the card packed, and the loader takes its hook sites from the port file): the port file of the test
+    // image lists the hook on every port that a service targets; a production port file does not (core/ui hooks the same site)
+    let hook = format!(
+        "hook {:#010x} is not listed",
+        name_hash("cf.menu.hook.settings_list.test")
     );
-    let bound_bytes = std::fs::read(&bound).unwrap();
+    let test_image = patchkit(&["port", "check", "--with-test-hooks", out.to_str().unwrap()]);
+    ok("port check --with-test-hooks", &test_image);
+    let lines = String::from_utf8_lossy(&test_image.stdout).into_owned();
     assert!(
-        bound_bytes.len() > bytes.len(),
-        "bind appends the trampoline"
+        lines.contains("dt2-1.17")
+            && lines.contains("0 hook(s) not listed")
+            && !lines.contains(&hook),
+        "{lines}"
     );
-    Dkm::parse(&bound_bytes).unwrap();
-    assert!(bound.with_extension("src.json").is_file());
+    let production = patchkit(&["port", "check", out.to_str().unwrap()]);
+    let lines = String::from_utf8_lossy(&production.stdout).into_owned();
+    assert!(
+        !production.status.success() && lines.contains(&hook),
+        "a production port file lists no test hook:\n{lines}"
+    );
 }
 
 /// A crate in a scratch directory with `#[no_mangle]` entries that call C and assembler routines.
