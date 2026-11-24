@@ -21426,7 +21426,7 @@
   },
   {
    "align": 2,
-   "hex": "349c5fb8",
+   "hex": "b5735d77",
    "kind": "data",
    "name": ".rodata.dk_svc_abi",
    "size": 4
@@ -21558,7 +21558,7 @@
    "size": 28
   }
  ],
- "source_sha256": "042c5cc3a3b93f3b5ee46e918bcfaa6154d6069f06e08d1f5feab63ad0dd0151",
+ "source_sha256": "519c80be8c3aa7bd1efa1af56b08130f3550d742687f5d13235f622fd06012a1",
  "symbols": [
   {
    "global": false,
@@ -27315,7 +27315,7 @@
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "21023",
-  "isa_check": "b1076bffa8f1e92091a1cce2f959c09823bd6b241094267165f62f78b78c01fb",
+  "isa_check": "2bb097eddabf52a1e640ae3ba2ee2b8497a90716748ead200d14194cb997c678",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
