@@ -14,6 +14,9 @@ TABLE_NAMES = ("ANALOG", "GLASS", "VOCAL", "ORGAN", "METAL")
 MIPS = ((512, 64), (256, 32), (128, 16), (64, 8), (64, 4), (64, 2), (64, 1))
 FRAME_WORDS = sum(size + 1 for size, _ in MIPS)  # samples of a frame (the name predates 16-bit samples)
 TABLE_WORDS = 8 * FRAME_WORDS
+# What the module stores of a frame and a table, in 32-bit words: N/2 samples of each level of N (half_samples).
+HALF_FRAME_WORDS = sum(size // 4 for size, _ in MIPS)
+HALF_TABLE_WORDS = 8 * HALF_FRAME_WORDS
 # The DSP reads 16-bit samples (two to a 32-bit word, the even sample in the low half) with sign-extending short-word
 # loads and scales the table output by 2^-14 once (src/dsp/wavetable.s). The peak, about 1.10, uses 18060 of 32767.
 SCALE = 1 << 14
@@ -88,6 +91,72 @@ def quantized(table: int) -> list[list[list[int]]]:
 def dequantized(table: int) -> list[list[list[float]]]:
     """The waves as the DSP plays them: the 16-bit samples back at unit scale (exact in float)."""
     return [[[v / SCALE for v in level] for level in frame] for frame in quantized(table)]
+
+
+def _pack(samples: list[int]) -> list[int]:
+    """16-bit samples two to a 32-bit word, the even sample in the low half."""
+    assert len(samples) % 2 == 0
+    return [(samples[i] & 0xFFFF) | (samples[i + 1] & 0xFFFF) << 16 for i in range(0, len(samples), 2)]
+
+
+def levels() -> list[list[int]]:
+    """Every mip level of every table and frame in table order (`quantized`), each with its guard sample."""
+    return [level for table in range(len(TABLE_NAMES)) for frame in quantized(table) for level in frame]
+
+
+def full_words() -> list[int]:
+    """The whole factory table the DSP reads (`_wt_factory`, TABLE_WORDS samples a table): every level of `levels`,
+    packed. The DSP rebuilds it from `half_words` (`expand`); the tests compare both with this."""
+    return _pack([sample for level in levels() for sample in level])
+
+
+def half_samples() -> list[int]:
+    """The samples the module stores: every level holds N + 1 samples w[0..N] with w[N - n] = -w[n] and w[0], w[N/2],
+    w[N] zero (each quantized level is exactly antisymmetric: its partials are sines in phase), so w[1..N/2 - 1]
+    determine it. A level whose first sample falls on an even sample of the table (the levels alternate, since each
+    has an odd length) stores [0, w[1..N/2 - 1]], the other [w[1..N/2 - 1], 0]: N/2 samples, so the forward half of
+    every level is a word copy of the stored words (`expand`)."""
+    out: list[int] = []
+    for index, level in enumerate(levels()):
+        size = len(level) - 1
+        if any(level[size - n] != -level[n] for n in range(size + 1)) or level[size // 2]:
+            raise ValueError("a CANOPY factory mip level is not exactly antisymmetric")
+        half = level[1 : size // 2]
+        out.extend([0, *half] if index % 2 == 0 else [*half, 0])
+    return out
+
+
+def half_words() -> list[int]:
+    """`half_samples` packed, HALF_TABLE_WORDS a table, and one zero word: the expansion of the last level loads one
+    word ahead."""
+    return [*_pack(half_samples()), 0]
+
+
+def expand(words: list[int]) -> list[int]:
+    """The DSP's expansion (`_wt_expand_table` in src/dsp/wavetable.s), word for word, of `half_words` to
+    `full_words`. Per level of N: N/4 stored words c; each is the forward word, and the backward words run down from
+    the level's end, (-lo(c), -hi(previous c)) in 16-bit fields; a level that starts on an even sample also writes
+    (0, -hi(last c)) at its middle."""
+    mask = 0xFFFFFFFF
+    out = [0] * (len(TABLE_NAMES) * TABLE_WORDS // 2)
+    src = dst = 0
+    for _table in range(len(TABLE_NAMES)):
+        for index in range(8 * len(MIPS)):
+            size, even = MIPS[index % len(MIPS)][0], index % 2 == 0
+            back = start = dst + size // 2 - (not even)
+            negated_high, cur = 0, words[src]
+            for _ in range(size // 4):
+                out[dst] = cur
+                dst += 1
+                out[back] = negated_high | (-cur & 0xFFFF)
+                back -= 1
+                negated_high = -(cur & 0xFFFF0000) & mask
+                src += 1
+                cur = words[src]
+            if even:
+                out[back] = negated_high
+            dst = start + 1
+    return out
 
 
 def assembly() -> str:
