@@ -44,6 +44,12 @@ the old location). Upstream's own lines were left as upstream wrote them.
 - **DSP link window 4.** V2 registration data has window 4: the window field took bit 29 (the top bit of the chunk number), windows 0
   to 3 are bit for bit upstream's, window 3 stays upstream's statistics control, a transfer has at most 8,192 chunks (the most a device
   needs is 7,711). Older DSP code reads a window-4 chunk as a chunk number it never expects and drops it (`port/dsplink`, 4ad729a2e).
+- **The other DT2 sets.** The block costs every image, not only the hardware set. Free cf.expansion with it: `device` 2,860, `emulator`
+  18,828, `overloop` 62,532, `canopy-overloop` 42,384, `canopy-overloop-prism` 10,144. `phrase` (PRISM's tests) dropped
+  `core/sample-pool` (about 55 KB; PRISM's tests load no samples): 54,096. `relay-track` was 13.5 KB short: the owner chose
+  (2026-11-24) to shrink RELAY's waveform cache from one scan per slot (48 x 516 bytes) to `RELAY_WAVE_CACHED` = 16 entries, least
+  recently used out (`relay-track/src/files.h`, `files.c`): 1,836 free. Its file calls `dkrt_image_file_*` moved from the package's
+  `entry.rs` to the resident `storage/sdk_files.rs` (an image module links only resident symbols).
 - **Resident table minor 5.** `instrument` appended at the end of the `links` group (`InstrumentLinks`, the image functions the host
   calls) and of the `views` group (`InstrumentViews`, the image's instrument words).
 
