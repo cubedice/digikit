@@ -66,9 +66,7 @@ def test_direct_optional_symbols_are_consistent():
     assert "pp_write_frame" not in cf.get("externs", {})
     assert "_pattern_position_info" in dt2["optional"]
     assert "_pattern_position_info" not in dn2["optional"]
-    dyndsp = tomllib.loads(
-        (ROOT / "runtime/platform/dyndsp/module.toml").read_text()
-    )
+    dyndsp = tomllib.loads((ROOT / "runtime/platform/dyndsp/module.toml").read_text())
     obj = next(o for o in dyndsp["object"] if o["devices"] == ["dt2"])
     assert "_pattern_position_info" in obj["optional"]
     assert "_pattern_position_info" not in obj.get("externs", {})

@@ -96,7 +96,9 @@ def allocation_record(start: int, size: int, gap: int = 0) -> bytes:
     return struct.pack(">13I", *words)
 
 
-def allocator_script(capacity: int, reserved_capacity: int = POOL_BYTES) -> tuple[list[dict], dict[str, tuple[int, int]]]:
+def allocator_script(
+    capacity: int, reserved_capacity: int = POOL_BYTES
+) -> tuple[list[dict], dict[str, tuple[int, int]]]:
     """Operations plus expected (mask, value) for call/peek result tags."""
     ops: list[dict] = []
     expected: dict[str, tuple[int, int]] = {}
@@ -193,7 +195,9 @@ def main() -> int:
     parser.add_argument("--cf-script", type=Path, required=True)
     parser.add_argument("--work", type=Path, default=ROOT / "out/runs/loop-storage")
     parser.add_argument("--timeout", type=float, default=120)
-    parser.add_argument("--relay", action="store_true", help="check the extra 32 MiB RELAY reservation")
+    parser.add_argument(
+        "--relay", action="store_true", help="check the extra 32 MiB RELAY reservation"
+    )
     args = parser.parse_args()
     if args.timeout <= 0 or args.timeout > 900:
         parser.error("--timeout must be in (0, 900] seconds per process")

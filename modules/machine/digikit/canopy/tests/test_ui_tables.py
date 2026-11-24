@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from modules.machine.digikit.canopy.tools.ui_tables import header as envelope_preview_header
+from modules.machine.digikit.canopy.tools.ui_tables import (
+    header as envelope_preview_header,
+)
 from modules.machine.digikit.canopy.tools.wavetables import preview_header
 
 

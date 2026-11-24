@@ -71,12 +71,16 @@ def test_manifest_changes_only_reviewed_six_operands(stock_main):
 
 
 def test_relay_lease_abuts_existing_phrase_storage(stock_main):
-    proof.audit_main(stock_main, patched_from_manifest(stock_main, relay=True), relay=True)
+    proof.audit_main(
+        stock_main, patched_from_manifest(stock_main, relay=True), relay=True
+    )
     module = ROOT / "image-modules/adapters/relay-storage"
     obj = json.loads((module / "build/relay-storage-dsp.dko.json").read_text())
     symbol = next(s for s in obj["symbols"] if s["name"] == "_relay_storage_info")
     section = next(s for s in obj["sections"] if s["name"] == symbol["section"])
-    magic, version, base, size = struct.unpack_from("<4I", bytes.fromhex(section["hex"]), symbol["value"])
+    magic, version, base, size = struct.unpack_from(
+        "<4I", bytes.fromhex(section["hex"]), symbol["value"]
+    )
     assert (magic, version, size) == (0x524C5931, 1, proof.RELAY_BYTES)
     assert base == proof.cf_offset_to_dsp(proof.CF_BIAS + proof.POOL_BYTES - size)
     assert base + size == proof.PHRASE_BANK0
