@@ -91,7 +91,7 @@ fn the_runtime_constants_are_the_device_files_numbers() {
         assert!(offsets.contains(want), "{want}");
     }
     // staging is allocated by the selected device object: each device has its own size
-    for (dev, bytes) in [("dt2", 151552), ("dn2", 65536)] {
+    for (dev, bytes) in [("dt2", 131072), ("dn2", 65536)] {
         assert_eq!(facts.stage_bytes(dev).unwrap(), bytes);
         assert!(
             get(&format!("build/gen/device-{dev}.inc"))
