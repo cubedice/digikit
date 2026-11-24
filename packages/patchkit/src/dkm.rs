@@ -83,6 +83,8 @@ pub fn needs_text(n: &V2Needs) -> String {
         .map(|(k, v)| format!("{} {v}", k.to_lowercase()))
         .collect::<Vec<_>>()
         .join(", ")
+}
+
 /// The keys of the header table of a file (the bytes at `H_REG_OFF`, `H_REG_SIZE`): no hash check, as `needs` has none (the card's files are read the same way).
 fn keys_of(f: &[u8]) -> Result<dkneeds::keys::Keys<'_>> {
     if f.len() < dkneeds::HEADER as usize || get(f, dkneeds::H_MAGIC as usize) != MAGIC {

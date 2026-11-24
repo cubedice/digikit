@@ -298,6 +298,8 @@
 #define DKRT_CAPK_DSP_COST 15
 #define DKRT_CAPK_DSP_VOICES 16
 #define DKRT_CAPK_PACKAGE 17
+#define DKRT_CAPK_INSTRUMENT_ROWS 18
+#define DKRT_CAPK_INSTRUMENT_TRACKS 19
 
 /* dkrt_status result. The caller owns the memory; the layout only grows at the end. */
 typedef struct DkrtStatus {

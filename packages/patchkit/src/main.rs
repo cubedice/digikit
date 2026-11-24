@@ -1704,6 +1704,8 @@ fn port_cmd(root: &Path, rest: &[String]) -> Result<()> {
         _ => return Err(Error(USAGE.into())),
     }
     Ok(())
+}
+
 #[cfg(test)]
 mod selection_tests {
     use super::*;

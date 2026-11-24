@@ -108,8 +108,10 @@ pub const CAPK_SEND_SLOTS: u8 = 14;
 pub const CAPK_DSP_COST: u8 = 15;
 pub const CAPK_DSP_VOICES: u8 = 16;
 pub const CAPK_PACKAGE: u8 = 17;
+pub const CAPK_INSTRUMENT_ROWS: u8 = 18;
+pub const CAPK_INSTRUMENT_TRACKS: u8 = 19;
 /// Every CAPACITY kind in the order of its number: the runtime answers each one.
-pub const CAP_KINDS: [u8; 17] = [
+pub const CAP_KINDS: [u8; 19] = [
     CAPK_MODULES,
     CAPK_SELECTION,
     CAPK_ARENA,
@@ -127,9 +129,11 @@ pub const CAP_KINDS: [u8; 17] = [
     CAPK_DSP_COST,
     CAPK_DSP_VOICES,
     CAPK_PACKAGE,
+    CAPK_INSTRUMENT_ROWS,
+    CAPK_INSTRUMENT_TRACKS,
 ];
 /// The `name_hash` of `cap_<kind>` (the kind name in lower case) for each kind of `CAP_KINDS`: the name of the `[[info]]` entry of the image's info table that gives the kind's limit when no service answers (docs/PATCHING.md).
-pub const CAP_INFO_HASHES: [u32; 17] = [
+pub const CAP_INFO_HASHES: [u32; 19] = [
     0x88b64095,
     0x4905a3e2,
     0x60285193,
@@ -147,6 +151,8 @@ pub const CAP_INFO_HASHES: [u32; 17] = [
     0x4ebaf5d9,
     0xcb8f5ab7,
     0xb6dc3d64,
+    0x94edfcc3,
+    0x662ef4ea,
 ];
 /// The most a kind's limit may report (`ceiling` of the kind, a key of `[limits.max]`): the size of the arrays that hold its rows. `u32::MAX`: none.
 pub const CAPMAX_MACHINE_ROWS: u32 = 8;
@@ -156,7 +162,7 @@ pub const CAPMAX_PAGE_ROWS: u32 = 8;
 pub const CAPMAX_FX_SLOTS: u32 = 4;
 pub const CAPMAX_MAP_ENTRIES: u32 = 8;
 pub const CAPMAX_SEND_SLOTS: u32 = 2;
-pub const CAP_CEILING: [u32; 17] = [
+pub const CAP_CEILING: [u32; 19] = [
     4294967295,
     4294967295,
     4294967295,
@@ -174,9 +180,11 @@ pub const CAP_CEILING: [u32; 17] = [
     4294967295,
     4294967295,
     4294967295,
+    4294967295,
+    4294967295,
 ];
 /// The resources a fit looks at: name, kind and what a person calls it.
-pub const CAP_FIT: [(&str, u8, &str); 12] = [
+pub const CAP_FIT: [(&str, u8, &str); 14] = [
     ("MODULES", CAPK_MODULES, "module records"),
     ("SELECTION", CAPK_SELECTION, "selection paths"),
     ("ARENA", CAPK_ARENA, "CPU memory"),
@@ -189,6 +197,8 @@ pub const CAP_FIT: [(&str, u8, &str); 12] = [
     ("FX_SLOTS", CAPK_FX_SLOTS, "effect slots"),
     ("DSP_COST", CAPK_DSP_COST, "DSP load"),
     ("DSP_VOICES", CAPK_DSP_VOICES, "DSP voices"),
+    ("INSTRUMENT_ROWS", CAPK_INSTRUMENT_ROWS, "instrument rows"),
+    ("INSTRUMENT_TRACKS", CAPK_INSTRUMENT_TRACKS, "instrument tracks"),
 ];
 /// The command ranges a module may register, as (first, last).
 pub const RANGES: [(u8, u8); 13] = [

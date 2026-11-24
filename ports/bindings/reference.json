@@ -3714,6 +3714,60 @@
       ]
     },
     {
+      "at": {},
+      "bindings": {
+        "c": "dk_fw_machine_refresh_track",
+        "rust": "dkfw::machine::refresh_track"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock Sound-to-track refresh: source pointer and track index on the C stack. Validates the type, caches the source, copies the parameter and machine rows, and refreshes modulation. Emulator admission proof only; caller must resolve a live Sound.",
+      "file": "devices/fw/machine.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.machine.fn.refresh_track",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 172
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "bindings": {
+        "c": "dk_fw_machine_selection_build",
+        "rust": "dkfw::machine::selection_build"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 persistent machine-selection view item builder. C ABI build(view), clears then refills the cached list. Archived registry proof, finding 30.",
+      "file": "devices/fw/machine.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.machine.fn.selection_build",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
       "at": {
         "dn2-1.11": [
           {
@@ -4066,6 +4120,77 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e978"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve every register beyond the displaced instructions; replay ten bytes on the stock path or jump to instrument_mod_recombine_skip for the admitted track-zero instrument.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.instrument_mod_recombine",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": [
+          "d6",
+          "a4"
+        ]
+      },
+      "site": "cf.machine.site.instrument_mod_recombine",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8e2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve every register beyond the displaced instructions; replay six bytes on the stock path or jump to instrument_mod_split_skip for the admitted track-zero instrument.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.instrument_mod_split",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "d7",
+          "a4"
+        ]
+      },
+      "site": "cf.machine.site.instrument_mod_split",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x4004d994"
@@ -4326,6 +4451,161 @@
       "subsystem": "machine",
       "users": [
         "core/services/machines"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Remember the persistent selection view so delayed boot-only V2 publication can refresh its item list on the UI task.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.machine.hook.selection_build",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.fn.selection_build",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400db3b2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Emulator-only Sound-load lifetime wrapper; preserves the C ABI and original result.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_deserialize",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.site.sound_deserialize",
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e65c8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Sees every Sound the initializer resets; the hook preserves all registers and replays both displaced instructions, which set the stock CCR.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_init_slices",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.machine.site.sound_init_slices",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dba94"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Wraps the Sound writer: the hook replays the displaced prologue, calls the stock body and returns its result unchanged.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_serialize",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.machine.site.sound_serialize",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005179e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Sees a direct machine-type write; the hook preserves all registers and replays the write and the compare, whose flags stock tests next.",
+      "file": "devices/fw/machine.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.machine.hook.sound_type_write",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "a0",
+          "d2",
+          "d6"
+        ]
+      },
+      "site": "cf.machine.site.sound_type_write",
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
       ],
       "was": []
     },
@@ -4723,6 +5003,161 @@
       "subsystem": "machine",
       "users": [
         "core/services/machines"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e978",
+            "len": 10
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR sample-slot reconstruction after native LFO: d6 is track, a4 is the smoothed row. Displaced mvs.w 0x5a(a4),d0; cmpi.l #0x400,d0. Bypass preserves the instrument's full-width modulated mirror 28.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_recombine",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 10,
+          "offset": 10
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e994",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 sampler reconstruction loop continuation; increments d6 and advances the smoothed row by 0x8e.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_recombine_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 38
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8e2",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR sampler split, after the stock eligibility test: d7 is track, a4 is the smoothed row. Displaced move.w 0x5a(a4),d0; move.l d0,d1. Only the admitted instrument may bypass the sample-slot conversion.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_split",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 10
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e8fe",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 sampler split loop continuation; increments d7 and advances the smoothed row by 0x8e.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_split_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 38
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e928",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 frame ISR lea operand: load the operand value, then dereference the current track-zero type byte in the SRAM machine row. It is not a selected UI track.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.instrument_mod_type_row_literal",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 2
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
       ],
       "was": []
     },
@@ -5348,6 +5783,68 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400db3b2",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 Sound deserializer prologue. C ABI destination and serialized record; returns boolean in d0. Fixture wrapper replays the displaced stack allocation and register save before resuming at +8.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_deserialize",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "test/canopy-carrier"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e65c8",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 Sound initializer, after its type helper: `clr.l 0x13c(a2); lea 0x140(a2),a2` with a2 the Sound being reset; the slice table is cleared next.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_init_slices",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400dd286",
@@ -5393,6 +5890,68 @@
         "cf.machine.site.persist",
         "cf.machines.persist"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400dba94",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 v3 Sound writer prologue, `bool f(record *dst, Sound *src, u32 flag)`: `lea -0x24(sp),sp; movem.l d2-d5/a2-a6,(sp)`. It zero-fills record positions 0..89 before writing 69 parameters.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_serialize",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005179e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 track machine change: `move.b d2,0xa2(a0); cmp.l d6,d2` with a0 the track's Sound, d2 the new and d6 the old type.",
+      "file": "devices/fw/machine.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.machine.site.sound_type_write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "machine",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -8330,6 +8889,31 @@
       ]
     },
     {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Optional instrument channel-message handler before the DIN router. Preserve arguments and registers; consume by continuing at return, otherwise run the displaced call through tail.",
+      "file": "devices/fw/midi.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.midi.hook.din_rx",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.midi.site.din_rx",
+      "subsystem": "midi",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
       "at": {
         "dn2-1.11": [
           {
@@ -8369,6 +8953,37 @@
       "subsystem": "midi",
       "users": [
         "core/platform"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f178",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 MIDI task DIN router call: (message, length, source) already on the stack, source 8 or 16. The six-byte indirect call is followed by the stock argument cleanup.",
+      "file": "devices/fw/midi.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.midi.site.din_rx",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 4
+        }
+      },
+      "subsystem": "midi",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -9444,6 +10059,175 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e348"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Capture due lock lists, including absence, before replaying the stock pointer check.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_lock_due_1",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "a0"
+        ]
+      },
+      "site": "cf.page.site.instrument_lock_due_1",
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e5c2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Capture due note lock lists, including absence, before replaying the stock pointer check.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_lock_due_2",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "a0"
+        ]
+      },
+      "site": "cf.page.site.instrument_lock_due_2",
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400392be"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "C ABI wrapper of the note-list writer; ip_note_list_original replays the displaced link and register save.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_note_list_write",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.instrument_note_list_write",
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005c72a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "C ABI wrapper; stock entry replayed on fallthrough.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_panel_off",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.instrument_panel_off",
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005cee2"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "C ABI wrapper; stock entry replayed on fallthrough.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.page.hook.instrument_panel_on",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.instrument_panel_on",
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400c2474"
@@ -9485,6 +10269,72 @@
       "subsystem": "page",
       "users": [
         "core/services/fx"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011c79c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases. A note-step picker also owns PAGE.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.page.hook.phrase_key_dispatch",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.phrase_key_dispatch",
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400308e0"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. The FX adapter lets the front picker claim TRIG and page LEDs at native layer 2; otherwise the call is retained.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.page.hook.phrase_led_set",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.page.site.phrase_led_set",
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
       ],
       "was": []
     },
@@ -10005,6 +10855,67 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069eb8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 stock FxPageView per-view update entry, retained by the vtable adapter. Local ABI void(u8 *view); the wrapper calls it before its own invalidation policy.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_entry",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f99b4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 FxPageView primary View vtable slot 11, per-view update. The window starts at slot 0; only this slot is replaced.",
+      "file": "devices/fw/page.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.fx_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/loop-display"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40061616",
@@ -10101,6 +11012,1959 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40111ec4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17: Native encoder focus query: u8(tracker, index).",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_focus_active",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40111e92",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_focus_touch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069d4e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17: Font pointer operand in the native widget label/value drawing path.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_label_font",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005ad40",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 sequencer UI state (KeyboardView +0x98, SRC view +0x6c): live recording, i.e. transport playing and the record byte at +0x271; finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_live_record",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4003c0ac",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 18 (this unused, code, step): clears a lock on the current track; finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_clear",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 208
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e348",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 audio ISR due-event lock pointer check on the non-note path. Finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_due_1",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e5c2",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 audio ISR due-note lock pointer check. Finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_due_2",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4003bfdc",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 16 (this unused, code, step): the current track's lock value or -1; finding 347. The window spans vfuncs 16..18 and 4 bytes beyond, the only one of three identical copies that is unique.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_get",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005ab18",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 held-trig edit marker (sequencer view, boolean); stock parameter-lock edits set it before changing values. Finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_mark_edited",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4003c040",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 SoundParameterSet vfunc 17 (this unused, code, value, step): sets a lock on the current track; 0 when all 80 lanes are used or the step is beyond the pattern; finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_set",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 100
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e362",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 non-note continuation when the event has no lock list.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_skip_1",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e5dc",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 note continuation when the event has no lock list.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_lock_skip_2",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400392be",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 pattern note-list writer (editor, track, step, records vector of 4-byte {note, velocity, ...}); every recorded note commits through it; finding 349.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_note_list_write",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004af88",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 native keyboard enable transition; exact unique window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_active",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011b422",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_detach",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f68fc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_detach_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005dc58",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f68e8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005c72a",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005cee2",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004abe8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_selected_track",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 64
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004b006",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 native keyboard enable transition; exact unique window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_toggle",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40065e12",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 native keyboard enable transition; exact unique window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_toggle_call",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40035cca",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_track_object",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005063e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 resolved KeyboardView note ownership; unique current-image window.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_track_type",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 64
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f690c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "KeyboardView update slot; stock target 0x4011afd2 is an empty RTS. Observe selection changes handled by another view.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7372",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 sequencer: adda.l of the state base whose byte +0x15b + track holds the track's current step (stored before each trig); the literal is at +2; finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_seq_step",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 2
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005ab0e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration alternate; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_alternate",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006aff0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 AMP ADSR graph renderer, called with view, canvas, column, row and four Q8 envelope values.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_amp_adsr",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400693da",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration attach; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_attach",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcac",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration attach_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_attach_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 20
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011b422",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration detach; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_detach",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcb4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration detach_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_detach_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40016eac",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration draw; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edca8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration draw_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edd98",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration encoder_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_encoder_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40030bac",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration event_call; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_event_call",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 10
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011c674",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration event_dispatch; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_event_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400181fe",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration key; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edca0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration key_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e1588",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration level_format; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_level_format",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40017cd4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration parameter; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_parameter",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edd54",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration parameter_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_parameter_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 188
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004abb8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration track; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_track",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400e177c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration tune_format; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_tune_format",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400184ea",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration turn; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_turn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcdc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration turn_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_turn_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 68
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40017a40",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration update; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_update",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401edcc4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration update_slot; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_update_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 44
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006aa32",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 SRC integration value; bounded static image inspection, retained stock ABI.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_src_value",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005ad8c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 sequencer UI state: step recording, i.e. record mode (+0x269) with the step-record byte at +0x272 (set by RECORD + STOP); finding 349.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_step_record",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005b336",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 OS1.17 sequencer UI state: a trig is held within the pattern length (128-bit held-step mask at +0x258); finding 347.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_trig_held",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/keyboard-panel"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40074ec4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_draw. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f9998",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_draw_slot. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f9a88",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView encoder observer slot: stock thunk subtracts 4 from the receiver before calling the primary encoder handler.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_encoder_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006cf20",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_key. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f9990",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_key_slot. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006cb14",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_turn. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_turn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f99cc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 FxPageView fx_turn_slot. Native ABI retained; only the phrase-owned page handles custom input.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_fx_turn_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 68
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400f6c82",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 HelpBubbleView draw, cdecl(view, bitmap). Independently verified unique window and complete link/movem entry. Stock paint runs first; only the visible phrase page reclaims its ten-pixel header.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_help_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40216f24",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 HelpBubbleView draw vtable slot. Independently verified unique MAIN byte window and native draw target.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_help_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011c79c",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 primary ViewController key dispatcher, cdecl(manager,event). Its callback invokes primary View slot2 after native key-owner routing. Unique 48-byte window; complete eight-byte lea -96(sp)/movem d2-d7,a2-a6 prologue. This replaces the earlier misidentified secondary-observer dispatcher.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_key_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400308e0",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII OS1.17 LedManager setter entry. cdecl(manager, logical, layer, value). First eight bytes contain complete stack allocation and register-save instructions. Native layer priorities reset on each LED frame.",
+      "file": "devices/fw/phrase-ui.toml",
+      "kind": "site",
+      "mark": "V",
+      "name": "cf.page.site.phrase_led_set",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/fxview"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x400dd5c2",
@@ -10194,6 +13058,342 @@
         "cf.fxpages.label",
         "cf.page.site.label"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f94f0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's draw vtable slot. Stock target 0x40073264.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_draw_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f94e8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's key vtable slot. Stock target 0x4007302c.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_key_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f959c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's parameter vtable slot. Stock target 0x40069628.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_parameter_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 188
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40073264",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view draw method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_draw",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4007302c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view key method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_key",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40069628",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view parameter method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_parameter",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4006965a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native TRIG page title routine. The adapter preserves this method and return ABI for both stock pages.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_title",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4007375a",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Unmodified entry called when wrapping the TRIG view turn method.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_stock_turn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f952c",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view title slot. Stock target 0x4006965a returns a COW std::string to A0.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_title_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 76
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f95e0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's turn_interface vtable slot. Stock target 0x4007385c.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_turn_interface_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 256
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f9524",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 TRIG parameter view's turn vtable slot. Stock target 0x4007375a.",
+      "file": "devices/fw/track-trig.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.track_trig_turn_slot",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 68
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -11849,6 +15049,302 @@
         "cf.param.sites.ref",
         "cf.params.ref"
       ]
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.start",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.start_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.start_due",
+      "regs": {
+        "clobbers": [
+          "d1",
+          "ccr"
+        ],
+        "in": [
+          "a4",
+          "a6"
+        ]
+      },
+      "site": "cf.pattern.site.start_due",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.step_due; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "retarget",
+      "name": "cf.pattern.hook.step_due",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": [
+          "a4"
+        ]
+      },
+      "site": "cf.pattern.site.step_due",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.cf.tick; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.pattern.hook.tick",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2"
+        ]
+      },
+      "site": "cf.pattern.site.tick",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d84ae",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 literal of the substep tick's `lea playing,a6` before `move.l #0x43165000,d6`: 16 words, the pattern of each track's current step, copied when the step becomes current (finding 365).",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.playing_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 2
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d66d8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6b4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.start_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.start_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e158",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_due.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bff0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.step_fn.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.step_fn",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8dca",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.cf.tick.",
+      "file": "devices/fw/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.pattern.site.tick",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -13550,6 +17046,31 @@
       "was": []
     },
     {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Notify session revocation before reset assertion, then execute the displaced prologue. Release must not revoke or rearm. Expansion data/BSS is initialized by the reset-path loader before the boot task calls this helper.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.rtos.hook.dsp_reset",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.rtos.site.dsp_reset",
+      "subsystem": "rtos",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
       "at": {
         "dn2-1.11": [
           {
@@ -13695,6 +17216,37 @@
       "subsystem": "rtos",
       "users": [
         "core/platform"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400cd01c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DTII 1.17 GPIO DSP reset helper entry. Low argument byte nonzero asserts reset; zero releases it. First six bytes save D2 and load the argument byte; continuation must preserve the stack. See finding 135.",
+      "file": "devices/fw/rtos.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.rtos.site.dsp_reset",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "rtos",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -17691,6 +21243,2859 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40139b54",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_audio_dispatch",
+        "rust": "dkfw::track_keys::audio_dispatch"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pass a 64-byte note record to the native audio voice task, including after a track has changed machine type.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.audio_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a6d0",
+            "len": 8
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_audio_queue_head",
+        "rust": "dkfw::track_keys::audio_queue_head"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Read the pending audio-event list before admitting a reserved voice.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.audio_queue_head",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bcba",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_channel",
+        "rust": "dkfw::track_keys::midi_channel"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reads the active MIDI-track output channel, or -1 when disabled.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_channel",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d4ce",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_dispatch",
+        "rust": "dkfw::track_keys::midi_dispatch"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pass a 64-byte note record to the native MIDI track task without selecting the task from the current machine type.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_dispatch",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002f3b0",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_midi_mode",
+        "rust": "dkfw::track_keys::midi_mode"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Tests the active playback kit MIDI-mode bit for a track.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.midi_mode",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401204ec",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_note_off",
+        "rust": "dkfw::track_keys::note_off"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock release on the original track, pitch and source.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.note_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401200f2",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_keys_note_on",
+        "rust": "dkfw::track_keys::note_on"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock note start below KeyboardView. The source 0x40 is the stock audition route.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_keys.fn.note_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40139b54"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Quarantine ordinary auditions on physical tracks reserved by a helper group.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.audio_dispatch_entry",
+      "regs": {
+        "clobbers": [
+          "d0",
+          "d1",
+          "a0",
+          "a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_keys.site.audio_dispatch_entry",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120754"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Leave stock release dispatch only on native destinations of mixed routes.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.track_keys.hook.midi_target_off",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d2",
+          "d4",
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.midi_target_off",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401208fa"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Keep native fan-out for stock destinations after shared keyboard admits a subset.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "cf.track_keys.hook.midi_target_on",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "d1",
+          "d2",
+          "d3",
+          "a3"
+        ]
+      },
+      "site": "cf.track_keys.site.midi_target_on",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d00e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve native note ownership and use the captured port mask for a generated note.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.wire_off",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.wire_off",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce44"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Preserve native note ownership and use the captured port mask for a generated note.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_keys.hook.wire_on",
+      "regs": {
+        "clobbers": [
+          "ccr"
+        ],
+        "in": [
+          "a2"
+        ]
+      },
+      "site": "cf.track_keys.site.wire_on",
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40139b54",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio note dispatch entry. The eight-byte prologue allocates its frame and saves callee registers.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.audio_dispatch_entry",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bff8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI event free-list head pointer operand. Allocator pops and follows the link at +0x5c.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce52",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI held-note free-list head pointer operand. The MIDI task allocates on note-on and follows the link at +0x14.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_hold_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d56e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native MIDI event task mailbox address operand. A 64-entry ring backs audition notes.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_mail_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f1c4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI gatherer receive port mask operand. Bit 0 enables DIN and bit 1 enables USB.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_ports_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401207bc",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI note router operand for its signed per-track input channel table.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_routes_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120952",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock MIDI Receive Notes flag used at the entry of the MIDI note-on parser.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_rx_notes_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401207b4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI note router operand for the selected track used by Auto Channel.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_selected_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 6
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40120754",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Per-destination native MIDI note-off call, with the source already pushed.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_target_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401208fa",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Per-destination native MIDI note-on call, with seven arguments already pushed.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.midi_target_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4011f5a0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native note-announcement mailbox pointer operand. A 16-entry ring backs its queued messages.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.note_mail_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c3ae",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append one MIDI message to the native worker buffer.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_append",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bc74",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Send the native MIDI worker buffer through the configured output mask.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_flush",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c3b0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Worker note buffer count used before sending one explicitly routed message.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_message_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d00e",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append a note-off on the saved channel, then clear the matching native owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_off",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d016",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume the native release after clearing the note owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_off_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce44",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append the new note after the native same-pitch release and retain the worker owner.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_on",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012ce4a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume the native onset after the routed append.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_on_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012bc78",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native output mask operand. Bit 0 routes to DIN and bit 1 routes to USB.",
+      "file": "devices/fw/track-keys.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_keys.site.wire_ports_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_keys",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e28c"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.audio_due",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.audio_due",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e10"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.audio_stage",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.audio_stage",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40049274"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Report the resolved placement of a live-recorded input note and replay the original timebase call.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.capture_live",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.capture_live",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd18"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.midi_due",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.midi_due",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7234"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Mirror the resolved native sequencer event without altering the stock register contract.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.midi_stage",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.midi_stage",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d659e"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Transfer the first-step tag to the local START event allocation.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.start_copy",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.start_copy",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6122"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Transfer the first-step tag to the synchronized START event allocation.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_sequence.hook.sync_start_copy",
+      "regs": {
+        "clobbers": [],
+        "in": []
+      },
+      "site": "cf.track_sequence.site.sync_start_copy",
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a6a8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native event-bucket free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_bucket_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d8204",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after timer ISR builds an audio pattern event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e28c",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Due audio note after mute, retrig and priority checks.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e294",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native audio note lookup after the two replayed loads.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 20
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002e6c0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Releases a processed audio scheduler entry.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_due_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a806",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reserve a native audio scheduler event with the stock allocator.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_event_alloc",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013aa66",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Append a native immediate event after existing due events.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_event_queue",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a80e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native scheduled audio event free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a7b6",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Reserve a native parameter-lock context for one generated note.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_lock_alloc",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4013a7be",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the native lock-context free list.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_lock_free_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002dda0",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "ISR operand for the stock audio mute mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_mute_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002ddaa",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "ISR operand for the stock audio solo mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_solo_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 18
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e10",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio builder success before its register restore.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_stage",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6e16",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Audio builder native epilogue.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_stage_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d73b8",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after building an audio event in the per-track first-step cache.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_start_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 18
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4002daa4",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Effective active native Sound for a track under live audition.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.audio_track_sound",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4019995c",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock recorder timebase singleton call replayed by the live note hook.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_clock",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40049274",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Live note recorder after the target step, note list and lock are committed.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_live",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004927a",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Continue the unchanged native recorder history path.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.capture_live_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 20
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7ca8",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch countdown after the sequencer accepts a request.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_countdown_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7c72",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch request flag before the sequencer accepts it.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_request_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7ce2",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native direct-switch target pattern operand followed by its kit.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.direct_target_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401f07ac",
+            "len": 512
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock note LEN table used in both audio and MIDI dispatch.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.length_table",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 512,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d821e",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after timer ISR builds a MIDI pattern event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd18",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Due MIDI note after the native mute and control paths.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012cd1e",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume unclaimed native MIDI note dispatch.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 14
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012d046",
+            "len": 2
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI record cleanup used when this record emits no native note.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_due_skip",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 2,
+          "offset": 2
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c822",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI worker operand for the mute mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_mute_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 6
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4012c828",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI worker operand for the solo mask.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_solo_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 12
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7234",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI builder success before its register restore.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_stage",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d723a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "MIDI builder native epilogue.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_stage_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d7400",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return after building a MIDI event in the per-track first-step cache.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.midi_start_builder_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 16
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d863a",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native queued pattern operand and base for its scheduled and queued kit companions.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.queued_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401998ca",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Operand of the UI state singleton used by native recording.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.record_ui_lit",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 10
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d659e",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Local START copied the cached stock record into an allocated event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.start_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 22
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d65a4",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Local START continues preparing the allocated event's deadline.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.start_copy_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 28
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6122",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Synchronized START copied the cached stock record into an allocated event.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.sync_start_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 26
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400d6128",
+            "len": 4
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Synchronized START continues preparing the allocated event's deadline.",
+      "file": "devices/fw/track-sequence.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_sequence.site.sync_start_copy_resume",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 4,
+          "offset": 32
+        }
+      },
+      "subsystem": "track_sequence",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401ac546",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clip_get",
+        "rust": "dkfw::track_steps::clip_get"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Read the typed trig clipboard and acquire its reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clip_get",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x401102c2",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clip_set",
+        "rust": "dkfw::track_steps::clip_set"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replace one clipboard or undo slot with a retained native object.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clip_set",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4019e794",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_clipboard",
+        "rust": "dkfw::track_steps::clipboard"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return the native clipboard and undo slots.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.clipboard",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 8
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40054a6c",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_length",
+        "rust": "dkfw::track_steps::length"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Return a track's native sequence length in steps.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.length",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40198cc0",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_ref_copy",
+        "rust": "dkfw::track_steps::ref_copy"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Acquire another native clipboard reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.ref_copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40197d26",
+            "len": 6
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_track_steps_ref_drop",
+        "rust": "dkfw::track_steps::ref_drop"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Release a native clipboard reference.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.track_steps.fn.ref_drop",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400594c8"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.clear",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.clear",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005889a"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.copy",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.copy",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005a1e0"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.paste",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.paste",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40059988"
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Pair the native operation with the attached step settings.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.track_steps.hook.toggle",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.track_steps.site.toggle",
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x400594c8",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Clear native trig data for the selected steps.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.clear",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005889a",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Copy native trigs from the selected steps to the clipboard.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.copy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005a1e0",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Paste native clipboard trigs onto a destination step.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.paste",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x40059988",
+            "len": 8
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Set a native note trig's active state.",
+      "file": "devices/fw/track-steps.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.track_steps.site.toggle",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "track_steps",
+      "users": [
+        "core/track-keyboard"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x402875b0",
@@ -18418,6 +24823,159 @@
       "subsystem": "usb",
       "users": [
         "core/usb-bulk"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the bzero entry; the hook replays both displaced instructions before resuming.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.bzero",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.bzero",
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the memcpy entry; the hook replays both displaced instructions before resuming and returns the destination in d0.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.memcpy",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.memcpy",
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replaces the memset entry; the hook replays both displaced instructions before resuming.",
+      "file": "devices/fw/util.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "cf.util.hook.memset",
+      "regs": {
+        "clobbers": [
+          "d0-d1",
+          "a0-a1",
+          "ccr"
+        ],
+        "in": []
+      },
+      "site": "cf.util.site.memset",
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock bzero entry, `void f(void *p, u32 n)`: `movea.l 4(sp),a0; move.l 8(sp),d0`. The Sound initializer clears slice tables with it.",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.bzero",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock memcpy entry, `void *f(void *d, const void *s, u32 n)`: `movea.l 4(sp),a1; movea.l 8(sp),a0`. Whole Sound, kit and clipboard copies call it.",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.memcpy",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
+      ],
+      "was": []
+    },
+    {
+      "at": {},
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 stock memset entry, `void *f(void *d, int c, u32 n)`: `movea.l 8(sp),a0; mvz.b 11(sp),d0` (a0 is reloaded from 4(sp) next).",
+      "file": "devices/fw/util.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.util.site.memset",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 8,
+          "offset": 0
+        }
+      },
+      "subsystem": "util",
+      "users": [
+        "core/copy-watch"
       ],
       "was": []
     },
@@ -20969,6 +27527,38 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838314c",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Native send entry after track rendering. R8 is a table of two dry input channel pointers.",
+      "file": "devices/fw/relay.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "dsp.fx.fn.relay_input",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "fx",
+      "users": [
+        "core/relay-input"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x28383e3c",
@@ -21059,6 +27649,38 @@
       "subsystem": "fx",
       "users": [
         "core/fx"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838314c",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Snapshot this block's external stereo input before the native sends run.",
+      "file": "devices/fw/relay.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.fx.hook.relay_input",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "r8"
+        ]
+      },
+      "site": "dsp.fx.fn.relay_input",
+      "subsystem": "fx",
+      "users": [
+        "core/relay-input"
       ],
       "was": []
     },
@@ -21918,6 +28540,130 @@
         "dsp.master.float_buf",
         "dsp.master.value.float_buf"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2558c0",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's gain for the first sample of the block, the word of `DM(0x2558c0) = R0` in the master function. The loop effect reads it after the master function to add a send effect's output at the master's gain.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.start",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 695
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2558c8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 only: the master volume ramp's step a sample (new gain - start) / 32, the word of `DM(0x2558c8) = R12` in the master function.",
+      "file": "devices/fw/dsp/master.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.master.value.volume_ramp.step",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_mem_addr",
+          "offset": 709
+        }
+      },
+      "subsystem": "master",
+      "users": [
+        "core/dyndsp"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Observe pp.dsp.block_entry; shim preserves live state and resumes the stock path.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "before",
+      "name": "dsp.pattern.hook.block_entry",
+      "regs": {
+        "clobbers": [],
+        "in": [
+          "i3"
+        ]
+      },
+      "site": "dsp.pattern.site.block_entry",
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838ea02",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Hash-pinned DT2 1.17 boundary observation: pp.dsp.block_entry.",
+      "file": "devices/fw/dsp/pattern.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.pattern.site.block_entry",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 52
+        }
+      },
+      "subsystem": "pattern",
+      "users": [
+        "core/pattern-position"
+      ],
+      "was": []
     },
     {
       "at": {
@@ -22936,6 +29682,76 @@
       "subsystem": "voice",
       "users": [
         "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976ae",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Interpose owned carrier flags in stack arguments +1/+2; preserve live state and execute the displaced stack reservation.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.envelope_entry",
+      "regs": {
+        "clobbers": [
+          "i7"
+        ],
+        "in": [
+          "r4",
+          "i6",
+          "i7"
+        ]
+      },
+      "site": "dsp.voice.site.envelope_entry",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c914",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Capture the derived envelope-bank pointer; replacement must execute the displaced MODIFY exactly.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.envelope_workspace",
+      "regs": {
+        "clobbers": [
+          "i1"
+        ],
+        "in": [
+          "i1"
+        ]
+      },
+      "site": "dsp.voice.site.envelope_workspace",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -24169,6 +30985,133 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d45c",
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Replace only owned scalar velocity R1 using pre-render admission. Preserve squared control R2, status and stock cache; execute displaced R7=1 (also S7 in SIMD mode).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "hook",
+      "mark": "D",
+      "mode": "replace",
+      "name": "dsp.voice.hook.velocity_operand",
+      "regs": {
+        "clobbers": [
+          "r1",
+          "r7",
+          "s7"
+        ],
+        "in": [
+          "r1",
+          "i1"
+        ]
+      },
+      "site": "dsp.voice.site.velocity_operand",
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26ad30",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP attack increments: the 0x26ad30 literal at 0x1cbba8. Indexed by the configured record's attack word.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_attack_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 81
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26af30",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP decay/release multipliers: the 0x26af30 literal at 0x1cbca4. Index127 is infinite.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_decay_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 96
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x26b130",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 native AMP hold sample counts: the 0x26b130 literal at 0x1cbc5f. Index127 has separate infinite-hold behavior.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.amp_hold_table",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 27
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/instrument-play"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x28393810",
@@ -24306,6 +31249,134 @@
       "subsystem": "voice",
       "users": [
         "core/overdrive"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976ae",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Stock envelope entry, MODIFY(I7, -16) (NW), at DT2 1.17 PC 0x1cbb57. See finding 135.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_entry",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 0
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x283976b4",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume after the envelope's stack reservation at DT2 1.17 PC 0x1cbb5a.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_entry.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 3
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c914",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Dispatcher MODIFY(I1, 0xd604), deriving the envelope bank from the live workspace. See finding 135.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_workspace",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 96
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838c91a",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume after the envelope workspace derivation at DT2 1.17 PC 0x1c648d.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.envelope_workspace.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 99
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
       ],
       "was": []
     },
@@ -25381,6 +32452,70 @@
     },
     {
       "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d45c",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 PC 0x1c6a2e, after latched velocity is loaded into R1 and before gain multiplication. Displaced instruction sets R7=1. See finding 135.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.velocity_operand",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 1540
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x2838d462",
+            "len": 6,
+            "pm": true
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "Resume at DT2 1.17 PC 0x1c6a31, multiplying squared control R2 by velocity R1.",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "dsp.voice.site.velocity_operand.next",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_func",
+          "len": 6,
+          "offset": 1543
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/midi-events"
+      ],
+      "was": []
+    },
+    {
+      "at": {
         "dn2-1.11": [
           {
             "addr": "0x241298",
@@ -25675,7 +32810,7 @@
       "name": "link"
     },
     {
-      "count": 65,
+      "count": 83,
       "cpu": "cf",
       "file": "devices/fw/machine.toml",
       "meaning": "the machine framework: dispatch, names, per-type tables, the run-time registry",
@@ -25696,16 +32831,16 @@
       "name": "menu"
     },
     {
-      "count": 5,
+      "count": 7,
       "cpu": "cf",
       "file": "devices/fw/midi.toml",
       "meaning": "MIDI send and receive",
       "name": "midi"
     },
     {
-      "count": 34,
+      "count": 117,
       "cpu": "cf",
-      "file": "devices/fw/page.toml",
+      "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",
       "name": "page"
     },
@@ -25715,6 +32850,13 @@
       "file": "devices/fw/param.toml",
       "meaning": "parameter tables, references and bounds",
       "name": "param"
+    },
+    {
+      "count": 10,
+      "cpu": "cf",
+      "file": "devices/fw/pattern.toml",
+      "meaning": "master-pattern scheduling and timed step dispatch",
+      "name": "pattern"
     },
     {
       "count": 5,
@@ -25731,7 +32873,7 @@
       "name": "project"
     },
     {
-      "count": 22,
+      "count": 24,
       "cpu": "cf",
       "file": "devices/fw/rtos.toml",
       "meaning": "tasks, queues, mutexes, idle, interrupts, the reset and boot path",
@@ -25773,11 +32915,39 @@
       "name": "text"
     },
     {
+      "count": 31,
+      "cpu": "cf",
+      "file": "devices/fw/track-keys.toml",
+      "meaning": "track keyboard note ownership and native dispatch",
+      "name": "track_keys"
+    },
+    {
+      "count": 45,
+      "cpu": "cf",
+      "file": "devices/fw/track-sequence.toml",
+      "meaning": "resolved track sequencer events and timed dispatch",
+      "name": "track_sequence"
+    },
+    {
+      "count": 14,
+      "cpu": "cf",
+      "file": "devices/fw/track-steps.toml",
+      "meaning": "native trig clipboard and individual step editing",
+      "name": "track_steps"
+    },
+    {
       "count": 13,
       "cpu": "cf",
       "file": "devices/fw/usb.toml",
       "meaning": "the USB device engine: port table, connect and disconnect callbacks, endpoint queues, mode switch",
       "name": "usb"
+    },
+    {
+      "count": 6,
+      "cpu": "cf",
+      "file": "devices/fw/util.toml",
+      "meaning": "anything that fits nowhere else",
+      "name": "util"
     },
     {
       "count": 14,
@@ -25815,7 +32985,7 @@
       "name": "frame"
     },
     {
-      "count": 10,
+      "count": 12,
       "cpu": "sharc",
       "file": "devices/fw/dsp/fx.toml",
       "meaning": "the effect chain: sends, returns, buses",
@@ -25836,14 +33006,21 @@
       "name": "machine"
     },
     {
-      "count": 4,
+      "count": 6,
       "cpu": "sharc",
       "file": "devices/fw/dsp/master.toml",
       "meaning": "the master stage",
       "name": "master"
     },
     {
-      "count": 87,
+      "count": 2,
+      "cpu": "sharc",
+      "file": "devices/fw/dsp/pattern.toml",
+      "meaning": "master-pattern position transport before rendering",
+      "name": "pattern"
+    },
+    {
+      "count": 99,
       "cpu": "sharc",
       "file": "devices/fw/dsp/voice.toml",
       "meaning": "voice rendering",
