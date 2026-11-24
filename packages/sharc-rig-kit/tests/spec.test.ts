@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { f2w } from '../src/context.ts';
+import { conformanceKind } from '../src/conformance-manifest.mjs';
 import {
   fxSpec,
   fxSpecs,
@@ -183,6 +184,17 @@ describe('machineSpec', () => {
   it('is null for a persistent V2 instrument, which has no voice and needs no gallery', () => {
     expect(machineSpec('zzt/inst', 'dt2')).toBeNull();
     expect(machineSpecs().map((s) => s.module)).not.toContain('zzt/inst');
+  });
+
+  it('gives no conformance kind to a module the rig does not run, so Nx makes no fixed conformance target that finds none', () => {
+    const machine = { module: { id: 'zzt/m', type: 'machine' }, machine: [{ id: 'a' }] };
+    expect(conformanceKind(machine)).toBe('machine');
+    expect(conformanceKind({ ...machine, machine: [{ id: 'a' }, { id: 'b', instrument: true }] })).toBeNull();
+    expect(conformanceKind({ ...machine, conformance: { rig_skip: 'reads data of a core module' } })).toBeNull();
+    const fx = { module: { id: 'zzt/f', type: 'fx' }, fx: [{ id: 'x' }] };
+    expect(conformanceKind(fx)).toBe('fx');
+    expect(conformanceKind({ ...fx, conformance: { rig_skip: 'reads data of a core module' } })).toBeNull();
+    expect(() => conformanceKind({ ...fx, conformance: { rig_skip: ' ' } })).toThrow('rig_skip names why');
   });
 
   it('lists the machines of the module roots, the negative fixtures apart', () => {

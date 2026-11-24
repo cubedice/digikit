@@ -19,10 +19,22 @@ export const dspSourcePaths = (manifest, device) =>
       (object.sources ?? []).filter((source) => source.endsWith('.s') && source.split('/').includes('dsp')),
     );
 
+/**
+ * A module the rig does not run: `[conformance] rig_skip = "<why>"` (its DSP reads data the rig does not place; its own tests run it) or a
+ * persistent V2 instrument (`instrument = true` on a machine: no voice). spec.ts gives no spec for either, so no fixed conformance
+ * target is made for them (it would find no module).
+ */
+function rigSkips(manifest) {
+  const why = manifest.conformance?.rig_skip;
+  if (why !== undefined && (typeof why !== 'string' || !why.trim()))
+    throw new Error(`${manifest.module.id}: [conformance] rig_skip names why the rig does not run the module`);
+  return why !== undefined || !!manifest.machine?.some((machine) => machine.instrument === true);
+}
+
 /** The two rig suites already exclude these runtime fault and commit fixtures. */
 export function conformanceKind(manifest) {
   const id = manifest.module.id;
-  if (id.startsWith('core/')) return null;
+  if (id.startsWith('core/') || rigSkips(manifest)) return null;
   if (
     id !== 'test/commit-demo' &&
     ((manifest.module.type === 'machine' && manifest.machine?.length) ||
