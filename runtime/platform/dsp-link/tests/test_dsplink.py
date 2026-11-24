@@ -1,6 +1,7 @@
-"""core/dsp-link (docs/findings/31-dsp-link.md): static checks of the module against the two stock images, and the
-ColdFire half (dl_send, dl_poll, dl_tick) on the native ColdFire core. The DSP half and the whole channel run in the
-coupled emulator: `uv run python -m tools.patchkit.pk_dsplink proof` (tools/patchkit/pk_dsplink.py).
+"""core/dsp-link (docs/findings/31-dsp-link.md): static checks of the module against the two stock images, the
+ColdFire half (dl_send, dl_poll, dl_tick) on the native ColdFire core, and the window dispatch of the DSP half (windows 3
+and 4) on the SHARC core. The whole channel runs in the coupled emulator: `uv run python -m tools.patchkit.pk_dsplink
+proof` (tools/patchkit/pk_dsplink.py).
 
 Skips what needs a stock firmware or the m68k toolchain when they are absent."""
 
@@ -737,19 +738,9 @@ def test_window_transfers_carry_the_window_and_refuse_bad_arguments(machine, bui
     w = tail_words(r[1].reads[1], 0x402, 174)
     assert w[0] == MAGIC | (0 << 16) | (2 << 30)
     assert (w[1] & 0x1FFFF, (w[1] >> 17) & 0xFF, (w[1] >> 25) & 1) == (5, 2, 1)
-    # V2 data window: the DSP still decides whether a provider exists.
-    r = run(
-        machine, built, {src: data}, [call(built, "dl_send_win", [3, 7, src, 8]), tick]
-    )
-    assert r[0].d0 == 0
-    w = tail_words(r[1].reads[1], 0x402, 174)
-    assert w[0] == MAGIC | (3 << 30)
-    assert w[1] & 0x1FFFF == 7
-    assert w[2:4] == [0x11223344, 0x55667788]
-    assert w[4] == check_word(w[:4])
     bad = [
         [0, 0, src, 8],  # window 0 is dl_send's
-        [4, 0, src, 8],  # no window 4 (3 is the stats control)
+        [5, 0, src, 8],  # no window 5 (4, the V2 registration data, is the last)
         [1, 0, src, 0],
         [1, 0, src, 6],
         [1, 0x20000, src, 4],
@@ -757,6 +748,129 @@ def test_window_transfers_carry_the_window_and_refuse_bad_arguments(machine, bui
     ]
     res = run(machine, built, {}, [call(built, "dl_send_win", a) for a in bad])
     assert [x.d0 & 0xFFFFFFFF for x in res] == [0xFFFFFFFE] * len(bad)
+
+
+def wire_window(w0: int) -> int:
+    """The window of a chunk header: bits 30-31 its low two bits, bit 29 its third (src/dsp/dsp-link.inc)."""
+    return (w0 >> 30) | ((w0 >> 29) & 1) << 2
+
+
+def test_both_sides_agree_on_the_idx_and_window_bits():
+    c = (MOD / "src/cf/dsp-link.c").read_text()
+    s = (MOD / "src/dsp/dsp-link.inc").read_text()
+    # the sender: 13 idx bits (at most 8192 chunks), windows up to 4, bit 29 the window's third bit
+    assert define(c, "DL_MAX_CHUNKS") == 1 << 13 and define(c, "DL_WIN_LAST") == 4
+    assert "((l->win & 3u) << 30) | ((l->win >> 2) << 29)" in c
+    # the receiver: the same fields
+    assert "R13 = FEXT R10 BY 16:13;" in s
+    assert re.search(r"R0 = FEXT R10 BY 30:2;[^\n]*\n\s*R3 = FEXT R10 BY 29:1;", s)
+
+
+@needs_gcc
+@pytest.mark.parametrize(
+    "window,bits",
+    [
+        (3, 3 << 30),  # the stats control: upstream's header, bit 29 clear
+        (4, 1 << 29),  # the V2 registration data: bit 29 alone
+    ],
+)
+@pytest.mark.parametrize("entry", ["dl_send_win", "dl_send_tagged"])
+def test_stats_and_v2_windows_have_headers_of_their_own(
+    machine, built, window, bits, entry
+):
+    """The ColdFire does not know whether the image has a V2 provider; the DSP decides (status 3)."""
+    ln, src, ticket = built.symbols["dl_link"], DATA + 0x4000, DATA + 0x5000
+    tick = call(built, "dl_tick", [0x802, 0, 0xABC, 0], [(ln, 72), (TXQ, 0x55E * 4)])
+    data = struct.pack("<2I", 0x11223344, 0x55667788)
+    args = [window, 1, src, 8] + ([ticket] if entry == "dl_send_tagged" else [])
+    r = run(machine, built, {src: data}, [call(built, entry, args), tick])
+    assert r[0].d0 == 0
+    assert link_of(built, r[1])["win"] == window
+    w = tail_words(r[1].reads[1], 0x402, 174)
+    assert w[0] == MAGIC | bits
+    assert wire_window(w[0]) == window
+    assert (w[1] & 0x1FFFF, (w[1] >> 17) & 0xFF, (w[1] >> 25) & 1) == (1, 2, 1)
+    assert w[2:4] == [0x11223344, 0x55667788]
+    assert w[4] == check_word(w[:4])
+
+
+@needs_gcc
+def test_no_entry_takes_a_window_past_the_v2_window(machine, built):
+    src, lease, ticket = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
+    calls = [call(built, "dl_claim", [lease])]
+    for win in (5, 6, 7, 8, 0xFFFFFFFF):
+        calls += [
+            call(built, "dl_send_owned", [1, win, 0, src, 4, ticket], [(ticket, 4)]),
+        ]
+    calls.append(call(built, "dl_release", [1]))
+    for win in (5, 7, 8):
+        calls += [
+            call(built, "dl_send_win", [win, 0, src, 4]),
+            call(built, "dl_send_tagged", [win, 0, src, 4, ticket], [(ticket, 4)]),
+        ]
+    calls.append(
+        call(built, "dl_send_tagged", [4, 0, src, 4, ticket], [(ticket, 4)])
+    )  # the last window, so the refusals above consumed no identity
+    r = run(machine, built, {src: b"abcd", ticket: b"\xcc" * 4}, calls)
+    assert r[0].d0 == 0 and r[6].d0 == 0
+    refused = r[1:6] + r[7:-1]
+    assert [x.d0 for x in refused] == [0xFFFFFFFE] * len(refused)
+    assert all(x.reads[0] == b"\xcc" * 4 for x in refused if x.reads)
+    assert r[-1].d0 == 0 and r[-1].reads[0] == struct.pack(">I", 1)
+
+
+@needs_gcc
+@pytest.mark.parametrize("window", [0, 3, 4])
+def test_the_last_chunk_number_leaves_bit_29_to_the_window(machine, built, window):
+    """idx is 13 bits: chunk 8191, the last one a transfer may have, does not reach bit 29."""
+    ln, src = built.symbols["dl_link"], DATA + 0x4000
+    # 8192 chunks of 12 words (DN2 geometry), of which the DSP has taken 8191: the sender writes the last one
+    fields = dict.fromkeys(LINK_FIELDS, 0) | {
+        "state": 1,
+        "buf": src,
+        "nwords": 12 * 8192,
+        "xid": 1,
+        "cap": 12,
+        "nchunks": 8192,
+        "acked": 8191,
+        "next": 8191,
+        "win": window,
+    }
+    tick = call(built, "dl_tick", [0xA80, 0, 0xABC, 0], [(ln, 72), (TXQ, 0x55E * 4)])
+    r = run(machine, built, {ln: struct.pack(">18I", *fields.values())}, [tick])
+    w = tail_words(r[0].reads[1], 0x540, 15)
+    assert w[0] & 0xFFFF == MAGIC
+    assert (w[0] >> 16) & 0x1FFF == 8191
+    assert wire_window(w[0]) == window
+    off, n, last = w[1] & 0x1FFFF, (w[1] >> 17) & 0xFF, (w[1] >> 25) & 1
+    assert (off, n, last) == (8191 * 12, 12, 1)
+    assert w[2 + n] == check_word(w[: 2 + n])
+
+
+@needs_gcc
+def test_a_transfer_the_idx_bits_cannot_number_is_refused_before_a_chunk(
+    machine, built
+):
+    ln, src = built.symbols["dl_link"], DATA + 0x4000
+    queue = bytes([0xCC]) * (0x55E * 4)
+    tick = call(built, "dl_tick", [0xA80, 0, 0xABC, 0], [(ln, 72), (TXQ, len(queue))])
+    most = 4 * 12 * 8192  # 8192 chunks of 12 words (DN2 geometry)
+    r = run(
+        machine, built, {TXQ: queue}, [call(built, "dl_send", [AREA, src, most]), tick]
+    )
+    lk = link_of(built, r[1])
+    assert (lk["state"], lk["nchunks"], lk["cap"], lk["xid"]) == (1, 8192, 12, 1)
+    r = run(
+        machine,
+        built,
+        {TXQ: queue},
+        [call(built, "dl_send", [AREA, src, most + 4]), tick, tick],
+    )
+    assert r[0].d0 == 0
+    for x in r[1:]:
+        lk = link_of(built, x)
+        assert (lk["state"], lk["err"], lk["cap"], lk["xid"]) == (3, 101, 0, 0)
+        assert x.reads[1] == queue  # no chunk, and no END chunk after it
 
 
 DG_MAGIC, DG_WORDS = 0xD1A6, 32
@@ -955,7 +1069,7 @@ def test_tagged_rejections_preserve_identity_and_caller_output(machine, built):
     src, ticket, output = DATA + 0x4000, DATA + 0x5000, DATA + 0x5100
     calls = [
         call(built, "dl_send_tagged", [3, 0, src, 4, 0]),
-        call(built, "dl_send_tagged", [4, 0, src, 4, ticket], [(ticket, 4)]),
+        call(built, "dl_send_tagged", [5, 0, src, 4, ticket], [(ticket, 4)]),
         call(built, "dl_poll_tagged", [0, output], [(output, 28)]),
         call(built, "dl_send_tagged", [0, AREA, src, 4, ticket], [(ticket, 4)]),
         call(built, "dl_send_tagged", [3, 0, src, 4, ticket], [(ticket, 4)]),
@@ -1035,7 +1149,7 @@ def test_lease_survives_terminal_drain_and_registry_reply_gap(machine, built, st
 
 
 @needs_gcc
-@pytest.mark.parametrize("window", [0, 1, 2, 3])
+@pytest.mark.parametrize("window", [0, 1, 2, 3, 4])
 def test_owned_send_requires_current_lease_and_preserves_wire_window(
     machine, built, window
 ):
@@ -1075,7 +1189,7 @@ def test_owned_send_requires_current_lease_and_preserves_wire_window(
         ">I", 1
     )  # claims do not consume transfer IDs
     words = tail_words(results[8].reads[0], 0x402, 174)
-    assert words[0] >> 30 == window
+    assert wire_window(words[0]) == window
     # window 0: word 16 is the area start (the slot block is words 0-15)
     assert words[1] & 0x1FFFF == (16 if window == 0 else dst)
     assert words[2] == int.from_bytes(b"abcd", "little")
@@ -1304,3 +1418,157 @@ def test_stats_pages_in_the_acknowledgement_slot_go_to_the_runtime_feed(machine,
         [call(built, "dl_stats_hook", [stub]), tick],
     )
     assert r[1].reads[0] == bytes(12)
+
+
+# ---- the DSP half on the SHARC core: the stats window (3) and the V2 registration window (4) ------------------------
+
+RX, REPLY, FRAME, ROWS, BACK = 0x20010000, 0x20020000, 0x20030000, 0x20040000, 0xB9F000
+# the provider's word count constant (`_dl_iwords` holds its address)
+COUNT_AT = ROWS + 0x100
+SENTINEL = 0xDEADBEEF
+
+
+@pytest.fixture(scope="module", params=sorted(pk_device.dsp_devices()))
+def dsp_tail(request):
+    """The block tail of a device (src/dsp/<dev>.s) assembled, its data placed from 0x20050000, and the externs its object declares."""
+    from tools.patchkit import pk_sharc
+
+    dev = request.param
+    source = pk_sharc.expand_includes(
+        (MOD / "src/dsp" / f"{dev}.s").read_text(),
+        [MOD / "src/dsp", *pk_sharc.sharc_include_dirs(MOD)],
+    )
+    obj = pk_sharc.assemble(source)
+    sections, address, initial = {}, 0x20050000, {}
+    for name, (blob, align, _bss) in obj.data.items():
+        address = (address + align - 1) // align * align
+        sections[name] = address
+        for i in range(len(blob) // 4):
+            value = int.from_bytes(blob[4 * i : 4 * i + 4], "little")
+            if value or len(blob) < 4096:
+                initial[address // 4 + i] = value
+        address += len(blob)
+    syms = {
+        name: sections[sec] + offset
+        for name, (sec, offset, _) in obj.data_symbols.items()
+    }
+    manifest = tomllib.loads((MOD / "module.toml").read_text())
+    (decl,) = [o for o in manifest["object"] if o.get("devices") == [dev]]
+    externs = dict.fromkeys(decl["optional"], 0) | {"_dl_back": BACK}
+    return dev, obj, syms, initial, externs
+
+
+def dsp_chunk(dsp_tail, win, off, payload, rows=ROWS, count=16):
+    """One block of the tail with a single chunk (transfer 1, chunk 0, not the last) into window `win` in the ring. The image has a V2 provider:
+    its rows at `rows` (0: none), its word count `count` (None: `_dl_iwords` is 0). Returns the reads and the data symbols."""
+    from tools.patchkit import pk_sharc
+
+    dev, obj, syms, initial, externs = dsp_tail
+    linked = pk_sharc.link(
+        obj,
+        0xB90000,
+        externs
+        | {"_dl_irows": rows, "_dl_iwords": 0 if count is None else COUNT_AT}
+        | syms,
+    )
+    w0 = MAGIC | (win & 3) << 30 | (win >> 2) << 29
+    words = [w0, 1 << 27 | len(payload) << 17 | off, *payload]
+    words.append(check_word(words))
+    tail = RX + define(gen_inc(dev), "DL_TAIL_OFF")
+    dm = dict(initial)
+    dm.update({tail // 4 + i: w for i, w in enumerate(words)})
+    dm[FRAME // 4 - 3], dm[FRAME // 4 - 2] = RX, REPLY
+    dm.update({ROWS // 4 - 1 + i: SENTINEL for i in range(18)})
+    if count is not None:
+        dm[COUNT_AT // 4] = count
+    word = {
+        n: syms[n] // 4 for n in ("_dl_stctl", "_dl_stptr", "_dl_status", "_dl_cum")
+    }
+    result = pk_sharc.run_call(
+        linked,
+        "_dl_hook",
+        regs={"I4": REPLY, "I6": FRAME},
+        dm_words=dm,
+        reads={
+            # the word before the rows, the 16 rows, the word after
+            "rows": (ROWS // 4 - 1, 18),
+            "stctl": (word["_dl_stctl"], 3),
+            "stptr": (word["_dl_stptr"], 1),
+            "status": (word["_dl_status"], 1),
+            "cum": (word["_dl_cum"], 1),
+        },
+        return_sw=BACK,
+        max_steps=5000,
+    )
+    assert result["halt"]["reason"] == "breakpoint", result
+    return result, syms
+
+
+def area_words(dsp_tail) -> int:
+    return define(gen_inc(dsp_tail[0]), "DL_AREA_WORDS")
+
+
+@pytest.mark.parametrize(
+    "rows,count,off,n,accepted",
+    [
+        (ROWS, 8, 6, 2, True),  # the last two words fit exactly
+        (ROWS, 8, 7, 2, False),  # one word past its end
+        (ROWS, 8, 8, 1, False),  # at its end
+        (ROWS, "area", 14, 2, True),  # the largest provider: as many words as the area
+        (ROWS, "area+1", 0, 1, False),  # larger than the area
+        (0, 8, 0, 1, False),  # no rows: no provider
+        (ROWS, None, 0, 1, False),  # no word count: no provider
+        (ROWS, 0, 0, 1, False),  # no words
+        (ROWS, 0xFFFFFFFF, 0, 1, False),  # a negative count
+        (ROWS + 1, 8, 0, 1, False),  # rows not 4-aligned
+    ],
+)
+def test_v2_window_writes_only_inside_its_provider(
+    dsp_tail, rows, count, off, n, accepted
+):
+    if isinstance(count, str):
+        count = area_words(dsp_tail) + (count == "area+1")
+    payload = [0x11223344 + i for i in range(n)]
+    r, _ = dsp_chunk(dsp_tail, 4, off, payload, rows=rows, count=count)
+    expected = [SENTINEL] * 18
+    if accepted:
+        expected[1 + off : 1 + off + n] = payload
+    assert r["rows"] == expected
+    assert r["status"] == [0 if accepted else 3]
+    assert r["cum"] == [1 if accepted else 0]
+    # the stats window is not touched by a V2 write
+    assert r["stctl"] == [0, 0, 0] and r["stptr"] == [0]
+
+
+@pytest.mark.parametrize(
+    "off,payload,accepted",
+    [
+        (0, [1, 7, 0], True),  # stats on, clear generation 7, no period
+        (2, [1500], True),  # its last word
+        (1, [1, 7, 0], False),  # one word past its three
+        (3, [1], False),  # at its end
+    ],
+)
+def test_stats_window_keeps_its_three_control_words_beside_a_v2_provider(
+    dsp_tail, off, payload, accepted
+):
+    """Window 3 with a valid V2 provider in the image: upstream's stats control (`_dl_stctl`, DL_STATS_CTL_WORDS), the rows untouched."""
+    r, syms = dsp_chunk(dsp_tail, 3, off, payload)
+    assert r["rows"] == [SENTINEL] * 18
+    assert r["status"] == [0 if accepted else 3]
+    assert r["cum"] == [1 if accepted else 0]
+    expected = [0, 0, 0]
+    if accepted:
+        expected[off : off + len(payload)] = payload
+    assert r["stctl"] == expected
+    # the window pointer the services test: the stats window while word 0 says on
+    assert r["stptr"] == [syms["_dk_stats"] if expected[0] & 1 else 0]
+
+
+@pytest.mark.parametrize("win", [5, 6, 7])
+def test_windows_past_the_v2_window_refuse_every_write(dsp_tail, win):
+    """Window 7 has bits 30-31 of window 3: it is neither the stats control nor the V2 rows."""
+    r, _ = dsp_chunk(dsp_tail, win, 0, [1, 7, 0])
+    assert r["status"] == [3] and r["cum"] == [0]
+    assert r["rows"] == [SENTINEL] * 18
+    assert r["stctl"] == [0, 0, 0] and r["stptr"] == [0]

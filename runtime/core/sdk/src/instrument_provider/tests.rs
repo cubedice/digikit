@@ -184,7 +184,7 @@ fn instrument_provider_composes_tagged_write_drainage_with_registry_reply() {
             bytes: u32,
         ) -> (i32, u32) {
             assert!(!self.pending);
-            assert_eq!(window, 3);
+            assert_eq!(window, 4);
             let data = core::slice::from_raw_parts(source, bytes as usize);
             match self.id {
                 0 => {

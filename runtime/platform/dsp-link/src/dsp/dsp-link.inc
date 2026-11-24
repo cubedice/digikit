@@ -21,13 +21,17 @@
 // The displaced instruction runs in the patchkit tail after the final jump.
 //
 // Wire format of a chunk (little-endian words of the ring; the ColdFire writes the halves, low half first):
-//   w0  bits 0-15 DL_MAGIC, bits 16-29 idx (chunk number, 0 for the first of a transfer), bits 30-31 win (the window)
+//   w0  bits 0-15 DL_MAGIC, bits 16-28 idx (chunk number, 0 for the first of a transfer; a transfer has at most 8192 chunks), bits 29-31 win
+//       (the window: bits 30-31 its low two bits, bit 29 its third; windows 0 to 3 leave bit 29 clear, window 4 is bit 29 alone)
 //   w1  bits 0-16 off (destination, in words from the start of the window), bits 17-24 n (payload words),
 //       bit 25 LAST, bit 26 END (stop acknowledging), bits 27-31 xid (transfer id, 1..31)
 // Windows: 0 is the slot block `_dl_slots` (words 0 to 15, DK_SLOTS of sdk/dsp/contract/dk_stub.inc) followed by _dl_area (DL_AREA_WORDS - DK_SLOTS words, from word 16; a chunk that starts in the slots must end there; the window is DL_AREA_WORDS long); 1 is the voices registry (_dl_vrows, 24 * _dl_vcount words: a row is 24 words), which the digikit
 // runtime fills one word per transfer so that the render scan never sees a half-written row; 2 is the effect rows of core/fx (_dl_frows, 24 *
 // _dl_fcount words, all rows of the registry `fx`, free rows included), filled the same way (the pc word last). Windows 1 and 2 refuse every write
 // when their registry is not in the image (the externs are 0). Window 3 is the stats control (P8d, below): 3 words, `_dl_stctl`.
+// Window 4 is the optional V2 registration data (core/instrument-registry): `_dl_irows` is its 4-aligned byte address, `_dl_iwords` the address of
+// its word count (1 to DL_AREA_WORDS). An absent or invalid provider refuses every write. A transfer ACK confirms the bytes only, not V2 initialization.
+// Windows 5 to 7 refuse every write.
 //   w2 ... w(n+1)  the payload
 //   w(n+2)  check = s1 XOR s2 over w0 ... w(n+1), where s1 += w and s2 += s1 for each word w (both start at 0)
 // A chunk is taken when xid and magic are right, idx equals the number of chunks taken so far (cum) and the check holds.
@@ -144,7 +148,7 @@ _dl_hook:
     R3 = DL_MAGIC;
     COMP(R4, R3);
     IF NE JUMP _dl_ack;
-    R13 = FEXT R10 BY 16:14;              // idx
+    R13 = FEXT R10 BY 16:13;              // idx
     R14 = DM(I3, M6);                     // w1
     R4 = FEXT R14 BY 27:5;                // xid
     R4 = PASS R4;
@@ -185,8 +189,10 @@ _dl_notend:
     DL_POSITION_LIMIT
     COMP(R5, R3);
     IF GT JUMP _dl_range;
-    R0 = FEXT R10 BY 30:2;                // the window
-    R0 = PASS R0;
+    R0 = FEXT R10 BY 30:2;                // the window: bits 30-31 its low two bits,
+    R3 = FEXT R10 BY 29:1;                // bit 29 its third
+    R3 = LSHIFT R3 BY 2;
+    R0 = R0 OR R3;
     IF NE JUMP _dl_win1;
     R3 = DK_SLOTS;                        // window 0, words 0 to 15: the slot block (a chunk must not cross word 16)
     COMP(R6, R3);
@@ -222,9 +228,30 @@ _dl_win2:
 _dl_win3:
     R3 = 3;
     COMP(R0, R3);
-    IF NE JUMP _dl_range;
+    IF NE JUMP _dl_win4;
     R3 = DL_STATS_CTL_WORDS;              // window 3: the stats control words
     R4 = _dl_stctl;
+    JUMP _dl_wdone;
+_dl_win4:
+    R3 = 4;
+    COMP(R0, R3);
+    IF NE JUMP _dl_range;                 // windows 5 to 7: none
+    R3 = _dl_iwords;                      // window 4: the V2 registration data (0 when core/instrument-registry is not in the image)
+    R3 = PASS R3;
+    IF EQ JUMP _dl_range;
+    I2 = R3;
+    R3 = DM(I2, M5);                      // its word count: 1 to DL_AREA_WORDS
+    R3 = PASS R3;
+    IF LE JUMP _dl_range;
+    R0 = DL_AREA_WORDS;
+    COMP(R3, R0);
+    IF GT JUMP _dl_range;
+    R4 = _dl_irows;                       // its byte address: nonzero and 4-aligned
+    R4 = PASS R4;
+    IF EQ JUMP _dl_range;
+    R0 = 3;
+    R0 = R4 AND R0;
+    IF NE JUMP _dl_range;
 _dl_wdone:
     DM(_dl_wbase) = R4;
     R4 = R5 + R6;
@@ -268,7 +295,7 @@ _dl_good:
         R0 = DM(I3, M6);
 _dl_copyl: DM(I2, M6) = R0;
 _dl_copied:
-    R0 = FEXT R10 BY 30:2;                // a write of window 3 sets the stats state
+    R0 = FEXT R10 BY 30:2;                // a write of window 3 sets the stats state (of the windows that get here, only 3 has both bits 30-31 set)
     R3 = 3;
     COMP(R0, R3);
     IF EQ JUMP _dl_stw;

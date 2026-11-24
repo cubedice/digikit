@@ -270,7 +270,7 @@ _ir_caps:
 .PKDATA _dl_irows, 64;
 .PKDATA _instrument_registry_reply, 32;
 
-// Trusted admission only; not part of writable window 3. Zero on cold boot.
+// Trusted admission only; not part of writable window 4. Zero on cold boot.
 .PKDATA _ir_lifecycle_ready, 4;
 .PKDATA _ir_pending, 4;
 .PKBSS _ir_ticket, 20;

@@ -1369,7 +1369,8 @@ def test_v2_registration_window_is_bounded(
         **syms,
     }
     linked = pk_sharc.link(obj, 0xB90000, externs)
-    words = [0xD15C | (3 << 30), (1 << 27) | (2 << 17) | offset, 0x11223344, 0x55667788]
+    # window 4, the V2 registration data: bit 29 of the header alone (window 3 is the stats control)
+    words = [0xD15C | (1 << 29), (1 << 27) | (2 << 17) | offset, 0x11223344, 0x55667788]
     s1 = s2 = 0
     for value in words:
         s1 = (s1 + value) & 0xFFFFFFFF

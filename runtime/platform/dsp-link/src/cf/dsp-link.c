@@ -15,6 +15,7 @@
  * Interface for the runtime (C ABI, no struct results):
  *   int dl_send(u32 dst_l2, const void *buf, u32 len);   0 started; -1 busy; -2 bad request or exhausted identity counter
  *   int dl_send_win(u32 win, u32 dst_word, const void *buf, u32 len);   the same into window `win` (1: the voices registry, 2: the effect rows of core/fx, 3: the stats control words, only the runtime
+ *       sends them, 4: the optional V2 registration data of core/instrument-registry),
  *       the destination in words from the start of the window; the DSP checks it against the window's size (status 3)
  *   int dl_poll(DlStatus *st);                           the state (DL_IDLE, DL_BUSY, DL_DONE, DL_ERROR), and *st filled
  *   int dl_send_tagged(u32 win, u32 dst, const void *buf, u32 len, u32 *ticket); returns the accepted identity
@@ -59,6 +60,12 @@ typedef unsigned char u8;
 #define DL_AREA_BYTES DL_AREA_MAX_BYTES
 /* DL_SLOT_WORDS (generated, sdk.toml [dsp.slots]): window 0 words 0 to DL_SLOT_WORDS - 1 are the slot block, the next word is the first word of the area. */
 #define DL_WINDOW 12u
+/* The last window: 4, the V2 registration data. Its number needs a third bit, bit 29 of the header word, which windows 0 to 3 leave clear
+ * (write_chunk, src/dsp/dsp-link.inc); idx keeps the 13 bits below it. */
+#define DL_WIN_LAST 4u
+/* A transfer has at most 2^13 chunks. The most a device needs: the whole DT2 area (131072 words) in chunks of 17 words, the smallest DT2 chunk (every
+ * frame provider in the image), is 7711; the DN2 area (81920 words) in its 12-word chunks is 6827. */
+#define DL_MAX_CHUNKS 8192u
 #define DL_STALL_FRAMES 900u /* 0.6 s without progress */
 #define DL_END_FRAMES 6u
 #define DL_POSITION_WORDS                                                                          \
@@ -313,8 +320,8 @@ static int send_window(u32 lease, u32 win, u32 dst_word, const void *buf, u32 le
     int ready = can_send(lease);
     if (ready)
         return ready;
-    if (win == 0u || win > 3u || (len & 3u) || len == 0u || dst_word >= DL_AREA_MAX_WORDS ||
-        buf == 0)
+    if (win == 0u || win > DL_WIN_LAST || (len & 3u) || len == 0u ||
+        dst_word >= DL_AREA_MAX_WORDS || buf == 0)
         return -2;
     if (l->serial == 0xffffffffu)
         return -2;
@@ -440,7 +447,8 @@ static void write_chunk(DlLink *l, u32 tx, u32 e0, u32 idx, int end)
     const u8 *p;
     if (n > cap)
         n = cap;
-    w0 = DL_MAGIC | (idx << 16) | (l->win << 30);
+    /* bits 30-31 the window's low two bits, bit 29 its third: windows 0 to 3 are encoded as with a two-bit field */
+    w0 = DL_MAGIC | (idx << 16) | ((l->win & 3u) << 30) | ((l->win >> 2) << 29);
     w1 = end ? (1u << 26)
              : ((l->dst_off + first) | (n << 17) | ((idx + 1u == l->nchunks) ? (1u << 25) : 0u));
     w1 |= l->xid << 27;
@@ -555,6 +563,12 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
         }
         l->cap = words - 3u;
         l->nchunks = (l->nwords + l->cap - 1u) / l->cap;
+        if (l->nchunks > DL_MAX_CHUNKS) {
+            /* the 13 idx bits cannot number the chunks of this frame geometry: refused before a chunk is written */
+            l->cap = 0;
+            finish(l, DL_ERROR, DL_E_GEOMETRY);
+            return;
+        }
         l->xid = (l->xid & 31u) + 1u;
         if (l->xid > 31u)
             l->xid = 1;

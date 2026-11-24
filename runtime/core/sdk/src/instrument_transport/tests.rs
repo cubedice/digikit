@@ -135,7 +135,7 @@ fn instrument_transport_mailbox_encoding_and_acks_do_not_publish() {
     for stage in 1..=3 {
         let write = mailbox.write().unwrap();
         assert_eq!(driver.start_mailbox(&write), Ok(Started::Accepted));
-        assert_eq!(driver.transport.window, 3);
+        assert_eq!(driver.transport.window, 4);
         assert_eq!(driver.transport.destination, write.offset);
         for (bytes, word) in driver
             .transport
@@ -254,7 +254,7 @@ fn instrument_transport_calls_the_tagged_c_abi() {
         bytes: u32,
         id: *mut u32,
     ) -> i32 {
-        if win != 3
+        if win != 4
             || dst != 0
             || bytes != 4
             || core::slice::from_raw_parts(source, 4) != [0x31, 0x47, 0x52, 0x49]
