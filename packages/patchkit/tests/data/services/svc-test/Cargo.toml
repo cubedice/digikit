@@ -1,0 +1,17 @@
+[package]
+name = "dkrt-svc-svc-test"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Test fixture: the neutral crate of the test-only service svc-test, whose service file links C and assembler (packages/patchkit/tests/service_c_sources.rs)"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+dkrt-abi = { path = "../../../../../../modules/core/runtime/abi" }
+dkrt-sdk = { path = "../../../../../../modules/core/runtime/sdk" }
+dkneeds = { path = "../../../../../../packages/dkneeds" }
+
+[dev-dependencies]
+dkrt-test-support = { path = "../../../../../../modules/core/runtime/test-support" }
