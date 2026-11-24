@@ -334,7 +334,35 @@
   {
    "addend": 0,
    "offset": 2,
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_abort",
+   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_close",
+   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_write",
+   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
    "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_commit",
+   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_create",
    "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
    "type": "cf.32"
   },
@@ -1490,34 +1518,6 @@
    "addend": 0,
    "offset": 2,
    "section": ".text._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package11svc_imports5shims13dkc_device_id",
-   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.dkrt_image_file_abort",
-   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.dkrt_image_file_close",
-   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.dkrt_image_file_create",
-   "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.dkrt_image_file_write",
    "symbol": ".sec..bss._RNvNtNtNtCs2yzMVYl0abe_4dkrt7package8resident5table5TABLE",
    "type": "cf.32"
   },
@@ -27873,28 +27873,28 @@
    "addend": 0,
    "offset": 1134,
    "section": ".rodata._RNvNtNtCs2yzMVYl0abe_4dkrt7package7imports7IMPORTS",
-   "symbol": ".sec..text.dkrt_image_file_create",
+   "symbol": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_create",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1172,
    "section": ".rodata._RNvNtNtCs2yzMVYl0abe_4dkrt7package7imports7IMPORTS",
-   "symbol": ".sec..text.dkrt_image_file_write",
+   "symbol": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1210,
    "section": ".rodata._RNvNtNtCs2yzMVYl0abe_4dkrt7package7imports7IMPORTS",
-   "symbol": ".sec..text.dkrt_image_file_close",
+   "symbol": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_close",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1248,
    "section": ".rodata._RNvNtNtCs2yzMVYl0abe_4dkrt7package7imports7IMPORTS",
-   "symbol": ".sec..text.dkrt_image_file_abort",
+   "symbol": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_abort",
    "type": "cf.32"
   },
   {
@@ -36854,10 +36854,38 @@
   },
   {
    "align": 2,
+   "hex": "2079000000002f2f00082068017c4e90588f4e75",
+   "kind": "text",
+   "name": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_abort",
+   "size": 20
+  },
+  {
+   "align": 2,
+   "hex": "2079000000002f2f000c2f2f000c206801784e90508f4e75",
+   "kind": "text",
+   "name": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_close",
+   "size": 24
+  },
+  {
+   "align": 2,
+   "hex": "2079000000002f2f00142f2f00142f2f00142f2f0014206801744e904fef00104e75",
+   "kind": "text",
+   "name": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_write",
+   "size": 34
+  },
+  {
+   "align": 2,
    "hex": "207900000000206801844e904e75",
    "kind": "text",
    "name": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_commit",
    "size": 14
+  },
+  {
+   "align": 2,
+   "hex": "2079000000002f2f00182f2f00182f2f00182f2f00182f2f0018206801704e904fef00144e75",
+   "kind": "text",
+   "name": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_create",
+   "size": 38
   },
   {
    "align": 2,
@@ -37361,34 +37389,6 @@
    "hex": "425042802140000242413141000621400008216f0004000c216f0008001020084e75",
    "kind": "text",
    "name": ".text._RNvMs6_NtNtNtCs6uNbiqmv1Ak_4core4iter8adapters7flattenINtB5_7FlattenINtNtNtBb_5slice4iter4IterINtNtBb_6option6OptionNtNtNtCskt2sAo3rUBF_8dkrt_sdk22instrument_coordinator9admission4CostEEE3newCs2yzMVYl0abe_4dkrt",
-   "size": 34
-  },
-  {
-   "align": 2,
-   "hex": "2079000000002f2f00082068017c4e90588f4e75",
-   "kind": "text",
-   "name": ".text.dkrt_image_file_abort",
-   "size": 20
-  },
-  {
-   "align": 2,
-   "hex": "2079000000002f2f000c2f2f000c206801784e90508f4e75",
-   "kind": "text",
-   "name": ".text.dkrt_image_file_close",
-   "size": 24
-  },
-  {
-   "align": 2,
-   "hex": "2079000000002f2f00182f2f00182f2f00182f2f00182f2f0018206801704e904fef00144e75",
-   "kind": "text",
-   "name": ".text.dkrt_image_file_create",
-   "size": 38
-  },
-  {
-   "align": 2,
-   "hex": "2079000000002f2f00142f2f00142f2f00142f2f0014206801744e904fef00104e75",
-   "kind": "text",
-   "name": ".text.dkrt_image_file_write",
    "size": 34
   },
   {
@@ -44175,7 +44175,7 @@
    "size": 24
   }
  ],
- "source_sha256": "add6bd60b1070910f17ccd70d687b80ad3333a41971a12161884d4a35ef5ebc4",
+ "source_sha256": "f4868e1ec669b10ad13480e0bcf516271e7e1e9cdff3cd11f3ff8dc28277355f",
  "symbols": [
   {
    "global": false,
@@ -47809,6 +47809,24 @@
   },
   {
    "global": false,
+   "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_abort",
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_abort",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_close",
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_close",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_write",
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry14dk_files_write",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_cancel",
    "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_cancel",
    "value": 0
@@ -47817,6 +47835,12 @@
    "global": false,
    "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_commit",
    "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_commit",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_create",
+   "section": ".text._RNvNtNtCs2yzMVYl0abe_4dkrt7package5entry15dk_files_create",
    "value": 0
   },
   {
@@ -49305,30 +49329,6 @@
    "global": false,
    "name": ".sec..text.dkrt_dsp_stats_feed",
    "section": ".text.dkrt_dsp_stats_feed",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.dkrt_image_file_abort",
-   "section": ".text.dkrt_image_file_abort",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.dkrt_image_file_close",
-   "section": ".text.dkrt_image_file_close",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.dkrt_image_file_create",
-   "section": ".text.dkrt_image_file_create",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.dkrt_image_file_write",
-   "section": ".text.dkrt_image_file_write",
    "value": 0
   },
   {
@@ -50911,30 +50911,6 @@
   },
   {
    "global": true,
-   "name": "dkrt_image_file_abort",
-   "section": ".text.dkrt_image_file_abort",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "dkrt_image_file_close",
-   "section": ".text.dkrt_image_file_close",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "dkrt_image_file_create",
-   "section": ".text.dkrt_image_file_create",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "dkrt_image_file_write",
-   "section": ".text.dkrt_image_file_write",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "dkrt_live",
    "section": ".text.dkrt_live",
    "value": 0
@@ -51061,9 +51037,9 @@
   }
  ],
  "toolchain": {
-  "exports": "DKPKG_TABLE DKRT_CTXS DKRT_DSP DKRT_PROVIDERS DKRT_TABLE_BAD DKRT_TICKS dk_app_instrument_module_settings dk_app_instrument_settings_rows dk_dsp_stats_ctl dk_dsp_stats_read dk_ui_choice dk_ui_confirm dk_ui_core_handle dk_ui_menu_add_action dk_ui_menu_add_submenu dk_ui_menu_add_text dk_ui_menu_check dk_ui_menu_close dk_ui_menu_is_open dk_ui_menu_new dk_ui_menu_open dk_ui_menu_refresh dk_ui_menu_select dk_ui_stock_row dkpkg_entry dkrt_blocks dkrt_boot_info dkrt_boot_name dkrt_capacity dkrt_diag dkrt_dsp_stats_feed dkrt_fit dkrt_fx dkrt_health dkrt_image_file_abort dkrt_image_file_close dkrt_image_file_create dkrt_image_file_write dkrt_live dkrt_live_state dkrt_menu_built dkrt_menu_release dkrt_module dkrt_module_header dkrt_poll_add dkrt_poll_remove dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_service_query dkrt_settings_flush dkrt_settings_put dkrt_status",
+  "exports": "DKPKG_TABLE DKRT_CTXS DKRT_DSP DKRT_PROVIDERS DKRT_TABLE_BAD DKRT_TICKS dk_app_instrument_module_settings dk_app_instrument_settings_rows dk_dsp_stats_ctl dk_dsp_stats_read dk_ui_choice dk_ui_confirm dk_ui_core_handle dk_ui_menu_add_action dk_ui_menu_add_submenu dk_ui_menu_add_text dk_ui_menu_check dk_ui_menu_close dk_ui_menu_is_open dk_ui_menu_new dk_ui_menu_open dk_ui_menu_refresh dk_ui_menu_select dk_ui_stock_row dkpkg_entry dkrt_blocks dkrt_boot_info dkrt_boot_name dkrt_capacity dkrt_diag dkrt_dsp_stats_feed dkrt_fit dkrt_fx dkrt_health dkrt_live dkrt_live_state dkrt_menu_built dkrt_menu_release dkrt_module dkrt_module_header dkrt_poll_add dkrt_poll_remove dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_service_query dkrt_settings_flush dkrt_settings_put dkrt_status",
   "instructions_redecoded": "68613",
-  "isa_check": "3b16c0a736719dc3c69c27fe1c61088238d182a53e45e8104652fc206207fe9c",
+  "isa_check": "13b06c1e82d01e0f7248720631ac546b018db0b68fded4cd774b7172114ab345",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
   "rustc_codegen_gcc": "a7d8a5227b520187e3d93c1f7fc01dd1ba8659cf",

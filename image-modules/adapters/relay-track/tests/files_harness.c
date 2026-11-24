@@ -309,6 +309,31 @@ int main(void)
            short_take->peaks[80] == 0xff00 && short_take->peaks[119] == RELAY_WAVE_EMPTY);
     pcm_frames = N;
 
+    /* RELAY_WAVE_CACHED of the 48 slots keep a scan. As many new slots take every entry (12, 6 and
+     * 14 go); a slot shown since keeps its entry when a new slot comes, the least recently used one
+     * gives it up, and a slot scanned again keeps its own entry. */
+    _Static_assert(RELAY_WAVE_CACHED >= 12 && 20 + RELAY_WAVE_CACHED <= 40, "the slots below");
+    unsigned rev[48];
+    for (unsigned s = 20; s < 20 + RELAY_WAVE_CACHED; ++s) {
+        assert(relay_file_start(RF_SCAN, s, s, 1, 0, 5));
+        run();
+        assert(relay_files.state == RF_SCANNED);
+        rev[s] = relay_files.revision;
+    }
+    for (unsigned s = 20; s < 20 + RELAY_WAVE_CACHED; ++s)
+        assert(rtm_wave(s, rev[s], N, 0, 5));
+    assert(!rtm_wave(12, main_revision, N, 0, 1));
+    const struct RelayOverview *kept = rtm_wave(20, rev[20], N, 0, 5);
+    assert(relay_file_start(RF_SCAN, 40, 40, 1, 0, 5));
+    run();
+    rev[40] = relay_files.revision;
+    assert(!rtm_wave(21, rev[21], N, 0, 5) && rtm_wave(20, rev[20], N, 0, 5) == kept &&
+           rtm_wave(40, rev[40], N, 0, 5));
+    const struct RelayOverview *again = rtm_wave(30, rev[30], N, 0, 5);
+    assert(relay_file_start(RF_SCAN, 30, 30, 1, 0, 5));
+    run();
+    assert(rtm_wave(30, relay_files.revision, N, 0, 5) == again && rtm_wave(22, rev[22], N, 0, 5));
+
     const char *full = "RELAY/T02-0001/FULL";
     busy_write = 2;
     assert(relay_file_start(RF_SAVE, 1, 1, 1, 1, 5));

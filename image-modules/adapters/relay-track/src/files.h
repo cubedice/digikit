@@ -6,6 +6,9 @@ enum { RF_IDLE, RF_WORK, RF_SAVED, RF_LOADED, RF_FAILED, RF_SCANNED };
 #define RELAY_WAVE_EMPTY 0x00ffu
 #define RELAY_WAVE_SILENT 0x8080u
 #define RELAY_WAVE_BINS 120u
+// The scans the SRC view keeps (of 48 slots): one entry per slot does not fit in cf.expansion
+// beside the system package block since the upstream merge of 2026-11-24.
+#define RELAY_WAVE_CACHED 16u
 static inline uint16_t relay_wave_join(uint16_t a, uint16_t b)
 {
     return (((a & 0x00ff) < (b & 0x00ff) ? a : b) & 0x00ff) |

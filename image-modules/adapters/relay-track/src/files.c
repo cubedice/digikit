@@ -550,21 +550,29 @@ __attribute__((optimize("no-jump-tables"))) static int step(void *arg)
     return -1;
 }
 // A scan belongs to the pinned tape revision, independently of the current SRC view.
+// RELAY_WAVE_CACHED (files.h) of the 48 slots keep their scan, one entry each (an entry without
+// frames is free): a slot scanned again keeps its entry, a new slot takes a free entry or the one
+// least recently shown or scanned (`used`).
 static struct WaveCache {
     struct RelayOverview overview;
-    unsigned revision, sensitivity;
-} wave_cache[48];
+    unsigned revision, sensitivity, used;
+} wave_cache[RELAY_WAVE_CACHED];
+static unsigned wave_clock;
 
 const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned length,
                                      unsigned need_hits, unsigned sens)
 {
     if (slot >= 48 || !length)
         return 0;
-    const struct WaveCache *c = wave_cache + slot;
-    return c->overview.frames == length && c->revision == revision &&
-                   (!need_hits || c->sensitivity == sens)
-               ? &c->overview
-               : 0;
+    for (unsigned i = 0; i < RELAY_WAVE_CACHED; ++i) {
+        struct WaveCache *c = wave_cache + i;
+        if (c->overview.frames == length && c->overview.slot == slot &&
+            c->revision == revision && (!need_hits || c->sensitivity == sens)) {
+            c->used = ++wave_clock;
+            return &c->overview;
+        }
+    }
+    return 0;
 }
 const struct RelayOverview *rtm_wave_pending(unsigned slot, unsigned revision, unsigned length)
 {
@@ -574,10 +582,24 @@ const struct RelayOverview *rtm_wave_pending(unsigned slot, unsigned revision, u
                ? &analysis
                : 0;
 }
+// The entry of `slot`, else a free one, else the least recently used.
+static struct WaveCache *wave_entry(unsigned slot)
+{
+    struct WaveCache *victim = wave_cache;
+    for (unsigned i = 0; i < RELAY_WAVE_CACHED; ++i) {
+        struct WaveCache *e = wave_cache + i;
+        if (e->overview.frames && e->overview.slot == slot)
+            return e;
+        if (!e->overview.frames ? victim->overview.frames != 0
+                                : victim->overview.frames && e->used < victim->used)
+            victim = e;
+    }
+    return victim;
+}
 static void cache_wave(void)
 {
-    struct WaveCache *c = wave_cache + analysis.slot;
     u32 sr = dkrt_irq_mask();
+    struct WaveCache *c = wave_entry(analysis.slot);
     c->overview.slot = analysis.slot;
     c->overview.count = analysis.count;
     for (unsigned i = 0; i < analysis.count; ++i)
@@ -587,6 +609,7 @@ static void cache_wave(void)
     c->revision = relay_files.revision;
     c->sensitivity = hits ? sensitivity : 0;
     c->overview.frames = analysis.frames;
+    c->used = ++wave_clock;
     dkrt_irq_restore(sr);
 }
 static void done(void *arg, int status)

@@ -202,6 +202,30 @@ pub unsafe extern "C" fn sdk_abort(h: i32) -> i32 {
     r
 }
 
+// The image's file sessions (`dkrt_image_file_*`; the fork's `core/relay-track` writes its tapes through them from an I/O step it posted with
+// `dkrt_io_post_image`, which names the owner): the calls above, with the module API's handle argument first (not looked up). They are resident:
+// the image links them by name, and the system package is not in the image.
+
+#[export_name = "dkrt_image_file_create"]
+pub unsafe extern "C" fn image_file_create(_f: *mut u8, root: u32, path: *const u8, size: u32, hash4: *const u8, flags: u32) -> i32 {
+    sdk_create(root, path, size, hash4, flags)
+}
+
+#[export_name = "dkrt_image_file_write"]
+pub unsafe extern "C" fn image_file_write(_f: *mut u8, h: i32, offset: u32, buf: *const u8, len: u32) -> i32 {
+    sdk_write(h, offset, buf, len)
+}
+
+#[export_name = "dkrt_image_file_close"]
+pub unsafe extern "C" fn image_file_close(_f: *mut u8, h: i32, hash_out: *mut u8) -> i32 {
+    sdk_close(h, hash_out)
+}
+
+#[export_name = "dkrt_image_file_abort"]
+pub unsafe extern "C" fn image_file_abort(_f: *mut u8, h: i32) -> i32 {
+    sdk_abort(h)
+}
+
 pub unsafe extern "C" fn sdk_delete(root: u32, path: *const u8) -> i32 {
     if let Err(e) = sdk_owner() {
         return e;

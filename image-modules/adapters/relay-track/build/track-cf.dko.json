@@ -6374,9 +6374,23 @@
   },
   {
    "addend": 0,
-   "offset": 42,
+   "offset": 28,
    "section": ".text.rtm_wave",
    "symbol": ".sec..bss.wave_cache",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.rtm_wave",
+   "symbol": ".sec..bss.wave_clock",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.rtm_wave",
+   "symbol": ".sec..bss.wave_clock",
    "type": "cf.32"
   },
   {
@@ -6842,8 +6856,15 @@
    "type": "cf.32"
   },
   {
-   "addend": 264,
+   "addend": 0,
    "offset": 144,
+   "section": ".text.done",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 264,
+   "offset": 150,
    "section": ".text.done",
    "symbol": ".sec..bss.analysis",
    "type": "cf.32"
@@ -6852,124 +6873,124 @@
    "addend": 0,
    "offset": 156,
    "section": ".text.done",
-   "symbol": ".sec..bss.analysis",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 170,
-   "section": ".text.done",
    "symbol": ".sec..bss.wave_cache",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 176,
-   "section": ".text.done",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
    "addend": 260,
-   "offset": 182,
+   "offset": 204,
    "section": ".text.done",
    "symbol": ".sec..bss.analysis",
    "type": "cf.32"
   },
   {
-   "addend": 264,
-   "offset": 188,
+   "addend": 0,
+   "offset": 212,
    "section": ".text.done",
    "symbol": ".sec..bss.analysis",
    "type": "cf.32"
   },
   {
    "addend": 268,
-   "offset": 214,
+   "offset": 234,
    "section": ".text.done",
    "symbol": ".sec..bss.analysis",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 240,
+   "offset": 264,
    "section": ".text.done",
    "symbol": ".sec..bss.hits",
    "type": "cf.32"
   },
   {
    "addend": 540,
-   "offset": 246,
+   "offset": 270,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 260,
+   "offset": 284,
    "section": ".text.done",
    "symbol": ".sec..bss.sensitivity",
    "type": "cf.32"
   },
   {
+   "addend": 264,
+   "offset": 294,
+   "section": ".text.done",
+   "symbol": ".sec..bss.analysis",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
-   "offset": 274,
+   "offset": 300,
+   "section": ".text.done",
+   "symbol": ".sec..bss.wave_clock",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 312,
+   "section": ".text.done",
+   "symbol": ".sec..bss.wave_clock",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 322,
    "section": ".text.done",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
+   "addend": 260,
+   "offset": 330,
+   "section": ".text.done",
+   "symbol": ".sec..bss.analysis",
+   "type": "cf.32"
+  },
+  {
    "addend": 28,
-   "offset": 280,
+   "offset": 338,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
-   "addend": 260,
-   "offset": 288,
-   "section": ".text.done",
-   "symbol": ".sec..bss.analysis",
-   "type": "cf.32"
-  },
-  {
-   "addend": 264,
-   "offset": 296,
-   "section": ".text.done",
-   "symbol": ".sec..bss.analysis",
-   "type": "cf.32"
-  },
-  {
    "addend": 292,
-   "offset": 302,
+   "offset": 344,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
    "addend": 288,
-   "offset": 308,
+   "offset": 350,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 314,
+   "offset": 356,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
    "addend": 296,
-   "offset": 324,
+   "offset": 366,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 350,
+   "offset": 392,
    "section": ".text.done",
    "symbol": ".sec..bss.relay_files",
    "type": "cf.32"
@@ -7762,10 +7783,10 @@
   },
   {
    "align": 2,
-   "hex": "2f02702f222f0010b0af000864064280241f4e754a8167f6202f0008243c000002044c0208002040d1fc00000000b29066dc202f000cb0a801fc66d24aaf0014670a242f0018b4a8020066c2200860c0",
+   "hex": "2f02702f222f0008226f0010b08164064280241f4e754a8967f641f9000000004280b3d06636b2a801086630242f000cb4a801fc66264aaf00146616203900000000528023c00000000021400204200860c0242f0018b4a8020067e0528041e802087410b48066ba60a6",
    "kind": "text",
    "name": ".text.rtm_wave",
-   "size": 80
+   "size": 106
   },
   {
    "align": 2,
@@ -7790,17 +7811,24 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec48d73c044aaf001c6d0001702039000000007203b280665642b90000000023c00000000020390000000042b9000000004a80673042b9000000002f39000000002f39000000002f39000000002f39000000002f39000000002f004eb9000000004fef00184cd73c044fef00144e752439000000004a82660000de4ab900000000660853804a80660000d8203900000000223c0000020447f9000000002a4b4c0108002440d5fc000000004eb90000000028790000000041f900000000428125500108254c0104224a204bb28c6600009843f900000000220a284941ea010c0681000001fc30d9b28866fa22390000000043f900000000255101fc4a8167062239000000002541020024952f004eb90000000023d500000000588f223900000000428041f90000000023d00000000023c10000000041f900000000b081663441f90000000043f428003191280054820c82000000f066ee7001b0b900000000672070026000feba58885889229052816000ff5a588b528020d360c070046000fea070056000fe9a",
+   "hex": "4fefffe448d73c1c4aaf00246d0001b22039000000007203b280665642b90000000023c00000000020390000000042b9000000004a80673042b9000000002f39000000002f39000000002f39000000002f39000000002f39000000002f004eb9000000004fef00184cd73c1c4fef001c4e752439000000004a82660001084ab900000000660853804a80660001024eb90000000026390000000043f900000000428120494a91670cb6a90108660000e6204960124a90660000ee528143e902087810b88166de21430108263900000000264845f9000000004281224a284a21430104b283660000c6223c000000002608264143e8010c0683000001fc2a4132dd220db68966f622390000000043f900000000215101fc4a816706223900000000214102004bf90000000022390000000052812141020423c10000000020942f004eb900000000588f223900000000428023d40000000023d50000000023c10000000041f900000000b081664c41f90000000043f328003191280054820c82000000f066ee7001b0b900000000673870026000fe904a906700ff222a680204bbe902046300ff1620496000ff105889588b269152816000ff2c588a528020d260a870046000fe5e70056000fe58",
    "kind": "text",
    "name": ".text.done",
-   "size": 394
+   "size": 460
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.wave_clock",
+   "size": 4
   },
   {
    "align": 2,
    "hex": "",
    "kind": "bss",
    "name": ".bss.wave_cache",
-   "size": 24768
+   "size": 8320
   },
   {
    "align": 2,
@@ -8111,7 +8139,7 @@
    "size": 548
   }
  ],
- "source_sha256": "aaa685ba8b4b527bb63666645bbe06c4688a0dcf99726500906462f2baa50d63",
+ "source_sha256": "bfeae2d05f003bb124c384e169c13a52562aa7b6d952f2a1c4d164ce2d535c22",
  "symbols": [
   {
    "global": false,
@@ -8657,6 +8685,12 @@
    "global": false,
    "name": ".sec..bss.wave_cache",
    "section": ".bss.wave_cache",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.wave_clock",
+   "section": ".bss.wave_clock",
    "value": 0
   },
   {
@@ -10155,6 +10189,12 @@
   },
   {
    "global": false,
+   "name": "wave_clock",
+   "section": ".bss.wave_clock",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "wave_point",
    "section": ".text.wave_point",
    "value": 0
@@ -10170,8 +10210,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "4981",
-  "isa_check": "d0117ddad46cb9869c6d4474534a6329616fe006950d3dc5e03c0ae173e1b6c9",
+  "instructions_redecoded": "5015",
+  "isa_check": "084527fca9ce6600f8a47b7af4b262cb1b795948f752d72d672865c70e9a6723",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
