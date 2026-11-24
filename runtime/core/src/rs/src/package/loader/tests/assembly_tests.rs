@@ -1781,6 +1781,21 @@ fn builders_of(service: &str) -> Vec<&'static str> {
     dkrt_sdk::api::PROVIDED.iter().filter(|(s, _)| *s == service).map(|(_, n)| *n).collect()
 }
 
+/// The fork's runtime-only exports of a service (`provided`, `internal = true` in sdk/sdk.toml: the machines file's `dk_machines_planned_ids` and
+/// `dk_machines_id_taken`, the queries of the V2 instrument loader). They are in the file's export table, where the loader finds them by name
+/// (`package::instrument`), but in no module's import table, so `PROVIDED` leaves them out.
+fn internal_exports_of(service: &str) -> Vec<String> {
+    let text = String::from_utf8(read(&repo().join("sdk/sdk.toml"), "git checkout sdk/sdk.toml")).unwrap();
+    let sdk: toml::Table = text.parse().unwrap();
+    sdk["import"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|i| i.get("internal").and_then(|v| v.as_bool()) == Some(true) && i.get("service").and_then(|v| v.as_str()) == Some(service))
+        .map(|i| i["name"].as_str().unwrap().to_string())
+        .collect()
+}
+
 /// The names a file imports.
 fn import_names(file: &[u8]) -> Vec<String> {
     let (off, n) = (be(file, dkneeds::H_IMPORT_OFF) as usize, be(file, dkneeds::H_IMPORT_N) as usize);
@@ -1826,12 +1841,7 @@ fn the_builder_calls_of_a_module_resolve_to_the_exports_of_the_service_that_owns
     }
 }
 
-/// The `internal = true` imports of sdk/sdk.toml: exports of a service file that only the runtime calls by name (in the file's export list, in no
-/// module's import table, so not in `PROVIDED`). The fork's machines file has the V2 instrument loader's two queries.
-const INTERNAL: [(&str, &str); 2] = [("machines", "dk_machines_planned_ids"), ("machines", "dk_machines_id_taken")];
-
-/// The SDK exports of a service file are its `provided` imports of sdk/sdk.toml, including the internal calls from `handlers::exports`
-/// (`INTERNAL`).
+/// The SDK exports of a service file are its `provided` imports of sdk/sdk.toml, including the internal calls from `handlers::exports`.
 #[test]
 fn the_header_exports_of_a_service_file_are_its_provided_imports() {
     let _g = clean();
@@ -1844,12 +1854,10 @@ fn the_header_exports_of_a_service_file_are_its_provided_imports() {
                 .filter(|entry| entry.b & dkneeds::keys::EXPORT_QUERY == 0)
                 .map(|entry| entry.a)
                 .collect();
-            let want: std::collections::BTreeSet<u32> = builders_of(service)
-                .into_iter()
-                .chain(INTERNAL.iter().filter(|(s, _)| *s == service).map(|(_, n)| *n))
-                .map(name_hash)
-                .collect();
+            let mut want: std::collections::BTreeSet<u32> = builders_of(service).into_iter().map(name_hash).collect();
             assert!(!want.is_empty(), "{service} provides nothing in sdk/sdk.toml");
+            // the fork's internal exports are provided imports too (upstream has none): the file lists them for the loader
+            want.extend(internal_exports_of(service).iter().map(|n| name_hash(n)));
             assert_eq!(listed, want, "{} {service}.dks: header EXPORTS differ from the provided imports", dev.name);
         }
     }

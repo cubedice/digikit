@@ -385,10 +385,11 @@ pub fn size_k(out: &mut [u8], n: u32) {
     }
 }
 
-/// The names of the CAPACITY kinds a fit can be short of, by kind number (0 and the kinds that cannot be short: empty).
-const SHORT_NAME: [&str; 19] = [
+/// The names of the CAPACITY kinds a fit can be short of, by kind number (0 and the kinds that cannot be short: empty). 17 is upstream's
+/// `CAPK_PACKAGE`; the fork's instrument kinds are 18 and 19.
+const SHORT_NAME: [&str; 20] = [
     "", "MODULES", "SELECTED", "CPU", "FILE", "DSP", "MACHINES", "VOICES", "PARAMS", "PAGES", "FX",
-    "", "", "", "", "DSP LOAD", "", "INSTR", "TRACKS",
+    "", "", "", "", "DSP LOAD", "", "", "INSTR", "TRACKS",
 ];
 
 /// What is short, in K for bytes and as numbers for rows and slots (the need rounded up, what is free rounded down): `DSP 400K > 254K FREE`, in a
