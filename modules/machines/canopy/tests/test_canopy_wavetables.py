@@ -132,3 +132,5 @@ def test_16_bit_samples_round_the_waves_and_pack_two_to_a_word(library):
     first = quantized(0)[0][0]
     word = full_words()[0]
     assert (word & 0xFFFF, word >> 16) == (first[0] & 0xFFFF, first[1] & 0xFFFF)
+    stored = int(assembly().split("_wt_factory_half = 0x")[1][:8], 16)
+    assert stored == word == half_words()[0]
