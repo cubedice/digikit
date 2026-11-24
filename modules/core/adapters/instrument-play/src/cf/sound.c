@@ -6,12 +6,17 @@
 #include "timing.h"
 #include "src-mod.h"
 #include "instances.h"
+#include "seam.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint32_t ip_project(void);
 extern uint32_t ip_kit(uint32_t project);
 extern void ip_refresh(uint32_t source, uint32_t track);
 extern uint32_t pp_current_pattern(void);
+#ifdef DK_SERVICE
+#define pp_position ((volatile uint32_t *)IP_DATA(pp_position))
+#else
 extern volatile uint32_t pp_position[16];
+#endif
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 volatile uint32_t ip_admission[IP_INSTANCES * 8];
@@ -174,13 +179,6 @@ uint32_t instrument_sound_tune(uint32_t instance)
     return instrument_sound_raw_tune(source);
 }
 
-uint32_t instrument_sound_raw_tune(uintptr_t sound)
-{
-    /* DT2 1.17 parameter 0xca: Sound slot25, signed 8.8 semitones biased by 0x4000.
-     * This also accepts the two-byte-aligned entries of the stock Sound pool. */
-    uint32_t raw = *(const uint16_t *)(sound + 0x14 + 25 * 2);
-    return raw >= 0x400 && raw <= 0x7c00 ? raw : 0x4000;
-}
 
 int instrument_sound_admitted(uint32_t track)
 {

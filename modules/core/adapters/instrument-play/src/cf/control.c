@@ -1,3 +1,4 @@
+#include "seam.h"
 /* UI-task policy and setup for up to IP_INSTANCES admitted keyboard instruments,
  * one per kit track (finding 345). Instance i is DSP slot i. The UI (SRC page,
  * menus, presets, panel keys) acts on `cur`, the instance on the selected track;
@@ -59,7 +60,11 @@ int instrument_play_faulted(uint32_t generation)
  * applied revision, type ([0..7] is instance 0). */
 volatile uint32_t ip_control[IP_INSTANCES * 8];
 static dk_ui_menu *menu;
+#ifdef DK_SERVICE
+#define ip_view (*(volatile uint32_t *)IP_DATA(ip_view))
+#else
 extern volatile uint32_t ip_view;
+#endif
 extern void ip_view_build(uint32_t view);
 static uint32_t listed_type;
 
@@ -2483,7 +2488,7 @@ void instrument_play_tick(void)
 #if defined(__m68k__)
     extern void instrument_src_tick(void), ip_panel_tick(void);
     extern void tk_runtime_init(void) __attribute__((weak));
-    if (tk_runtime_init)
+    if (IP_HAVE(tk_runtime_init))
         tk_runtime_init();
     instrument_src_tick();
     ip_panel_tick(); /* recorded chords: steps committed after the key event */

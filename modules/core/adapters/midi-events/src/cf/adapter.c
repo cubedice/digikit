@@ -1,3 +1,4 @@
+#include "../../../instrument-play/src/cf/seam.h"
 /* Firmware-task boundary. The pure ledger is shared with host behavior tests.
  * One short interrupt mask serializes MIDI, UI configuration and audio sender.
  * A route can only be enabled by the future V2 instance owner after readiness. */
@@ -205,9 +206,9 @@ void instrument_write_frame(uintptr_t tx, uint32_t entry, const volatile uint16_
 void mi_dsp_reset_begin(void)
 {
     uint32_t sr = dkrt_irq_mask();
-    if (dl_reset_begin)
+    if (IP_HAVE(dl_reset_begin))
         dl_reset_begin();
-    if (dl_reset_quiesce)
+    if (IP_HAVE(dl_reset_quiesce))
         (void)dl_reset_quiesce();
     if (initialized && !reset_seen) {
         reset_seen = 1;
@@ -223,10 +224,6 @@ void mi_dsp_reset_begin(void)
 }
 
 /* No retry after a timeout: stale FIFO/DMA work must not cross reset release. */
-int mi_dsp_reset_release(void)
-{
-    return !dl_reset_quiesce || dl_reset_quiesce() != 2;
-}
 
 /* UI-task snapshot, copied under the same lock as the frame publisher. No record
  * pointer escapes the ISR. Identity/freshness remain the loader's responsibility. */
@@ -427,7 +424,7 @@ static int legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t sou
     if (msg[0] >= 0x80u && msg[0] < 0xf0u && route->enabled)
         revalidate_track(route->track);
     uint8_t kind = msg[0] >> 4;
-    int shared = tk_midi_channel_message && instrument_track_keyboard_routed &&
+    int shared = IP_HAVE(tk_midi_channel_message) && instrument_track_keyboard_routed &&
                  route->track < MI_TRACKS && instrument_track_keyboard_routed(route->track);
     if (shared && (kind == 8 || (kind == 9 && !msg[2]))) {
         consumed = msg[1] < 128 && msg[2] < 128
@@ -444,12 +441,12 @@ static int legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t sou
 
 int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {
-    if (tk_midi_channel_message) {
+    if (IP_HAVE(tk_midi_channel_message)) {
         int owned = tk_midi_channel_message(msg, len, source, 1);
         if (owned)
             return owned > 0;
     }
     if (legacy_channel_message(msg, len, source))
         return 1;
-    return tk_midi_channel_message ? tk_midi_channel_message(msg, len, source, 0) : 0;
+    return IP_HAVE(tk_midi_channel_message) ? tk_midi_channel_message(msg, len, source, 0) : 0;
 }

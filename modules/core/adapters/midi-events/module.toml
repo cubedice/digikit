@@ -17,15 +17,21 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/midi-events-cf.dko.json"
-sources = ["src/cf/ownership.c", "src/cf/transport.c", "src/cf/lock-wire.c", "src/cf/adapter.c", "src/cf/din.s", "src/cf/reset.s"]
+# The image part (docs/plans/fork-image-diet.md): the two hook entries, the reset release and the generated forwarders (seam.s).
+# The C of the MIDI ownership runs from services/instrument.dks.
+sources = ["src/cf/image.c", "src/cf/din.s", "src/cf/reset.s", "src/cf/seam.s"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["instrument_keyboard_events", "instrument_midi_ready", "instrument_lock_take", "instrument_lock_discard", "instrument_lock_source", "dl_reset_begin", "dl_reset_quiesce", "tk_midi_channel_message", "instrument_track_keyboard_routed"]
+optional = ["dl_reset_quiesce"]
 
 [object.externs]
 mi_dsp_reset_next = "hook.cf.rtos.site.dsp_reset.tail"
 mi_din_next = "hook.cf.midi.site.din_rx.tail"
 mi_din_return = "hook.cf.midi.site.din_rx.return"
+
+# services/instrument.dks fills the slot word with its vector table (`midi_vec_table`); the forwarders of seam.s read it.
+[[slot]]
+name = "midi_vec"
 
 [[op]]
 op = "hook"

@@ -1,3 +1,4 @@
+#include "seam.h"
 /* OS1.17 KeyboardView supplies physical key, resolved track and pitch here.
  * Intercept before its stock mono audition and held-note vector. The caller
  * still registers the native key-up closure, so scale/octave edits cannot
@@ -127,7 +128,7 @@ enum {
 };
 static const uint8_t *pattern_object(void)
 {
-    return pp_current_pattern ? (const uint8_t *)(uintptr_t)pp_current_pattern() : 0;
+    return IP_HAVE(pp_current_pattern) ? (const uint8_t *)(uintptr_t)pp_current_pattern() : 0;
 }
 static uint16_t trig_word(const uint8_t *p, uint32_t track, uint32_t step)
 {
@@ -285,13 +286,13 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
         step = seq && ip_panel_step_record(seq);
     int recording = live || held || step;
     int shared_step =
-        canopy && step && !live && tk_panel_on && instrument_track_keyboard_routed(track);
+        canopy && step && !live && IP_HAVE(tk_panel_on) && instrument_track_keyboard_routed(track);
     if (key < 16 && shared_live_record[key])
         return;
-    if (tk_capture_panel_press && recording)
+    if (IP_HAVE(tk_capture_panel_press) && recording)
         tk_capture_panel_press(key, track, pitch, velocity, !live && (step || held));
     if (keyboard && live && !held && !step && !canopy && key < 16 &&
-        tk_panel_record_audition && tk_panel_native_record_on &&
+        IP_HAVE(tk_panel_record_audition) && IP_HAVE(tk_panel_native_record_on) &&
         tk_panel_native_record_on(key, track, pitch, velocity)) {
         ++ip_panel_recorded;
         shared_live_record[key] = (uint16_t)(((track + 1u) << 8) | pitch);
@@ -302,9 +303,9 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
     }
     if (keyboard) {
         if (recording) {
-            if (tk_panel_cancel && !shared_step)
+            if (IP_HAVE(tk_panel_cancel) && !shared_step)
                 tk_panel_cancel();
-        } else if (tk_panel_on && tk_panel_on(key, track, pitch, velocity)) {
+        } else if (IP_HAVE(tk_panel_on) && tk_panel_on(key, track, pitch, velocity)) {
             return;
         }
     }
@@ -334,7 +335,7 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
     }
     /* The same stock action also auditions keyboard and recording notes.
      * Check the performance caller and its trig mode. */
-    if (!keyboard && tk_panel_retrig && key < 16 && track < 16 && pitch < 128 &&
+    if (!keyboard && IP_HAVE(tk_panel_retrig) && key < 16 && track < 16 && pitch < 128 &&
         __builtin_return_address(0) == ip_panel_trig_return) {
         uint32_t controller = word(view, 0x94);
         uint32_t settings = controller ? ip_panel_project_settings(controller) : 0;
@@ -345,12 +346,12 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
 }
 void ip_panel_off(uint8_t *view, uint32_t key)
 {
-    if (tk_capture_panel_release)
+    if (IP_HAVE(tk_capture_panel_release))
         tk_capture_panel_release(key);
     uint32_t mask = key < 16 ? 1u << key : 0;
     uint16_t recorded_live = mask ? shared_live_record[key] : 0;
     int shared =
-        !(tk_panel_retrig && tk_panel_retrig(key, IP_NONE)) && tk_panel_off && tk_panel_off(key);
+        !(IP_HAVE(tk_panel_retrig) && tk_panel_retrig(key, IP_NONE)) && IP_HAVE(tk_panel_off) && tk_panel_off(key);
     if (shared && !recorded_live && !(shared_step_keys & mask))
         return;
     shared_step_keys &= ~mask;
@@ -467,7 +468,7 @@ void ip_note_list_write(uint8_t *editor, uint32_t track, uint32_t step, uint32_t
 {
     uint32_t note = 128;
     uint32_t velocity = 0;
-    if (records && (track == commit_track || tk_capture_note_list_commit) && track < 16 &&
+    if (records && (track == commit_track || IP_HAVE(tk_capture_note_list_commit)) && track < 16 &&
         step < 128) {
         const uint8_t *first = (const uint8_t *)(uintptr_t)records[0],
                       *end = (const uint8_t *)(uintptr_t)records[1];
@@ -478,7 +479,7 @@ void ip_note_list_write(uint8_t *editor, uint32_t track, uint32_t step, uint32_t
     }
     /* Publish only after the stock writer has finished updating the pattern. */
     ip_note_list_original(editor, track, step, records);
-    if (note < 128 && editor && tk_capture_note_list_commit) {
+    if (note < 128 && editor && IP_HAVE(tk_capture_note_list_commit)) {
         typedef uint32_t (*EditorNotes)(uint8_t *);
         uint32_t vtable = word(editor, 0);
         EditorNotes get_notes =
@@ -589,7 +590,7 @@ static void step_commits(void)
         }
         if (!w.released && waiting_view)
             panel_play(waiting_view, w.key, c.track, c.note, 100,
-                       tk_panel_on && instrument_track_keyboard_routed(c.track));
+                       IP_HAVE(tk_panel_on) && instrument_track_keyboard_routed(c.track));
     }
     if (waiting_count && (int32_t)(now - commit_until) >= 0) {
         ip_panel_step[6] += waiting_count;
@@ -608,7 +609,7 @@ void ip_panel_update(uint8_t *view)
     /* KEYBOARD is only held during step entry: keep the entered notes. */
     int keep_step =
         panel_view == view && step_recording(view, &step_track) && step_track == panel_track;
-    if (tk_panel_focus)
+    if (IP_HAVE(tk_panel_focus))
         tk_panel_focus(keep_step ? step_track : selected);
     if (keep_step)
         return;
@@ -624,7 +625,7 @@ void ip_panel_update(uint8_t *view)
 void ip_panel_toggle(uint32_t manager)
 {
     ip_panel_stock_toggle(manager);
-    if (tk_panel_cancel && !ip_panel_active(manager))
+    if (IP_HAVE(tk_panel_cancel) && !ip_panel_active(manager))
         tk_panel_cancel();
     /* KeyboardView is retained when the main controller toggles KEYBOARD.
      * Its detach callback therefore cannot be the only release boundary. */
@@ -647,12 +648,12 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
         waiting_release(key);
     step_commits();
     int step_press = key < 16 && (flags & 1u) && !(flags & 8u) && ip_panel_key_down(0x12);
-    if (tk_capture_panel_press && step_press) {
+    if (IP_HAVE(tk_capture_panel_press) && step_press) {
         uint32_t seq = word(view, 0x98);
         if (seq && ip_panel_step_record(seq))
             tk_capture_panel_press(key, ip_panel_selected_track(word(view, 0xa0)), 128, 100, 1);
     }
-    if (tk_capture_panel_release && release)
+    if (IP_HAVE(tk_capture_panel_release) && release)
         tk_capture_panel_release(key);
     int entry = step_press && step_recording(view, &track);
     if (key < 16) {
@@ -690,7 +691,7 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
             ip_panel_off(view, key);
         } else if (shared_step_keys & mask) {
             shared_step_keys &= ~mask;
-            if (tk_panel_off)
+            if (IP_HAVE(tk_panel_off))
                 tk_panel_off(key);
             rec_release(key);
         } else if (rec_keys[key].used && rec_keys[key].track == commit_track) {
@@ -704,7 +705,7 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
 }
 void ip_panel_detach(uint8_t *view, uint8_t *manager)
 {
-    if (tk_panel_cancel)
+    if (IP_HAVE(tk_panel_cancel))
         tk_panel_cancel();
     if (panel_view == view) {
         mi_panel_release();

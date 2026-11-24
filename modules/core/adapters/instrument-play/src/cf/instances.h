@@ -17,7 +17,13 @@ extern volatile uint32_t ip_admission[IP_INSTANCES * 8];
 void instrument_sound_scan(void);
 int instrument_sound_prepare(uint32_t instance, int allow_refresh);
 uint32_t instrument_sound_tune(uint32_t instance);
-uint32_t instrument_sound_raw_tune(uintptr_t sound);
+/* DT2 1.17 parameter 0xca: Sound slot25, signed 8.8 semitones biased by 0x4000. This also accepts the
+ * two-byte-aligned entries of the stock Sound pool. Inline: the image (sound-persist.c) and the service both read it. */
+static inline uint32_t instrument_sound_raw_tune(uintptr_t sound)
+{
+    uint32_t raw = *(const uint16_t *)(sound + 0x14 + 25 * 2);
+    return raw >= 0x400 && raw <= 0x7c00 ? raw : 0x4000;
+}
 /* 1 when an admitted instance currently owns this track's Sound. */
 int instrument_sound_admitted(uint32_t track);
 /* control.c */

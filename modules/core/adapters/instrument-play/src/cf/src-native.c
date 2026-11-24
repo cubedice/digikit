@@ -1,3 +1,4 @@
+#include "seam.h"
 /* DT2 1.17 native SRC adapter. Vtable entries and event dispatch are pinned
  * by image hashes. Untouched interfaces remain stock; no View is retained. */
 #include <stdint.h>
@@ -770,7 +771,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
 {
     uint32_t token = context(view);
     restore_pending = 0;
-    int relay = rtm_src && rtm_src(view, 0, 0);
+    int relay = IP_HAVE(rtm_src) && rtm_src(view, 0, 0);
     ip_src_stock_draw(view, canvas);
     if (relay) {
         rtm_src(view, 1, canvas);
@@ -869,7 +870,7 @@ void ip_src_attach(uint8_t *view, uint8_t *manager)
 void ip_src_detach(uint8_t *view, uint8_t *manager)
 {
     (void)context(view);
-    if (rtm_src)
+    if (IP_HAVE(rtm_src))
         rtm_src(view, 4, 0);
     ip_src_stock_detach(view, manager);
     was_owned = 0;
@@ -910,7 +911,7 @@ void instrument_src_tick(void)
                 uint32_t now = instrument_src_now();
                 ip_src_refresh[5] = now;
                 ip_src_refresh[6] = last_draw;
-                int relay = rtm_src ? rtm_src(view, 5, 0) : 0;
+                int relay = IP_HAVE(rtm_src) ? rtm_src(view, 5, 0) : 0;
                 if (relay) {
                     if (relay == 2 && now - last_draw >= 24) {
                         last_draw = now;
@@ -1057,7 +1058,7 @@ static int lock_clear(uint8_t *view, uint32_t encoder, const uint32_t steps[4])
 }
 uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 {
-    if (rtm_src && rtm_src(view, 2, event))
+    if (IP_HAVE(rtm_src) && rtm_src(view, 2, event))
         return 1;
     uint32_t token = context(view), key = word(event, 12), page = word(view, 0x90), steps[4];
     int held = token && key >= 41 && key <= 48 && trig_held(view);
@@ -1076,7 +1077,7 @@ uint32_t ip_src_key(uint8_t *view, uint8_t *event)
 uint32_t ip_src_turn(uint8_t *view, uint8_t *event)
 {
     uint32_t captured_token = take(event), token = context(view), encoder = word(event, 12);
-    if (rtm_src && rtm_src(view, 3, event))
+    if (IP_HAVE(rtm_src) && rtm_src(view, 3, event))
         return 1;
     ++ip_src_debug[4];
     ip_src_debug[9] = captured_token;
