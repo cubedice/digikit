@@ -1663,7 +1663,8 @@ fn port_cmd(root: &Path, rest: &[String]) -> Result<()> {
             let files: Vec<&String> = rest
                 .iter()
                 .skip(1)
-                .filter(|x| *x != "--names-only")
+                // the flags are not files (`--with-test-hooks` was read as one)
+                .filter(|x| *x != "--names-only" && *x != "--with-test-hooks")
                 .collect();
             if files.is_empty() {
                 return Err(Error(USAGE.into()));

@@ -1,5 +1,6 @@
 /* Test fixture: the C source of the svc-test service object (packages/patchkit/tests/service_c_sources.rs). patchkit compiles it as an adapter
- * source, with -DDK_SERVICE=1, and links it with the crate: the hook handler and dk_svctest_hits stay (the crate names them), svc_test_unused goes.
+ * source, with -DDK_SERVICE=1, and links it with the crate: the hook handler (which hook.s calls) and dk_svctest_hits stay (the crate reaches them), svc_test_unused
+ * goes.
  */
 #include "svc_test_c.h"
 
@@ -9,7 +10,8 @@
 
 static uint32_t hits;
 
-/* The handler of cf.menu.hook.settings_list.tail: `menu` is the settings menu (a2 at the site). It counts the call and changes nothing. */
+/* The handler that the raw hook of hook.s (cf.menu.hook.settings_list.test) calls: `menu` is the settings menu (a2 at the site). It counts the call and changes
+ * nothing. */
 void svc_test_settings_tail(uint8_t *menu)
 {
     (void)menu;
