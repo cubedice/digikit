@@ -6,7 +6,7 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
@@ -24,7 +24,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(card, name));
-    await seedModules(card, 'dt2', [{ file: moduleArtifact('dt2', 'digikit/canopy'), needs: ['machines'] }]);
+    await seedModules(card, 'dt2', [{ file: moduleArtifact('dt2', 'digikit/canopy'), needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(card);
@@ -43,11 +43,6 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       output,
       [
         'DKRT_BOOT',
-        'ip_control',
-        'ip_tracks',
-        'ip_admission',
-        'ip_src_debug',
-        'track_keyboard_src',
         'track_keyboard_lanes',
         'tk_panel_claim_hits',
         'tk_sequence_audio_hits',
@@ -72,8 +67,9 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     const epoch = Number((await session.status()).epoch);
     await dk.restart();
     await dk.waitForBoot();
+    const sym = await instrumentSymbols(session, plan);
     const cf = async (name: string, index = 0) => {
-      const value = await session.client.memPeek(planSymbol(plan, name) + 4 * index);
+      const value = await session.client.memPeek(sym(name) + 4 * index);
       if (value === null) throw new Error(`Missing ${name}[${index}]`);
       return value >>> 0;
     };
@@ -83,7 +79,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       return (value >>> (24 - 8 * (addr & 3))) & 255;
     };
     const halfAt = async (addr: number) => ((await byteAt(addr)) << 8) | (await byteAt(addr + 1));
-    const byte = (name: string, offset = 0) => byteAt(planSymbol(plan, name) + offset);
+    const byte = (name: string, offset = 0) => byteAt(sym(name) + offset);
     await waitInstrumentReady(cf);
     await expectRuntimeUi(session, plan, output, { afterEpoch: epoch, emulatedMs: 180_000 });
     const { edge, tap, turn } = acknowledgedPanel(session);
@@ -154,7 +150,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     await tap('KEYBOARD');
     const dsp = async (name: string, offset: number, len: number) => {
       const result = await session.client.call<{ hex: string }>('dsp.peek', {
-        addr: planSymbol(plan, name) + offset,
+        addr: sym(name) + offset,
         len,
       });
       const bytes = Buffer.from(result.hex, 'hex');

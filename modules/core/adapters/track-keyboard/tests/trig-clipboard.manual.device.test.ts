@@ -6,9 +6,10 @@ import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
+import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'individual shared keyboard trigs', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'moves, clears, and undoes an individual trig attachment',
     { timeout: 180_000 },

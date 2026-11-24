@@ -1019,7 +1019,9 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
         // the hard needs that no service of the runtime meets
         self.found.n = 0;
         let mut want = [0u32; WANT_MAX];
-        let nw = unmet_needs(&mods[..n], &mut want);
+        let mut nw = unmet_needs(&mods[..n], &mut want);
+        // the services the image asks for itself: an adapter whose code a service file serves without a module that needs it
+        nw = boot_needs(&self.p, &mut want, nw);
         if nw != 0 {
             discover::find(&mut self.m, &services(), &want[..nw], &mut self.found);
         }
@@ -1170,6 +1172,44 @@ fn unmet_needs(mods: &[Option<Keys>], out: &mut [u32; WANT_MAX]) -> usize {
             }
         }
         m += 1;
+    }
+    n
+}
+
+/// The prefix of the image's info entry that asks the boot for a service: `boot_need_<service>` (an `[[info]]` of an image adapter; its address is not read).
+pub const BOOT_NEED_PREFIX: &[u8] = b"boot_need_";
+
+/// The name hash of `boot_need_<name>`, as the image's info table keys it (FNV-1a over the whole name).
+fn boot_need_hash(name: &[u8]) -> Option<u32> {
+    let mut b = [0u8; 48];
+    let len = BOOT_NEED_PREFIX.len() + name.len();
+    if len > b.len() {
+        return None;
+    }
+    b[..BOOT_NEED_PREFIX.len()].copy_from_slice(BOOT_NEED_PREFIX);
+    b[BOOT_NEED_PREFIX.len()..len].copy_from_slice(name);
+    Some(dkneeds::keys::name_hash_bytes(&b[..len]))
+}
+
+/// Add to `out[..n]` each service of the SDK's list (`gen_services::ORDER`) that the image asks for with an info entry `boot_need_<name>` and the runtime does
+/// not provide, once; the new count. An image adapter whose code runs from a service file declares it when an image feature uses that code without a module
+/// that needs the file (docs/plans/fork-image-diet.md section 9: the track keyboard and services/instrument.dks). The boot then plans and loads the file
+/// whether or not the selection names a module, as it does for a module's hard need; a safe boot loads none.
+#[inline(never)]
+unsafe fn boot_needs<P: Platform>(p: &P, out: &mut [u32; WANT_MAX], mut n: usize) -> usize {
+    for name in crate::gen_services::ORDER.iter() {
+        let Some(h) = boot_need_hash(name.as_bytes()) else {
+            continue;
+        };
+        if p.info(h).is_null() {
+            continue;
+        }
+        let svc = dkneeds::keys::name_hash_bytes(name.as_bytes());
+        if plan::is_runtime_service(svc, &services()) || out[..n].contains(&svc) || n >= WANT_MAX {
+            continue;
+        }
+        out[n] = svc;
+        n += 1;
     }
     n
 }

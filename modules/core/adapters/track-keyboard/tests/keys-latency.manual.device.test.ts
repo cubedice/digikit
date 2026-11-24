@@ -6,11 +6,12 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { emulatedClockMs, pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard } from './track-card.ts';
 
 const DISPLAY_BUDGET_MS = 150;
 
 describeOn('dt2', 'track keyboard display', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('shows playing and released notes without another UI action', { timeout: 180_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(

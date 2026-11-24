@@ -11,10 +11,11 @@ import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { withSession } from '@digi/regression/support.ts';
+import { trackKeyboardCard } from './track-card.ts';
 import { expect, test } from 'vitest';
 
 describeOn('dt2', 'shared track keyboard project storage', () => {
-  const options = liveOptions('dt2', { fresh: true });
+  const options = trackKeyboardCard(liveOptions('dt2', { fresh: true }));
   const handle = withSession({ ...options, dsp: 'sharc', restart: false });
   test(
     'preserves independent pattern settings through paste, undo, and a saved-project cold boot',

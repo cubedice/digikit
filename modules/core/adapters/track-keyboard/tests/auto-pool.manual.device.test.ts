@@ -9,6 +9,7 @@ import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { freeClock, waitClock } from '@digi/test-support';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard } from './track-card.ts';
 
 const OWNER = 1;
 const TRIG_9 = 33;
@@ -20,7 +21,7 @@ function trackBits(mask: number): number[] {
 }
 
 describeOn('dt2', 'automatic stock audio helper pool', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
 
   test('borrows only for the notes being played and returns empty tracks after release', { timeout: 180_000 }, async () => {
     const { session } = handle;

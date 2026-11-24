@@ -1445,3 +1445,37 @@ fn keys_of_gives_the_keys_of_a_kind_for_an_accepted_module_only() {
         assert_eq!(l.keys_of(SEL_MAX as u32, dkneeds::KIND_LFO_SHAPE, &mut out), 0);
     }
 }
+
+#[test]
+fn an_image_that_asks_for_a_service_has_it_found_planned_and_loaded_with_no_module_selected() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    unsafe {
+        // no module is selected, and without the image's entry nothing is searched
+        let mut l = staged_boot(service_file(&svc_table(&svc_bind(&STOCK)), 0), module_file());
+        let allocs = l.m.allocs;
+        let plan = l.plan_with_caps(0, &wide_caps());
+        assert_eq!((plan.np, l.m.allocs), (0, allocs), "nothing was searched");
+        // an adapter's `[[info]] name = "boot_need_svc-test"`: the boot looks for the file, plans it and loads it as a provider
+        let h = super::boot_need_hash(SVC.as_bytes()).unwrap();
+        assert_eq!(h, dkneeds::keys::name_hash("boot_need_svc-test"));
+        l.p.info_entries.borrow_mut().push((h, vec![0]));
+        let plan = l.plan_with_caps(0, &wide_caps());
+        assert_eq!(plan.np, 1, "the image asked for the service");
+        assert_eq!(l.found.path(0), SVC_PATH);
+        l.load_providers(&plan);
+        assert_eq!(l.loaded[0], true);
+        assert_eq!(records::module(MAX_MODULES).used, 1);
+    }
+}
+
+#[test]
+fn a_service_the_image_asks_for_and_a_module_needs_is_searched_once() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let mut want = [0u32; super::WANT_MAX];
+    let l = unsafe { staged_boot(service_file(&svc_table(&svc_bind(&STOCK)), 0), consumer_file(&user_table())) };
+    l.p.info_entries.borrow_mut().push((super::boot_need_hash(SVC.as_bytes()).unwrap(), vec![0]));
+    want[0] = dkneeds::keys::name_hash(SVC);
+    assert_eq!(unsafe { super::boot_needs(&l.p, &mut want, 1) }, 1);
+    assert_eq!(unsafe { super::boot_needs(&l.p, &mut want, 0) }, 1);
+    assert_eq!(want[0], dkneeds::keys::name_hash(SVC));
+}

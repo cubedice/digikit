@@ -15,6 +15,13 @@ conflicts = []
 [targets]
 "dt2-1.17" = "experimental"
 
+# Its keyboard and MIDI paths run through the code of core/instrument-play, which is in services/instrument.dks
+# (docs/plans/fork-image-diet.md section 9): the boot loads that file whether or not a selected module needs it (the runtime
+# looks up `boot_need_<service>`; the address is not read).
+[[info]]
+name = "boot_need_instrument"
+symbol = "tk_runtime_init"
+
 [[object]]
 path = "build/track-keyboard.dko.json"
 optional = ["rtm_is_type"]

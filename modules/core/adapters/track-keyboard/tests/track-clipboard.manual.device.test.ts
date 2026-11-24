@@ -6,9 +6,10 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { test } from 'vitest';
+import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'shared keyboard track clipboard', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'copies, clears, and restores one track through the native clipboard',
     { timeout: 180_000 },
