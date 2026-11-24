@@ -91,8 +91,10 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
         // the V2 instrument transaction: phase, record, result, cause (DKRT_INSTRUMENT_FILE)
         instrument: await Promise.all([0, 1, 2, 3].map((i) => cf('DKRT_INSTRUMENT_FILE', i))),
       }),
-      (state) => state.results.every((result) => result === 0),
-      { emulatedMs: 60_000, intervalMs: 1000, message: 'the load results of the modules' },
+      // and CANOPY's instrument transaction ready (DKRT_INSTRUMENT_FILE phase 3): the instrument host takes the DSP link only once the loads of
+      // the two effects are done, so its registration ends after their load results
+      (state) => state.results.every((result) => result === 0) && state.instrument[0] === 3,
+      { emulatedMs: 120_000, intervalMs: 1000, message: 'the load results of the modules and the instrument transaction' },
     );
     const boot = await inspectFxBoot(runtime, plan, inventory, artifacts, 'boot');
     context.rememberEpoch(boot.epoch);

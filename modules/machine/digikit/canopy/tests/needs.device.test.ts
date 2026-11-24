@@ -8,11 +8,13 @@ import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { packageSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { HOST_DIR_SYMBOL } from '@digi/dk-session';
 import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { portFile } from '@digi/regression/runtime/service-files.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';
@@ -52,7 +54,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
       session.options,
       session.runDir,
       artifacts,
-      ['DKRT_BOOT', 'DK_LOAD', 'DK_LOAD_N'],
+      ['DKRT_BOOT', HOST_DIR_SYMBOL],
       { modules: ['core/instrument-play', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -85,7 +87,8 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     // The services the runtime loads with it (machines, and instrument, which runs the host code of core/instrument-play: docs/plans/fork-image-diet.md)
     // take arena too: each its image block (`patchkit needs` of the packed file the card holds) and the block of its keys table (as
     // `inferred-needs.device.test.ts` of the runtime counts a provider).
-    const services = ['machines', 'instrument'].map((name) => moduleArtifact('dt2', `core/services/${name}`));
+    // and the port file the services resolve their firmware names from (upstream since the merge): a provider of the arena as well, counted the same way
+    const services = [...['machines', 'instrument'].map((name) => moduleArtifact('dt2', `core/services/${name}`)), portFile('dt2').file];
     const [needs, ...serviceNeeds] = (await needsOf([moduleFile, ...services])) as [Record<string, number>, ...Record<string, number>[]];
     const provided = services.reduce(
       (sum, file, i) => sum + serviceNeeds[i]!.ARENA! + block(fs.readFileSync(file).readUInt32BE(0x94)),
@@ -113,9 +116,12 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await openDigikitMenu({ ...sessionRt(session), dk });
     for (let i = 0; i < 8; i++) await key('DOWN');
     await key('YES');
-    await expect.poll(() => word(sym('DK_LOAD_N')), { timeout: 60_000 }).toBe(1);
+    // the menu is part of the system package since the upstream merge: its rows are found through the host directory
+    const loadRows = await packageSymbol(session, plan, 'MENU_LOAD');
+    const loadCount = await packageSymbol(session, plan, 'MENU_LOAD_N');
+    await expect.poll(() => word(loadCount), { timeout: 60_000 }).toBe(1);
     const row = Buffer.alloc(24);
-    for (let k = 0; k < 24; k += 4) row.writeUInt32BE(await word(sym('DK_LOAD') + k), k);
+    for (let k = 0; k < 24; k += 4) row.writeUInt32BE(await word(loadRows + k), k);
     // `module_text` of the menu: the name (12 columns and a space), the kind, the memory right aligned to 23 columns
     const memory = `${Math.ceil((needs.ARENA! + needs.DSP_AREA!) / 1024)}K`;
     expect(row.toString('latin1').split('\0')[0], 'the MODULES row of CANOPY').toBe(

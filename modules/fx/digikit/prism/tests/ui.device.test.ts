@@ -382,7 +382,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect(await value(PH.PH_P_TRKS!)).toBe(trackMask([1, 5, 9, 16]));
     // a short press of G with no loop changes nothing
     await tap(session, 'PUSH G', 150);
-    expect(await allValues()).toEqual([...before.slice(0, PH.PH_P_TRKS!), trackMask([1, 5, 9, 16])]);
+    expect(await allValues()).toEqual(before.map((v, i) => (i === PH.PH_P_TRKS! ? trackMask([1, 5, 9, 16]) : v)));
     // back to no track for the settings on the card
     await chooseTracks(session, values, []);
 
