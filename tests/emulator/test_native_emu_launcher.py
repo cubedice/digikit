@@ -354,8 +354,44 @@ def test_a_device_that_is_not_a_runtime_target_refuses_runtime(monkeypatch, tmp_
         scope["main"]([str(syx), "--runtime"])
 
 
+def test_workbench_opens_with_a_missing_default_firmware(monkeypatch, tmp_path):
+    scope, calls, _ = _launch_setup(monkeypatch, tmp_path, None)
+    missing = tmp_path / "missing.syx"
+    monkeypatch.setenv("DIGI_EMU_SYX", str(missing))
+    scope["main"]([])
+    assert Path(calls[-1][0]).name == "digiemu-desktop"
+    assert str(missing) not in calls[-1]
+    with pytest.raises(SystemExit, match="cannot tell which device"):
+        scope["main"](["--daemon"])
+
+
 def test_an_unknown_firmware_is_an_error_not_a_default_device(monkeypatch, tmp_path):
     scope, calls, syx = _launch_setup(monkeypatch, tmp_path, None)
     with pytest.raises(SystemExit, match="cannot tell which device"):
         scope["main"]([str(syx)])
     assert calls == []
+
+
+def test_a_patched_build_keeps_the_audio_state_of_the_firmware_the_snapshot_was_taken_from(
+    tmp_path,
+):
+    """The ready snapshot is valid for one firmware: a patched build (another hash) must not become the audio profile, or the daemon refuses the snapshot."""
+    import hashlib
+    import json
+
+    scope = launcher()
+    stock = tmp_path / "stock.syx"
+    stock.write_bytes(b"stock")
+    patched = tmp_path / "patched.syx"
+    patched.write_bytes(b"patched")
+    snapshot = tmp_path / "digi-audio-m5.snap"
+    paths = {"CF snapshot": snapshot}
+    check = scope["ready_is_of_another_firmware"]
+    assert check(paths, patched) is False, (
+        "a directory that records nothing is not known to differ"
+    )
+    (tmp_path / "SOURCE.json").write_text(
+        json.dumps({"syx_sha256": hashlib.sha256(b"stock").hexdigest()})
+    )
+    assert check(paths, stock) is False
+    assert check(paths, patched) is True

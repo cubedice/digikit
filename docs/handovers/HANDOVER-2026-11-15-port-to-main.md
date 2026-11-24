@@ -73,7 +73,7 @@ ported branch replaces it only after review, and that needs a force push.
   so `dk run` no longer refuses CANOPY as a file the loader does not accept and `module:check` no longer prints "the
   loader refuses the file". The runtime's scan reads with it too, so the MODULES page gives CANOPY a kind, its memory and
   a fit verdict, and counts it when another module is ticked beside it. The scan entry and the fit rule still have no
-  instrument rows: the loader's V2 owner admits those. `modules/machines/canopy/tests/needs.device.test.ts` (DT2)
+  instrument rows: the loader's V2 owner admits those. `modules/machine/digikit/canopy/tests/needs.device.test.ts` (DT2)
   compares the needs with CAPACITY after a load (arena 279 600, DSP area 150 016, one machine row, no voice row) and
   reads the MODULES row. The runtime object grew by about 4 KiB; the `emulator` set of both devices and the
   `canopy-overloop` set of the DT2 still apply.

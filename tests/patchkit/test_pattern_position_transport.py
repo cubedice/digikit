@@ -16,8 +16,8 @@ import pytest
 from tools.patchkit import pk_sharc, pk_toolchains
 
 ROOT = Path(__file__).resolve().parents[2]
-PROVIDER = ROOT / "modules/core/adapters/pattern-position"
-LINK = ROOT / "modules/core/adapters/dsp-link"
+PROVIDER = ROOT / "image-modules/adapters/pattern-position"
+LINK = ROOT / "runtime/platform/dsp-link"
 MAGIC, SALT = 0x50504F53, 0x7B91D6E3
 RX, DATA, BASE, BACK = 0x200A0000, 0x20090000, 0xB90000, 0xB9F000
 SUFFIX = 0xA7C
@@ -67,14 +67,14 @@ def test_direct_optional_symbols_are_consistent():
     assert "_pattern_position_info" in dt2["optional"]
     assert "_pattern_position_info" not in dn2["optional"]
     dyndsp = tomllib.loads(
-        (ROOT / "modules/core/adapters/dyndsp/module.toml").read_text()
+        (ROOT / "runtime/platform/dyndsp/module.toml").read_text()
     )
     obj = next(o for o in dyndsp["object"] if o["devices"] == ["dt2"])
     assert "_pattern_position_info" in obj["optional"]
     assert "_pattern_position_info" not in obj.get("externs", {})
     provider = tomllib.loads((PROVIDER / "module.toml").read_text())
     assert provider["module"]["ports"] == ["dt2-1.17"]
-    decls = tomllib.loads((ROOT / "devices/fw/dsp/pattern.toml").read_text())
+    decls = tomllib.loads((ROOT / "ports/fw/dsp/pattern.toml").read_text())
     rule = next(
         r["rule"] for r in decls["site"] if r["name"] == "dsp.pattern.site.block_entry"
     )
@@ -85,7 +85,7 @@ def test_direct_optional_symbols_are_consistent():
     "name", ["_pattern_position_info", "_loop_tap", "_loop_ui_status"]
 )
 def test_built_import_uses_the_provider_name(name):
-    path = ROOT / "modules/core/adapters/dyndsp/build/dyndsp-dt2.dko.json"
+    path = ROOT / "runtime/platform/dyndsp/build/dyndsp-dt2.dko.json"
     obj = json.loads(path.read_text())
     data = bytes.fromhex(
         next(s["hex"] for s in obj["sections"] if s["name"] == ".rodata")

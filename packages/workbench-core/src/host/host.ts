@@ -3,6 +3,8 @@
 // apps/desktop/src-tauri/src/main.rs (`generate_handler!`) and its command modules. The shapes here follow the Rust signatures and
 // carry no UI types, so the folder can move into a shared package (the browser app would implement the same interface).
 
+import type { SystemPackage } from '../runtime/activate-system-package';
+
 /** The emulator control RPC (`emu_call`): one protocol method of the controller (docs/CONTROL.md). */
 export interface EmuRpc {
   /** `session`: the session token of the webview; the controller refuses the call when it is no longer the current one (`firmware.load` and `restart` start the session they carry). */
@@ -117,7 +119,23 @@ export interface BulkHost {
   closeOutOnly(): Promise<void>;
 }
 
+/** A host stereo capture endpoint. The opaque ID identifies the device even when display names coincide. */
+export interface AudioInput {
+  id: string;
+  name: string;
+}
+
+/** The native monitor routes one stereo input to the current system output. */
+export interface RemoteAudioHost {
+  inputs(): Promise<AudioInput[]>;
+  start(input: string): Promise<string>;
+  stop(): Promise<void>;
+  /** A running stream's failure, if any. */
+  status(): Promise<string | null>;
+}
+
 export interface PortsHost {
+  audio?: RemoteAudioHost;
   midi: MidiHost;
   bulk: BulkHost;
 }
@@ -128,9 +146,10 @@ export interface FirmwareHost {
   prepare(stock: Uint8Array, options: { restore: boolean; set: string }): Promise<ArrayBuffer>;
   /** The system's save dialog for an image; the path, or null when the user cancels. */
   save(bytes: Uint8Array, name: string): Promise<string | null>;
+  /** The built system package, prefixed by the packed runtime version (4 bytes, big endian). */
+  systemPackage?(): Promise<ArrayBuffer>;
+  systemPackagePlan?: SystemPackage['plan'];
   patchkitWasm(): Promise<ArrayBuffer>;
-  /** `modules/bind.json` of the site build (`{ports, fw}`, no firmware): what `pk_bind` reads to bind a service file. */
-  bindBundle(): Promise<ArrayBuffer>;
   /** `dkprof.wasm`: address lookup and load table decoding (the Log pane's names). */
   dkprofWasm(): Promise<ArrayBuffer>;
   sampleWasm(): Promise<ArrayBuffer>;
@@ -174,7 +193,48 @@ export interface ShellHost {
   openCardFolder(): Promise<void>;
 }
 
+/** A consecutive window of stereo source samples, before monitor resampling. */
+export interface AnalyzerPcm {
+  /** Changes when the source stream restarts, including a change of USB input. */
+  generation: number;
+  rate: number;
+  left: number[];
+  right: number[];
+}
+
+export interface AnalyzerHost {
+  open(source: 'emulator' | 'remote'): Promise<number>;
+  read(id: number): Promise<AnalyzerPcm | null>;
+  close(id: number): Promise<void>;
+}
+
+export type SymbolKind = 'cf' | 'sharc' | 'map';
+export interface SymbolImage {
+  device: string;
+  firmware: string;
+  sha256: string;
+}
+export interface SymbolImageMap extends SymbolImage {
+  json: string;
+}
+export interface SymbolSource {
+  kind: SymbolKind;
+  path: string;
+  images: SymbolImage[];
+  error?: string;
+}
+export interface SymbolsHost {
+  list(): Promise<SymbolSource[]>;
+  choose(kind: SymbolKind): Promise<void>;
+  remove(path: string): Promise<void>;
+  refresh(): Promise<void>;
+  maps(stockSha256: string): Promise<Record<string, unknown>[]>;
+  revision(): number;
+}
+
 export interface Host {
+  symbols?: SymbolsHost;
+  analyzer?: AnalyzerHost;
   fs: FsHost;
   library: LibraryHost;
   ports: PortsHost;

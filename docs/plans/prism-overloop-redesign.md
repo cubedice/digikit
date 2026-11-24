@@ -293,7 +293,7 @@ LIVE feeds PRISM nothing, because the loop's feed follows the crossfader.
 | 7 | The granular engine (GRAIN, MOVE) | Remove it from PRISM. It could come back as a separate effect; that is not part of this proposal |
 | 8 | Zone names, ranges, and the longest time (10.7 s or 21.5 s) | Set by ear in step 1 below |
 | 9 | How is PRISM heard past the crossfader, when Overloop is a master insert behind the FX return? | **Decided (owner, 2026-11-18): option B.** While Overloop runs, PRISM's output does not go to the FX return: Overloop adds it after its crossfader and after its record, at the master stage's gain (its +10 dB and the volume ramp). Accepted with it: with Overloop loaded, PRISM's echoes skip the master compressor, the clip of the master stage and the master overdrive, also without a loop; they follow the master volume. Without Overloop PRISM goes to the FX return as before |
-| 10 | At what level does the loop feed PRISM? | **Decided (owner, 2026-11-18):** INPT stays a plain switch; the loop's feed gets a fixed trim, -6 dB on the whole mix at full send (`PRISM_LOOP_TRIM` in `modules/fx/prism/src/prism.h`), set by ear after the install. No control on the page |
+| 10 | At what level does the loop feed PRISM? | **Decided (owner, 2026-11-18):** INPT stays a plain switch; the loop's feed gets a fixed trim, -6 dB on the whole mix at full send (`PRISM_LOOP_TRIM` in `modules/fx/digikit/prism/src/prism.h`), set by ear after the install. No control on the page |
 
 ## 6. What is lost
 

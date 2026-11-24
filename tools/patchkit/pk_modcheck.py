@@ -3,7 +3,7 @@
 
     uv run python -m tools.patchkit.pk_modcheck NAME [--device dt2|dn2] [--trace]      (mise run module:check NAME)
 
-NAME is a module id (`<author/name>`) or its last part (`<name>`), or `service/<name>` for a service crate of the runtime (`modules/core/services/<name>`: the structure check, `patchkit service-check`, then the crate's `rust-tests`). A machine or effect module runs the conformance suite on the SHARC-only rig
+NAME is a module id (`<author/name>`) or its last part (`<name>`), or `service/<name>` for a service crate of the runtime (`services/<name>`: the structure check, `patchkit service-check`, then the crate's `rust-tests`). A machine or effect module runs the conformance suite on the SHARC-only rig
 (packages/sharc-rig-kit, docs/TESTING.md "The Vitest kit"), for its devices, then `patchkit uses set` writes its measured DSP cost. Then one pytest process runs the module's own tests: `modules/<group>/<name>/tests/**/test_*.py` and its scenarios in `tests/scenarios/*.toml` (only those run, at every tier). Module-owned Nx `test-device-all` targets (full inputs) then run their declared TypeScript device acceptance; any failing stage stops the check before size/fit.
 Own tests may build or launch an emulator. A service/raw module with no Python tests has its objects checked against their sources, then runs its owned device target if present. Size and fit follow only after both stages pass. This command does not prove every module loads in patched firmware.
 """
@@ -110,14 +110,20 @@ def _daemon(device: str) -> str:
 
 
 def commit_stage(mid: str, devices: list[str]) -> bool:
-    """For a module with `[[machine]]` or `[[fx]]`: load it on the emulated device, read the rows it committed (tools/devtools/commit_records.ts, decoded by
-    `patchkit records`), write `[uses.<device>]` into its module.toml and `build/gen/gallery.json` from them (docs/plans/sdk.md 6.1 and 6.4). The
-    conformance suite that runs next reads that gallery.json. A tool or a service has no rows to commit and is left alone: returns False."""
+    """For a module with `[[machine]]`, `[[fx]]` or a `[[record]]` (an LFO shape): load it on the emulated device, read the records it committed
+    (tools/devtools/commit_records.ts, decoded and judged by `patchkit records`), write `[uses.<device>]` into its module.toml and `build/gen/gallery.json` from
+    them (docs/plans/sdk.md 6.1 and 6.4). The conformance suite that runs next reads that gallery.json. The records must pass the rule of the service that owns
+    their kind (`patchkit records --check`, `Records::validate`): a problem stops the check. A tool or a service has no rows to commit and is left alone:
+    returns False."""
     moddir = modroots.module_dir(mid)
     manifest_path = moddir / "module.toml"
     original = manifest_path.read_text(encoding="utf-8")
-    if "[[machine]]" not in original and "[[fx]]" not in original:
-        return False  # declares nothing through builder calls: no rows to measure
+    if (
+        "[[machine]]" not in original
+        and "[[fx]]" not in original
+        and "[[record]]" not in original
+    ):
+        return False  # declares nothing through builder calls or records: no rows to measure
     # The measuring build takes the device limits as its `[uses]`: the loader refuses a module whose tables are absent, zero or lower than what its
     # init declares, so a new or changed module could not be measured with its own numbers. The measured rows replace them below.
     write_uses(manifest_path, {d: seed_uses(d) for d in devices})
@@ -130,6 +136,19 @@ def commit_stage(mid: str, devices: list[str]) -> bool:
         manifest_path.write_text(original, encoding="utf-8")
         return False
     kept = tomllib.loads(original).get("uses", {})
+    refused = {
+        dev: d["records"].get("problems", [])
+        for dev, d in per.items()
+        if d["records"].get("problems")
+    }
+    if refused:
+        manifest_path.write_text(original, encoding="utf-8")
+        for dev, problems in sorted(refused.items()):
+            for line in problems:
+                print(f"{mid}: {dev}: {line}", file=sys.stderr)
+        raise SystemExit(
+            f"{mid}: the records it commits are refused by the service that owns them (the rule the runtime runs at load)"
+        )
     write_uses(
         manifest_path,
         {
@@ -292,20 +311,20 @@ def _measure(mid: str, devices: list[str]) -> dict[str, dict]:
                 str(patchkit.binary()),
                 _daemon(dev),
                 debug_dkm=dbg,
-                services=_bound_services(dev, Path(tmp), [out, dbg]),
+                services=_card_services(dev, Path(tmp), [out, dbg]),
                 patch_set=patch_set,
                 dsp=dsp,
             )
     return per
 
 
-def _bound_services(dev: str, tmp: Path, files: list[Path]) -> list[Path]:
-    """The card services that the packed FILES need, bound to the stock firmware (`patchkit services`; module:check needs no Nx output)."""
+def _card_services(dev: str, tmp: Path, files: list[Path]) -> list[Path]:
+    """The card files the packed FILES need: the services as packed and the port file of the stock firmware (`patchkit services`; module:check needs no Nx output)."""
     from tools.patchkit import pk_services
 
     return [
-        Path(s["bound_path"])
-        for s in pk_services.bound_services(dev, tmp / "svc-bound" / dev, files)
+        Path(s["file"])
+        for s in pk_services.card_services(dev, tmp / "services" / dev, files)
     ]
 
 
@@ -601,7 +620,7 @@ def service_check(name: str) -> int:
     """A service crate: the structure check (layout, one exported entry, declarations equal to sdk.toml), then its own host tests."""
     from tools.patchkit import patchkit
 
-    crate = ROOT / "modules/core/services" / name
+    crate = ROOT / "services" / name
     if not (crate / "Cargo.toml").is_file():
         print(
             f"service/{name}: no such service crate ({crate.relative_to(ROOT)})",

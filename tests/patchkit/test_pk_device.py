@@ -5,9 +5,7 @@ constants current; these tests keep the hand-written parts of the modules consis
 from __future__ import annotations
 
 import tomllib
-from dataclasses import replace
 
-import pytest
 from support.paths import REPO_ROOT
 
 from tools.device import dkproto
@@ -15,7 +13,7 @@ from tools.patchkit import modroots, pk_device, port_resolve
 
 ROOT = REPO_ROOT
 TYPES = tomllib.loads(
-    (ROOT / "modules" / "core" / "adapters" / "machines" / "types.toml").read_text()
+    (ROOT / "image-modules" / "points" / "machines" / "types.toml").read_text()
 )
 
 
@@ -23,61 +21,41 @@ def module(mid: str) -> dict:
     return tomllib.loads((modroots.module_dir(mid) / "module.toml").read_text())
 
 
-def test_shared_limits_allow_device_staging_without_exposing_a_wrong_capacity() -> None:
-    shared = pk_device.shared_limits()
-    assert pk_device.limits("dt2").stage_bytes == 131072
-    assert pk_device.limits("dn2").stage_bytes == 65536
-    for device in pk_device.dsp_devices():
-        limits = pk_device.limits(device)
-        assert shared.modules == limits.modules
-        assert shared.machine_rows == limits.machine_rows
-        assert shared.arena_bytes == limits.arena_bytes
-        assert shared.param_rows == limits.param_rows
-    with pytest.raises(AttributeError):
-        _ = shared.stage_bytes
-
-
-@pytest.mark.parametrize(
-    "field", ["modules", "machine_rows", "arena_bytes", "param_rows"]
-)
-def test_shared_limits_still_reject_different_runtime_capacities(
-    monkeypatch, field
-) -> None:
-    original = pk_device.limits
-
-    def different_limits(device):
-        value = original(device)
-        return (
-            replace(value, **{field: getattr(value, field) + 1})
-            if device == "dt2"
-            else value
-        )
-
-    monkeypatch.setattr(pk_device, "limits", different_limits)
-    with pytest.raises(RuntimeError, match=rf"\[limits\] {field} differs"):
-        pk_device.shared_limits()
-
-
 def test_the_store_geometry_is_the_device_files() -> None:
+    tail_devices = ("dt2", "dn2")
     for dev in pk_device.store_devices():
         s = pk_device.store_of(dev)
-        card = pk_device.load(dev)["card"]["store"]
-        assert s.first == card["first_sector"]
-        assert s.first + s.sectors == card["end_sector"]
-        assert s.header_b == card["header_b_sector"]
-        assert (s.sel_a, s.sel_b) == (card["end_sector"] - 2, card["end_sector"] - 1)
-        assert card["selection_sectors"] == 2
+        card = pk_device.load(dev)["card"]
+        store = card["store"]
+        assert s.first == store["first_sector"]
+        assert s.first + s.sectors == store["end_sector"]
+        assert s.header_b == store["header_b_sector"]
+        assert (s.sel_a, s.sel_b) == (store["end_sector"] - 2, store["end_sector"] - 1)
+        assert store["selection_sectors"] == 2
         # header B, the settings record (two copies of the sdk's size), the selection record
-        assert card["settings_sectors"] == 2 * dkproto.SETTINGS_SECTORS
-        assert s.header_b == card["end_sector"] - 2 - card["settings_sectors"] - 1
-        assert s.set_a == card["end_sector"] - 2 - card["settings_sectors"]
+        assert store["settings_sectors"] == 2 * dkproto.SETTINGS_SECTORS
+        assert s.header_b == store["end_sector"] - 2 - store["settings_sectors"] - 1
+        assert s.set_a == store["end_sector"] - 2 - store["settings_sectors"]
         assert s.set_b == s.set_a + dkproto.SETTINGS_SECTORS
         assert s.set_b + dkproto.SETTINGS_SECTORS == s.sel_a
-        # the store lies above the MmcFs write guard and ends with the card (finding 59)
-        assert s.first > 0x457FFF
-        assert s.end == pk_device.load(dev)["card"]["total_sectors"]
-    # the two devices have different areas: the runtime reads its own from the device object
-    assert pk_device.store_of("dt2").first != pk_device.store_of("dn2").first
+        # The project pool ends at the MmcFs boundary (findings 59 and 154).
+        projects = card["pools"]["projects"]
+        stock_end = max(
+            projects["base_sector"] + projects["slots"] * projects["stride_sectors"],
+            card.get("path_fs", {}).get("end_sector", 0),
+            *(
+                row["end"]
+                for row in card.get("guard", {}).get("row", [])
+                if row["who"] == "stock"
+            ),
+        )
+        assert stock_end <= s.first < s.end <= card["total_sectors"], dev
+        if dev in tail_devices:
+            assert s.end == card["total_sectors"], dev
+    # the tail stores have different starts: the runtime reads its own from the device object
+    assert len({pk_device.store_of(dev).first for dev in tail_devices}) == len(
+        tail_devices
+    )
 
 
 def test_dynreg_reserves_one_machine_row_per_run_time_type() -> None:
@@ -114,7 +92,7 @@ def test_digikit_ids_and_names_are_unique_and_fit_the_info_reply() -> None:
 
 def test_port_resolve_reads_its_tables_from_the_device_files() -> None:
     # every firmware that has a port lockfile is flagged, and the other way round
-    ports = {p.stem for p in (ROOT / "devices" / "ports").glob("*.toml")}
+    ports = {p.stem for p in (ROOT / "ports").glob("*.toml")}
     flagged = {
         f"{p['device']}-{p['version']}"
         for p in port_resolve.load_profiles().values()
@@ -123,7 +101,7 @@ def test_port_resolve_reads_its_tables_from_the_device_files() -> None:
     assert flagged == ports
     assert len(port_resolve.ported_firmware()) == len(ports)
     # the limits written into a port are the device's `[patch]` (a device without a DSP has no dsp_* limits)
-    for pf in (ROOT / "devices" / "ports").glob("*.toml"):
+    for pf in (ROOT / "ports").glob("*.toml"):
         port = tomllib.loads(pf.read_text())
         patch = pk_device.load(port["port"]["device"])["patch"]
         assert port["limits"] == {
@@ -132,7 +110,7 @@ def test_port_resolve_reads_its_tables_from_the_device_files() -> None:
 
 
 def test_the_harness_inputs_come_from_the_device_files() -> None:
-    ports = {p.stem for p in (ROOT / "devices" / "ports").glob("*.toml")}
+    ports = {p.stem for p in (ROOT / "ports").glob("*.toml")}
     assert {f"{s}-{v}" for s, v in pk_device.port_firmware()} == ports
     for short, version in pk_device.acceptance_firmware().items():
         acc = pk_device.load(short)["acceptance"]

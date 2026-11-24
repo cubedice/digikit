@@ -28,7 +28,7 @@ that the upstream merge moved, so the sources merged by themselves. Two conflict
   settings copy (from `main`: the settings record with the working copy is longer than a sector); a card with the
   machines service allows the first sector of each copy under any policy (from upstream). Both host expectations are in
   `tests/regression/host/write-safety.test.ts`.
-- `modules/core/adapters/instrument-play/build/play-cf.dko.json`: regenerated (`mise run module:build`).
+- `image-modules/adapters/instrument-play/build/play-cf.dko.json`: regenerated (`mise run module:build`).
   `midi-events/build/midi-packet-dsp.dko.json` came out of the regeneration as on `main`.
 
 Run on 1de4b9fa, all passing: `regression:test-host` (with `canopy-link-recover`, `canopy-work-copy` and
@@ -65,7 +65,7 @@ whose stack the finding measures; that was read, not measured.
   are for service files only: upstream's own image adapters still leave through patch-time `hook.*.tail` and `.return`
   (`core/dsp-link`, `core/health`, `core/params`, the image part of `core/machines`). The fork's image adapters
   (`core/instrument-play`, `pattern-position`, `phrase-ui`, `loop-display`, `midi-events`) are unchanged and build.
-- **`mf_typearg` and `mf_srcpage`** are routines of `machines.dks` (`modules/core/services/machines/dks/src/hooks-dt2.s`).
+- **`mf_typearg` and `mf_srcpage`** are routines of `machines.dks` (`services/machines/dks/src/hooks-dt2.s`).
   A service has no link to the image, so `core/machines` publishes the info table `machines_ext_info` (`mf_ext_info` in
   `src/cf/dt2/machines.s`: `mf_src_page_count`, `mf_src_apply_pages` and the optional `instrument_mod_param`), and the
   service copies it into `MF_EXT` at `setup` (`dks/src/image.rs`). An image without the table leaves the words 0 and keeps
@@ -73,7 +73,7 @@ whose stack the finding measures; that was read, not measured.
 - **`fxp_graph`** is a routine of `fx.dks`. `core/loop-display` publishes the info entry `loop_ui_paint` (the function
   itself), `setup` puts it in `DKRT_FXP_PAINT`, and a page it painted leaves at `cf.page.site.filter_graph_test + 0x4c4`
   (the extern `fx_graph_site`, a `dk_fw_` name with an offset).
-- **Phrase.** `modules/core/services/fx/src/phrase.rs` finds `phrase_bind`, `phrase_control_tick` and `phrase_ui_tick` as
+- **Phrase.** `services/fx/src/phrase.rs` finds `phrase_bind`, `phrase_control_tick` and `phrase_ui_tick` as
   info entries of `core/phrase-control` and `core/phrase-ui` (`phrase::setup`, called from the service's `setup`).
   `tests/phrase_stubs.rs` is gone. The calls in `records.rs`, `fxpage.rs` and `dsp/mod.rs` merged without change.
 - **A persistent instrument's type numbers.** The plan of the numbers is the machines service's now. The core asks through

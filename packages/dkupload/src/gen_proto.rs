@@ -8,11 +8,17 @@ pub const READ_MAX: usize = 768;
 pub const PEEK_MAX: usize = 512;
 pub const MAX_REQUEST_WIRE: usize = 40960;
 pub const MAX_REPLY_WIRE: usize = 1024;
+pub const CMD_MODULE_UI: u8 = 0x00;
 pub const CMD_INFO: u8 = 0x01;
 pub const CMD_LIST: u8 = 0x02;
 pub const CMD_MODULES: u8 = 0x03;
 pub const CMD_CAPACITY: u8 = 0x04;
 pub const CMD_LOADS: u8 = 0x05;
+pub const CMD_RELOAD: u8 = 0x06;
+pub const CMD_RELOAD_STATE: u8 = 0x07;
+pub const CMD_LOAD: u8 = 0x08;
+pub const CMD_UNLOAD: u8 = 0x09;
+pub const CMD_RETRY: u8 = 0x0b;
 pub const CMD_BEGIN: u8 = 0x10;
 pub const CMD_DATA: u8 = 0x11;
 pub const CMD_END: u8 = 0x12;
@@ -27,6 +33,8 @@ pub const CMD_RENAME: u8 = 0x1a;
 pub const CMD_FAULT: u8 = 0x23;
 pub const CMD_SELECT: u8 = 0x30;
 pub const CMD_RESTART: u8 = 0x31;
+pub const SVC_SETUP: u8 = 0x0a;
+pub const SVC_PROFILE_DSP: u8 = 0x1b;
 pub const SVC_PROFILE_STATE: u8 = 0x1e;
 pub const SVC_PROFILE_READ: u8 = 0x1f;
 pub const SVC_LOG: u8 = 0x20;
@@ -59,6 +67,8 @@ pub const E_SET_VALUE: i8 = -69;
 pub const E_SET_OFF: i8 = -70;
 pub const E_FILE_IN_USE: i8 = -71;
 pub const E_AGAIN: i8 = -72;
+pub const E_MODULE_UI_CONFLICT: i8 = -88;
+pub const E_MODULE_UI_SCOPE: i8 = -89;
 pub const CAP_LOG: u32 = 1 << 0;
 pub const CAP_PEEK: u32 = 1 << 1;
 pub const CAP_LOGCFG: u32 = 1 << 2;
@@ -76,6 +86,11 @@ pub const CAP_RENAME: u32 = 1 << 13;
 pub const CAP_READBACK: u32 = 1 << 14;
 pub const CAP_LOADS: u32 = 1 << 15;
 pub const CAP_SVC_ABI: u32 = 1 << 16;
+pub const CAP_RELOAD: u32 = 1 << 17;
+pub const CAP_FW_ID: u32 = 1 << 18;
+pub const CAP_LIVE: u32 = 1 << 19;
+pub const CAP_MODULE_UI: u32 = 1 << 20;
+pub const CAP_MODULE_SECTIONS: u32 = 1 << 21;
 pub const CAPK_MODULES: u8 = 1;
 pub const CAPK_SELECTION: u8 = 2;
 pub const CAPK_ARENA: u8 = 3;
@@ -92,10 +107,9 @@ pub const CAPK_SETTINGS: u8 = 13;
 pub const CAPK_SEND_SLOTS: u8 = 14;
 pub const CAPK_DSP_COST: u8 = 15;
 pub const CAPK_DSP_VOICES: u8 = 16;
-pub const CAPK_INSTRUMENT_ROWS: u8 = 17;
-pub const CAPK_INSTRUMENT_TRACKS: u8 = 18;
+pub const CAPK_PACKAGE: u8 = 17;
 /// Every CAPACITY kind in the order of its number: the runtime answers each one.
-pub const CAP_KINDS: [u8; 18] = [
+pub const CAP_KINDS: [u8; 17] = [
     CAPK_MODULES,
     CAPK_SELECTION,
     CAPK_ARENA,
@@ -112,11 +126,10 @@ pub const CAP_KINDS: [u8; 18] = [
     CAPK_SEND_SLOTS,
     CAPK_DSP_COST,
     CAPK_DSP_VOICES,
-    CAPK_INSTRUMENT_ROWS,
-    CAPK_INSTRUMENT_TRACKS,
+    CAPK_PACKAGE,
 ];
 /// The `name_hash` of `cap_<kind>` (the kind name in lower case) for each kind of `CAP_KINDS`: the name of the `[[info]]` entry of the image's info table that gives the kind's limit when no service answers (docs/PATCHING.md).
-pub const CAP_INFO_HASHES: [u32; 18] = [
+pub const CAP_INFO_HASHES: [u32; 17] = [
     0x88b64095,
     0x4905a3e2,
     0x60285193,
@@ -133,8 +146,7 @@ pub const CAP_INFO_HASHES: [u32; 18] = [
     0x8a4e9248,
     0x4ebaf5d9,
     0xcb8f5ab7,
-    0x94edfcc3,
-    0x662ef4ea,
+    0xb6dc3d64,
 ];
 /// The most a kind's limit may report (`ceiling` of the kind, a key of `[limits.max]`): the size of the arrays that hold its rows. `u32::MAX`: none.
 pub const CAPMAX_MACHINE_ROWS: u32 = 8;
@@ -144,7 +156,7 @@ pub const CAPMAX_PAGE_ROWS: u32 = 8;
 pub const CAPMAX_FX_SLOTS: u32 = 4;
 pub const CAPMAX_MAP_ENTRIES: u32 = 8;
 pub const CAPMAX_SEND_SLOTS: u32 = 2;
-pub const CAP_CEILING: [u32; 18] = [
+pub const CAP_CEILING: [u32; 17] = [
     4294967295,
     4294967295,
     4294967295,
@@ -162,10 +174,9 @@ pub const CAP_CEILING: [u32; 18] = [
     4294967295,
     4294967295,
     4294967295,
-    4294967295,
 ];
 /// The resources a fit looks at: name, kind and what a person calls it.
-pub const CAP_FIT: [(&str, u8, &str); 14] = [
+pub const CAP_FIT: [(&str, u8, &str); 12] = [
     ("MODULES", CAPK_MODULES, "module records"),
     ("SELECTION", CAPK_SELECTION, "selection paths"),
     ("ARENA", CAPK_ARENA, "CPU memory"),
@@ -178,29 +189,33 @@ pub const CAP_FIT: [(&str, u8, &str); 14] = [
     ("FX_SLOTS", CAPK_FX_SLOTS, "effect slots"),
     ("DSP_COST", CAPK_DSP_COST, "DSP load"),
     ("DSP_VOICES", CAPK_DSP_VOICES, "DSP voices"),
-    ("INSTRUMENT_ROWS", CAPK_INSTRUMENT_ROWS, "instrument rows"),
-    ("INSTRUMENT_TRACKS", CAPK_INSTRUMENT_TRACKS, "instrument tracks"),
 ];
 /// The command ranges a module may register, as (first, last).
-pub const RANGES: [(u8, u8); 10] = [
+pub const RANGES: [(u8, u8); 13] = [
     (0x20, 0x22), // debug
     (0x1e, 0x1f), // debug_profile
+    (0x1b, 0x1b), // debug_profile_dsp
+    (0x0a, 0x0a), // debug_setup
     (0x1c, 0x1d), // entry_demo_test
     (0x24, 0x27), // file_write_test
     (0x28, 0x2b), // file_write_test_b
     (0x32, 0x35), // probe
     (0x38, 0x3d), // remote
     (0x3e, 0x3f), // remote_state
+    (0x0f, 0x0f), // ui_views_test
     (0x2c, 0x2f), // usb_echo_test
     (0x36, 0x37), // usb_fast
 ];
 pub const RANGE_DEBUG: (u8, u8) = (0x20, 0x22);
 pub const RANGE_DEBUG_PROFILE: (u8, u8) = (0x1e, 0x1f);
+pub const RANGE_DEBUG_PROFILE_DSP: (u8, u8) = (0x1b, 0x1b);
+pub const RANGE_DEBUG_SETUP: (u8, u8) = (0x0a, 0x0a);
 pub const RANGE_ENTRY_DEMO_TEST: (u8, u8) = (0x1c, 0x1d);
 pub const RANGE_FILE_WRITE_TEST: (u8, u8) = (0x24, 0x27);
 pub const RANGE_FILE_WRITE_TEST_B: (u8, u8) = (0x28, 0x2b);
 pub const RANGE_PROBE: (u8, u8) = (0x32, 0x35);
 pub const RANGE_REMOTE: (u8, u8) = (0x38, 0x3d);
 pub const RANGE_REMOTE_STATE: (u8, u8) = (0x3e, 0x3f);
+pub const RANGE_UI_VIEWS_TEST: (u8, u8) = (0x0f, 0x0f);
 pub const RANGE_USB_ECHO_TEST: (u8, u8) = (0x2c, 0x2f);
 pub const RANGE_USB_FAST: (u8, u8) = (0x36, 0x37);

@@ -17,7 +17,7 @@ from support.paths import REPO_ROOT
 from tools.patchkit import patchkit, pk_sharc, pk_toolchains, port_resolve
 
 ROOT = REPO_ROOT
-MOD = ROOT / "modules/core/adapters/midi-events"
+MOD = ROOT / "image-modules/adapters/midi-events"
 FIRMWARE = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 
@@ -790,7 +790,7 @@ def test_packet_validation_on_sharc(packet_validator, case):
 
 @pytest.fixture(scope="module")
 def link_receiver_object():
-    link = ROOT / "modules/core/adapters/dsp-link"
+    link = ROOT / "runtime/platform/dsp-link"
     source = pk_sharc.expand_includes(
         (link / "src/dsp/dt2.s").read_text(),
         [link / "src/dsp", *pk_sharc.sharc_include_dirs(link)],
@@ -896,7 +896,7 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
 @pytest.mark.parametrize("present", [False, True])
 def test_instrument_reply_preserves_overloop_and_every_other_record_word(present):
     source = (
-        ROOT / "modules/core/adapters/dsp-link/src/dsp/instrument-status.inc"
+        ROOT / "runtime/platform/dsp-link/src/dsp/instrument-status.inc"
     ).read_text()
     obj = pk_sharc.assemble(
         ".EXTERN _instrument_reply;\n.EXTERN _dl_instrument_status_return;\n"
@@ -936,7 +936,7 @@ def test_instrument_reply_preserves_overloop_and_every_other_record_word(present
 def test_din_hook_resolves_uniquely_on_pinned_image():
     if not FIRMWARE.exists():
         pytest.skip("DTII 1.17 firmware required")
-    declarations = tomllib.loads((ROOT / "devices/fw/midi.toml").read_text())
+    declarations = tomllib.loads((ROOT / "ports/fw/midi.toml").read_text())
     site = next(s for s in declarations["site"] if s["name"].endswith(".din_rx"))
     port = tomllib.loads((ROOT / "devices/ports/dt2-1.17.toml").read_text())
     anchor = next(a for a in port["anchor"] if a["name"] == site["name"])
@@ -1035,7 +1035,7 @@ def test_usb_din_trampolines_consume_owned_notes(tmp_path):
     )
     if not FIRMWARE.exists() or not runner.exists() or not pk_toolchains.m68k_bin():
         pytest.skip("DTII firmware, m68k compiler and cf_script required")
-    runtime = ROOT / "modules/core/runtime"
+    runtime = ROOT / "runtime/core"
     linked = patchkit.cf_link(
         [
             *(
@@ -1064,7 +1064,7 @@ def test_usb_din_trampolines_consume_owned_notes(tmp_path):
             ),
             0,
         ),
-        [MOD / "src/cf", runtime / "build/gen", ROOT / "modules/core/fw/inc"],
+        [MOD / "src/cf", runtime / "build/gen", ROOT / "ports/bindings/inc"],
     )
     script = tmp_path / "ingress.json"
     script.write_text(
@@ -1135,7 +1135,7 @@ void *memset(void *d, int c, unsigned n) {
             MOD / "host/tests/ownership.c",
             MOD / "host/tests/transport.c",
             MOD / "host/tests/dispatch.c",
-            ROOT / "modules/core/adapters/platform/src/cf/midi_dispatch.c",
+            ROOT / "runtime/platform/platform/src/cf/midi_dispatch.c",
             memory,
         ],
         0x47E00000,

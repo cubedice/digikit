@@ -11,7 +11,7 @@
 .EXTERN _loop_tap;
 .EXTERN _loop_wet;
 
-// The master stage's volume ramp (DTII 1.17, anchors of devices/fw/dsp/master.toml through core/dyndsp's import table): the
+// The master stage's volume ramp (DTII 1.17, anchors of ports/fw/dsp/master.toml through core/dyndsp's import table): the
 // gain the master function gives the first sample of this block, and its step a sample (the gain before sample k is the
 // start plus k steps). Read-only; the master function writes them once a block, before the effects of the master chain run.
 .EXTERN _fw_master_gain;

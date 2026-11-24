@@ -14,7 +14,7 @@ the duplicate refused), the module's counter rising while the UI task runs, and 
 old unload) is refused as unknown. The write-watch on `cf.expansion` (the runtime's code and the arena allowed as writers) and
 the flush check run through all of it. Prints one JSON report; exit status 0 when every check holds.
 
-The state layout peeked here is `State` and `Mailbox` in modules/core/runtime/src/rs/src/state.rs and modules/core/runtime/sdk/src/lib.rs.
+The state layout peeked here is `State` and `Mailbox` in runtime/core/src/rs/src/state.rs and runtime/core/sdk/src/lib.rs.
 """
 
 from __future__ import annotations
@@ -39,7 +39,7 @@ from tools import python_env  # noqa: E402
 from tools.device.dkproto import SETTINGS_SECTORS  # noqa: E402
 from tools.emulator import digi_env, native_target  # noqa: E402
 from tools.firmware import config  # noqa: E402
-from tools.patchkit import modroots, pk_device  # noqa: E402
+from tools.patchkit import modroots, pk_device, pk_hostdir  # noqa: E402
 
 # dkrt-sdk result codes
 OK, E_NOT_FOUND, E_BAD_STORE, E_READ, E_SHA, E_FORMAT, E_RUNTIME, E_IMPORT = (
@@ -252,7 +252,7 @@ def write_selection(card: Path, paths: list[str], device: str) -> None:
 
 def watch_ranges(rt: dict, lo: int, hi: int) -> list[tuple[int, int]]:
     """[lo, hi) minus the buffers the card reads fill by DMA (the staging buffer, the 512-byte record buffer)."""
-    holes = [(rt["stage"], rt["stage_bytes"])]
+    holes = [(rt["stage"], pk_device.shared_limits().stage_bytes)]
     # 512-byte buffers the card reads land in by DMA: the selection record, the store's header sectors, the fingerprint of a list
     for name in (
         "DKRT_SECBUF",
@@ -292,7 +292,6 @@ def runtime_ranges(plan: dict) -> dict:
         "mailbox": sym["DKRT_MAILBOX"],
         "arena": sym["DKRT_ARENA"],
         "stage": sym["DKRT_STAGE"],
-        "stage_bytes": pk_device.limits(plan["base"]["device"]).stage_bytes,
         "code": code,
         "sym": sym,
     }
@@ -409,7 +408,14 @@ def proof(
         run(30_000_000, "settle"),
         peek("boot", boot, 4 * (BOOT_FIELDS + SEL_MAX)),
         peek("state0", st, STATE_BYTES),
-        peek("ticks0", sym["DKRT_TICKS"], 4 * MAX_MODULES),
+        peek("host_dir", sym["DKRT_HOST_DIR"], pk_hostdir.directory_bytes()),
+        # a static of the system package: the word at its entry of the host directory is its address
+        peek(
+            "ticks0",
+            pk_hostdir.entry_address("TICKS", sym["DKRT_HOST_DIR"]),
+            4 * MAX_MODULES,
+            ptr=True,
+        ),
         peek("c1", counter_ptr, 16, ptr=True),
         run(RUN, "r1"),
         peek("c2", counter_ptr, 16, ptr=True),
@@ -431,7 +437,12 @@ def proof(
             "tag": "late_direct",
         },
         peek("state1", st, STATE_BYTES),
-        peek("table_bad", sym["DKRT_TABLE_BAD"], 4),
+        peek(
+            "table_bad",
+            pk_hostdir.entry_address("TABLE_BAD", sym["DKRT_HOST_DIR"]),
+            4,
+            ptr=True,
+        ),
         run(RUN, "r3"),
         peek("c4", counter_ptr, 16, ptr=True),
     ]
@@ -446,6 +457,12 @@ def proof(
         checks.append((name, bool(ok), detail))
 
     s0, s1, bi = raw("state0"), raw("state1"), raw("boot")
+    try:
+        pk_hostdir.package_address("TICKS", raw("host_dir"))
+        directory_ok, directory_why = True, "ready"
+    except pk_hostdir.NoPackage as why:
+        directory_ok, directory_why = False, str(why)
+    check("host directory ready: the package attached", directory_ok, directory_why)
     arena_lo, arena_hi = be32(s0, ST_ARENA_LO), be32(s0, ST_ARENA_HI)
     check("runtime started by the UI-loop hook", be32(s0, 0) == 0x444B5254 and be32(s0, ST_TICKS) > 0,
           f"magic {be32(s0, 0):#x}, ticks {be32(s0, ST_TICKS)}")  # fmt: skip

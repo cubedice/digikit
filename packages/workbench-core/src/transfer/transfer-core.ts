@@ -4,13 +4,14 @@
 // The page only puts files on the card (upload and verify) and restarts the device. Which modules the device loads is its own
 // selection, made in SETTINGS > DIGIKIT > MODULES on the device and applied there.
 
+import { fmtVersion } from '@digi/dk-session';
 import { formatBytes } from '../modules/backend.ts';
 import { fit, fitsSet, type Needs } from '../modules/fit.ts';
-import type { Group, TransferEvent, TransferRow, TransferView } from '../modules/dktransfer.ts';
+import type { CardServiceRef, Group, TransferEvent, TransferRow, TransferView } from '../modules/dktransfer.ts';
 import { PROVIDER_MAX } from '../modules/services.ts';
 import type { ServiceRef, ServiceRefusal } from '../modules/services.ts';
 export type { Group, TransferEvent, TransferRow, TransferView };
-export const GROUPS: Group[] = ['Machines', 'Effects', 'Tools'];
+export const GROUPS: Group[] = ['Machines', 'Effects', 'LFO shapes', 'Tools'];
 
 // ---- the mode of the page ---------------------------------------------------------------------------------------------------------
 
@@ -32,7 +33,7 @@ export function freeLine(free: number | undefined): string {
   return free === undefined ? '' : `${freeText(free)} free`;
 }
 
-/** The storage line of Modules mode, under the device line: the module files on the card (the rows of the list) and the free space of the store. Storage only: no memory. */
+/** The storage line of Modules mode, under the device line: the module files on the card and the free space of the store. Storage only: no memory. */
 export function storageLine(view: TransferView): string {
   const rows = onDevice(view);
   const bytes = rows.reduce((n, r) => n + r.file_size, 0);
@@ -56,8 +57,17 @@ export function available(view: TransferView, showTests: boolean): { group: Grou
   }));
 }
 
+/** Dependency refusals to show alongside the visible library rows. */
+export function visibleRefusals(view: TransferView, showTests: boolean): ServiceRefusal[] {
+  const refusals = view.refusals ?? [];
+  if (showTests || !refusals.length) return refusals;
+  const testIds = new Set(view.modules.filter((r) => r.test).map((r) => r.id));
+  return refusals.filter((r) => !testIds.has(r.module));
+}
+
 /** The module ids to install: the ticked library modules, in list order. (Ticks mean "install these"; nothing else.) */
 export function installModules(view: TransferView, ticks: Set<string>): string[] {
+  if (view.coreOnly) return [];
   return view.modules.filter((r) => r.id && ticks.has(rowKey(r))).map((r) => r.id as string);
 }
 
@@ -104,17 +114,22 @@ export function serviceRefusalText(r: ServiceRefusal): string {
     case 'too-many':
       return `${r.module} not installed. The selection needs more than ${PROVIDER_MAX} services.`;
     case 'fingerprint': {
-      const versions = r.runtime && r.builtFor ? ` (runtime ${r.runtime}, service built for ${r.builtFor})` : '';
+      const abi = r.runtimeAbi && r.serviceAbi;
+      const versions =
+        r.runtime && r.builtFor
+          ? abi
+            ? ` (runtime ${r.runtime}, ABI ${r.runtimeAbi}; service built for ${r.builtFor}, ABI ${r.serviceAbi})`
+            : ` (runtime ${r.runtime}, service built for ${r.builtFor})`
+          : '';
       return (
         `${r.module} not installed. It needs the ${r.service} service, and this workbench has no ${r.service} service for the runtime on your device${versions}. ` +
         `Nothing was uploaded for ${r.module}. Update the workbench, or flash a matching runtime from the Firmware page.`
       );
     }
-    case 'no-stock':
-      return (
-        `${r.module} not installed. It needs the ${r.service} service, and the workbench prepares services from your own firmware file. ` +
-        `Choose that file once on the Firmware page. Nothing was uploaded for ${r.module}.`
-      );
+    case 'no-port':
+      return r.fw
+        ? `${r.module} not installed. It needs the ${r.service} service, which needs the port file for this firmware version (${r.fw}), and this workbench has none for it. Nothing was uploaded for ${r.module}.`
+        : `${r.module} not installed. It needs the ${r.service} service, which needs the port file for the firmware on your device, and the device does not report its firmware: flash a newer digikit firmware from the Firmware page. Nothing was uploaded for ${r.module}.`;
     default:
       return `${r.module} not installed. It needs the ${r.service} service, which this workbench does not have.`;
   }
@@ -152,18 +167,59 @@ export function eventText(e: TransferEvent): string {
       return `Uploading ${e.kind === 'service' ? (e.path ?? e.id) : e.id}`;
     case 'refuse':
       return serviceRefusalText(e.refusal!);
+    case 'keys':
+      return String(e.text);
     case 'keep':
       return `Kept ${e.path} (${(e.by ?? []).join(', ')} needs it)`;
+    case 'rename':
+      return `Moving ${e.path} to ${s(e.to)}`;
+    case 'select':
+      return `Writing the selection again with the new paths`;
+    case 'conflict':
+      return `${s(e.id)}: ${e.path} should be ${s(e.to)}, which holds another file; not uploaded (delete one of the two)`;
+    case 'stale-selection':
+      return `The selection names ${s(e.names)}, which are not on the card any more`;
     case 'delete':
-      return e.why === 'unused-service' ? `Deleted ${e.path} (no module on the card needs it)` : `Deleting ${e.path}`;
+      return e.why === 'duplicate'
+        ? `Deleted ${e.path} (the same module is at its new path)`
+        : e.why === 'unused-service'
+          ? `Deleted ${e.path} (no module on the card needs it)`
+          : `Deleting ${e.path}`;
     case 'verify':
       return e.ok ? `Verified ${e.path} on the card` : `Verify failed: ${e.path} differs on the card`;
+    case 'reload':
+      return `Reloading ${e.path} without a boot`;
+    case 'reload-refused':
+      return e.result === -87
+        ? `${e.path}: not reloaded: the DSP loader holds a module it could not release. Restart the device`
+        : `${e.path}: not reloaded (status ${s(e.result)}); the old module still runs`;
+    case 'reload-failed':
+      return `${e.path}: the reload failed after the old module was removed (status ${s(e.result)}); the module is not loaded`;
+    case 'load':
+      return `Loading ${e.path} without a boot`;
+    case 'load-refused':
+      return e.result === -87
+        ? `${e.path}: not loaded: the DSP loader holds a module it could not release. Restart the device`
+        : `${e.path}: not loaded (status ${s(e.result)}); nothing changed`;
+    case 'load-failed':
+      return `${e.path}: the load failed (status ${s(e.result)}); the module is not loaded`;
+    case 'unload':
+      return `Unloading ${e.path} without a boot`;
+    case 'unload-refused':
+      return e.result === -87
+        ? `${e.path}: not unloaded: the DSP loader holds a module it could not release. Restart the device`
+        : `${e.path}: not unloaded (status ${s(e.result)}); the module still runs`;
+    case 'unload-failed':
+      return `${e.path}: the unload failed (status ${s(e.result)})`;
     case 'restart':
       return 'Restarting the device';
     case 'wait':
       return 'Waiting for the device to boot';
     case 'done':
       if (Array.isArray(e.deleted)) return `Deleted ${e.deleted.length} file${e.deleted.length === 1 ? '' : 's'}`;
+      if (Array.isArray(e.reloaded)) return `Reloaded ${s(e.reloaded) || 'nothing'}`;
+      if (e.op === 'load' && Array.isArray(e.done)) return `Loaded ${s(e.done) || 'nothing'}`;
+      if (e.op === 'unload' && Array.isArray(e.done)) return `Unloaded ${s(e.done) || 'nothing'}`;
       if (e.restarted === false) return DONE_ON_CARD;
       return Array.isArray(e.loaded) && e.loaded.length
         ? `Restarted. Loaded: ${s(e.loaded)}`
@@ -173,6 +229,20 @@ export function eventText(e: TransferEvent): string {
     default:
       return e.event;
   }
+}
+
+/**
+ * The end of an install from its result: nothing uploaded, nothing already on the card and something refused is an error (a short summary
+ * naming the modules; the `refuse` events carry each refusal line); some refused adds the names to the done text; otherwise `done`.
+ */
+export function installOutcome(
+  r: { uploaded: string[]; onCard: string[]; refused: ServiceRefusal[] },
+  done: string,
+): { error: string } | { message: string } {
+  if (r.refused.length === 0) return { message: done };
+  const names = [...new Set(r.refused.map((x) => x.module))].join(', ');
+  if (r.uploaded.length === 0 && r.onCard.length === 0) return { error: `nothing installed: ${names}` };
+  return { message: `${done} Not installed: ${names}.` };
 }
 
 /** The text after a successful install. */
@@ -207,22 +277,33 @@ export function localTags(r: TransferRow): RowTag[] {
       text: 'service mismatch',
       title:
         sr.builtFor && sr.runtime
-          ? `${sr.service} service built for ${sr.builtFor}, device runtime is ${sr.runtime}`
+          ? sr.runtimeAbi && sr.serviceAbi
+            ? `${sr.service} service built for ${sr.builtFor} (ABI ${sr.serviceAbi}), device runtime is ${sr.runtime} (ABI ${sr.runtimeAbi})`
+            : `${sr.service} service built for ${sr.builtFor}, device runtime is ${sr.runtime}`
           : serviceRefusalText(sr),
       tone: 'warn',
     });
   return out;
 }
 
-/** The tag of a service sub row under a module: where the service stands on the device. */
-export function serviceTags(sv: ServiceRef): RowTag[] {
-  return [
-    {
-      text: sv.state,
-      tone: sv.state === 'on device' ? 'ok' : 'warn',
-      title: sv.state === 'differs' ? 'A different build is on the device; Install replaces it' : undefined,
-    },
-  ];
+/** The dependency badge of either copy, with one tooltip line per hard service need. */
+export function dependencyBadge(
+  services: readonly (ServiceRef | CardServiceRef)[] | undefined,
+): { text: string; lines: string[] } | undefined {
+  if (!services?.length) return undefined;
+  return {
+    text: plural(services.length, 'dep', 'deps'),
+    lines: services.map(({ label, state, version, size }) =>
+      [
+        label,
+        state,
+        ...(version === undefined
+          ? []
+          : [version & 255 ? fmtVersion(version) : `${version >>> 16}.${(version >>> 8) & 255}`]),
+        ...(size === undefined ? [] : [formatBytes(size)]),
+      ].join(' · '),
+    ),
+  };
 }
 
 /**
@@ -292,7 +373,14 @@ export function deviceTags(r: TransferRow): RowTag[] {
       title: r.not_loaded,
       tone: 'warn',
     });
-  if (r.needed_by?.length)
+  if (r.for_firmware)
+    out.push({
+      text: `for firmware ${r.for_firmware}`,
+      title:
+        'A port file of another firmware version: it stays on the card and serves no module while the device runs another firmware',
+      tone: 'dim',
+    });
+  else if (r.needed_by?.length)
     out.push({
       text: `needed by ${r.needed_by.join(', ')}`,
       title: 'A module on the card needs this service; delete that module first',
@@ -513,13 +601,22 @@ export function rowStatus(p: Progress | undefined, verified: Verified, path: str
   return v ? { kind: v } : undefined;
 }
 
-/** The "On device" rows plus, for each module of the running install whose file is not on the card yet, a pending row (the file is going
- * there: the upload bar sits in it). */
-export function onDeviceWithPending(view: TransferView, p: Progress | undefined): TransferRow[] {
-  const rows = onDevice(view);
+/** Attached services are represented by their module's badge and stay in the card inventory. */
+function visibleDeviceRows(view: TransferView, rows = onDevice(view)): TransferRow[] {
+  if (view.incomplete_card_needs) return rows;
+  const attached = new Set(rows.flatMap((r) => (r.card_services ?? []).map((service) => service.path)));
+  return rows.filter((r) => !attached.has(r.path));
+}
+
+/** The destination rows, with pending installs added so their progress stays visible.
+ * During an install, an attached service being updated also gets a temporary progress row. */
+export function onDeviceWithPending(view: TransferView, p: Progress | undefined, installing = false): TransferRow[] {
+  const inventory = onDevice(view);
+  const rows = visibleDeviceRows(view, inventory);
   const have = new Set(rows.map((r) => r.path));
+  const onCard = new Set(inventory.map((r) => r.path));
   for (const m of p?.modules ?? []) {
-    if (!m.path || have.has(m.path)) continue;
+    if (!m.path || have.has(m.path) || (onCard.has(m.path) && !installing)) continue;
     const repo = m.kind === 'service' ? undefined : view.modules.find((r) => r.id === m.id);
     rows.push({
       ...(repo ?? { group: 'Tools', test: false, name: m.id, version: null }),
@@ -544,7 +641,7 @@ export function applyVerified(v: Verified, e: TransferEvent): Verified {
 
 /** The store paths ticked in the On device pane, in list order (ticks of rows that are gone are dropped). */
 export function deletePaths(view: TransferView, ticked: Set<string>): string[] {
-  return onDevice(view)
+  return visibleDeviceRows(view)
     .filter((r) => ticked.has(r.path))
     .map((r) => r.path);
 }

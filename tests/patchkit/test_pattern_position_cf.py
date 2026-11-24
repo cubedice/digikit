@@ -16,7 +16,7 @@ import pytest
 from tools.patchkit import patchkit, port_resolve
 
 ROOT = Path(__file__).resolve().parents[2]
-MOD = ROOT / "modules/core/adapters/pattern-position"
+MOD = ROOT / "image-modules/adapters/pattern-position"
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 BASE, QUEUE = 0x47E00000, 0x47E10000
 PATTERN = 0x47F00000
@@ -38,7 +38,7 @@ def test_all_cf_windows_match_pinned_image():
         hashlib.sha256(main).hexdigest()
         == "a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964"
     )
-    manifest = tomllib.loads((ROOT / "devices/fw/pattern.toml").read_text())
+    manifest = tomllib.loads((ROOT / "ports/fw/pattern.toml").read_text())
     port = tomllib.loads((ROOT / "devices/ports/dt2-1.17.toml").read_text())
     anchors = {a["name"]: a for a in port["anchor"]}
     for site in manifest["site"]:

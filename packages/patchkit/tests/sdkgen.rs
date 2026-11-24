@@ -19,12 +19,12 @@ fn the_fx_chain_cap_is_the_registrys() {
         .find(|c| c.name == "DK_FX_MAX")
         .unwrap()
         .value;
-    let man = std::fs::read_to_string(root().join("modules/core/adapters/fx/module.toml"))
+    let man = std::fs::read_to_string(root().join("image-modules/points/fx/module.toml"))
         .unwrap_or_default();
     if !man.is_empty() {
         assert!(
             man.contains(&format!("max = {max}")),
-            "modules/core/adapters/fx/module.toml: the fx registry has max = {max}"
+            "image-modules/points/fx/module.toml: the fx registry has max = {max}"
         );
     }
 }
@@ -97,7 +97,7 @@ fn imports_of_other_modules_get_stubs_from_absent() {
     let text = std::fs::read_to_string(root().join("sdk/sdk.toml")).unwrap();
     let files = sdkgen::render(&text).unwrap();
     let rs = &files.iter().find(|f| f.0 == sdkgen::RUST_OUT).unwrap().1;
-    // the ui calls are linked by name and have a failure value as a stub; the table lists both addresses
+    // the ui calls are linked by name and have a failure value as a stub; the table lists the address the resident table's row gives and the stub's
     assert!(rs.contains("pub fn dk_ui_toast(ui: *mut u8, text: *const u8) -> i32;"));
     assert!(rs.contains(
         "pub unsafe extern \"C\" fn dk_ui_toast(_a0: *mut u8, _a1: *const u8) -> i32 { -1 as _ }"
@@ -107,11 +107,11 @@ fn imports_of_other_modules_get_stubs_from_absent() {
     ));
     assert!(rs.contains("pub unsafe extern \"C\" fn dk_ui_menu_close(_a0: *mut u8) { }"));
     assert!(rs.contains(
-        "(\"dk_ui_menu_new\", core::hint::black_box(dk_ui_menu_new as usize), absent::dk_ui_menu_new as usize, \"core/ui\"),"
+        "(\"dk_ui_menu_new\", addresses[0] as usize, absent::dk_ui_menu_new as usize, \"core/ui\"),"
     ));
     // core/input has a stub too; the row names the module the boot report asks for
     assert!(rs.contains(
-        "(\"dk_input_key\", core::hint::black_box(dk_input_key as usize), absent::dk_input_key as usize, \"core/input\"),"
+        "(\"dk_input_key\", addresses[23] as usize, absent::dk_input_key as usize, \"core/input\"),"
     ));
     // the runtime's own table is the imports without `requires`
     assert!(rs.contains("pub const BUILTIN_NAMES"));
@@ -229,13 +229,11 @@ fn the_span_owners_are_the_runtimes_phases_and_poll_slots() {
     };
     let phases = line("phases = [");
     let n_phases = phases.matches('"').count() / 2;
-    let abi =
-        std::fs::read_to_string(root().join("modules/core/runtime/abi/src/service.rs")).unwrap();
+    let abi = std::fs::read_to_string(root().join("runtime/core/abi/src/service.rs")).unwrap();
     let block = abi.split("pub mod tick_phase {").nth(1).unwrap();
     let block = block.split('}').next().unwrap();
     assert_eq!(block.matches("pub const ").count(), n_phases);
-    let state =
-        std::fs::read_to_string(root().join("modules/core/runtime/src/rs/src/state.rs")).unwrap();
+    let state = std::fs::read_to_string(root().join("runtime/core/src/rs/src/state.rs")).unwrap();
     assert!(state.contains(&format!("pub const POLLS: usize = {};", line("polls = "))));
 }
 
@@ -268,7 +266,8 @@ fn the_service_abi_hash_follows_every_byte_and_the_file_name_and_is_never_zero()
 
 #[test]
 fn the_exports_of_a_service_file_are_generated_from_its_provided_imports() {
-    let files = sdkgen::generate(&root()).unwrap();
+    let root = root();
+    let files = sdkgen::generate(&root).unwrap();
     let get = |path: &str| {
         files
             .iter()
@@ -278,53 +277,98 @@ fn the_exports_of_a_service_file_are_generated_from_its_provided_imports() {
             .as_str()
     };
     // a pure wrapper is written, a hand-written function is named by its module, the list keeps the order of sdk.toml
-    let machines = get("modules/core/services/machines/dks/src/gen_exports.rs");
-    assert!(machines.contains("pub unsafe extern \"C\" fn dk_machine_add_page("));
-    assert!(machines.contains("build::machine_add_page(&ImportCore, m, name, short_name)"));
-    assert!(machines.contains("build::add_machine(&ImportCore,"));
+    let machines = get("services/machines/dks/src/gen_exports.rs");
+    assert!(
+        machines
+            .contains("const _: api::DkMachineAddPageFn = crate::builder::dk_machine_add_page;")
+    );
+    assert!(machines.contains("crate::builder::dk_module_ctx_add_machine as *const u8"));
     assert!(!machines.contains("fn dk_param_get"));
     assert!(machines.contains("const _: api::DkParamGetFn = crate::fw::dk_param_get;"));
     assert!(machines.contains("const _: api::DkPageCanvasFn = crate::builder::dk_page_canvas;"));
-    // an `internal` export is in the list and has no `api` type (it is in no header): the two runtime-only exports of the machines file
-    assert!(machines.contains("crate::rt::dk_machines_guard_state as *const u8"));
-    assert!(machines.contains("crate::rt::dk_machines_owned_ids as *const u8"));
-    assert!(!machines.contains("api::DkMachinesGuardStateFn"));
-    // the fork's two: the plan and the taken types for the loader of a persistent instrument
-    assert!(machines.contains("crate::rt::dk_machines_planned_ids as *const u8"));
-    assert!(machines.contains("crate::rt::dk_machines_id_taken as *const u8"));
-    assert!(machines.contains("pub fn exports() -> [(u32, *const u8); 16]"));
+    // the runtime asks the machines file nothing by name (the MODULES reply uses its `Describe` part): no runtime-only export
+    assert!(!machines.contains("crate::rt::"));
     assert!(
         machines.find("\"dk_param_get\"").unwrap()
             < machines.find("\"dk_page_bind_local\"").unwrap()
     );
     // a service whose exports are all hand-written has no wrapper and no `build` import
-    let samples = get("modules/core/services/samples/dks/src/gen_exports.rs");
-    assert!(samples.contains("pub fn exports() -> [(u32, *const u8); 9]"));
+    let samples = get("services/samples/dks/src/gen_exports.rs");
     assert!(!samples.contains("ImportCore"));
-    // the list `service!` declares is the provided imports: every one of them is in exactly one file
-    let total: usize = ["machines", "fx", "samples"]
-        .iter()
-        .map(|s| {
-            get(&format!("modules/core/services/{s}/dks/src/gen_exports.rs"))
-                .matches("name_hash(")
-                .count()
-        })
-        .sum();
-    // the five `internal` ones (upstream's three and the fork's two of the machines file) are exports of the files and no import of a module: 26 for modules,
-    // 31 in the files
-    assert_eq!(total, 31);
-    assert!(get(sdkgen::RUST_OUT).contains("pub const PROVIDED: [(&str, &str); 26]"));
-    assert!(!get(sdkgen::RUST_OUT).contains("dk_fx_routes_entry"));
+
+    for service in sdkgen::provider_services() {
+        let dir = format!("services/{service}/dks");
+        let expected = sdkgen::provided_exports(&service);
+        if !expected.is_empty() && root.join(&dir).is_dir() {
+            let exports = get(&format!("{dir}/src/gen_exports.rs"));
+            let names: Vec<_> = exports
+                .lines()
+                .filter_map(|line| line.split_once("name_hash(\""))
+                .map(|(_, tail)| tail.split_once('"').unwrap().0)
+                .collect();
+            assert_eq!(names, expected, "{service}");
+        }
+    }
+
+    // The public Rust list retains declaration order. The C header groups prototypes by service.
+    let contract: toml::Value =
+        toml::from_str(&std::fs::read_to_string(root.join(sdkgen::SOURCE)).unwrap()).unwrap();
+    let c_services = contract["handle"]["services"].as_array().unwrap();
+    let header = get(sdkgen::C_IMPORTS_OUT);
+    let prototypes: Vec<_> = header
+        .lines()
+        .filter(|line| line.ends_with(");"))
+        .filter_map(|line| line.split_once('('))
+        .filter_map(|(decl, _)| decl.rsplit([' ', '*']).next())
+        .collect();
+    let mut expected = Vec::new();
+    for import in contract["import"].as_array().unwrap() {
+        let import = import.as_table().unwrap();
+        let flag = |key| import.get(key).and_then(toml::Value::as_bool) == Some(true);
+        if !flag("provided") {
+            continue;
+        }
+        let name = import["name"].as_str().unwrap();
+        let service = import.get("service").and_then(toml::Value::as_str);
+        let public = !flag("test") && !flag("internal");
+        if public {
+            expected.push(format!("({:?}, {name:?}),", service.unwrap_or("")));
+        }
+        let has_prototype = public
+            && !import.contains_key("kind")
+            && c_services.iter().any(|s| s.as_str() == service);
+        assert_eq!(prototypes.contains(&name), has_prototype, "{name}");
+    }
+    let (_, provided) = get(sdkgen::RUST_OUT)
+        .split_once("pub const PROVIDED:")
+        .unwrap();
+    let (_, rows) = provided.split_once("= [\n").unwrap();
+    let (rows, _) = rows.split_once("];").unwrap();
+    let actual: Vec<_> = rows.trim().lines().map(str::trim).collect();
+    assert_eq!(actual, expected);
 }
 
 #[test]
 fn a_bad_wrapper_is_refused() {
     let text = std::fs::read_to_string(root().join(sdkgen::SOURCE)).unwrap();
-    // a pure wrapper cannot convert a callback: the function must name its hand-written module
-    let bad = text.replacen("wrapper = \"builder\"\n", "", 1);
-    assert_ne!(bad, text);
-    let e = sdkgen::render(&bad).unwrap_err().0;
-    assert!(e.contains("pure wrapper cannot take the callback"), "{e}");
+    // a pure wrapper cannot convert a callback: the function must name its hand-written module (`wrapper = "builder"` on a callback import, dropped)
+    let marks = text.matches("wrapper = \"builder\"\n").count();
+    let refused = (0..marks).any(|k| {
+        let at = text
+            .match_indices("wrapper = \"builder\"\n")
+            .nth(k)
+            .unwrap()
+            .0;
+        let bad = format!(
+            "{}{}",
+            &text[..at],
+            &text[at + "wrapper = \"builder\"\n".len()..]
+        );
+        sdkgen::render(&bad)
+            .err()
+            .is_some_and(|e| e.0.contains("pure wrapper cannot take the callback"))
+    });
+    assert!(refused);
     // `wrapper` goes with `provided`
     let bad = text.replacen(
         "name = \"dk_debug_poll\"\n",

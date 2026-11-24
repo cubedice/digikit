@@ -7,7 +7,7 @@ import { test } from 'vitest';
 test('TRIG views keep stock controls separate from custom edits and held-step locks', () => {
   const temp = mkdtempSync(join(tmpdir(), 'digikit-track-keyboard-trig-'));
   try {
-    const module = 'modules/core/adapters/track-keyboard';
+    const module = 'image-modules/adapters/track-keyboard';
     const binary = join(temp, 'trig');
     execFileSync(
       'cc',
@@ -19,7 +19,7 @@ test('TRIG views keep stock controls separate from custom edits and held-step lo
         '-Werror',
         '-fsanitize=undefined',
         '-no-pie',
-        '-Imodules/core/fw/include',
+        '-Iports/bindings/include',
         join(module, 'src/track-keyboard.c'),
         join(module, 'src/track-valid.c'),
         join(module, 'src/track-config.c'),

@@ -12,7 +12,7 @@ below.
 
 ## Implementation contract [D]
 
-`modules/machines/canopy/src/dsp/wavetable.s` applies one sine modulator to the
+`modules/machine/digikit/canopy/src/dsp/wavetable.s` applies one sine modulator to the
 read phase of the selected, continuously morphed wavetable. The existing carrier
 phase remains the pitch authority. This preserves position/scanning, table
 transitions, four pad voices, two shared release tails and the active arp. The

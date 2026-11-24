@@ -1,0 +1,20 @@
+diff --git a/modules/core/services/machines/dks/src/rt.rs b/modules/core/services/machines/dks/src/rt.rs
+index df34cb62b..90c1da631 100644
+--- a/modules/core/services/machines/dks/src/rt.rs
++++ b/modules/core/services/machines/dks/src/rt.rs
+@@ -17,3 +17,15 @@ pub unsafe extern "C" fn dk_machines_guard_state(ty: u32, out: *mut u8) -> u32 {
+ pub unsafe extern "C" fn dk_machines_owned_ids(owner: u32, out: *mut u8) -> u32 {
+     records::owned_ids(&ImportCore, owner as u8, &mut *(out as *mut [u8; 8]))
+ }
++
++/// The plan's `[key, number]` pairs of the module at selection index `selection` into the 8 pairs at `out`; how many.
++#[cfg_attr(target_arch = "m68k", no_mangle)]
++pub unsafe extern "C" fn dk_machines_planned_ids(selection: u32, out: *mut u32) -> u32 {
++    records::planned_ids(selection, &mut *(out as *mut [[u32; 2]; 8]))
++}
++
++/// 1 when machine type `id` is taken in the machine rows (or the service cannot place it), else 0.
++#[cfg_attr(target_arch = "m68k", no_mangle)]
++pub unsafe extern "C" fn dk_machines_id_taken(id: u32) -> u32 {
++    records::id_taken(&ImportCore, id) as u32
++}

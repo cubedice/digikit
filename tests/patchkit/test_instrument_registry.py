@@ -15,7 +15,7 @@ from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
 @pytest.fixture(scope="module")
 def registry_object():
-    adapters = REPO_ROOT / "modules/core/adapters"
+    adapters = REPO_ROOT / "image-modules/adapters"
     source = "\n".join(
         (adapters / f"instrument-registry/src/dsp/{name}.s").read_text()
         for name in ("registry", "lifecycle", "rows", "protected")
@@ -334,14 +334,14 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
     helper.write_text(
         helper.read_text().replace("RESET_NOTIFICATION", str(int(reset_notification)))
     )
-    mod = REPO_ROOT / "modules/core/adapters/midi-events"
+    mod = REPO_ROOT / "image-modules/adapters/midi-events"
     linked = patchkit.cf_link(
         [
             mod / "src/cf/ownership.c",
             mod / "src/cf/transport.c",
             mod / "src/cf/adapter.c",
             mod / "src/cf/reset.s",
-            REPO_ROOT / "modules/core/adapters/dsp-link/src/cf/dsp-link.c",
+            REPO_ROOT / "runtime/platform/dsp-link/src/cf/dsp-link.c",
             helper,
         ],
         0x47E00000,
@@ -354,7 +354,7 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
             "tk_pool_link_write": 0,
             "tk_pool_link_reply": 0,
         },
-        [mod / "src/cf", REPO_ROOT / "modules/core/adapters/dsp-link/build/gen"],
+        [mod / "src/cf", REPO_ROOT / "runtime/platform/dsp-link/build/gen"],
     )
     calls = [
         {

@@ -45,7 +45,7 @@ class Device {
     const cmd = msg[5]!;
     const seq = msg[6]!;
     if (cmd === GCMD.INFO) {
-      const caps = (1 << CAP.SERVICE_CMDS) | (this.debug ? 1 << CAP.LOG : 0);
+      const caps = (1 << CAP.SERVICE_CMDS) | (1 << CAP.MODULE_SECTIONS) | (this.debug ? 1 << CAP.LOG : 0);
       const body = [0, 1, 0, 5, ...Buffer.from('dt2\0'), ...be32(1000), ...be32(32768), 0, ...be32(0), ...be32(0)];
       body.push(...be32(0x000500), ...be32(caps), 0, 0, 0, 0, 0, 0, 0, 0);
       return void this.queue.push(reply(cmd, seq, 0, body));
@@ -91,6 +91,16 @@ test('without the debug module an answer after a silent spell is the new boot', 
   assert.equal(clock.pauses, 3);
 });
 
+test('a dropped INFO probe does not prove a fresh boot when boot evidence is required', async () => {
+  const dev = new Device();
+  const clock = fakeClock((n) => {
+    dev.silent = n === 2;
+  });
+  const s = new DkSession(dev, { timeoutMs: 200, retries: 0, clock });
+  await s.restart();
+  await assert.rejects(s.waitForBoot(2500, { requireBootEvidence: true }), /no new boot.*without a boot log/);
+});
+
 test('with the debug module the log shows the new boot: BOOT_START, no RESTART request, then FW_READY', async () => {
   const dev = new Device();
   dev.debug = true;
@@ -99,7 +109,7 @@ test('with the debug module the log shows the new boot: BOOT_START, no RESTART r
   });
   const s = new DkSession(dev, { timeoutMs: 200, retries: 0, clock });
   await s.restart();
-  await s.waitForBoot(5000);
+  await s.waitForBoot(5000, { requireBootEvidence: true });
   assert.equal(clock.pauses, 3);
 });
 
@@ -119,10 +129,12 @@ test('after the first round the log is read from the cursor, not from the start'
   };
   await s.waitForBoot(5000);
   assert.equal(froms[0], 0);
+  // each later round reads the boot's identity (the log head, one page from 0) and then the events after the cursor
   assert.ok(
-    froms.slice(1, -1).every((f) => f === 1),
-    `rounds after the first ask from the last event: ${froms}`,
+    froms.slice(2, -1).every((f, i) => f === (i % 2 === 0 ? 0 : 1)),
+    `rounds after the first ask the log head, then the last event: ${froms}`,
   );
+  assert.ok(froms.filter((f) => f === 1).length >= 2, `the events are read from the cursor: ${froms}`);
   assert.equal(froms[froms.length - 1], 0, 'a new boot is read from its start');
 });
 
@@ -265,7 +277,7 @@ test('a probe lost during the restart ends with the caller signal, and the next 
   });
   const started = Date.now();
   await s.waitForBoot(20_000);
-  assert.equal(probes, 3, 'the lost info probe, then info and the log read of the second try');
+  assert.equal(probes, 4, 'the lost info probe, then info, the boot identity and the log read of the second try');
   assert.ok(Date.now() - started < 5000, 'a lost probe did not wait for the wall guard');
 });
 

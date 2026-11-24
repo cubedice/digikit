@@ -14,7 +14,7 @@ Read from the code and the earlier findings (36, 40, 121, 351), not measured on 
 - `sa_follow` claims a Sound without an extension with the state the instance has at that moment. After a boot that is the
   default state, and the next save would write the defaults.
 - The only tested path was "save the project, power cycle, load the project by hand"
-  (`modules/machines/canopy/tests/persistence.device.test.ts`).
+  (`modules/machine/digikit/canopy/tests/persistence.device.test.ts`).
 
 ## The working copy
 

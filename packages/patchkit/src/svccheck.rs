@@ -1,27 +1,28 @@
 //! `patchkit service-check DIR... [--sdk sdk/sdk.toml]`: the structure check of a service crate (`module:check service/NAME`).
 //!
-//! A service is a crate `modules/core/services/NAME` with one layout (docs/plans/runtime-and-services.md 5.12, R12-1). The check reads the sources and
+//! A service is a crate `services/NAME` with one layout (docs/plans/runtime-and-services.md 5.12, R12-1). The check reads the sources and
 //! `sdk.toml`; it builds nothing and runs nothing. It reports every problem, one line each, and the exit status is 1 when there is one.
 //!
-//! - **Layout.** `Cargo.toml` (package `dkrt-svc-NAME`), `src/lib.rs`, `src/records.rs`, `src/slots.rs` and `tests/` with at least one `.rs` file. A folder
-//!   `src/dsp/` has a `mod.rs`, and a service whose `Service` impl has `dsp_*` handlers has the folder. `lib.rs` declares `pub mod records`, `pub mod slots`
-//!   (and `pub mod dsp` with the folder). Other modules in `src/` are the service's own.
+//! - **Layout.** `Cargo.toml` (package `dkrt-svc-NAME`), `src/lib.rs`, `src/records.rs`, `src/slots.rs` (required when `dks/module.toml` declares a `[[fill]]`, declared as `pub mod slots;` when present) and `tests/` with at least one `.rs` file. A folder
+//!   `src/dsp/` has a `mod.rs`. `lib.rs` declares `pub mod records` (and `pub mod slots` when the file exists)
+//!   (and `pub mod dsp` with the folder). A service whose manifest gives it no record kind needs no `records.rs` and no `slots.rs`.
+//!   Other modules in `src/` are the service's own.
 //! - **The service file.** `dks/` holds `module.toml` (id `core/services/NAME`, `role = "service"`, `service = "NAME"`), `Cargo.toml`, `src/lib.rs` (the
 //!   `service!(...)` call and nothing else) and, when needed, `src/hooks.rs` (every hook as assembler; required when the module has `[[hook]]` entries, unless
 //!   the Rust object lists C and assembler sources after its `Cargo.toml` that name every hook entry) and `src/fw.rs` (firmware calls). The sources after
-//!   `Cargo.toml` are `.c` or `.s` files that exist. It is required when the service's `[[service]]` row has no `rust` (the service is a file), and checked whenever it exists.
+//!   `Cargo.toml` are `.c` or `.s` files that exist. It is required when the service has a `[[service]]` row (the service is a file), and checked whenever it exists.
 //!   The `[[hook]]` entries of `dks/module.toml` equal the hooks of the `service!` call, per device (an entry with `devices`, and a call entry `(name, entry, dt2)`).
 //!   The exports of the file are the `provided = true` imports of the service in `sdk.toml`: `service!` takes `exports = gen_exports::exports()` (the file `patchkit gen`
-//!   writes) when there are any, never a literal list, and `dks/module.toml` has no `[[export]]`.
+//!   writes) for SDK services. A service outside the SDK declares its export names in `dks/module.toml` and in the literal `exports` list.
+//!   Either can add a resident query with the reserved export name in the manifest and a typed `query` entry in `service!`.
 //!   Assembler (`asm!`, `global_asm!`, `naked`) is only in `dks/src/hooks.rs`, and firmware names (`cf.` hook and anchor names, `dkfw`) only under `dks/`.
-//! - **Fills equal the slots.** A `[[fill]]` of `dks/module.toml` names a `[[slot]]` of an image adapter (`modules/core/adapters/**/module.toml`). When the
+//! - **Fills equal the slots.** A `[[fill]]` of `dks/module.toml` names a `[[slot]]` of an image adapter (`image-modules/**/module.toml`). When the
 //!   slot must exist (a typo is an error). When the slot exists only on some devices (`devices` in its `[[slot]]`), the fill names `devices` too and only devices the slot has.
-//! - **One entry.** The crate exports at most one entry symbol, `dk_module`: the entry that carries the service's `ServiceRow` (interface B). A service
-//!   linked into the runtime exports none yet (the runtime names its row in the generated table); a second export of any other name is a second row
+//! - **One entry.** The crate exports at most one entry symbol, `dk_module`: the entry that carries the service's `ProviderRow` (interface B); a second export of any other name is a second row
 //!   symbol. The state a device test reads by name (`DKRT_FXP`, `DKRT_FXS`: a `static` named `DKRT_*`) is state, not an entry, and is allowed.
-//! - **Declarations equal the manifest.** The manifest of a service is its `[[service]]` row in `sdk.toml` (the row's `rust` path is in the crate) and its
-//!   `[records.kinds]` entries (`service = "NAME"`). The record kinds that `Service::declare` makes (`d.kind(KIND_X, LEN_X)`) are those entries, no
-//!   more and no fewer; `declare` makes no slot, hook, export or resource declaration (the manifest has no place for them yet).
+//! - **Declarations equal the manifest.** The manifest of a service is its `[[service]]` row in `sdk.toml` and its
+//!   `[records.kinds]` entries (`service = "NAME"`). The `service!(Owner, "NAME", KINDS, parts = [...])` call of `dks/src/lib.rs` takes its kinds from `KINDS_NAME`, the list `patchkit gen`
+//!   writes from those entries (`&[]` for a service without kinds); any other expression is a problem.
 
 use crate::error::*;
 use regex_lite::Regex;
@@ -145,58 +146,39 @@ fn exports(text: &str) -> Vec<String> {
     out
 }
 
-/// The text of the body of `fn declare(` in `text`, if there is one.
-fn declare_body(text: &str) -> Option<&str> {
-    let at = text.find("fn declare(")?;
-    let open = at + text[at..].find('{')?;
-    let mut depth = 0usize;
-    for (i, c) in text[open..].char_indices() {
-        match c {
-            '{' => depth += 1,
-            '}' => {
-                depth -= 1;
-                if depth == 0 {
-                    return Some(&text[open + 1..open + i]);
-                }
-            }
-            _ => {}
-        }
-    }
-    None
+/// The kinds a service file declares: its `service!(Owner, "name", KINDS, parts = [...])` takes them from the `KINDS_<NAME>` list that `patchkit gen` writes from the
+/// manifest (`&[]` for none), so they are the manifest's by construction; any other expression is a problem. `None` when the call has no `parts = [...]` list.
+fn provider_kinds(
+    dks_lib: &str,
+    name: &str,
+    manifest: &BTreeSet<String>,
+) -> Option<(BTreeSet<String>, Vec<String>)> {
+    // line comments between the arguments are not part of the kinds expression
+    let dks_lib = Regex::new(r"//[^\n]*").unwrap().replace_all(dks_lib, "");
+    let call =
+        Regex::new(r#"service!\s*\(\s*[A-Za-z_]\w*\s*,\s*"[^"]*"\s*,\s*([^,]*?)\s*,\s*parts\s*="#)
+            .unwrap();
+    let kinds = call.captures(&dks_lib)?[1].to_string();
+    let list = format!("&KINDS_{}", name.to_uppercase());
+    let own = kinds
+        .strip_prefix('&')
+        .is_some_and(|k| k.rsplit("::").next() == Some(&list[1..]));
+    Some(if kinds == "&[]" {
+        (BTreeSet::new(), vec![])
+    } else if own {
+        (manifest.clone(), vec![])
+    } else {
+        (
+            BTreeSet::new(),
+            vec![format!(
+                "dks/src/lib.rs: the kinds argument of service! is `{kinds}`: a provider takes `{list}`, the list `patchkit gen` writes from the manifest"
+            )],
+        )
+    })
 }
 
-/// What `declare` declares: the names `X` of its `d.kind(KIND_X, LEN_X)` calls, and the calls that have no manifest entry.
-fn declared(text: &str) -> (BTreeSet<String>, Vec<String>) {
-    let mut kinds = BTreeSet::new();
-    let mut other = vec![];
-    let Some(body) = declare_body(text) else {
-        return (kinds, other);
-    };
-    let call = Regex::new(r"\bd\s*\.\s*(kind|slot|hook|export|resource)\s*\(([^)]*)\)").unwrap();
-    for c in call.captures_iter(body) {
-        if &c[1] != "kind" {
-            other.push(c[1].to_string());
-            continue;
-        }
-        let args: Vec<&str> = c[2].split(',').map(str::trim).collect();
-        let name = |a: Option<&&str>, prefix: &str| {
-            a.and_then(|s| s.rsplit("::").next())
-                .and_then(|s| s.strip_prefix(prefix))
-                .map(str::to_string)
-        };
-        match (name(args.first(), "KIND_"), name(args.get(1), "LEN_")) {
-            (Some(k), Some(l)) if k == l => {
-                kinds.insert(k);
-            }
-            _ => other.push(format!("kind({})", c[2].trim())),
-        }
-    }
-    (kinds, other)
-}
-
-/// The record kinds the manifest gives to service `name`, and whether it has a `[[service]]` row in this crate.
-/// The record kinds of the service and its `[[service]]` row: `None` without a row, `Some(None)` for a row without `rust` (a service file, `.dks`).
-fn manifest(sdk: &Path, name: &str) -> Result<(BTreeSet<String>, Option<Option<String>>)> {
+/// The record kinds the manifest gives to service `name`, and whether it has a `[[service]]` row (a service file, `.dks`) in this crate.
+fn manifest(sdk: &Path, name: &str) -> Result<(BTreeSet<String>, bool)> {
     let text = std::fs::read_to_string(sdk).map_err(|e| err!("{}: {e}", sdk.display()))?;
     let v: toml::Table = text.parse().map_err(|e| err!("{}: {e}", sdk.display()))?;
     let row = v
@@ -205,8 +187,7 @@ fn manifest(sdk: &Path, name: &str) -> Result<(BTreeSet<String>, Option<Option<S
         .into_iter()
         .flatten()
         .filter_map(|r| r.as_table())
-        .find(|r| r.get("name").and_then(|n| n.as_str()) == Some(name))
-        .map(|r| r.get("rust").and_then(|r| r.as_str()).map(str::to_string));
+        .any(|r| r.get("name").and_then(|n| n.as_str()) == Some(name));
     let kinds = v
         .get("records")
         .and_then(|r| r.get("kinds"))
@@ -236,6 +217,34 @@ fn provided_imports(sdk: &Path, name: &str) -> Result<Vec<String>> {
         .collect())
 }
 
+/// Rust tokenization drops comments before the service declaration is inspected.
+fn local_exports_in_rust(src: &str) -> Result<Vec<String>> {
+    use proc_macro2::{Delimiter, TokenStream, TokenTree};
+    let tokens: TokenStream = src
+        .parse()
+        .map_err(|e| err!("cannot tokenize dks/src/lib.rs: {e}"))?;
+    let mut tokens = tokens.into_iter().peekable();
+    while let Some(token) = tokens.next() {
+        if !matches!(token, TokenTree::Ident(id) if id == "service")
+            || !matches!(tokens.peek(), Some(TokenTree::Punct(p)) if p.as_char() == '!')
+        {
+            continue;
+        }
+        tokens.next();
+        if let Some(TokenTree::Group(body)) = tokens
+            .next()
+            .filter(|t| matches!(t, TokenTree::Group(g) if g.delimiter() == Delimiter::Parenthesis))
+        {
+            return Ok(service_list(&format!("service!{body}"), "exports")
+                .unwrap_or_default()
+                .into_iter()
+                .map(|(name, _)| name)
+                .collect());
+        }
+    }
+    Ok(vec![])
+}
+
 /// The entries of the list `key` (`hooks` or `fills`) of the `service!` call in `dks/src/lib.rs`: (first string, device filter: `None` for every
 /// device, or `dt2` / `dn2`).
 fn service_list(lib: &str, key: &str) -> Option<Vec<(String, Option<String>)>> {
@@ -261,9 +270,10 @@ fn service_list(lib: &str, key: &str) -> Option<Vec<(String, Option<String>)>> {
             _ => {}
         }
     }
-    let entry =
-        Regex::new(r#"\(\s*"([^"]+)"\s*,\s*[A-Za-z_][\w:]*\s*(?:,\s*([A-Za-z0-9_]+)\s*)?\)"#)
-            .unwrap();
+    let entry = Regex::new(
+        r#"\(\s*"([^"]+)"\s*,\s*[A-Za-z_]\w*(?:\s*::\s*\w+)*\s*(?:,\s*([A-Za-z0-9_]+)\s*)?\)"#,
+    )
+    .unwrap();
     Some(
         entry
             .captures_iter(&body[open + 1..end])
@@ -331,6 +341,7 @@ fn check_dks(
     dir: &Path,
     needs_dks: bool,
     provided: &[String],
+    local_service: bool,
     neutral: &[(String, String)],
 ) -> Vec<String> {
     let mut out = vec![];
@@ -370,6 +381,8 @@ fn check_dks(
     let mut fills: Vec<(String, Vec<String>)> = vec![];
     // the C and assembler sources the Rust object of the file links (its `sources` after `Cargo.toml`), relative to dks/
     let mut c_sources: Vec<String> = vec![];
+    let mut local_exports = vec![];
+    let mut has_query = false;
     if let Some(m) = &manifest {
         for o in m
             .get("object")
@@ -484,7 +497,7 @@ fn check_dks(
                     continue;
                 };
                 // the table of the repository around the service folder
-                let rel = format!("modules/core/adapters/dyndsp/src/cf/dyndsp-{dev}.s");
+                let rel = format!("runtime/platform/dyndsp/src/cf/dyndsp-{dev}.s");
                 let table = dir.ancestors().map(|a| a.join(&rel)).find(|p| p.is_file());
                 let Some(table_text) = table.and_then(|p| std::fs::read_to_string(p).ok()) else {
                     out.push(format!(
@@ -519,8 +532,35 @@ fn check_dks(
         if !dsp_fills.is_empty() {
             fills.retain(|(n, _)| !dsp_fills.contains(n));
         }
-        if m.get("export").is_some() {
-            out.push("dks/module.toml: [[export]] is not read: the exports of the file are the `provided = true` imports of its service in sdk/sdk.toml".into());
+        let query_name = dkrt_sdk::RESIDENT_QUERY_ENTRY;
+        let exports = list("export", "name");
+        has_query = exports.iter().any(|(name, _)| name == query_name);
+        if local_service {
+            match std::fs::read_to_string(dks.join("module.toml"))
+                .ok()
+                .and_then(|text| toml::from_str::<crate::module::Manifest>(&text).ok())
+                .map(|m| m.provided_service())
+            {
+                Some(Ok(Some(service))) => {
+                    local_exports = service
+                        .exports
+                        .into_iter()
+                        .filter(|name| name != query_name)
+                        .collect();
+                }
+                Some(Err(e)) => out.push(format!("dks/module.toml: {e}")),
+                _ => out.push("dks/module.toml does not declare a service".into()),
+            }
+        } else if exports.iter().any(|(name, _)| name != query_name) {
+            out.push("dks/module.toml: SDK service exports are the `provided = true` imports of its service in sdk/sdk.toml, plus the optional resident query".into());
+        }
+        if exports
+            .iter()
+            .filter(|(name, _)| name == query_name)
+            .count()
+            > 1
+        {
+            out.push(format!("dks/module.toml: repeated [[export]] {query_name}"));
         }
         let module = m.get("module").and_then(|t| t.as_table());
         let get = |k: &str| module.and_then(|t| t.get(k)).and_then(|v| v.as_str());
@@ -593,11 +633,45 @@ fn check_dks(
         if !only_service_call(lib) {
             out.push("dks/src/lib.rs is not the `service!(...)` call alone (attributes, `use` and `mod` lines are allowed)".into());
         }
+        // `parts = [...]`: the resident query is the `Query` part, not a `query =` entry, and what `setup =` did is the owner's `start`
+        let parts = Regex::new(r"\bparts\s*=\s*\[([^\]]*)\]")
+            .unwrap()
+            .captures(lib)
+            .map(|c| c[1].to_string());
+        let named_query = Regex::new(r"\bquery\s*=").unwrap().is_match(lib);
+        if parts.is_some() && (named_query || Regex::new(r"\bsetup\s*=").unwrap().is_match(lib)) {
+            out.push("dks/src/lib.rs: service! with `parts = [...]` takes no `query =` (the Query part) and no `setup =` (the owner's `start`)".into());
+        }
+        let query = parts.as_ref().and_then(|list| {
+            list.split(',')
+                .any(|p| p.trim() == "Query")
+                .then_some(dkrt_sdk::RESIDENT_QUERY_ENTRY)
+        });
+        if query != has_query.then_some(dkrt_sdk::RESIDENT_QUERY_ENTRY) {
+            out.push("dks/src/lib.rs: service! query must match the dk_service_query_v1 export in dks/module.toml".into());
+        }
         let literal = Regex::new(r"\bexports\s*=\s*\[").unwrap().is_match(lib);
         let generated = Regex::new(r"\bexports\s*=\s*gen_exports::exports\(\)")
             .unwrap()
             .is_match(lib);
-        if literal {
+        if local_service {
+            let src = std::fs::read_to_string(dks.join("src/lib.rs")).unwrap_or_default();
+            let mut declared = match local_exports_in_rust(&src) {
+                Ok(names) => names,
+                Err(e) => {
+                    out.push(e.0);
+                    vec![]
+                }
+            };
+            declared.sort();
+            local_exports.sort();
+            if declared != local_exports {
+                out.push(
+                    "dks/src/lib.rs: service! exports must match the names in dks/module.toml"
+                        .into(),
+                );
+            }
+        } else if literal {
             out.push("dks/src/lib.rs: service! has a literal `exports = [...]` list: write `exports = gen_exports::exports()` (the list `patchkit gen` writes from the `provided` imports of sdk/sdk.toml)".into());
         } else if !provided.is_empty() && !generated {
             out.push(format!("dks/src/lib.rs: the service has {} `provided` imports in sdk/sdk.toml, so service! needs `exports = gen_exports::exports()`", provided.len()));
@@ -752,6 +826,11 @@ fn fill_problems(dir: &Path, adapters: &Path) -> Vec<String> {
     let mut slots = std::collections::BTreeMap::new();
     let mut twice = vec![];
     adapter_slots(adapters, &mut slots, &mut twice);
+    // platform modules (`runtime/platform/`) declare slots as well
+    let platform = adapters.join("../runtime/platform");
+    if platform.is_dir() {
+        adapter_slots(&platform, &mut slots, &mut twice);
+    }
     for name in twice {
         out.push(format!(
             "the slot `{name}` is declared twice ([[slot]] in the adapter module.toml files)"
@@ -793,10 +872,62 @@ fn fill_problems(dir: &Path, adapters: &Path) -> Vec<String> {
     out
 }
 
-/// Every problem of the service crate at `dir`; empty when it is as the layout says. The image adapters are at `../../adapters` of the service folder
-/// (`modules/core/adapters`).
+/// The row anchors of `ports/fw` that name the service `name` in `users` and another service too. A row anchor is a `[[data]]` entry found by the words of its row
+/// (`rule.kind = "cf_words"`, not a code site): a service that writes such a row owns it, and two services that write one row would overwrite each other's words.
+/// A missing folder gives no problem (the service folder is checked outside the repository in tests).
+pub fn row_anchor_problems(name: &str, fw: &Path) -> Vec<String> {
+    let me = format!("core/services/{name}");
+    let mut out = vec![];
+    let Ok(rd) = std::fs::read_dir(fw) else {
+        return out;
+    };
+    let mut files: Vec<PathBuf> = rd
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "toml"))
+        .collect();
+    files.sort();
+    for f in files {
+        let Some(t) = std::fs::read_to_string(&f)
+            .ok()
+            .and_then(|t| t.parse::<toml::Table>().ok())
+        else {
+            continue;
+        };
+        for d in t
+            .get("data")
+            .and_then(|d| d.as_array())
+            .into_iter()
+            .flatten()
+        {
+            let Some(d) = d.as_table() else { continue };
+            let rule = d.get("rule").and_then(|r| r.as_table());
+            let words = rule
+                .and_then(|r| r.get("kind"))
+                .and_then(|k| k.as_str())
+                .is_some_and(|k| k == "cf_words")
+                && rule.and_then(|r| r.get("as")).is_none();
+            let services: Vec<String> = strings(d.get("users"))
+                .into_iter()
+                .filter(|u| u.starts_with(crate::fwgen::SERVICE_USER_PREFIX))
+                .collect();
+            if words && services.len() > 1 && services.contains(&me) {
+                out.push(format!(
+                    "{}: the row anchor `{}` has {} services in `users` ({}): one service writes a row",
+                    f.file_name().and_then(|n| n.to_str()).unwrap_or("ports/fw"),
+                    d.get("name").and_then(|n| n.as_str()).unwrap_or("?"),
+                    services.len(),
+                    services.join(", ")
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// Every problem of the service crate at `dir`; empty when it is as the layout says. The image slots are under `image-modules/` of the repository.
 pub fn check(dir: &Path, sdk: &Path) -> Result<Vec<String>> {
-    check_with_adapters(dir, sdk, &dir.join("../../adapters"))
+    check_with_adapters(dir, sdk, &dir.join("../../image-modules"))
 }
 
 /// `check` with the folder of the image adapters named (the fills of the service file are compared with the `[[slot]]` entries under it).
@@ -826,7 +957,25 @@ pub fn check_with_adapters(dir: &Path, sdk: &Path, adapters: &Path) -> Result<Ve
             }
         }
     }
-    for f in ["src/lib.rs", "src/records.rs", "src/slots.rs"] {
+    // a service that fills slots has the slot tables (and their checks) in src/slots.rs; one without fills needs none
+    let has_fills = std::fs::read_to_string(dir.join("dks/module.toml"))
+        .ok()
+        .and_then(|t| t.parse::<toml::Table>().ok())
+        .and_then(|m| {
+            m.get("fill")
+                .and_then(|f| f.as_array().map(|a| !a.is_empty()))
+        })
+        .unwrap_or(false);
+    // a service with no record kinds (the manifest gives it none) has no records.rs and no slot tables: its parts sit with the owner
+    let kindless = manifest(sdk, &name)?.0.is_empty();
+    let mut files = vec!["src/lib.rs"];
+    if !kindless {
+        files.push("src/records.rs");
+        if has_fills {
+            files.push("src/slots.rs");
+        }
+    }
+    for f in files {
         if !dir.join(f).is_file() {
             problem(format!("{f} is missing"));
         }
@@ -846,12 +995,14 @@ pub fn check_with_adapters(dir: &Path, sdk: &Path, adapters: &Path) -> Result<Ve
     if dsp_dir.is_dir() && !dsp_dir.join("mod.rs").is_file() {
         problem("src/dsp/ has no mod.rs".into());
     }
-    let records = get("src/records.rs").unwrap_or("");
-    if records.contains("fn dsp_") && !dsp_dir.is_dir() {
-        problem("records.rs has dsp_* handlers but the crate has no src/dsp/ folder".into());
-    }
     if let Some(lib) = get("src/lib.rs") {
-        let mut mods = vec!["records", "slots"];
+        let mut mods = vec![];
+        if !kindless {
+            mods.push("records");
+        }
+        if (has_fills && !kindless) || dir.join("src/slots.rs").is_file() {
+            mods.push("slots");
+        }
         if dsp_dir.is_dir() {
             mods.push("dsp");
         }
@@ -881,7 +1032,7 @@ pub fn check_with_adapters(dir: &Path, sdk: &Path, adapters: &Path) -> Result<Ve
     for (p, n) in &names {
         if n != ENTRY && !state(n) {
             problem(format!(
-                "{p} exports `{n}`: the only exported entry of a service is `{ENTRY}`, which carries its ServiceRow (no second row symbol)"
+                "{p} exports `{n}`: the only exported entry of a service is `{ENTRY}`, which carries its ProviderRow (no second row symbol)"
             ));
         }
     }
@@ -892,40 +1043,38 @@ pub fn check_with_adapters(dir: &Path, sdk: &Path, adapters: &Path) -> Result<Ve
     // declarations equal the manifest
     let (kinds, row) = manifest(sdk, &name)?;
     let provided = provided_imports(sdk, &name)?;
-    for p in check_dks(dir, matches!(row, Some(None)), &provided, &srcs) {
+    for p in check_dks(dir, row, &provided, !row, &srcs) {
         problem(p);
     }
     for p in fill_problems(dir, adapters) {
         problem(p);
     }
-    match row {
-        None => problem(format!(
+    for p in row_anchor_problems(&name, &adapters.join("../ports/fw")) {
+        problem(p);
+    }
+    if !row && !dir.join("dks/module.toml").is_file() {
+        problem(format!(
             "{} has no [[service]] row named `{name}`",
             sdk.display()
-        )),
-        Some(Some(r)) if !r.starts_with(&format!("{}::", want_pkg.replace('-', "_"))) => {
-            problem(format!(
-                "the [[service]] row `{name}` has rust = \"{r}\": the type is not in the crate `{}`",
-                want_pkg.replace('-', "_")
-            ))
+        ));
+    }
+    // the service takes its kinds from the `service!` call (`Provider` has no `declare`)
+    let dks_lib = std::fs::read_to_string(dir.join("dks/src/lib.rs")).unwrap_or_default();
+    match provider_kinds(&dks_lib, &name, &kinds) {
+        Some((decl, bad)) => {
+            for b in bad {
+                problem(b);
+            }
+            for k in kinds.difference(&decl) {
+                problem(format!(
+                    "the manifest gives the record kind {k} to `{name}`, but the service! call does not declare it"
+                ));
+            }
         }
-        _ => {}
-    }
-    let (decl, other) = declared(records);
-    for o in other {
-        problem(format!(
-            "records.rs declares `{o}`: the manifest has no place for it"
-        ));
-    }
-    for k in decl.difference(&kinds) {
-        problem(format!(
-            "records.rs declares the record kind {k}, which the manifest does not give to `{name}` ([records.kinds] in sdk.toml)"
-        ));
-    }
-    for k in kinds.difference(&decl) {
-        problem(format!(
-            "the manifest gives the record kind {k} to `{name}`, but records.rs does not declare it"
-        ));
+        None if !dks_lib.is_empty() => problem(format!(
+            "dks/src/lib.rs has no `service!(Owner, \"{name}\", KINDS, parts = [...])` call"
+        )),
+        None => {}
     }
     Ok(out)
 }

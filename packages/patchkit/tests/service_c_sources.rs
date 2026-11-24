@@ -215,10 +215,10 @@ fn the_link_takes_helpers_from_compiler_builtins_and_names_the_source_of_a_pc_re
         files: files.iter().map(|f| d.path().join(f)).collect(),
         include_dirs: vec![],
     };
-    let (proto, hash, _) = rust::object_proto(&env, &manifest, &c(&["c/div.c"])).unwrap();
+    let (proto, hash, _) = rust::object_proto_with(&env, &manifest, &[], &c(&["c/div.c"])).unwrap();
     assert_eq!(
         hash,
-        rust::object_sha256(&env, &manifest, &c(&["c/div.c"])).unwrap()
+        rust::object_sha256(&env, &manifest, &[], &c(&["c/div.c"])).unwrap()
     );
     let helper = proto
         .symbols
@@ -232,7 +232,7 @@ fn the_link_takes_helpers_from_compiler_builtins_and_names_the_source_of_a_pc_re
             .iter()
             .any(|s| s.name == "c_div" && s.section.is_some())
     );
-    let e = rust::object_proto(&env, &manifest, &c(&["c/div.c", "c/far.s"])).unwrap_err();
+    let e = rust::object_proto_with(&env, &manifest, &[], &c(&["c/div.c", "c/far.s"])).unwrap_err();
     assert!(e.0.contains("c/far.s"), "{e}");
     assert!(
         e.0.contains("R_68K_PC32") || e.0.contains("R_68K_PLT32"),

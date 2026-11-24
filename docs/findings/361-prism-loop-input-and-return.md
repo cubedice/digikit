@@ -34,9 +34,9 @@ from `0x1c147e`), not part of the block.
   to the mailbox and was not heard is the one block lost (0.67 ms). Nothing is ever added twice: each `LW_SEQ` is taken
   once, and a restarted Overloop only notes the count in its first block.
 - **The level.** Overloop adds `m * 3.1623 * g_k`, `g_k` the stock ramp's gain before sample k (start + k steps from the
-  two anchored words `dsp.master.value.volume_ramp.start` and `.step`, new in `devices/fw/dsp/master.toml` and the DT2 1.17
+  two anchored words `dsp.master.value.volume_ramp.start` and `.step`, new in `ports/fw/dsp/master.toml` and the DT2 1.17
   port file, imported by Overloop through `core/dyndsp` as `_fw_master_gain` and `_fw_master_step`; the +10 dB is
-  `OL_MASTER_BOOST` of `modules/fx/overloop/src/overloop.h`). It is added after the crossfader and after the record, and
+  `OL_MASTER_BOOST` of `modules/fx/digikit/overloop/src/overloop.h`). It is added after the crossfader and after the record, and
   the sum is held within +-7.9. No code hook was added.
 - **What it costs.** With Overloop loaded, PRISM's echoes skip the master compressor, the clip of the master stage and the
   master overdrive, also without a loop (the owner accepted it); the master volume applies. Overloop's heaviest block went
@@ -59,7 +59,7 @@ from `0x1c147e`), not part of the block.
   (LIVE and LOOP each bit for bit, the switch 0.95 and 1.03 x steady on the rig). The loop side is the tap of the block before
   while Overloop runs and the tap's flag says a loop is mixed; else silence, never older memory (rig: a stopped Overloop,
   a tap flagged empty, PRISM's first block).
-- **The trim** `PRISM_LOOP_TRIM` (`modules/fx/prism/src/prism.h`, 0x3f004dce, -6 dB) applies to the tap, which is now the
+- **The trim** `PRISM_LOOP_TRIM` (`modules/fx/digikit/prism/src/prism.h`, 0x3f004dce, -6 dB) applies to the tap, which is now the
   loop times the crossfader **divided by the master's gain** at the block's end (at most 1024 times): the loop at the level
   of the mix before the master stage, the whole mix at full send. **[C]** to finding 360: the tap was the loop times the
   crossfader at the output's level.

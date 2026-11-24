@@ -1,7 +1,9 @@
 // The real Host: the only module that imports Tauri's `invoke` (a lint rule keeps it so). Bytes go as the raw request body with the
 // small arguments in headers, as the Rust commands take them (`tauri::ipc::Request`); the names and arguments follow the Rust signatures.
 import { invoke, isTauri } from '@tauri-apps/api/core';
-import type { EmuRpc, Host } from '@digi/workbench-core/host/host.ts';
+import { createFirmwareSymbols } from '../firmware-symbols';
+import { localStorageKeyValue } from '@digi/workbench-core/storage.ts';
+import type { EmuRpc, Host, SymbolImageMap } from '@digi/workbench-core/host/host.ts';
 
 const timeout = (ms: number) => ({ timeoutMs: Math.max(1, Math.round(ms)) });
 
@@ -10,8 +12,28 @@ export function createTauriHost(): Host {
     call: <T>(method: string, params: Record<string, unknown> = {}, session?: number) =>
       invoke<T>('emu_call', { method, params, session: session ?? null }),
   };
+  // Commands from a closing drawer and a newly opened one must reach the
+  // native observer in issue order, even across component lifetimes.
+  let analyzerTail = Promise.resolve();
+  function analyzerCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
+    const result = analyzerTail.then(() => invoke<T>(command, args));
+    analyzerTail = result.then(
+      () => {},
+      () => {},
+    );
+    return result;
+  }
   return {
     rpc,
+    symbols: createFirmwareSymbols(localStorageKeyValue(), {
+      pick: (kind) => invoke<string | null>('symbols_pick', { kind }),
+      read: (kind, path) => invoke<SymbolImageMap[]>('symbols_read', { kind, path }),
+    }),
+    analyzer: {
+      open: (source) => analyzerCall('analyzer_open', { source }),
+      read: (id) => analyzerCall('analyzer_read', { id }),
+      close: (id) => analyzerCall('analyzer_close', { id }),
+    },
     fs: {
       pickFolder: ({ start, title }) => invoke('local_pick_folder', { start, title }),
       list: (root, rel) => invoke('local_list', { root, rel }),
@@ -26,6 +48,12 @@ export function createTauriHost(): Host {
       readMaps: (device) => invoke('lib_maps', { device }),
     },
     ports: {
+      audio: {
+        inputs: () => invoke('remote_audio_inputs'),
+        start: (input) => invoke('remote_audio_start', { input }),
+        stop: () => invoke('remote_audio_stop'),
+        status: () => invoke('remote_audio_status'),
+      },
       midi: {
         ports: () => invoke('midi_ports'),
         open: (name) => invoke('midi_open', { name }),
@@ -50,8 +78,9 @@ export function createTauriHost(): Host {
       prepare: (stock, { restore, set }) =>
         invoke('firmware_prepare', stock, { headers: { 'x-restore': restore ? '1' : '0', 'x-set': set } }),
       save: (bytes, name) => invoke('firmware_save', bytes, { headers: { 'x-name': encodeURIComponent(name) } }),
+      systemPackage: () => invoke('system_package'),
+      systemPackagePlan: (input) => invoke('system_package_plan', { ...input }),
       patchkitWasm: () => invoke('patchkit_wasm'),
-      bindBundle: () => invoke('bind_bundle'),
       dkprofWasm: () => invoke('dkprof_wasm'),
       sampleWasm: () => invoke('sample_wasm'),
     },

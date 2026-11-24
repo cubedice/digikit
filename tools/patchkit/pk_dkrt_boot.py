@@ -24,7 +24,7 @@ Python API for the scenario suite (lane C builds on it; everything below is impo
     env.pack("test/sine", "sine-d.dkm")           # a .dkm into the card folder (digikit/modules/)
     card = env.card(["modules/sine-d.dkm"], counter=0, seq=1)      # a card image holding that selection record
     with env.boot(img, card, tag="a") as rig:           # a coupled daemon, cold-booted on that card: the boot hook has run
-        rig.boot_info()        # dict: safe, reason, counter, seq, copy, count, loaded, results[], ui_reached, dsp_wait
+        rig.boot_info()        # dict: safe, reason, counter, seq, copy, count, loaded, results[], ui_reached, core_cause
         rig.voice_rows()       # [(type, pc)] of the DSP voice registry (type 0xffffffff: free)
         rig.dyn_type("test/sine", "sine")   # the type the runtime assigned at this boot (from DKRT_ASSIGN)
         rig.machine_listed(16) # is the machine row of that type named
@@ -414,15 +414,60 @@ class BootRig(M.Rig):
             res.append(v - (1 << 32) if v >= 1 << 31 else v)
         d["results"] = res[: d["count"]] if d["count"] else res[:0]
         d["all_results"] = res
-        d["dsp_wait"] = self.w(self.boot_sym + 4 * (len(BI_FIELDS) + SEL_MAX))
+        d["core_cause"] = self.w(self.boot_sym + 4 * (len(BI_FIELDS) + SEL_MAX))
         d["stable"] = self.w(self.boot_sym + 4 * (len(BI_FIELDS) + SEL_MAX + 1))
         d["reason_name"] = SAFE_NAMES.get(d["reason"], "?")
         return d
 
+    def service_symbol(self, service: str, name: str) -> int:
+        """The address of NAME in the loaded service SERVICE (`services/<service>.dks`): its load address from the device load table (the ship map
+        and symbols of `runtime.maps`, the table's bytes peeked and decoded by `patchkit addr`, docs/ADDRMAP.md) plus the offset in the address map
+        of the packed file (`dist/modules/<device>/<service>.addrmap.json`, written by `nx run core/services/<service>:pack`, as the TypeScript
+        device tests read it: a service loads as packed, the port file resolves its firmware references)."""
+        maps = self.emu.call("runtime.maps")
+        ship = self.work / f"{self.tag}.ship.json"
+        ship.write_text(maps["ship"])
+        pk = self.env.tools.patchkit_run
+        args = ["addr", "--map", ship]
+        snap: list[object] = []
+        for r in json.loads(pk(*args, "--format", "reads")):
+            at, n = int(maps["symbols"][r["symbol"]]), r["len"]
+            data = b"".join(struct.pack(">I", self.w(at + i)) for i in range(0, n, 4))
+            snap += ["--snapshot", f"{r['symbol']}={data[:n].hex()}"]
+        loads = json.loads(pk(*args, *snap, "--format", "loads"))["modules"]
+        hit = [m for m in loads if m["id"].rpartition("/")[2] == service]
+        if not hit:
+            raise Fail(
+                f"{self.tag}: service {service} is not in the load table: {[m['id'] for m in loads]}"
+            )
+        # the offsets are relative to the load address, the base of the load table (as `loadAddress` + `serviceMapEntries` of
+        # tests/regression/runtime/service-symbols.ts). The map is the Nx pack's: it must describe the file on this card.
+        packed = (
+            Path(__file__).resolve().parents[2] / "dist" / "modules" / self.env.device
+        )
+        card_file = self.work / "services" / f"{service}.dks"
+        nx_file = packed / f"{service}.dks"
+        stale = f"stale or missing Nx pack: run `pnpm nx:pilot run core/services/{service}:pack`"
+        if not (card_file.exists() and nx_file.exists()):
+            raise Fail(f"{stale} ({card_file} or {nx_file} is missing)")
+        if (
+            hashlib.sha256(card_file.read_bytes()).digest()
+            != hashlib.sha256(nx_file.read_bytes()).digest()
+        ):
+            raise Fail(f"{stale} ({nx_file} differs from the card's {service}.dks)")
+        mapfile = packed / f"{service}.addrmap.json"
+        if not mapfile.exists():
+            raise Fail(f"{mapfile}: run nx run core/services/{service}:pack")
+        entries = json.loads(mapfile.read_text())["entries"]
+        off = [e["addr"] for e in entries if e["cpu"] == "cf" and e["name"] == name]
+        if not off:
+            raise Fail(f"{name} is not in the address map of the {service} service")
+        return hit[0]["base"] + off[0]
+
     def assign_table(self) -> dict[str, Any]:
         """The boot's machine-type assignment (`DKRT_ASSIGN`, assign.rs): the sticky map and, per machine of the selection, its module's
         selection index, machine key (`hash << 8`) and assigned type (0: none was free)."""
-        base = M.sym(self.plan, "core/runtime", "DKRT_ASSIGN")
+        base = self.service_symbol("machines", "DKRT_ASSIGN")
         w = [self.w(base + 4 * i) for i in range(3 + 8 + 3 * 64)]
         n = w[1]
         return {
@@ -776,7 +821,7 @@ class Proof:
                 and info["results"] == [0] * n
                 and info["loaded"] == n
                 and info["safe"] == 0,
-                f"{info['results']} dsp_wait {info['dsp_wait']}",
+                f"{info['results']} core_cause {info['core_cause']}",
             )
             rec = current(run.sel_records())
             self.check(
@@ -803,7 +848,9 @@ class Proof:
                 (e.folder / "digikit/modules/m1.dkm").read_bytes()
             )
             assert self.run_img is not None
-            base = run.info_word(3) + run.w(run.dsp + M.D_MOD_OFF + 4 * idx)
+            base = run.info_word(3) + run.w(
+                run.package_symbol("DSP") + M.D_MOD_OFF + 4 * idx
+            )
             want = M.relocate(sec, base, M.run_imports(run, self.run_img.plan))
             got = run.dsp_bytes(base, len(want))
             self.check(

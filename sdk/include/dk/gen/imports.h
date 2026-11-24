@@ -13,6 +13,7 @@ typedef struct dk_files dk_files;
 typedef struct dk_sample_pool dk_sample_pool;
 typedef struct dk_ui dk_ui;
 typedef struct dk_ui_menu dk_ui_menu;
+typedef struct dk_ui_view dk_ui_view;
 typedef struct dk_input dk_input;
 typedef struct dk_usb_bulk dk_usb_bulk;
 typedef struct dk_dsp_link dk_dsp_link;
@@ -23,6 +24,7 @@ typedef struct dk_page dk_page;
 typedef struct dk_param dk_param;
 typedef struct dk_page_frame dk_page_frame;
 typedef struct dk_page_event dk_page_event;
+typedef struct dk_shortcut_def dk_shortcut_def;
 
 /* Callback types ([handle.callbacks]): `arg` is the user-data pointer the module gave with the callback. */
 typedef void dk_files_event_fn(uint32_t client, uint32_t request, int32_t state, void *arg);
@@ -40,6 +42,7 @@ typedef void dk_param_click_fn(void *arg, uint32_t track);
 typedef void dk_ui_action_fn(void *arg, int32_t value);
 typedef void dk_ui_choice_fn(void *arg, int32_t index);
 typedef void dk_ui_confirm_fn(void *arg, int32_t yes);
+typedef void dk_ui_settings_open_fn(void *arg);
 typedef void dk_ui_tick_fn(void *arg);
 
 /* ---- service runtime ---- */
@@ -56,10 +59,10 @@ void dk_log(uint32_t level, const char *msg, uint32_t value);
 /* Log one event as the runtime's own call does (the sink and the small ring see it): `kind` and `flags` as in `dk_log_ev`, `a` five words. The source is the module that is running unless `flags` names another. Context: any. Since runtime 0.7.0. */
 void dk_log_event(uint32_t kind, uint32_t flags, const uint32_t *a);
 
-/* Set (or, with 0, clear) the sink of a runtime channel for the calling module: DK_SINK_LOG (0) gets `void sink(const dk_log_ev *e)` for every event the runtime logs, DK_SINK_SPAN (1) gets `void sink(const dk_span *s)`, an (owner, cycles) record. A sink runs in the producer's task with interrupts masked: short, no waiting, no logging. A channel has one owner; the runtime clears it after the owner's fini. Returns 0, DK_E_RANGE (no such channel), DK_E_CONTEXT (no module code is running) or DK_E_BUSY (another module owns the channel). See <dk/core/sink.h>. Context: any. Since runtime 0.7.1. */
+/* Set (or, with 0, clear) the sink of a runtime channel for the calling module: DK_SINK_LOG (0) gets `void sink(const dk_log_ev *e)` for every event the runtime logs, DK_SINK_SPAN (1) uses `void sink(const dk_span *s)`. Use `dk_span_sink_set` to supply the clock needed to emit spans. A sink runs in the producer's task with interrupts masked: short, no waiting, no logging. A channel has one owner; the runtime clears it after the owner's fini. Returns 0, DK_E_RANGE (no such channel), DK_E_CONTEXT (no module code is running) or DK_E_BUSY (another module owns the channel). See <dk/core/sink.h>. Context: any. Since runtime 0.7.1. */
 int32_t dk_sink_set(uint32_t channel, uint8_t *sink);
 
-/* Take the span channel like `dk_sink_set(DK_SINK_SPAN, emit)` and also store the clock the runtime reads for the spans: `u32 clock(void)`, a free-running counter that wraps. The runtime reads the clock before and after a call it measures and passes the difference to `emit` as the cycles of the span. (0, 0) clears both. Returns 0, DK_E_CONTEXT (no module code is running) or DK_E_BUSY (another module owns the channel). With no sink or no clock the runtime reads no clock. See <dk/core/sink.h>. Context: any. Since runtime 0.8.1. */
+/* Take the span channel like `dk_sink_set(DK_SINK_SPAN, emit)` and also store the clock the runtime reads for the spans: `u32 clock(void)`, a free-running counter that wraps. The runtime reads the clock before and after a call it measures and passes the difference to `emit` as the cycles of the span. Runtime 0.11.3 and later also provide the first reading as `start_tick`. Check `dk_module_ctx_runtime_version(ctx)` against `DK_SPAN_START_TICK_VERSION` before reading that field. (0, 0) clears both. Returns 0, DK_E_CONTEXT (no module code is running) or DK_E_BUSY (another module owns the channel). With no sink or no clock the runtime reads no clock. See <dk/core/sink.h>. Context: any. Since runtime 0.8.1. */
 int32_t dk_span_sink_set(uint8_t *emit, uint8_t *clock);
 
 /* The 1500 Hz block clock (wraps), for a module that wants to measure time; 0 when the image has no counter. See <dk/core/time.h>. Context: any. Since runtime 0.7.0. */
@@ -74,7 +77,7 @@ void dk_fw_free(void *p);
 /* The firmware's eMMC block read: `bytes` (a multiple of 512) from `sector` into `buf`; 0 = ok. Reads the whole card, not only the store. Context: any. Since runtime 0.7.0. */
 int32_t dk_fw_block_read(uint32_t sector, uint32_t bytes, void *buf);
 
-/* Read a store file into `buf` (at most `cap` bytes); returns the file size, or a negative code: `E_NOT_FOUND` for a missing file or a folder, `E_SEL_PATH` for an empty path, `E_TOO_BIG` for a path over 159 bytes or a file larger than `cap`. It uses the runtime's staging buffer. `files` is the handle of `dk_files_open`. Context: init. Since runtime 0.7.0. */
+/* Read a store file into `buf` (at most `cap` bytes); returns the file size, or a negative code: `E_NOT_FOUND` for a missing file or a folder, `E_SEL_PATH` for an empty path, `E_TOO_BIG` for a path over 159 bytes or a file larger than `cap`. It uses the runtime's staging buffer. `files` is the handle of `dk_files_open`. Context: ui. Since runtime 0.7.0. */
 int32_t dk_files_read(dk_files *files, const char *path, void *buf, uint32_t cap);
 
 /* Register the SysEx commands `first .. first + count` with `fn`. The range must lie inside one of the ranges sdk/sdk.toml [protocol.ranges] reserves and overlap no registered one; else it returns DK_E_CMD_RANGE. The range is released with the module. Returns 0. See <dk/platform/host.h>. Context: init. Since runtime 0.7.0. */
@@ -86,13 +89,16 @@ uint32_t dk_module_ctx_device(dk_module_ctx *ctx);
 /* The runtime version, packed major << 16 | minor << 8 | patch; 0 for a pointer that is not a context. Context: any. Since runtime 0.7.0. */
 uint32_t dk_module_ctx_runtime_version(dk_module_ctx *ctx);
 
+/* Register this content module's Workbench settings descriptor during init, once per load. The runtime copies the version 1 descriptor (up to 512 bytes); see the Workbench settings schema in the module authoring guide. Returns 0, DK_E_CONTEXT for the wrong owner or phase, DK_E_FORMAT for a bad descriptor, or DK_E_STATE if already registered. Workbench may read settings while a settings overlay is installed; use the device menu to edit them in that case. Context: init. Since runtime 0.11.4. */
+int32_t dk_workbench_register(dk_module_ctx *ctx, const uint8_t *descriptor, uint32_t size);
+
 /* Open this module's settings: `*out` is the handle (the same one every time), the result 0. A negative result outside init (DK_E_NOT_FOUND) or for a bad context (DK_E_CONTRACT); `*out` is untouched then. Context: init. Since runtime 0.7.0. */
 int32_t dk_settings_open(dk_module_ctx *ctx, dk_settings **out);
 
-/* Read the value of `key` (NUL-terminated, own key space) into `out` (`cap` bytes): returns its length (0 is valid), DK_E_SET_NOKEY when there is none, DK_E_SET_VALUE when `cap` is too small (nothing is written), DK_E_SET_KEY for a bad handle or key, DK_E_SET_OFF when the settings store is off. Context: ui. Since runtime 0.7.0. */
+/* Read the value of `key` (NUL-terminated, own key space; per project while the `project` service is loaded: the current project's value if its `.dkp` holds one, else the value of the settings record) into `out` (`cap` bytes): returns its length (0 is valid), DK_E_SET_NOKEY when there is none, DK_E_SET_VALUE when `cap` is too small (nothing is written), DK_E_SET_KEY for a bad handle or key, DK_E_SET_OFF when the settings store is off. Context: ui. Since runtime 0.7.0. */
 int32_t dk_settings_get(dk_settings *s, const char *key, void *out, uint32_t cap);
 
-/* Set `key` to the `len` bytes (0 to 1024) at `value`; the card is written 2 s after the last change. Returns 0, DK_E_SET_KEY, DK_E_SET_VALUE, DK_E_SET_FULL or DK_E_SET_OFF. Not from a host command handler. Context: ui. Since runtime 0.7.0. */
+/* Set `key` to the `len` bytes (0 to 1024) at `value`; the card is written 2 s after the last change (with the `project` service loaded the value also goes to the current project, written to its `.dkp` at the next stock save). Returns 0, DK_E_SET_KEY, DK_E_SET_VALUE, DK_E_SET_FULL or DK_E_SET_OFF. Not from a host command handler. Context: ui. Since runtime 0.7.0. */
 int32_t dk_settings_put(dk_settings *s, const char *key, const void *value, uint32_t len);
 
 /* Remove `key`: returns 0 (also when it was not there), DK_E_SET_KEY or DK_E_SET_OFF. Not from a host command handler. Context: ui. Since runtime 0.7.0. */
@@ -191,11 +197,26 @@ uint32_t dk_debug_span_clock(uint32_t *out_hz);
 /* The poll function in slot 0 to 3 of `dkrt_poll_add` and its owner: returns 0 for an empty slot (or a slot past 3), 1 + the record index of the module whose loaded code holds the function, or 0xff for a function outside every module (the firmware image: the patched-in core modules). Writes the function's address to `*out_fn` when `out_fn` is not null and the slot is used. For a profiler that names the rows of the poll spans. Context: any. Since runtime 0.8.2. */
 uint32_t dk_debug_poll(uint32_t slot, uint32_t *out_fn);
 
+/* Control the DSP stats window (P8d): `on` 1 starts and 0 stops the counters and the stream of snapshots; `clear` is the clear generation, and the DSP clears its counters when it changes. Only the module that owns the span channel (`dk_span_sink_set`) may call it. Returns 0, DK_E_CONTEXT (no module code is running) or DK_E_BUSY (another module owns the span channel, or none does). See <dk/core/trace.h>. Context: any. Since runtime 0.10.2. */
+int32_t dk_dsp_stats_ctl(uint32_t on, uint32_t clear);
+
+/* Copy the newest complete DSP stats sweep to `out` and return its sweep number, which grows with each sweep, or 0 when no sweep of the current clear generation is complete. At most `max` words of 103 are copied: the window of 100 words (4 header words, then 16 rows of 6; zeros when there is no sweep), then the counters of the link's mirror (sweeps published, sweeps ended by a gap, records ignored), which are valid either way. See <dk/core/trace.h>. Context: any. Since runtime 0.10.2. */
+uint32_t dk_dsp_stats_read(uint32_t *out, uint32_t max);
+
 /* The machine type of track 0 to 15 of the active kit, read from the firmware (read-only); -1 for a track the firmware has no type for, -2 when there is no project yet. Context: ui. Since runtime 0.7.0. */
 int32_t dk_debug_track_type(uint32_t track);
 
 /* The selected track and its Sound parameter words (read-only, from the firmware's own accessors). Writes the first `n` s16 words of that track's Sound array to `out`. Returns the track, or a negative code (-2 no project yet, -3 the track has no record: `out` is not written). Context: ui. Since runtime 0.7.0. */
 int32_t dk_debug_selected_params(int16_t *out, uint32_t n);
+
+/* Set the machine type (`op` 1) or the filter type (`op` 2) of `track` 0 to 15 of the active kit through the firmware's own kit commit, the call a chooser commit makes (calibration setup; never a raw write of the Sound byte). Only for the debug module's SETUP command, from the UI task. A machine type must be a stock one (below the device's `stock_types`) or a run-time type of a loaded module; a filter type a stock one, 0 to 5. Returns 0 when the firmware reports the new type afterwards, DK_E_RANGE (op, track or type not offered), or DK_E_STATE: no project yet, the commit is not in the image, or the firmware kept the old type (the machine permit refused it on that track, the project's settings mode makes the setter skip the write, or the read-back differs). See <dk/platform/debug.h>. Context: ui. Since runtime 0.10.4. */
+int32_t dk_debug_setup(uint32_t op, uint32_t track, uint32_t ty);
+
+/* The tracks of the device (`[digikit] tracks` of its device file). 0 when the device file gives none. A module that draws or counts tracks takes the number from here and holds no literal. Context: any. Since runtime 0.10.5. */
+uint32_t dk_device_track_count(void);
+
+/* The selected track, 0 to `dk_device_track_count()` - 1, from the firmware's own project accessors (read-only: the same read as `dk_debug_selected_params`); -2 when there is no project yet. Context: ui. Since runtime 0.10.5. */
+int32_t dk_selected_track(void);
 
 /* Set (or, with 0, clear) the one log sink and its tick: `void sink(const dk_log_ev *e)` receives every event the runtime logs, before any filter, in whatever task logs, with interrupts masked. `tick` runs once per UI pass (0: none). Context: any. Since runtime 0.7.0. */
 void dk_debug_log_sink_set(uint8_t *sink, uint8_t *tick);
@@ -287,6 +308,14 @@ void dk_fx_routes(dk_fx *fx, uint32_t allowed, uint32_t def);
 /* Set the default of the effect's MIX knob, 0 to 127 (127 when this is not called). Context: init. Since runtime 0.7.0. */
 void dk_fx_mix(dk_fx *fx, uint32_t def);
 
+/* ---- service project ---- */
+
+/* The current project: its slot (0 to 127) in `*slot` and its name, as the firmware lists it (16 bytes, zero padded), in `name`. DK_E_NOT_FOUND when there is no current project (nothing is written then). A module that calls it needs the `project` service (a hard need, as every provided import); a module that only keeps settings calls nothing: its settings are per project while the service is loaded, and it does not need the service. Context: ui. Since runtime 0.11.0. */
+int32_t dk_project_current(uint32_t *slot, uint8_t *name);
+
+/* The state of the project service as bits: bit 0 a `.dkp` file is loaded for the current project, bit 1 the data has changes the file does not hold (written at the next successful stock save), bit 2 a write was deferred after 30 s of a busy store, bit 3 a file of the slot was not used (a stamp, device, version or crc mismatch). Context: ui. Since runtime 0.11.0. */
+uint32_t dk_project_status(void);
+
 /* ---- service ui ---- */
 
 /* A YES/NO dialog: `done(arg, yes)` runs after it closed. 0 when shown, a negative code when not (another dialog is open, out of memory). Context: ui. Since runtime 0.7.0. Needs core/ui: without it the import binds to a stub that returns -1. */
@@ -297,6 +326,12 @@ int32_t dk_ui_toast(dk_ui *ui, const char *text);
 
 /* Call `fn(arg)` about every `period_ms` in the UI task (period 0 removes the timer of the pair `fn`, `arg`). 0 when set or removed, a negative code when it cannot be (table full). Rules in <dk/platform/ui.h>. Context: ui. Since runtime 0.7.0. Needs core/ui: without it the import binds to a stub that returns -1. */
 int32_t dk_ui_tick(dk_ui *ui, dk_ui_tick_fn *fn, void *arg, uint32_t period_ms);
+
+/* Add a row `text` at the end of the SETTINGS list; `open(arg)` runs on YES. The row goes away when the module unloads. 0 when added, DK_E_CONTRACT (no text or open) or DK_E_NOMEM (no room). Rules in <dk/platform/ui.h>. Context: init. Since runtime 0.10.5. Needs core/ui: without it the import binds to a stub that returns -1. */
+int32_t dk_ui_settings_row(dk_ui *ui, const char *text, dk_ui_settings_open_fn *open, void *arg);
+
+/* Close a screen opened with `dk_ui_view_open`. A handle that is closed already does nothing. Context: ui. Since runtime 0.10.5. Needs core/ui: without it the import binds to a stub that does nothing. */
+void dk_ui_view_close(dk_ui_view *view);
 
 /* Open the UI service: `*out` is the handle, the result 0. Without core/ui the result is DK_E_MISSING and `*out` is untouched. Context: init. Since runtime 0.7.0. Needs core/ui: without it the import binds to a stub that returns DK_E_MISSING. */
 int32_t dk_ui_open(dk_module_ctx *ctx, dk_ui **out);
@@ -395,5 +430,10 @@ int32_t dk_sdhc_large_open(dk_module_ctx *ctx, dk_sdhc_large **out);
 
 /* core/sdhc-large: the firmware's eMMC block write and read run a transfer as one card command of up to 1022 blocks (511 KiB) instead of 64 KiB pieces when its buffer lies inside the range the runtime sets, is 16-byte aligned and its length is a multiple of 512, while the switch is on. Key 0 is the switch (val 0 off, 1 on, another value changes nothing; returns the old value; RAM only, 1 at every boot). Key 1 reads a counter (val 0 calls of the firmware's block write, 1 of them with the raised limit, 2 calls of the block read, 3 of them with the raised limit; a transfer that the firmware splits counts one call per piece). Other keys return 0. 0 without the module. See <dk/platform/sdhc_large.h>. Context: any. Since runtime 0.7.0. Needs core/sdhc-large: without it the import binds to a stub that returns 0. */
 uint32_t dk_sdhc_large_ctl(dk_sdhc_large *sl, uint32_t key, uint32_t val);
+
+/* ---- service shortcuts ---- */
+
+/* Bind a key combination: while `def->keys[0]` is held, pressing `def->keys[1]` calls `def->on(arg)` and the press is not passed to the stock views; releasing either key calls `def->off(arg)`. The keys are logical (`dk_key`, <dk/gen/keys.h>); a key the device lacks makes the shortcut inactive. `id` (unique in the module, at most 15 characters) and `label` (at most 23) are copied. Returns 0, or DK_E_FORMAT (a missing or repeated id or label, a key that is DK_KEY_NONE or the same twice, no `on`) or DK_E_DECL_FULL (more than 4 shortcuts in the module); the commit refuses the module for the first error. A second module that binds the same two keys is loaded with its shortcut disabled. See <dk/platform/shortcuts.h>. Context: init. Since runtime 0.10.5. */
+int32_t dk_shortcut_add(dk_module_ctx *ctx, const dk_shortcut_def *def);
 
 #endif /* DK_GEN_IMPORTS_H */

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/preset.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/preset.h"
 int main(void)
 {
     CpPreset p = {.control = {10, 3, 127, 64, 500, 127, 8, 4, 3, 100, 75, 2, 0, 0, 127, 127},

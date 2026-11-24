@@ -4,8 +4,8 @@
 #include "canopy-settings.c"
 #undef main
 #include <assert.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
 #include "../fixtures/canopy-copy-guard/copy-guard.h"
 
 typedef struct {

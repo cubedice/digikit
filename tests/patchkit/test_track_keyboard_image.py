@@ -14,12 +14,12 @@ from tools.patchkit import patchkit
 
 FIRMWARE = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
 TICK_KIND = 3
-SEAM = REPO_ROOT / "modules/core/services/track-keyboard/seam.toml"
+SEAM = REPO_ROOT / "services/track-keyboard/seam.toml"
 IMAGE_OBJECT = (
-    REPO_ROOT / "modules/core/adapters/track-keyboard/build/track-keyboard.dko.json"
+    REPO_ROOT / "image-modules/adapters/track-keyboard/build/track-keyboard.dko.json"
 )
 SERVICE_OBJECT = (
-    REPO_ROOT / "modules/core/services/track-keyboard/dks/build/track-keyboard.dko.json"
+    REPO_ROOT / "services/track-keyboard/dks/build/track-keyboard.dko.json"
 )
 
 

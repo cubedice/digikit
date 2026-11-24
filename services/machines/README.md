@@ -1,0 +1,46 @@
+# machines service
+
+A service of the digikit runtime that adds machine types at run time: the machine, parameter, page, click-action and native-page records of a module become rows of the
+firmware's registry, the machine's voice rows are published to the DSP, and the encoder click on a machine page runs a module's callback. It also plans the sticky type numbers.
+Layout and rules follow `services/shortcuts/README.md` (the template); this file lists what is specific here.
+
+```text
+src/machines.rs   the owner `Machines`: private state (`Builder`, `Slots`, `Parking`, `Applied`), `Provider` (start_in, attach, detach, settle, reload_done), `Ticker`, `Describe`
+src/records.rs    the `Records` part (begin, commit, check, apply) and the free `validate` that `patchkit records --check` calls
+src/dsp/part.rs   the `DspPart` over the voice-row steps of `dsp/*`; the guard's diagnostics and the voice site's attribution
+src/apply.rs      `attach` (the rows of a module) and the native page record: `Applied`, the walk's state
+src/build/        the builder calls (`Builder`: the collection and its gate) and the commit
+src/slots.rs      the page's click state (`Slots`), with `slots/` the detector and the action lookup
+src/parking.rs    the parking passes of absent numbers (`Parking`)
+src/info.rs       the image table `machines_info`: layout, binding into `DKRT_MF_TAB`
+dks/              the service file: `lib.rs` (the `service!` call), `hooks.rs` and `hooks-*.s` (the machine framework's hooks), `fw.rs` (the firmware calls, the page's key and turn
+                  entries, `dk_param_get`, `dk_param_set`), `builder.rs` (the builder exports, which reach the owner), `gen_exports.rs` (generated)
+tests/            host tests over `FakeCore`: `state.rs` (the owner), `records.rs`, `build.rs`, `assign.rs`, `guard.rs`, `file.rs` (the file's code over the cell), `contract.rs` (the
+                  shared suite on both profiles through `provider_contract`, and the placeholder and parking cases over its `Lifecycle`)
+```
+
+State: the owner holds the collection of the builder calls, the click state, the parking passes, the state between `attach` and the per-record `apply`, and the registry state
+(`RegState`: the owners of the parameter and page rows, and the strings that the firmware's registry rows point at; they are valid while the service is loaded, which is as long as the owner
+lives). Four tables stay named statics of the crate (D7 of the RC3 briefs), each with its reader, and one cell is shared:
+
+| Static | Reader |
+| --- | --- |
+| `DKRT_ASSIGN` (`assign.rs`) | device tests by symbol (`machines-kit`, `fx-live`); the sticky map |
+| `DKRT_VROWS` (`rows.rs`) | the runtime's DSP code (`abi/dsp.rs`); the voice rows; `Describe` on the MODULES task |
+| `DKRT_GUARD` (`guard.rs`) | the MODULES reply (`Describe`), on another task than the poll that writes it |
+| `DKRT_MF_TAB` (`info.rs`) | the assembler hooks (`T_*` offsets of `hooks-*.s`) |
+| `MACH_OWNER` (`registry.rs`, a `Shared<[u8; MAX_MACH]>`) | `Describe` on the MODULES task, and the owner (`attach`, `detach`, the parking pass, the load check) |
+
+`Describe::describe` (`modules::describe`) gives the five words of the MODULES reply for a module record: the voice rows it owns (mask); the guard's fault count; `nt` with the guard-off flag in bit 8;
+the types 0 to 3 and 4 to 7 (one byte each, type `i` in byte `i % 4`). It has no object and never enters the owner (`Describe::describe` has no `&self`): the command handler may ask while the UI task is
+inside a call of the owner (a tick, a hook), and the owner's guard would refuse it. It reads `MACH_OWNER` (`Shared`: one byte copied per row, eight rows at most: the longest section is a copy of 8 bytes
+under the interrupt mask), `DKRT_VROWS` and `DKRT_GUARD` (read by words: a task switch cannot tear a word). A module with no voice row, no type and no fault gets no word, so no section.
+The registry state moved into the owner in E1 step 4 (it was the static `DKRT_REG`; no tool reads it by symbol any more). The free functions of `unload.rs`, `parking.rs`, `check.rs`, `apply.rs` and
+`build/` take the registry state from the owner's methods.
+
+Without an owner (before `init` made it, after `fini`) the file's calls answer the neutral way: a builder call returns null or does nothing, `dk_param_get` and
+`dk_param_set` answer `E_STATE` (no flow), the key hook passes the event and the turn hook consumes nothing. The turn hook ends the click flow in the owner, then runs the page's
+native handler outside it (a handler may call back into the file).
+
+A failed `start` (no usable `machines_info` for the device) leaves nothing: the file is refused with `E_NO_REGISTRY` and the cell stays empty. ColdFire rule: an if chain, not
+a `match` on dense integers, in code that runs on the device (`Describe::cap`).

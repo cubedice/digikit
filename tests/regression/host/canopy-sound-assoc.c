@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-assoc.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-assoc.h"
 
 static uint32_t random_state = 7;
 static uint32_t next(void)

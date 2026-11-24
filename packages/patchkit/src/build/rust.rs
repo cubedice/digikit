@@ -11,6 +11,7 @@
 
 use super::cf;
 use super::elf::{self, Proto};
+use super::test_source::TestSources;
 use super::toolchain::{self as tc, Env, TempDir};
 use crate::error::*;
 use serde::Deserialize;
@@ -64,6 +65,18 @@ struct Cargo {
 #[derive(Deserialize)]
 struct Package {
     name: String,
+    metadata: Option<PackageMetadata>,
+}
+
+#[derive(Deserialize)]
+struct PackageMetadata {
+    patchkit: Option<PatchkitMetadata>,
+}
+
+#[derive(Deserialize)]
+struct PatchkitMetadata {
+    #[serde(rename = "staged-dir")]
+    staged_dir: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -117,9 +130,14 @@ fn rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in rd.flatten() {
         let p = e.path();
         let Ok(ft) = e.file_type() else { continue };
+        let name = e.file_name().to_string_lossy().into_owned();
         if ft.is_dir() {
-            rs_files(&p, out);
-        } else if p.extension().is_some_and(|x| x == "rs") {
+            if !TestSources::get().is_test_dir(&name) {
+                rs_files(&p, out);
+            }
+        } else if p.extension().is_some_and(|x| x == "rs")
+            && !TestSources::get().is_test_file(&name)
+        {
             out.push(p);
         }
     }
@@ -169,7 +187,7 @@ pub fn crate_files(manifest: &Path) -> Result<Vec<PathBuf>> {
 }
 
 /// The crate's sources (relative names and bytes) and the toolchain pins: what a build depends on.
-pub fn source_sha256(manifest: &Path) -> Result<String> {
+pub fn source_sha256(manifest: &Path, cargo_flags: &[String]) -> Result<String> {
     let manifest = tc::canon(manifest);
     let base = manifest.parent().unwrap_or(Path::new("."));
     let mut h = Sha256::new();
@@ -191,6 +209,11 @@ pub fn source_sha256(manifest: &Path) -> Result<String> {
     );
     h.update(tc::RUST_TARGET_JSON);
     h.update(CF_HELPERS.as_bytes());
+    // The features of the build are part of what it makes (none: the hash of a build without flags is the same as before).
+    for f in cargo_flags {
+        h.update(f.as_bytes());
+        h.update([0u8]);
+    }
     Ok(hex(&h.finalize()))
 }
 
@@ -198,8 +221,8 @@ pub fn source_sha256(manifest: &Path) -> Result<String> {
 /// that, then the `cf::source_digest` of the sources: their bytes, the headers and `.include` files they read (path and bytes, as listed with the
 /// object's include directories and defines), the C toolchain record (the gcc, as and ld versions and the CFLAGS) and the defines ([`SERVICE_DEFINE`]
 /// and the build's own).
-pub fn object_sha256(env: &Env, manifest: &Path, c: &CSources) -> Result<String> {
-    let crate_sha = source_sha256(manifest)?;
+pub fn object_sha256(env: &Env, manifest: &Path, cargo_flags: &[String], c: &CSources) -> Result<String> {
+    let crate_sha = source_sha256(manifest, cargo_flags)?;
     if c.files.is_empty() {
         return Ok(crate_sha);
     }
@@ -299,6 +322,34 @@ fn without_workspace_root(text: &str) -> String {
     out
 }
 
+/// Cargo includes the relative dependency path in its crate disambiguator. Keep the staged name stable when a source directory moves.
+fn staged_dir_name(manifest: &Path) -> Result<String> {
+    let package = parse_cargo(&tc::read_text(manifest)?, manifest)?.package;
+    if let Some(name) = package
+        .metadata
+        .and_then(|metadata| metadata.patchkit)
+        .and_then(|patchkit| patchkit.staged_dir)
+    {
+        if name.is_empty()
+            || !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+        {
+            return Err(err!(
+                "{}: package.metadata.patchkit.staged-dir must contain only ASCII letters, digits, '-' or '_' and cannot be empty",
+                manifest.display()
+            ));
+        }
+        return Ok(name);
+    }
+    Ok(manifest
+        .parent()
+        .and_then(|p| p.file_name())
+        .unwrap()
+        .to_string_lossy()
+        .into_owned())
+}
+
 /// Copy a crate to `dest` and its path dependencies to `deps_dir/<n>-<name>`, rewriting the `path = ".."` of the copies. A dependency stages without its own
 /// `[workspace]` line.
 fn stage(
@@ -314,13 +365,8 @@ fn stage(
         let sd = match seen.iter().find(|(k, _)| *k == sub) {
             Some((_, sd)) => sd.clone(),
             None => {
-                let name = sub
-                    .parent()
-                    .and_then(|p| p.file_name())
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned();
-                let sd = deps_dir.join(format!("{}-{}", seen.len(), name));
+                let name = staged_dir_name(&sub)?;
+                let sd = deps_dir.join(format!("{}-{name}", seen.len()));
                 seen.push((sub.clone(), sd.clone()));
                 stage(&sub, &sd, deps_dir, seen)?;
                 let dep_manifest = sd.join("Cargo.toml");
@@ -348,7 +394,12 @@ pub fn target_dir(env: &Env) -> PathBuf {
 
 /// Build the crate and copy its static library into `out_dir`. A lock on the shared target dir covers the cargo run and the copy, so a
 /// build of the same crate from another worktree cannot replace the library in between.
-fn build_staticlib(env: &Env, manifest: &Path, out_dir: &Path) -> Result<PathBuf> {
+fn build_staticlib(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    out_dir: &Path,
+) -> Result<PathBuf> {
     if !env.codegen_gcc_ready() {
         return Err(err!(
             "Rust-for-ColdFire toolchain not installed (uv run python -m tools.patchkit.pk_toolchains codegen-gcc)"
@@ -414,6 +465,7 @@ fn build_staticlib(env: &Env, manifest: &Path, out_dir: &Path) -> Result<PathBuf
         .arg(&tc::pins().rust_nightly)
         .args(["cargo", "rustc", "--release"])
         .args(CARGO_ARGS)
+        .args(cargo_flags)
         .arg("--target")
         .arg(&target)
         .arg("--target-dir")
@@ -505,7 +557,6 @@ pub fn is_helper(n: &str) -> bool {
         && (b[n - 3..n - 1] == *b"ti" || b[n - 3..n - 1] == *b"di")
 }
 
-/// (defined global symbols, undefined symbols) of an object, by `nm`.
 /// The local symbols the C and assembler objects define (`nm` types t, d, b, r: statics and named file-local labels), sorted,
 /// without the assembler's `.L` labels.
 fn c_locals(env: &Env, objs: &[PathBuf]) -> Result<Vec<String>> {
@@ -524,6 +575,7 @@ fn c_locals(env: &Env, objs: &[PathBuf]) -> Result<Vec<String>> {
     Ok(out)
 }
 
+/// (defined global symbols, undefined symbols) of an object, by `nm`.
 fn globals(env: &Env, obj: &Path) -> Result<(Vec<String>, Vec<String>)> {
     let args = vec!["--no-demangle".to_string(), obj.display().to_string()];
     let r = tc::run(&env.m68k("nm")?, &args, None)?;
@@ -599,6 +651,7 @@ fn compile_c_sources(env: &Env, c: &CSources, dir: &Path) -> Result<(Vec<PathBuf
 fn build_object(
     env: &Env,
     manifest: &Path,
+    cargo_flags: &[String],
     c: &CSources,
     out: &Path,
 ) -> Result<(Vec<String>, Vec<Part>)> {
@@ -607,7 +660,7 @@ fn build_object(
         .name
         .replace('-', "_");
     let work = TempDir::new("pk-rust-")?;
-    let lib = build_staticlib(env, manifest, work.path())?;
+    let lib = build_staticlib(env, manifest, cargo_flags, work.path())?;
     tc::run(
         &env.m68k("ar")?,
         &["x".to_string(), tc::canon(&lib).display().to_string()],
@@ -743,16 +796,26 @@ fn sources_of(r: &elf::PReloc, parts: &[Part]) -> Vec<String> {
     if exact.is_empty() { with(false) } else { exact }
 }
 
-/// The prototype, source hash and toolchain record of a crate and the C and assembler sources `c` of its object (none: the crate alone).
+/// The prototype, source hash and toolchain record of a crate.
 pub fn object_proto(
     env: &Env,
     manifest: &Path,
+    cargo_flags: &[String],
+) -> Result<(Proto, String, BTreeMap<String, String>)> {
+    object_proto_with(env, manifest, cargo_flags, &CSources::default())
+}
+
+/// The prototype, source hash and toolchain record of a crate and the C and assembler sources `c` of its object (none: the crate alone).
+pub fn object_proto_with(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
     c: &CSources,
 ) -> Result<(Proto, String, BTreeMap<String, String>)> {
     let manifest = tc::canon(manifest);
     let tmp = TempDir::new("pk-rust-o-")?;
     let o = tmp.path().join("crate.o");
-    let (exports, parts) = build_object(env, &manifest, c, &o)?;
+    let (exports, parts) = build_object(env, &manifest, cargo_flags, c, &o)?;
     let proto = elf::proto_from_elf(&tc::read(&o)?)?;
     for r in &proto.relocs {
         if r.rtype != "32" {
@@ -784,12 +847,48 @@ pub fn object_proto(
         let cflags = toolchain.get("cflags").cloned().unwrap_or_default();
         toolchain.insert("cflags".into(), format!("{cflags} {}", defines.join(" ")));
     }
-    Ok((proto, object_sha256(env, &manifest, c)?, toolchain))
+    Ok((proto, object_sha256(env, &manifest, cargo_flags, c)?, toolchain))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_source_hash_ignores_unit_test_files_only() {
+        let work = TempDir::new("pk-hash-").unwrap();
+        let src = work.path().join("src");
+        std::fs::create_dir_all(src.join("a/tests")).unwrap();
+        std::fs::write(work.path().join("Cargo.toml"), "[package]\nname = \"c\"\n").unwrap();
+        for f in [
+            "lib.rs",
+            "a/mod.rs",
+            "a/tests.rs",
+            "a/tests/x.rs",
+            "b_tests.rs",
+            "tests_b.rs",
+            "fake_p.rs",
+        ] {
+            std::fs::write(src.join(f), "// 1\n").unwrap();
+        }
+        let manifest = work.path().join("Cargo.toml");
+        let before = source_sha256(&manifest, &[]).unwrap();
+        for f in [
+            "a/tests.rs",
+            "a/tests/x.rs",
+            "b_tests.rs",
+            "tests_b.rs",
+            "fake_p.rs",
+        ] {
+            std::fs::write(src.join(f), "// 2\n").unwrap();
+        }
+        assert_eq!(source_sha256(&manifest, &[]).unwrap(), before);
+        for f in ["lib.rs", "a/mod.rs"] {
+            std::fs::write(src.join(f), "// 2\n").unwrap();
+            assert_ne!(source_sha256(&manifest, &[]).unwrap(), before, "{f}");
+            std::fs::write(src.join(f), "// 1\n").unwrap();
+        }
+    }
 
     #[test]
     fn a_staged_dependency_loses_its_workspace_root() {
@@ -799,6 +898,53 @@ mod tests {
             without_workspace_root(text),
             "[package]\nname = \"a\"\n\n\n[profile.release]\npanic = \"abort\"\n"
         );
+    }
+
+    #[test]
+    fn staging_keeps_a_dependency_name_after_its_source_directory_moves() {
+        let work = TempDir::new("pk-stage-").unwrap();
+        let src = work.path().join("source");
+        let dep = work.path().join("moved");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::create_dir(&dep).unwrap();
+        let manifest = src.join("Cargo.toml");
+        let dep_manifest = dep.join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"root\"\n[dependencies]\ndep = { path = \"../moved\" }\n",
+        )
+        .unwrap();
+        let dep_text = "[package]\nname = \"dep\"\n";
+        std::fs::write(&dep_manifest, dep_text).unwrap();
+        assert_eq!(staged_dir_name(&dep_manifest).unwrap(), "moved");
+        let before = source_sha256(&manifest, &[]).unwrap();
+        std::fs::write(
+            &dep_manifest,
+            format!("{dep_text}[package.metadata.patchkit]\nstaged-dir = \"original\"\n"),
+        )
+        .unwrap();
+        assert_ne!(source_sha256(&manifest, &[]).unwrap(), before);
+
+        let dest = work.path().join("staged");
+        let deps_dir = dest.join(".deps");
+        let staged = stage(&manifest, &dest, &deps_dir, &mut vec![]).unwrap();
+        assert_eq!(
+            path_deps(&tc::read_text(&staged).unwrap(), &staged, false).unwrap(),
+            [".deps/0-original"]
+        );
+        assert!(deps_dir.join("0-original/Cargo.toml").is_file());
+    }
+
+    #[test]
+    fn staging_rejects_a_name_with_a_path_separator() {
+        let work = TempDir::new("pk-stage-").unwrap();
+        let manifest = work.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"dep\"\n[package.metadata.patchkit]\nstaged-dir = \"../other\"\n",
+        )
+        .unwrap();
+        assert!(staged_dir_name(&manifest).is_err());
     }
 
     #[test]

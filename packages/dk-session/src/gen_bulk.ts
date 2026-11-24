@@ -51,6 +51,8 @@ export const BULK_STATUS = {
   E_SET_OFF: -70,
   E_FILE_IN_USE: -71,
   E_AGAIN: -72,
+  E_MODULE_UI_CONFLICT: -88,
+  E_MODULE_UI_SCOPE: -89,
   L_E_NOT_FOUND: -1,
   L_E_BAD_STORE: -2,
   L_E_READ: -3,
@@ -106,4 +108,9 @@ export const BULK_STATUS = {
   L_E_DECL_KIND: -79,
   L_E_SVC_ABI: -81,
   L_E_HOOK_STOCK: -82,
+  L_E_RELOAD_PLAYING: -83,
+  L_E_RELOAD_MENUS: -84,
+  L_E_RELOAD_ROUTED: -85,
+  L_E_RELOAD_KEYS: -86,
+  L_E_RELOAD_RETAINED: -87,
 } as const;

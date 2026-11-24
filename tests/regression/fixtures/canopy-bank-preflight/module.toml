@@ -16,7 +16,7 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/bank-preflight.dko.json"
-sources = ["src/cf/fixture.c", "src/cf/guard.s", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c"]
+sources = ["src/cf/fixture.c", "src/cf/guard.s", "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]

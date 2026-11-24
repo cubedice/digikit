@@ -30,7 +30,7 @@ destinations while shared tracks receive their own events. Native code
 keeps the original channel, pitch, and velocity. The adapter queues
 shared events for the UI task. Both instruction windows and the selected
 track, channel table, and receive flag operands are byte-checked before
-patching. [Firmware declarations](../../devices/fw/track-keys.toml)
+patching. [Firmware declarations](../../ports/fw/track-keys.toml)
 
 For live recording an admitted physical note reaches the original
 `0x401200f2` call with its fifth argument set. This skips native audition
@@ -70,7 +70,7 @@ checks that mixed routing creates one stock and one shared audition,
 that each input's release reaches its correct track, and that both
 ports can own the same pitch. Its USB live recording check observes
 the stock writer committing a shared performance recipe.
-[MIDI emulator test](../../modules/core/adapters/track-keyboard/tests/midi.device.test.ts)
+[MIDI emulator test](../../image-modules/adapters/track-keyboard/tests/midi.device.test.ts)
 
 ## Open [O]
 

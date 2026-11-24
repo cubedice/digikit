@@ -12,7 +12,7 @@ from tools.patchkit import pk_cfunit
 
 def _machines_fw():
     """The firmware fixtures of core/machines' own test (it moved into the module), loaded by path."""
-    path = REPO_ROOT / "modules/core/adapters/machines/tests/test_pk_machines_fw.py"
+    path = REPO_ROOT / "image-modules/points/machines/tests/test_pk_machines_fw.py"
     spec = importlib.util.spec_from_file_location("machines_fw_fixtures", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -84,8 +84,8 @@ int instrument_sound_admitted(uint32_t track) {{
             REPO_ROOT / "tests/fixtures/native-page-absent.s",
             src_allocator,
             stub,
-            REPO_ROOT / "modules/core/adapters/instrument-play/src/cf/src-mod.c",
-            REPO_ROOT / "modules/core/adapters/instrument-play/src/cf/src-mod.s",
+            REPO_ROOT / "image-modules/adapters/instrument-play/src/cf/src-mod.c",
+            REPO_ROOT / "image-modules/adapters/instrument-play/src/cf/src-mod.s",
         ],
         [
             *STUBS,

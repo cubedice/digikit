@@ -2,7 +2,7 @@
 // the runtime's `MODULE_COMMIT` event, read the record block it names and decode it with `patchkit records --json`.
 //
 //   node tools/devtools/commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD]
-//        [--debug-dkm FILE.dkm] [--service BOUND.dks]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms 60000]
+//        [--debug-dkm FILE.dkm] [--service FILE.dks]... [--port FILE.dkport]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms 60000]
 //
 // --patch-set names the patch set of the device file the image is patched with (default `emulator`): a module that requires a core module
 // the `emulator` set lacks (module.toml `[conformance] patch_set`) is refused at load without it.
@@ -31,6 +31,9 @@ import { emulatorClock } from '../../packages/test-support/src/emulated-clock.ts
 import { repoRoot, type Device } from '../../packages/test-support/src/inputs.ts';
 import { Session } from '../../packages/test-support/src/session.ts';
 
+// stdout is the JSON result: the boot window wait of a session logs with console.info, which must go to stderr
+console.info = console.error;
+
 const FIRMWARE: Record<Device, string> = { dt2: '1.17', dn2: '1.12' };
 
 const { values } = parseArgs({
@@ -40,6 +43,7 @@ const { values } = parseArgs({
     dkm: { type: 'string' },
     'debug-dkm': { type: 'string' },
     service: { type: 'string', multiple: true },
+    port: { type: 'string', multiple: true },
     'patch-set': { type: 'string', default: 'emulator' },
     dsp: { type: 'string', default: 'zero' },
     patchkit: { type: 'string' },
@@ -48,7 +52,7 @@ const { values } = parseArgs({
   },
 });
 const usage =
-  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--service BOUND.dks]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms N]';
+  'usage: commit_records.ts --device dn2|dt2 --module ID --dkm FILE.dkm --patchkit BIN [--binary DIGI_EMUD] [--debug-dkm FILE.dkm] [--service FILE.dks]... [--port FILE.dkport]... [--patch-set NAME] [--dsp zero|sharc] [--emulated-ms N]';
 if ((values.device !== 'dn2' && values.device !== 'dt2') || !values.module || !values.dkm || !values.patchkit) {
   throw new Error(usage);
 }
@@ -117,8 +121,9 @@ try {
     await dk.put(store, fs.readFileSync(file));
     paths.push(store);
   }
-  // the services the module needs (`--service`: bound files, `patchkit bind`): the runtime finds each by its name in services/ at boot
+  // the services the module needs (`--service`: packed files) and the port file of the firmware (`--port`): the runtime finds each by its folder at boot
   for (const file of values.service ?? []) await dk.put(`services/${path.basename(file)}`, fs.readFileSync(file));
+  for (const file of values.port ?? []) await dk.put(`ports/${path.basename(file)}`, fs.readFileSync(file));
   await dk.select(paths);
   await dk.restart();
   await dk.waitForBoot(undefined, dsp === 'sharc' ? 180_000 : undefined);

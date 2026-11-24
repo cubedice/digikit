@@ -30,7 +30,7 @@ digikit patches your own copy of the stock firmware once, with a small runtime. 
 ## Features
 
 - New machine types next to the stock ones, with their own parameters and DSP code
-- Up to 3 effects of your own, each with its own FX page, as a master insert or as a send effect with a send amount per track (SETTINGS > DIGIKIT > FX ROUTES)
+- Up to 3 effects of your own, each with its own FX page, as a master insert or as a send effect with a send amount per track (SETTINGS > FX ROUTING)
 - Modules load from the card at boot: install or change them over USB without flashing again
 - Boot-loop protection: after two failed starts, the box starts without modules and shows why
 - Safe mode: hold RECORD at power-on to start without modules
@@ -91,7 +91,7 @@ mise run gen:core           # the shared generated core of the emulator's DSP
 
 ### Firmware files
 
-Put `Digitakt_II_OS1.17.syx` and `Digitone_II_OS1.12.syx` in `firmware/`. No Elektron firmware is in this repository: you supply your own.
+Put `Digitakt_II_OS1.17.syx` and `Digitone_II_OS1.12.syx` in `firmware/`. No Elektron firmware is in this repository. Supply your own files. See the [firmware guide](docs/FIRMWARE.md) to build and browse the analysis databases and catalogs.
 
 ### Flash from the command line
 
@@ -102,7 +102,7 @@ mise run patch:preflight -- out/patch/digikit-dt2.syx      # must print PREFLIGH
 
 Without `--modules`, the device's patch set from `devices/*.toml` is applied; `--set NAME` picks another. Only flash images that pass the preflight. Open Elektron Transfer, connect the device over USB, and drop the `.syx` on it while the device shows its main screen. When the transfer ends, the device asks to upgrade: press **YES**. After the restart, SETTINGS > DIGIKIT shows the runtime.
 
-Some modules are patched into the image instead of loaded from the card, such as [Overdrive curves](modules/core/adapters/overdrive/README.md). [PATCHING.md](docs/PATCHING.md) has the details.
+Some modules are patched into the image instead of loaded from the card, such as the black intro (`core/introblank`). [PATCHING.md](docs/PATCHING.md) has the details.
 
 ### Load a module on the device
 

@@ -19,7 +19,7 @@ this work) unless it is marked **[O]**.
 
 Removed: the module `core/loop-controls` (its ColdFire and DSP objects, its import `_loop_controls_info` in `core/dyndsp`, its tests; it had no anchor or port entry of its own); the DSP half of
 `core/loop-display` and its old page; the Python reference model and tests of the old engine (`tools/patchkit/overloop_ref.py`,
-`modules/fx/overloop/tests/test_overloop.py`, `tests/patchkit/test_loop_controls_cf.py`, `tests/patchkit/test_loop_display.py`);
+`modules/fx/digikit/overloop/tests/test_overloop.py`, `tests/patchkit/test_loop_controls_cf.py`, `tests/patchkit/test_loop_display.py`);
 `sdk/dsp/contract/dk_loop_controls.inc` and `dk_loop_status.inc`; the function `pp_phrase_timing` of
 `core/pattern-position`, which had no caller. New: `core/loop-control`, `core/fxview`, `sdk/dsp/contract/dk_loop.inc`,
 `sdk/include/dk/loop.h` and `dk/fxview.h`. The patch sets `overloop`, `canopy-overloop` and `canopy-overloop-prism` name
@@ -104,7 +104,7 @@ The image of the fork's set (`canopy-overloop-prism`, built from the stock firmw
 
 ## Where the controls live
 
-`core/loop-control` ([README](../../modules/core/adapters/loop-control/README.md)) is the one home: XFAD (0 to 127) and
+`core/loop-control` ([README](../../image-modules/adapters/loop-control/README.md)) is the one home: XFAD (0 to 127) and
 the counters of ARM and DROP, in the image's memory, read and written through `sdk/include/dk/loop.h`. They are not kit
 values. Overloop's page uses it now; PRISM's page is not wired to it.
 
@@ -118,7 +118,7 @@ values. Overloop's page uses it now; PRISM's page is not wired to it.
 - **ARM is a press**, not a knob: press H. It is a counter the engine watches for a change, so a press arms and the next
   one takes it back; the capture uses it up.
 
-**Two effects with native pages.** `core/fxview` ([README](../../modules/core/adapters/fxview/README.md)) owns the five
+**Two effects with native pages.** `core/fxview` ([README](../../image-modules/adapters/fxview/README.md)) owns the five
 table slots of the FX view that `core/phrase-ui` used to write, and calls optional functions of the page adapters
 (`phrase_fxv_*`, `loop_fxv_*`), each of which acts only on its own page. Overloop's adapter learns its page code from the
 held-values call. The first version of the adapter looked for its row through the effect IDs in the image's
@@ -127,7 +127,7 @@ matched on the emulated device and the page was never on top. Whether the old pa
 
 ## The page
 
-Section 3.2 of the plan, built as `core/loop-display` ([README](../../modules/core/adapters/loop-display/README.md)):
+Section 3.2 of the plan, built as `core/loop-display` ([README](../../image-modules/adapters/loop-display/README.md)):
 state at the top right, two text lines, the timeline with a mark, the crossfader as it sounds, `ARM` and `XFAD`. Where it
 differs from the plan's drawing:
 
@@ -172,7 +172,7 @@ kit, and no change of them at a pattern or kit change. The old values stay in th
 - **[O]** One holder of held values: the service asks one function. A second module with values outside the kit needs a
   list.
 - **[O]** `mise run patch:port` fails in this checkout at an unrelated anchor (finding 359). No anchor or port entry
-  changed in this step; the five FX view anchors of `devices/fw/phrase-ui.toml` only name `core/fxview` as their user.
+  changed in this step; the five FX view anchors of `ports/fw/phrase-ui.toml` only name `core/fxview` as their user.
 
 ## Proofs
 
@@ -183,7 +183,7 @@ kit, and no change of them at a pattern or kit change. The old values stay in th
 | Assembly | `core/runtime:test-assembly` | pass; one new case: the image of the `overloop` set has the `[[info]]` entry the service looks up by name hash, the `emulator` set has none |
 | Device (DT2 emulator, SHARC core) | `digikit/overloop:test-device` | pass, see below |
 
-`modules/fx/overloop/tests/transition.device.test.ts`, with the test instrument on two patterns (trigs on steps 1, 5, 9,
+`modules/fx/digikit/overloop/tests/transition.device.test.ts`, with the test instrument on two patterns (trigs on steps 1, 5, 9,
 13 and on 1, 2, 4, 7, 8, 11, 15, 16) at 120 BPM and no kit helper in the image:
 
 - the engine reports a cycle of 96,000 frames after pattern 1's first cycle; the page says `CYCLE 16 ST 2.00 S`;

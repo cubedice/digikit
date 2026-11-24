@@ -11,7 +11,7 @@ import { boundService, neededServices, servicePath, servicesSidecar, type CardSe
  */
 export type SeedModule = { file: string; needs?: string[] };
 
-/** The service module of a service name (`modules/core/services/<name>/dks`). */
+/** The service module of a service name (`services/<name>/dks`). */
 const serviceOf = (service: string): CardService => ({ service, moduleId: `core/services/${service}` });
 
 /** The services the modules need: the answer of the pack target (`service-files.ts`), or `needs` for a file without one. */

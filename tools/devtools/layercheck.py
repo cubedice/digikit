@@ -8,9 +8,8 @@ Every violation prints as `file:line: rule: what is wrong. Instead: what to do.`
 
 Rules:
 
-  roles     Every module under modules/core has `role` in [module], and the role fits the folder: adapters/ -> adapter,
-            apps/ -> app, runtime/ -> runtime, expansion/ -> installer.
-  sources   Content modules (modules/machines, modules/fx, modules/tools, tests/fixtures/modules) and apps include only
+  roles     Each image module has `role` in [module], and the role fits its runtime/, services/ or image-modules/ folder.
+  sources   Content modules (modules/ and tests/fixtures/modules) and apps include only
             their own files and the SDK (sdk/include, sdk/dsp/contract); a fixture may also include the source of another fixture (a variant of its base). Apps may also include dkrt.h (runtime) and dk_ui_core.h
             (core/ui). Only the runtime's platform file, the installer and adapters include the firmware bindings (dk_fw_* headers, the dkfw crate).
             C, ColdFire and SHARC assembly (`#include`, `.include`) and Rust (`dkfw`, path dependencies) are read.
@@ -21,30 +20,37 @@ Rules:
             dispatcher takes around its per-row call: the runtime's services and the image's stub (adapters) use them, and the runtime measures every module that way.
   apps      An app has no `[[op]]` and no `[[claim]]`: it never patches the firmware.
   self-contained
-            No tracked file outside a user content module's own directory (modules/machines|fx|tools) names its id
-            (`AUTHOR/NAME`) or its path (`machines/NAME`). Allowed: docs/**, any *.md, .agents/**, the fixtures
+            No tracked file outside a user content module's own directory (modules/<kind>/AUTHOR/NAME) names its id
+            (`AUTHOR/NAME`) or its path (`<kind>/AUTHOR/NAME`). Allowed: docs/**, any *.md, .agents/**, the fixtures
             (tests/fixtures/modules) and a module with `host = true` in [module] (the workbench speaks
             its protocol).
-  arrows    Inside the runtime crate (modules/core/runtime/src/rs/src), a service (services/NAME) names no other service folder and no core
+  arrows    Inside the runtime crate (runtime/core/src/rs/src), a service (services/NAME) names no other service folder and no core
             module except `crate::core_api` (the interface to the core: CoreApi, RealCore, FakeCore and the few core functions it re-exports); pure types
-            come from the crate dkrt-abi. The core reaches a service only through `handlers.rs` (`exports`) and the generated table `gen_services.rs`. A service's own
+            come from the crate dkrt-abi. The core reaches a service only through `package/handlers.rs` (`exports`) and the generated table `package/gen_services.rs`. A service's own
             host tests (`tests.rs` or a `tests/` folder in the service) may name core modules: they drive the walkers and the planner over the service.
   service-crates
-            A service crate (modules/core/services/NAME, linked into the runtime object) depends only on dkrt-abi, dkrt-sdk and dkneeds, and on
-            dkrt-test-support as a dev-dependency; it names no firmware crate and no device id (only its `dks/` service file may name `dkfw`, in `dks/src/fw.rs`), and has no path into the runtime crate. The runtime
-            names a service crate (`dkrt_svc_*`) only in `gen_services.rs`, `handlers.rs` and the host-test files under `handlers/`. Final state (R12-1): no service is a folder of the
+            A service crate (services/NAME, linked into the runtime object) depends only on dkrt-abi, dkrt-sdk and dkneeds, and on
+            dkrt-test-support and dkrt-svc-rt (the glue of its own service file, which the tests of the file compile) as dev-dependencies; it names no firmware crate and no device id (only its `dks/` service file may name `dkfw`, in `dks/src/fw.rs`), and has no path into the runtime crate. The runtime
+            names a service crate (`dkrt_svc_*`) only in `package/gen_services.rs`, `package/handlers.rs` and the host-test files under `package/handlers/`. Final state (R12-1): no service is a folder of the
             runtime crate's `services/`; every service (fx, machines, samples, lfo) is a crate.
-  kind-free The runtime's own code (the runtime crate's and the abi crate's sources without their host tests, inline `#[cfg(test)] mod x { }` blocks included, `handlers.rs`, the host-test files in `handlers/` and the generated `gen_services.rs`) names no machine or effect: no builder
+  kind-free The runtime's own code (the runtime crate's and the abi crate's sources without their host tests, inline `#[cfg(test)] mod x { }` blocks included, `package/handlers.rs`, the host-test files in `package/handlers/` and the generated `package/gen_services.rs`) names no machine or effect: no builder
             call (the `provided` imports of the services machines and fx in sdk/sdk.toml, but for those with `wrapper = "fw"`: `dk_module_ctx_add_machine`, `dk_page_add_param` ...), no record kind of a machine or an effect (`KIND_MACHINE`, `KIND_PARAM`, `KIND_PAGE`,
             `KIND_ACTION`, `KIND_NATIVE_PAGE*`, `KIND_EFFECT`, `KINDS_MACHINES`, `KINDS_FX`), no table of an image adapter that only a service reads (`dynreg_info`, `machines_info`,
             `fxpages_info`, `mf_native_*`) and no state of the machines registry (`RegState`, `DKRT_REG`, `DKRT_ASSIGN`). The services own them: the machines and fx service files
-            export the builder calls and write their records in `Service::module_commit`; the loader only runs the generic part (docs/plans/runtime-slimming.md, RS-C).
+            export the builder calls and write their records in `Records::commit`; the loader only runs the generic part (docs/plans/runtime-slimming.md, RS-C).
   platform  Inside the runtime crate, only `platform.rs` (the real platform, L1) and `fw.rs` at the crate's source root (the declared adapter of
             `dkrt_abi::fw::Fw`: it must contain `impl Fw for`) name the firmware crate dkfw; the rest of the core and the services use the `Platform`
             trait and the `Fw` trait (`dkrt-abi`). No runtime file but `platform.rs` compares the device id with a number
             (`device() == 1`): the code asks the device profile (`samples_in_store()`), whose values come from the device files. The runtime
             module patches the firmware only with the machine page hooks (finding 128: runtime-owned, with slots); the UI loop, main-OS task and MIDI
             receive hooks and the exception hook install are in the adapter `core/platform`.
+  boundary-hook, boundary-table, boundary-abi
+            The resident core (the runtime crate outside `package/`) reaches package code only through `hooks.rs`; package code reaches resident code only through the facade
+            `package/resident.rs` and its folder, which call the resident table (`dkrt_abi::resident`) and name no resident module; a type that crosses is in the abi crate
+            (docs/plans/resident-core-and-system-package.md, section 4). What the rule does not see: a `use package::...;` alias line of `lib.rs` (the crate-root name of the
+            package's loader that `optional_imports!` expands to; RC2s-2 drops it with the package crate), items inside inline `mod name { }` blocks and impls (only the
+            declarations at the top level of a file count as module items), a module named by `#[path]` outside `lib.rs` (its file name is read as its module name), and a path built
+            by a macro. Host-test files and every item behind `#[cfg(test)]` are not read. `BOUNDARY_ENFORCED` switches `check()` on, `--boundary-report` lists the crossings at any time.
   imports   Every function of <dk/platform/ui.h> is an `[[import]]` of sdk/sdk.toml with `requires = "core/ui"`, and every import
             with `requires` is in the runtime's `optional` list, so the runtime can link it by name (or hand out its stub).
 
@@ -62,42 +68,38 @@ import tomllib
 from dataclasses import dataclass
 from pathlib import Path
 
+from tools.patchkit.modroots import CORE_ROOTS, REPO_ROOTS
+
 ROOT = Path(__file__).resolve().parents[2]
 
-CORE = "modules/core"
-# the include search path of the module builds: the tool's own copy, whatever tree is checked
-PINS = Path(__file__).resolve().parents[2] / "tools/patchkit/toolchain/pins.toml"
-# Content module roots (relative to the repository root).
-CONTENT_ROOTS = (
-    "modules/machines",
-    "modules/fx",
-    "modules/tools",
-    "tests/fixtures/modules",
-)
-# The role that fits a folder under modules/core.
+# The include search path of the module builds: the tool's own copy, whatever tree is checked.
+PINS = ROOT / "tools/patchkit/toolchain/pins.toml"
+# The moved folders keep their manifest roles.
 FOLDER_ROLES = {
-    "adapters": "adapter",
-    "apps": "app",
-    "runtime": "runtime",
-    "expansion": "installer",
-    # a service file: modules/core/services/NAME/dks (the neutral crate above it is no module)
-    "services": "service",
+    "runtime/core": "runtime",
+    "runtime/platform/expansion": "installer",
+    "runtime/platform": "adapter",
+    "runtime/apps": "app",
+    "image-modules/adapters": "adapter",
+    "image-modules/fixes": "adapter",
+    "image-modules/points": "adapter",
+    "tests/fixtures/modules/dsp-stereo-proof": "adapter",
+    "tests/fixtures/modules/file-catalog-proof": "adapter",
+    "tests/fixtures/modules/storage-fault-proof": "adapter",
 }
 # Content modules that patch the firmware themselves (they have [[op]] and anchor externs by design: patchkit's own
-# example of a hook). They are exempt from the objects and apps rules.
-FIRMWARE_PATCH_MODULES = {"test/registry-demo"}
-# Test fixtures that stand in for an app (they use core/ui like core/digikit-menu does): app include rights.
-APP_LIKE = {"test/ui-demo"}
+# example of a hook; the test service takes a raw hook like a core service file does). They are exempt from the objects and apps rules.
+FIRMWARE_PATCH_MODULES = {"test/registry-demo", "test/svc-test"}
 # Emulator-only lifecycle integration fixture: it deliberately connects private
 # providers before a public V2 SDK exists. Limit the exception to this path/id,
 # these source files and these symbols; never grant general adapter privileges.
 CANOPY_FIXTURE = "tests/fixtures/modules/canopy-transport"
 CANOPY_INCLUDES = {
-    "modules/core/adapters/midi-events/src/cf/bridge.h",
-    "modules/machines/canopy/src/dsp/voice.s",
-    "modules/machines/canopy/src/dsp/tuning.s",
-    "modules/machines/canopy/src/dsp/instrument.s",
-    "modules/machines/canopy/src/dsp/events.s",
+    "image-modules/adapters/midi-events/src/cf/bridge.h",
+    "modules/machine/digikit/canopy/src/dsp/voice.s",
+    "modules/machine/digikit/canopy/src/dsp/tuning.s",
+    "modules/machine/digikit/canopy/src/dsp/instrument.s",
+    "modules/machine/digikit/canopy/src/dsp/events.s",
 }
 CANOPY_IMPORTS = {
     "canopy_carrier_prepare",
@@ -119,7 +121,7 @@ def canopy_fixture(root: Path, m: Module) -> bool:
 # The carrier fixture installs three DSP hooks and tests stock Sound refresh.
 # These rights do not apply to CANOPY's production module or other test modules.
 CARRIER_INCLUDES = {
-    f"modules/core/adapters/midi-events/src/dsp/{name}.s"
+    f"image-modules/adapters/midi-events/src/dsp/{name}.s"
     for name in (
         "carrier",
         "carrier-frame",
@@ -129,8 +131,8 @@ CARRIER_INCLUDES = {
         "velocity-entry",
     )
 } | {
-    "modules/machines/canopy/src/dsp/render.s",
-    "modules/machines/canopy/src/dsp/carrier-prepare.s",
+    "modules/machine/digikit/canopy/src/dsp/render.s",
+    "modules/machine/digikit/canopy/src/dsp/carrier-prepare.s",
 }
 CARRIER_EXTERNS = {
     "cp_project": "cf.project.fn.singleton",
@@ -213,8 +215,8 @@ def line_of(text: str, needle: str, default: int = 1) -> int:
 
 def load_modules(root: Path) -> list[Module]:
     out = []
-    for base in (root / "modules", root / "tests/fixtures/modules"):
-        for toml in sorted(base.rglob("module.toml")):
+    for base in REPO_ROOTS:
+        for toml in sorted((root / base).rglob("module.toml")):
             text = toml.read_text(encoding="utf-8")
             try:
                 manifest = tomllib.loads(text)
@@ -226,9 +228,12 @@ def load_modules(root: Path) -> list[Module]:
 
 
 def classify(root: Path, m: Module) -> str:
-    """core:<role dir> for modules under modules/core, `content` for the content roots."""
+    """Core or content according to its repository root."""
     r = rel(root, m.dir)
-    if r.startswith(CORE + "/"):
+    if r.split("/", 1)[0] in CORE_ROOTS:
+        return "core"
+    # The three private firmware proofs keep their manifests (category core, role adapter) in the fixtures root.
+    if r.startswith("tests/fixtures/modules/") and m.mod.get("category") == "core":
         return "core"
     return "content"
 
@@ -239,11 +244,12 @@ def check_roles(root: Path, mods: list[Module]) -> list[Violation]:
         if classify(root, m) != "core":
             continue
         r = rel(root, m.dir)
-        parts = r.split("/")[2:]  # below modules/core
-        want = FOLDER_ROLES.get(parts[0]) if parts else None
-        # the `services` folder holds modules only as modules/core/services/NAME/dks (the service file of the crate NAME)
-        if parts[:1] == ["services"] and not (len(parts) == 3 and parts[2] == "dks"):
-            want = None
+        parts = r.split("/")
+        folder = next((f for f in FOLDER_ROLES if r == f or r.startswith(f + "/")), r)
+        want = FOLDER_ROLES.get(folder)
+        # The neutral service crate contains a separate module at services/NAME/dks.
+        if len(parts) == 3 and parts[0] == "services" and parts[2] == "dks":
+            want = "service"
         where = f"{r}/module.toml:{line_of(m.text, 'category', 1)}"
         have = m.mod.get("role")
         if want is None:
@@ -252,7 +258,7 @@ def check_roles(root: Path, mods: list[Module]) -> list[Violation]:
                     where,
                     "roles",
                     f"{m.id} sits in {r}, which is no role folder",
-                    "move it to modules/core/adapters/NAME, modules/core/apps/NAME, modules/core/runtime or modules/core/expansion",
+                    "move it to a role folder under runtime/, services/ or image-modules/",
                 )
             )
         elif have is None:
@@ -261,7 +267,7 @@ def check_roles(root: Path, mods: list[Module]) -> list[Violation]:
                     where,
                     "roles",
                     f"{m.id} has no `role` in [module]",
-                    f'add role = "{want}" (the role of the folder {parts[0]})',
+                    f'add role = "{want}" (the role of the folder {folder})',
                 )
             )
         elif have != want:
@@ -269,7 +275,7 @@ def check_roles(root: Path, mods: list[Module]) -> list[Violation]:
                 Violation(
                     f"{r}/module.toml:{line_of(m.text, 'role', 1)}",
                     "roles",
-                    f'{m.id} has role = "{have}" but sits in {parts[0]}/, whose role is "{want}"',
+                    f'{m.id} has role = "{have}" but sits in {folder}/, whose role is "{want}"',
                     f'set role = "{want}" or move the module to the folder of role "{have}"',
                 )
             )
@@ -332,18 +338,31 @@ def module_sources(mod: Module) -> list[Path]:
 def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
     out = []
     res = Resolver(root)
-    fw_dirs = [(root / CORE / "fw").resolve()]
-    runtime_inc = (root / CORE / "runtime/include").resolve()
-    adapters = (root / CORE / "adapters").resolve()
+    fw_dir = (root / "ports/bindings").resolve()
+    runtime_inc = (root / "runtime/core/include").resolve()
+    adapter_dirs = [
+        (root / folder).resolve()
+        for folder, role in FOLDER_ROLES.items()
+        if role == "adapter"
+    ]
+    core_dirs = [(root / folder).resolve() for folder in CORE_ROOTS] + [fw_dir]
+    runtime_sdk = (root / "runtime/core/sdk").resolve()
+    service_sdk = (root / "runtime/core/svc-rt").resolve()
     all_mod_dirs = [(m.dir.resolve(), m) for m in mods]
     fixtures = (root / "tests/fixtures/modules").resolve()
     for m in mods:
         kind = classify(root, m)
         role = m.mod.get("role")
-        is_app = (kind == "core" and role == "app") or m.id in APP_LIKE
+        is_app = kind == "core" and role == "app"
         if kind == "core" and not is_app:
             continue  # installer and adapters may use the firmware bindings; the runtime's own rule is `check_runtime_platform`
-        who = "an app" if is_app else "a content module"
+        who = (
+            "an app"
+            if is_app
+            else "a service file"
+            if role == "service"
+            else "a content module"
+        )
         own = m.dir.resolve()
         sdk = (root / "sdk").resolve()
         for f in module_sources(m):
@@ -389,7 +408,7 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                 ):
                     continue
                 base = Path(name).name
-                if any(d in target.parents for d in fw_dirs):
+                if fw_dir in target.parents:
                     out.append(
                         Violation(
                             where,
@@ -398,11 +417,11 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                             "use the SDK (<dk/...>) or move the firmware access into an adapter and call it by an exported function",
                         )
                     )
-                elif (runtime_inc in target.parents or adapters in target.parents) and (
-                    is_app and base in APP_HEADERS
+                elif runtime_inc in target.parents or any(
+                    d in target.parents for d in adapter_dirs
                 ):
-                    continue
-                elif runtime_inc in target.parents or adapters in target.parents:
+                    if is_app and base in APP_HEADERS:
+                        continue
                     out.append(
                         Violation(
                             where,
@@ -456,8 +475,9 @@ def check_sources(root: Path, mods: list[Module]) -> list[Violation]:
                         target is not None
                         and target != own
                         and own not in target.parents
-                        and (root / CORE).resolve() in target.parents
-                        and target != (root / CORE / "runtime/sdk").resolve()
+                        and any(d in target.parents for d in core_dirs)
+                        and target != runtime_sdk
+                        and not (role == "service" and target == service_sdk)
                     )
                     if bad:
                         out.append(
@@ -560,13 +580,30 @@ def check_committed_objects(root: Path, mods: list[Module]) -> list[Violation]:
 def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
     out = []
     imports, sdk_externs = sdk_symbols(root)
+    service_abi = root / "runtime/core/abi/src/core_imports.rs"
+    service_imports = (
+        set(
+            re.findall(r"^\s*fn (\w+)\(", service_abi.read_text(encoding="utf-8"), re.M)
+        )
+        if service_abi.is_file()
+        else set()
+    )
     stored = stored_objects(root)
     for m in mods:
         kind = classify(root, m)
-        is_app = (kind == "core" and m.mod.get("role") == "app") or m.id in APP_LIKE
+        is_app = kind == "core" and m.mod.get("role") == "app"
         if (kind == "core" and not is_app) or m.id in FIRMWARE_PATCH_MODULES:
             continue
         mrel = rel(root, m.dir)
+        explicit_imports = {
+            name
+            for binding in m.manifest.get("service_import", [])
+            for name in binding.get("names", [])
+            if name not in service_imports
+            and not name.startswith(("dkc_", "dk_service_"))
+        }
+        if m.mod.get("role") == "service":
+            explicit_imports.update(service_imports)
         for obj in m.manifest.get("object", []):
             for sym, anchor in (obj.get("externs") or {}).items():
                 if carrier_fixture(root, m) and CARRIER_EXTERNS.get(sym) == anchor:
@@ -594,6 +631,7 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                     continue
                 ok = (
                     name in imports
+                    or name in explicit_imports
                     or name in sdk_externs
                     or (canopy_fixture(root, m) and name in CANOPY_IMPORTS)
                     or (carrier_fixture(root, m) and name in CARRIER_IMPORTS)
@@ -633,8 +671,8 @@ def check_objects(root: Path, mods: list[Module]) -> list[Violation]:
                         Violation(
                             f"{rel(root, path)}:1",
                             "objects",
-                            f"the object of {m.id} needs the symbol {name}, which is no SDK import, dkrt_*, dk_ui_* or dk_app_*",
-                            "use the SDK (sdk/sdk.toml [[import]]) or an adapter export; a firmware anchor belongs to an adapter",
+                            f"the object of {m.id} needs the symbol {name}, which is neither a declared import nor a permitted adapter export",
+                            "use the SDK, a [[service_import]] declaration or an adapter export; a firmware anchor belongs to an adapter",
                         )
                     )
     return out
@@ -697,7 +735,7 @@ def check_imports(root: Path) -> list[Violation]:
                     "declare it in <dk/platform/ui.h> or remove the [[import]]",
                 )
             )
-    runtime = root / CORE / "runtime/module.toml"
+    runtime = root / RT_MANIFEST
     if runtime.is_file():
         runtime_text = runtime.read_text(encoding="utf-8")
         optional: set[str] = set()
@@ -707,7 +745,7 @@ def check_imports(root: Path) -> list[Violation]:
         for n in sorted(needed - optional):
             out.append(
                 Violation(
-                    f"{CORE}/runtime/module.toml:{line_of(runtime_text, 'optional')}",
+                    f"{RT_MANIFEST}:{line_of(runtime_text, 'optional')}",
                     "imports",
                     f"{n} is an import of another module but is not in the runtime's optional list",
                     "add it to `optional`, or patchkit cannot link the runtime when that module is missing",
@@ -716,7 +754,6 @@ def check_imports(root: Path) -> list[Violation]:
     return out
 
 
-USER_MODULE_ROOTS = ("modules/machines/", "modules/fx/", "modules/tools/")
 # Files that may name any module: documentation, agent notes and the fixtures.
 SC_ALLOWED_PREFIXES = (
     "docs/",
@@ -727,10 +764,8 @@ SC_ALLOWED_PREFIXES = (
 # and the runtimeAcceptance metadata may name them; runtime implementation may not.
 # The device-literal baseline lists file paths, among them module directories.
 SC_PATH_LIST = "tools/nx/device-literals.baseline.json"
-SC_RUNTIME_TEST = (
-    "modules/core/runtime/tests/capacity/inferred/inferred-needs.device.test.ts"
-)
-SC_RUNTIME_PROJECT = "modules/core/runtime/tests/capacity/inferred/project.json"
+SC_RUNTIME_TEST = "runtime/core/tests/capacity/inferred/inferred-needs.device.test.ts"
+SC_RUNTIME_PROJECT = "runtime/core/tests/capacity/inferred/project.json"
 # This checker and its test name the module sources that the include exceptions
 # above (CANOPY_INCLUDES, CARRIER_INCLUDES) grant to the two fixtures.
 SC_CHECKER = ("tools/devtools/layercheck.py",)
@@ -740,16 +775,16 @@ SC_CHECKER = ("tools/devtools/layercheck.py",)
 # harness compare that module's id. Only these files and only this id; remove the
 # exception once the runtime publishes the instrument's module record.
 SC_POLICY_ID = {
-    "modules/core/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
+    "image-modules/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
 }
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
 # of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
 # page plays), and the acceptance records list them: only these files.
 SC_COEXISTENCE = (
-    "modules/fx/prism/tests/coexistence.device.test.ts",
-    "modules/fx/prism/tests/transition.device.test.ts",
-    "modules/fx/prism/project.json",
+    "modules/fx/digikit/prism/tests/coexistence.device.test.ts",
+    "modules/fx/digikit/prism/tests/transition.device.test.ts",
+    "modules/fx/digikit/prism/project.json",
 )
 SC_SKIP_DIRS = {".git", "out", "node_modules", "target", "firmware", ".venv", "dist"}
 SC_HINT = (
@@ -758,7 +793,7 @@ SC_HINT = (
 )
 
 
-RT_SRC = "modules/core/runtime/src/rs/src"
+RT_SRC = "runtime/core/src/rs/src"
 RT_CRATE_REF = re.compile(
     r"\bcrate::(?:\{([^}]*)\}|([A-Za-z_]\w*)(?:::([A-Za-z_]\w*))?)"
 )
@@ -820,8 +855,8 @@ def check_runtime_arrows(root: Path) -> list[Violation]:
                             )
                         )
                 elif first == "services" and r.as_posix() not in (
-                    "handlers.rs",
-                    "gen_services.rs",
+                    "package/handlers.rs",
+                    "package/gen_services.rs",
                 ):
                     out.append(
                         Violation(
@@ -831,7 +866,10 @@ def check_runtime_arrows(root: Path) -> list[Violation]:
                             ARROW_CORE_HINT,
                         )
                     )
-        if own is None and r.as_posix() not in ("handlers.rs", "gen_services.rs"):
+        if own is None and r.as_posix() not in (
+            "package/handlers.rs",
+            "package/gen_services.rs",
+        ):
             for m in RT_BARE_SERVICES.finditer(text):
                 line = text.count("\n", 0, m.start()) + 1
                 out.append(
@@ -842,6 +880,287 @@ def check_runtime_arrows(root: Path) -> list[Violation]:
                         ARROW_CORE_HINT,
                     )
                 )
+    return out
+
+
+# The resident/package boundary (docs/plans/resident-core-and-system-package.md, section 4; RC2s-1 S8). Resident code is the runtime crate outside `package/`; package code is `package/`.
+# Resident code reaches package code only through the hooks module `hooks.rs` (the struct the package fills at entry); package code reaches resident code only through
+# `package/resident.rs` (the rows of the resident table) and the abi crate. Types that cross the boundary live in dkrt-abi.
+# `check()` runs the rules when BOUNDARY_ENFORCED is True; `--boundary-report` lists the crossings any time.
+BOUNDARY_ENFORCED = True
+BOUNDARY_HOOKS_FILE = "hooks.rs"
+BOUNDARY_TABLE_FILE = "package/resident.rs"
+BOUNDARY_HOOK_HINT = "call the package through a hook of `hooks.rs` (a function pointer the package fills at entry; null keeps the stock behaviour)"
+BOUNDARY_TABLE_HINT = "reach the resident code through a row of the resident table (`package/resident.rs`); the package names no resident module itself"
+BOUNDARY_ABI_HINT = "move the type to the abi crate (runtime/core/abi) and name it as `dkrt_abi::...` on both sides"
+BOUNDARY_USE = re.compile(r"\buse\s+([^;]+);", re.S)
+BOUNDARY_PATH = re.compile(r"(?<![\w:])(crate|package|self|super)((?:::\w+)+)")
+
+
+def expand_use_tree(tree: str) -> list[list[str]]:
+    """The paths of a `use` tree: `a::{b, c::D}` gives [a, b] and [a, c, D]; `self` and `*` end a path."""
+    tree = tree.strip()
+    brace = tree.find("{")
+    if brace < 0:
+        return [[x.strip() for x in tree.split(" as ")[0].split("::") if x.strip()]]
+    prefix = [x.strip() for x in tree[:brace].split("::") if x.strip()]
+    depth, start, parts = 0, brace + 1, []
+    for i in range(brace + 1, len(tree)):
+        c = tree[i]
+        if c == "{":
+            depth += 1
+        elif c == "}":
+            if depth == 0:
+                parts.append(tree[start:i])
+                break
+            depth -= 1
+        elif c == "," and depth == 0:
+            parts.append(tree[start:i])
+            start = i + 1
+    out: list[list[str]] = []
+    for part in parts:
+        if part.strip():
+            out += [prefix + p for p in expand_use_tree(part)]
+    return out
+
+
+BOUNDARY_TYPE_KINDS = {"struct", "enum", "type", "trait", "union"}
+BOUNDARY_DECL = re.compile(
+    r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?(?:(?:const|unsafe|async)[ \t]+)*(?:extern[ \t]+\"[^\"]*\"[ \t]+)?"
+    r"(struct|enum|type|trait|union|fn|const|static)[ \t]+(?:mut[ \t]+)?([A-Za-z_]\w*)",
+    re.M,
+)
+BOUNDARY_MOD_LINE = re.compile(
+    r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?mod[ \t]+\w+[ \t]*;", re.M
+)
+# `use package::loader;` in lib.rs: the crate-root name `optional_imports!` expands to, not a call.
+BOUNDARY_ALIAS_LINE = re.compile(
+    r"^[ \t]*(?:pub(?:\([^)]*\))?[ \t]+)?use[ \t]+package::\w+[ \t]*;", re.M
+)
+BOUNDARY_PATH_MOD = re.compile(
+    r"#\[path[ \t]*=[ \t]*\"[^\"]+\"\]\s*(?:pub(?:\([^)]*\))?[ \t]+)?mod[ \t]+(\w+)[ \t]*;"
+)
+
+
+def module_path(rel: Path) -> list[str]:
+    """The module path of a source file of the runtime crate: `package/files.rs` is [package, files], `a/mod.rs` is [a], `lib.rs` is []."""
+    parts = list(rel.with_suffix("").parts)
+    if parts and parts[-1] in ("mod", "lib"):
+        parts.pop()
+    return parts
+
+
+def resolve_relative(segs: list[str], mod: list[str]) -> list[str]:
+    """Resolve a path from `crate`, `self`, `super` (any chain) or a bare `package` to segments below the crate root; [] when it climbs out of the crate."""
+    if not segs:
+        return []
+    if segs[0] == "crate":
+        return segs[1:]
+    if segs[0] == "package":
+        return segs
+    if segs[0] in ("self", "super"):
+        base, i = list(mod), 0
+        while i < len(segs) and segs[i] in ("self", "super"):
+            if segs[i] == "super":
+                if not base:
+                    return []
+                base.pop()
+            i += 1
+        return base + segs[i:]
+    return []
+
+
+def crate_paths(text: str, mod: list[str] | None = None) -> list[tuple[int, list[str]]]:
+    """Every path of `text` that starts with `crate`, `self`, `super` or `package`, as (line, segments below the crate root), from `use` trees and inline paths. A bare `package::` counts as `crate::package::`; `self` and `super` chains resolve against the module path `mod` of the file."""
+    mod = mod or []
+    found: list[tuple[int, list[str]]] = []
+
+    def add(line: int, path: list[str]) -> None:
+        while path and path[-1] in ("self", "*"):
+            path = path[:-1]
+        if path and path[0] in ("crate", "package", "self", "super"):
+            segs = resolve_relative(path, mod)
+            if segs:
+                found.append((line, segs))
+
+    for m in BOUNDARY_USE.finditer(text):
+        line = text.count("\n", 0, m.start()) + 1
+        for path in expand_use_tree(m.group(1)):
+            add(line, path)
+    inline = BOUNDARY_USE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+    for m in BOUNDARY_PATH.finditer(inline):
+        add(
+            inline.count("\n", 0, m.start()) + 1,
+            [m.group(1), *[x for x in m.group(2).split("::") if x]],
+        )
+    return found
+
+
+BOUNDARY_CFG_TEST = re.compile(r"^\s*#\[cfg\((?:all\()?test[,)]")
+BOUNDARY_STRING = re.compile(r'"(?:\\.|[^"\\])*"')
+BOUNDARY_CHAR = re.compile(r"'(?:\\.|[^'\\])'")
+BOUNDARY_ATTR_LINE = re.compile(r"^\s*#\[")
+
+
+def braces_of(line: str) -> tuple[int, int]:
+    """The `{` and `}` of a line outside string and char literals."""
+    line = BOUNDARY_CHAR.sub("''", BOUNDARY_STRING.sub('""', line))
+    return line.count("{"), line.count("}")
+
+
+def without_test_items(lines: list[str]) -> list[str]:
+    """The lines with every item behind `#[cfg(test)]` or `#[cfg(all(test, ..))]` blanked: an inline module, a function, an impl, a `use`, a static, also when the attribute
+    and the item share a line (line numbers kept)."""
+    out = list(lines)
+    i = 0
+    while i < len(lines):
+        if not BOUNDARY_CFG_TEST.match(lines[i]):
+            i += 1
+            continue
+        start = i
+        # the item starts after the attribute on this line, or on a following line that is no attribute
+        first = lines[i].split("]", 1)[1] if "]" in lines[i] else ""
+        j = i
+        text = first
+        while not text.strip() or BOUNDARY_ATTR_LINE.match(text):
+            j += 1
+            if j >= len(lines):
+                break
+            text = lines[j]
+        depth, seen = 0, False
+        end = j
+        while end < len(lines):
+            opens, closes = braces_of(lines[end] if end != start else first)
+            depth += opens - closes
+            seen = seen or opens > 0
+            body = lines[end] if end != start else first
+            if (seen and depth <= 0) or (
+                not seen and depth == 0 and body.rstrip().endswith(";")
+            ):
+                break
+            end += 1
+        for k in range(start, min(end, len(lines) - 1) + 1):
+            out[k] = ""
+        i = end + 1
+    return out
+
+
+def module_level(text: str) -> str:
+    """The text with the lines blanked that lie inside braces (the declarations at the top level of a file stay; line numbers are kept)."""
+    out, depth = [], 0
+    for line in text.split("\n"):
+        out.append(line if depth == 0 else "")
+        opens, closes = braces_of(line)
+        depth += opens - closes
+    return "\n".join(out)
+
+
+def declared_items(src: Path) -> dict[tuple[str, ...], str]:
+    """The items declared at the top level of the runtime crate's files (test files and every item behind `#[cfg(test)]` left out; a method, an inline module's item and an item of an
+    `extern` block are not module items): module path plus name -> struct, enum, type, trait, union, fn, const or static."""
+    items: dict[tuple[str, ...], str] = {}
+    for f in sorted(src.rglob("*.rs")):
+        r = f.relative_to(src)
+        if is_runtime_test_file(r):
+            continue
+        lines = f.read_text(encoding="utf-8").split("\n")
+        text = module_level(rust_without_comments("\n".join(without_test_items(lines))))
+        mod = module_path(r)
+        for m in BOUNDARY_DECL.finditer(text):
+            items.setdefault((*mod, m.group(2)), m.group(1))
+    return items
+
+
+def names_a_type(segs: list[str], items: dict[tuple[str, ...], str]) -> bool:
+    """True when the path names a type or something of it (an associated function, an enum variant): some prefix resolves to a type declaration. A path whose prefixes resolve to no declaration (a re-export) is looked up by the name of its segments in the whole crate when that name is declared once."""
+    hit = False
+    for i in range(1, len(segs) + 1):
+        kind = items.get(tuple(segs[:i]))
+        if kind in BOUNDARY_TYPE_KINDS:
+            return True
+        hit = hit or kind is not None
+    if hit:
+        return False
+    for seg in segs:
+        kinds = {k for key, k in items.items() if key[-1] == seg}
+        if kinds & BOUNDARY_TYPE_KINDS and not kinds - BOUNDARY_TYPE_KINDS:
+            return True
+    return False
+
+
+def reexported_names(lib: Path) -> set[str]:
+    """The names `lib.rs` brings into the crate root with `use` (`pub use storage::{card, store}` makes `crate::card` and `crate::store`): resident names too. A `use package::...` alias names package code and is left out."""
+    if not lib.is_file():
+        return set()
+    text = rust_without_comments(lib.read_text(encoding="utf-8"))
+    names: set[str] = set()
+    for m in BOUNDARY_USE.finditer(text):
+        for path in expand_use_tree(m.group(1)):
+            if (
+                path
+                and path[0] not in ("package", "crate", "self", "super")
+                and not path[0].startswith("dkrt")
+                and path[0] not in ("core", "std", "alloc")
+            ):
+                last = path[-1]
+                if last not in ("*", "self"):
+                    names.add(last)
+    return names
+
+
+def check_resident_boundary(root: Path) -> list[Violation]:
+    """The resident/package boundary: hooks one way, the resident table the other, shared types in the abi crate. Host-test files and inline test modules are not read.
+    Exemptions: `hooks.rs` may call package functions and `package/resident.rs` may name resident functions, but neither may name a type of the other side (resident types in the table's signatures come from the abi crate); `lib.rs` is read except its `mod` lines."""
+    src = root / RT_SRC
+    if not src.is_dir():
+        return []
+    items = declared_items(src)
+    resident = {
+        p.stem for p in src.glob("*.rs") if p.stem not in ("lib", "package")
+    } | {p.name for p in src.iterdir() if p.is_dir() and p.name != "package"}
+    resident |= {k[0] for k in items if len(k) == 1}
+    resident |= reexported_names(src / "lib.rs")
+    lib = src / "lib.rs"
+    if lib.is_file():
+        resident |= set(BOUNDARY_PATH_MOD.findall(lib.read_text(encoding="utf-8")))
+    out: list[Violation] = []
+    for f in sorted(src.rglob("*.rs")):
+        r = f.relative_to(src)
+        if is_runtime_test_file(r):
+            continue
+        rp = r.as_posix()
+        in_package = r.parts[0] == "package"
+        lines = f.read_text(encoding="utf-8").split("\n")
+        text = rust_without_comments("\n".join(without_test_items(lines)))
+        if rp == "lib.rs":
+            for line_re in (BOUNDARY_MOD_LINE, BOUNDARY_ALIAS_LINE):
+                text = line_re.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+        seen: set[tuple[int, str]] = set()
+        for line, segs in crate_paths(text, module_path(r)):
+            first = segs[0]
+            is_type = names_a_type(segs, items)
+            if in_package:
+                if first not in resident:
+                    continue
+                crossing = f"package code names crate::{'::'.join(segs)}"
+                allowed = rp == BOUNDARY_TABLE_FILE and not is_type
+                target = "package"
+            else:
+                if first != "package":
+                    continue
+                crossing = f"resident code names crate::{'::'.join(segs)}"
+                allowed = rp == BOUNDARY_HOOKS_FILE and not is_type
+                target = "resident"
+            if allowed or (line, crossing) in seen:
+                continue
+            seen.add((line, crossing))
+            if is_type:
+                rule, hint = "boundary-abi", BOUNDARY_ABI_HINT
+            elif target == "package":
+                rule, hint = "boundary-table", BOUNDARY_TABLE_HINT
+            else:
+                rule, hint = "boundary-hook", BOUNDARY_HOOK_HINT
+            out.append(Violation(f"{RT_SRC}/{rp}:{line}", rule, crossing, hint))
     return out
 
 
@@ -856,9 +1175,9 @@ RT_DEVICE_COMPARE = re.compile(
 
 
 # The firmware hooks that the runtime module patches in itself: none. Every hook (UI loop, main-OS task entry, MIDI receive) belongs to the platform adapter; the machine
-# page hooks are the machines service file's (modules/core/services/machines/dks).
+# page hooks are the machines service file's (services/machines/dks).
 RT_OWN_HOOKS: set[str] = set()
-RT_MANIFEST = "modules/core/runtime/module.toml"
+RT_MANIFEST = "runtime/core/module.toml"
 
 
 def check_runtime_platform(root: Path) -> list[Violation]:
@@ -878,7 +1197,7 @@ def check_runtime_platform(root: Path) -> list[Violation]:
                         f"{RT_MANIFEST}:{line_of(text, hook)}",
                         "platform",
                         f"the runtime installs the firmware hook {hook} itself",
-                        "put the hook and its trampoline in the platform adapter (modules/core/adapters/platform); the runtime exports the function it calls",
+                        "put the hook and its trampoline in the platform adapter (runtime/platform/platform); the runtime exports the function it calls",
                     )
                 )
     for f in sorted(src.rglob("*.rs")):
@@ -926,17 +1245,17 @@ def check_runtime_platform(root: Path) -> list[Violation]:
     return out
 
 
-SERVICE_CRATES = "modules/core/services"
-# dkrt-svc-params is the parameter row writers that machines and fx share (no service names the other)
-SERVICE_DEPS = {"dkrt-abi", "dkrt-sdk", "dkneeds", "dkrt-svc-params"}
-SERVICE_DEV_DEPS = SERVICE_DEPS | {"dkrt-test-support"}
-# `dkrt_svc_rt` is the support crate of a service file (modules/core/runtime/svc-rt), not a service
+SERVICE_CRATES = "services"
+# dkrt-svc-rows is the parameter row writers that machines and fx share (no service names the other); dkrt-svc-bitmap the firmware tile objects of lfo
+SERVICE_DEPS = {"dkrt-abi", "dkrt-sdk", "dkneeds", "dkrt-svc-rows", "dkrt-svc-bitmap"}
+SERVICE_DEV_DEPS = SERVICE_DEPS | {"dkrt-test-support", "dkrt-svc-rt"}
+# `dkrt_svc_rt` is the support crate of a service file (runtime/core/svc-rt), not a service
 SERVICE_CRATE_REF = re.compile(r"\bdkrt_svc_(?!rt\b)\w+")
-SERVICE_RUNTIME_FILES = ("handlers.rs", "gen_services.rs")
-# The services that are folders of the runtime crate (`services/NAME`): none since R12-1; every service is a crate (`modules/core/services/NAME`).
+SERVICE_RUNTIME_FILES = ("package/handlers.rs", "package/gen_services.rs")
+# The services that are folders of the runtime crate (`services/NAME`): none since R12-1; every service is a crate (`services/NAME`).
 RT_LOCAL_SERVICES: set[str] = set()
 SERVICE_RUNTIME_REF = re.compile(r"\bdkrt::|\bextern\s+crate\s+dkrt\b")
-RUNTIME_MANIFEST = "modules/core/runtime/src/rs/Cargo.toml"
+RUNTIME_MANIFEST = "runtime/core/src/rs/Cargo.toml"
 DEP_TABLES = ("dependencies", "build-dependencies", "dev-dependencies")
 
 
@@ -1063,7 +1382,7 @@ def check_service_crates(root: Path) -> list[Violation]:
                     rel(root, d),
                     "service-crates",
                     f"the service {d.name} is a folder of the runtime crate",
-                    f"no service is a folder of the runtime crate; put a service in a crate modules/core/services/{d.name}",
+                    f"no service is a folder of the runtime crate; put a service in a crate services/{d.name}",
                 )
             )
     mod_rs = local / "mod.rs"
@@ -1077,12 +1396,12 @@ def check_service_crates(root: Path) -> list[Violation]:
                         f"{RT_SRC}/services/mod.rs:{n}",
                         "service-crates",
                         f"services/mod.rs declares the service {m.group(1)}",
-                        "no service is a folder of the runtime crate; every service is a crate in modules/core/services",
+                        "no service is a folder of the runtime crate; every service is a crate in services",
                     )
                 )
     for f in sorted(src.rglob("*.rs")) if src.is_dir() else []:
         r = f.relative_to(src).as_posix()
-        if r in SERVICE_RUNTIME_FILES or r.startswith("handlers/"):
+        if r in SERVICE_RUNTIME_FILES or r.startswith("package/handlers/"):
             continue
         for n, line in enumerate(
             rust_without_comments(f.read_text(encoding="utf-8")).splitlines(), 1
@@ -1123,8 +1442,8 @@ def rt_kind_free(root: Path) -> re.Pattern[str]:
     )
 
 
-KIND_FREE_EXEMPT = ("handlers.rs", "gen_services.rs")
-KIND_FREE_HINT = "the machines or the fx service owns it (modules/core/services/machines, fx): the core runs the generic part and calls the service through `Service` or `CoreApi`"
+KIND_FREE_EXEMPT = ("package/handlers.rs", "package/gen_services.rs")
+KIND_FREE_HINT = "the machines or the fx service owns it (services/machines, fx): the core runs the generic part and calls the service through `Service` or `CoreApi`"
 
 
 def is_runtime_test_file(r: Path) -> bool:
@@ -1165,13 +1484,13 @@ def without_test_modules(lines: list[str]) -> list[str]:
 
 # The host-test files of `handlers/` (its other files, if any, are scanned).
 KIND_FREE_TEST_FILES = (
-    "handlers/tests.rs",
-    "handlers/lfo_tests.rs",
-    "handlers/fx_fixture.rs",
-    "handlers/dks_decls.rs",
+    "package/handlers/tests.rs",
+    "package/handlers/lfo_tests.rs",
+    "package/handlers/fx_fixture.rs",
+    "package/handlers/dks_decls.rs",
 )
 # The abi crate is the core's boundary: it too names no machine or effect.
-RT_ABI_SRC = "modules/core/runtime/abi/src"
+RT_ABI_SRC = "runtime/core/abi/src"
 
 
 def check_core_kind_free(root: Path) -> list[Violation]:
@@ -1239,7 +1558,7 @@ def user_modules(root: Path, mods: list[Module]) -> list[tuple[Module, str]]:
     out = []
     for m in mods:
         r = rel(root, m.dir)
-        if r.startswith(USER_MODULE_ROOTS) and not m.mod.get("host", False):
+        if r.startswith("modules/") and not m.mod.get("host", False):
             out.append((m, r))
     return out
 
@@ -1300,7 +1619,7 @@ def check_self_contained(root: Path, mods: list[Module]) -> list[Violation]:
     ]
 
 
-def check(root: Path = ROOT) -> list[Violation]:
+def check(root: Path = ROOT, boundary_enforced: bool | None = None) -> list[Violation]:
     mods = load_modules(root)
     return [
         *check_roles(root, mods),
@@ -1312,10 +1631,36 @@ def check(root: Path = ROOT) -> list[Violation]:
         *check_imports(root),
         *check_runtime_arrows(root),
         *check_runtime_platform(root),
+        *(
+            check_resident_boundary(root)
+            if (BOUNDARY_ENFORCED if boundary_enforced is None else boundary_enforced)
+            else []
+        ),
         *check_service_crates(root),
         *check_core_kind_free(root),
         *check_self_contained(root, mods),
     ]
+
+
+def boundary_report(root: Path) -> int:
+    found = check_resident_boundary(root)
+    for v in found:
+        print(v)
+    by_rule: dict[str, int] = {}
+    by_file: dict[tuple[str, str], int] = {}
+    for v in found:
+        by_rule[v.rule] = by_rule.get(v.rule, 0) + 1
+        key = (v.rule, v.where.rsplit(":", 1)[0])
+        by_file[key] = by_file.get(key, 0) + 1
+    print("\nper rule:")
+    for k, n in sorted(by_rule.items()):
+        print(f"  {k}: {n}")
+    print("per file:")
+    for (rule, file), n in sorted(
+        by_file.items(), key=lambda kv: (kv[0][0], -kv[1], kv[0][1])
+    ):
+        print(f"  {rule} {n:4d} {file}")
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1326,7 +1671,14 @@ def main(argv: list[str] | None = None) -> int:
         default=ROOT,
         help="repository root (default: this repository)",
     )
+    ap.add_argument(
+        "--boundary-report",
+        action="store_true",
+        help="list the crossings of the resident/package boundary (rules boundary-hook, boundary-table, boundary-abi) with counts per rule and file, and exit 0",
+    )
     args = ap.parse_args(argv)
+    if args.boundary_report:
+        return boundary_report(args.root.resolve())
     found = check(args.root.resolve())
     for v in found:
         print(v)

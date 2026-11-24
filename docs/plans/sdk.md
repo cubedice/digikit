@@ -399,7 +399,7 @@ The `.dkm` header stays 0xa0 bytes. The pair at 0x90 and 0x94 is `table_off` and
 The runtime collects the builder calls during `init`, in the module's arena share, bounded by `MAX_RECORDS` (32) and by the size of the `Collect` block, `collect_bytes` (7206 in `sdk.toml` `[limits.format]`, asserted at compile time in `collect.rs`). A shot-like
 machine needs about 10 records, the other modules 3 to 7. The collection is refused with `E_DECL_ID` (-27: an index outside the keys table), `E_DECL_USES` (-28: more rows than `[uses]` says) or `E_DECL_FULL` (-74: more calls than the limits allow). When `init` returns `DK_OK`:
 
-1. Check the collection (device limits, `[uses]`, the keys in the header, FX ids of modules already loaded: a duplicate is `E_FX_ID_DUP`), lower it to records and check the records with the `registry::check` rules.
+1. Check the collection (device limits, `[uses]`, the keys in the header; a repeated key or effect id is refused by the planner before the load: `E_PLAN_KEY`), lower it to records and check the records with the `registry::check` rules.
 2. Fill each voice row's 8 ranges and its latched mask from the collected params. The ranges are the knob params' min and max, a clamp
    guard the DSP voice code reads.
 3. Apply the records (`registry::apply`). FX pages need their FX row, which reserve already claimed.
@@ -502,7 +502,7 @@ These come from the profiling work and land after the steps in section 12 that t
 - A repository `.clang-format` and a format check target for C. `clang-tidy` later.
 - Names: functions `dk_<area>_<verb>`, types `dk_<thing>`, constants `DK_<AREA>_<NAME>`. No version suffixes (`_v1`, `_V2`); versions
   live in `sdk.toml`: one runtime version, and `since` of each import.
-- Naming (agreed 2026-11-12):
+- Naming:
 
 | Rule | Form | Examples |
 | --- | --- | --- |
@@ -525,6 +525,16 @@ These come from the profiling work and land after the steps in section 12 that t
   such as `DK_PARAM_IS_ERROR` become `static inline` functions.
 - `layercheck` rules: the include direction between layers; imports declared only in `platform/`; modules include only public headers;
   no relative SDK paths.
+- Names beyond the SDK contract ([taxonomy](../design/taxonomy.md) "Naming rules" has the full list). The SDK forms above stay as they are; the other layers add:
+  - Runtime core: C API `dkrt_<noun>_<verb>`, statics `DKRT_<NAME>`, crates `dkrt-<part>`.
+  - Service: crate `dkrt-svc-<x>`, file `<x>.dks`, id `core/services/<x>`. Exports for the core only are `dk_<x>_<what>` with `internal = true`.
+  - Image module: id `core/<name>`, symbols with the module's short prefix, slots `<service>_<site>`.
+  - Port: anchors `cf.<area>.<class>.<name>`; imports `dk_fw_`, `dk_exit_`, `dk_ret_`, `dk_stock_`, `dk_tail_`; routines `port_<service>_<hook>`; callbacks into a service `dk_<service>_<verb>` in a declared group.
+  - A name shows the layer that owns the thing. Never use a bare kind, key, slot, image, port, project or service where two meanings are possible (say record kind, module kind, settings key, pointer slot, card image, MIDI port, Nx project).
+  - A record kind is singular snake case, unique, with one owner service and a constant `KIND_<NAME>`.
+  - Settings keys and `.dkp` sections start with the owner: `<service>/...` or `<author>/<name>/...`. An author may not be a service name, `core` or `test`.
+  - A module id is `<author>/<name>`; the repo folder, the `dist` file and the card path are the id plus a prefix. Module kind names are the template names (`category` has the same value; `type` goes).
+  - Extensions: `.dkm` role 0, `.dks` role 1, `.dkport` role 2, `.dkp` project file.
 - The README says, for each layer, what belongs there. A new SDK feature goes in the layer and folder its concept names.
 
 ## 11. Tests and Nx

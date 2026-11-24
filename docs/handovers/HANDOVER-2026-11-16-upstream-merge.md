@@ -64,7 +64,7 @@ first gate on the merge, passed.
 Caused by the integration commits, fixed in the commit after this gate, each failing test run again and passing:
 
 - Six tests pin the DT2 staging size, and 84f28442 changed it without them: `tests/patchkit/test_pk_device.py`,
-  `test_patchkit_dkrt.py`, `test_patchkit_dkrt_machine.py`, `modules/core/apps/digikit-menu/tests/test_digikit_menu.py`,
+  `test_patchkit_dkrt.py`, `test_patchkit_dkrt_machine.py`, `runtime/apps/digikit-menu/tests/test_digikit_menu.py`,
   `tests/regression/host/write-safety.test.ts`, `packages/patchkit/tests/devdata.rs` (tasks `tools:python-tests`,
   `regression:test-host`, `patchkit:rust-tests`, `gate-rust-modules:rust-tests`).
 - Two tests compile `dkrt-sdk` with `rustc` alone, and since 7fce7308 it depends on `dkneeds`:
@@ -72,7 +72,7 @@ Caused by the integration commits, fixed in the commit after this gate, each fai
   (`tests/patchkit/test_patchkit_dkrt_boot.py`). Both build `dkneeds` first (it has no dependencies) and pass it with `--extern`.
 - `tests/regression/host/canopy-copy-guard.test.ts` compiles with the sanitizer and took 5.3 s beside the gate, over Vitest's
   5 s default. Its limit is 45 s.
-- `modules/core/runtime/build/runtime.dko.json` had the `source_sha256` of an earlier source; the gate's build wrote the
+- `runtime/core/build/runtime.dko.json` had the `source_sha256` of an earlier source; the gate's build wrote the
   current one. Code and symbols are the same.
 
 Upstream's own:
@@ -106,7 +106,7 @@ branch is unchanged. All from one read of upstream's tree [D]:
   a service (R12-8) are built on upstream branches (`rs/core-leftovers`, `r12-8/slice`) and wait, with B1, for one shared
   device gate (upstream's `HANDOVER-2026-11-17-late.md`). The service crate and the installable adapters stay blocked.
 - **The fork's hooks sit in code that moved.** The machine and effect hooks left the image adapters for service files that
-  the runtime loads from the card (`modules/core/services/machines/dks/src/hooks-dt2.s`, `services/fx/dks/src/hooks.rs`);
+  the runtime loads from the card (`services/machines/dks/src/hooks-dt2.s`, `services/fx/dks/src/hooks.rs`);
   they reach the image through the words of `machines_info` and the info table. Three of them carry fork code:
   `mf_typearg` (the call of `instrument_mod_param`, CANOPY's modulation destinations), `mf_srcpage` (the SRC pages of
   `src-pages.c`) and `fxp_graph` (the call of `loop_ui_paint`, Overloop's page). Each needs its image function as a table
@@ -128,8 +128,8 @@ Payoff now: the fork is current for the days until that batch lands; no item of 
 PRISM (the phrase effect of `lane/prism`, 19c4d307) is ported onto `main`'s module contract and service structure. All
 from this session: emulator checks [D], one hardware install [D].
 
-- **The port.** The module `modules/fx/prism` declares its effect by builder calls; the adapters `core/phrase-control`,
-  `core/phrase-route` and `core/phrase-ui` are new; the effect service (`modules/core/services/fx/src/phrase.rs`) holds the
+- **The port.** The module `modules/fx/digikit/prism` declares its effect by builder calls; the adapters `core/phrase-control`,
+  `core/phrase-route` and `core/phrase-ui` are new; the effect service (`services/fx/src/phrase.rs`) holds the
   exclusive phrase route (one effect, no voices, `_phrase_route_info` exported); `core/dsp-link` carries the 64-word phrase
   suffix. Patch sets `phrase` and `canopy-overloop-prism`; finding 352.
 - **Space.** The module arena is 491 520 bytes on both devices (was 524 288): the four-module image did not fit
@@ -140,7 +140,7 @@ from this session: emulator checks [D], one hardware install [D].
 - **Loader deadlock [C].** The port of the instrument code to `main` refused every legacy DSP transfer while the V2 instrument
   policy was not `Run`, so a DSP module queued behind CANOPY never finished and CANOPY's load timed out (cause 101).
   `link.rs` now refuses in `Drain` only when no legacy load is in progress or waiting. `main` had no test of CANOPY with a
-  second DSP module; `modules/fx/prism/tests/coexistence.device.test.ts` loads CANOPY, Overloop, PRISM and remote.
+  second DSP module; `modules/fx/digikit/prism/tests/coexistence.device.test.ts` loads CANOPY, Overloop, PRISM and remote.
 - **Overloop's knobs.** On this contract the knobs follow the parameter words: FADE is on encoder C and LENGTH on D (they
   were the other way round before the port to `main`).
 - **The block interrupt on small stacks.** Finding 353: the kept crash record of the device (`PC 40000458`) is the `rte` of

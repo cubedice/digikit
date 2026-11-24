@@ -2,7 +2,7 @@
 #ifndef CANOPY_BOUNDARY_CREDITS_H
 #define CANOPY_BOUNDARY_CREDITS_H
 #include <stdint.h>
-#include "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
 enum { BC_SLOTS = 4 };
 typedef struct {
     uint32_t sound, generation;

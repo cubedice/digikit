@@ -27,6 +27,11 @@ pub struct DeviceInfo {
     pub dsp_stored_max: u64,
     pub dsp_depacked_max: u64,
     pub main_staged_max: u64,
+    /// `[patch] main_dest`: where MAIN OS is unpacked to. `main_stage`: where the bootstrap stages the packed MAIN before it unpacks it in place.
+    /// `main_margin_min`: the least in-place margin (bytes of unread stream ahead of the output) an image may have; default 8192.
+    pub main_dest: u64,
+    pub main_stage: u64,
+    pub main_margin_min: u64,
     /// `[patch] stream_id`: the id byte of the OS UPGRADE header message (0x0f DT2, 0x10 DN2).
     pub stream_id: u8,
     /// `[patch] build_floor`: the four ASCII characters the OS validator compares the container's build word with (DT2 "0060");
@@ -46,6 +51,33 @@ pub struct DeviceInfo {
     /// `[protect] windows`: address windows `[lo, hi)` that only the firmware and `core/*` drive (flash, FPGA and peer buses, flash controller
     /// registers). The packer refuses a content module that holds an address in one of them (`crate::protect`).
     pub protect: Vec<[u64; 2]>,
+    /// Every boolean of a nested table of the device file, by dotted path (`card.guard.enabled`): the switches that a module's `needed_when` reads.
+    pub switches: BTreeMap<String, bool>,
+}
+
+/// Every boolean of a nested table, by dotted path (`card.guard.enabled`). A boolean at the top level of the file is not a switch.
+pub fn bool_switches(t: &toml::Table) -> BTreeMap<String, bool> {
+    fn walk(t: &toml::Table, prefix: &str, out: &mut BTreeMap<String, bool>) {
+        for (k, v) in t {
+            match v {
+                toml::Value::Table(sub) => {
+                    let path = if prefix.is_empty() {
+                        k.clone()
+                    } else {
+                        format!("{prefix}.{k}")
+                    };
+                    walk(sub, &path, out);
+                }
+                toml::Value::Boolean(b) if !prefix.is_empty() => {
+                    out.insert(format!("{prefix}.{k}"), *b);
+                }
+                _ => {}
+            }
+        }
+    }
+    let mut out = BTreeMap::new();
+    walk(t, "", &mut out);
+    out
 }
 
 /// What every device file states, whatever else it holds: who the device is and what it can do. A device file has levels that follow
@@ -89,6 +121,23 @@ pub struct Container {
     /// Sections patchkit never changes.
     #[serde(default)]
     pub readonly: Vec<u32>,
+    /// Roles (`dsp`, `cf2`, `fpga`) of read-only sections that a module may store packed when it declares that it unpacks them (`[[repack]]` of a
+    /// `module.toml`). The decoded bytes stay the stock bytes; only the stored form shrinks.
+    #[serde(default)]
+    pub repack: Vec<String>,
+}
+
+impl Container {
+    /// The section of a role (`main`, `dsp`, `cf2`, `fpga`), if the device has one.
+    pub fn role_section(&self, role: &str) -> Option<u32> {
+        match role {
+            "main" => Some(self.main),
+            "dsp" => self.dsp,
+            "cf2" => self.cf2,
+            "fpga" => self.fpga,
+            _ => None,
+        }
+    }
 }
 
 /// `[acceptance]`: the device's test cell.
@@ -200,6 +249,9 @@ struct Patch {
     main_staged_max: u64,
     stream_id: u8,
     build_floor: Option<String>,
+    main_dest: u64,
+    main_stage: u64,
+    main_margin_min: Option<u64>,
 }
 
 /// Words each capability may take.
@@ -304,6 +356,25 @@ fn validate(n: &str, f: &File, caps: &Capabilities, c: &Container, short: &str) 
             ));
         }
     }
+    // a section that a module may store packed is a role section that is read-only in content
+    for role in &c.repack {
+        if role == "main" {
+            return bad("[container] repack: the main section is changed, not repacked".into());
+        }
+        match c.role_section(role) {
+            None => {
+                return bad(format!(
+                    "[container] repack: the device has no {role} section"
+                ));
+            }
+            Some(id) if !c.readonly.contains(&id) => {
+                return bad(format!(
+                    "[container] repack {role}: section {id} must be in readonly"
+                ));
+            }
+            Some(_) => {}
+        }
+    }
     if f.digikit.is_some() && f.patch.is_none() {
         return bad("[digikit] needs [patch]: a runtime target must be patchable".into());
     }
@@ -325,6 +396,7 @@ fn parse_all(files: &[(&str, &str)]) -> Result<(Vec<Identity>, Vec<DeviceInfo>)>
     let mut out: Vec<DeviceInfo> = vec![];
     for (n, text) in files {
         let f: File = toml::from_str(text).map_err(|e| err!("devices/{n}: {e}"))?;
+        let raw: toml::Table = toml::from_str(text).map_err(|e| err!("devices/{n}: {e}"))?;
         let Some(d) = &f.device else { continue };
         let (Some(caps), Some(cont)) = (&f.capabilities, &f.container) else {
             return Err(err!(
@@ -369,6 +441,9 @@ fn parse_all(files: &[(&str, &str)]) -> Result<(Vec<Identity>, Vec<DeviceInfo>)>
             dsp_stored_max: p.dsp_stored_max.unwrap_or(0),
             dsp_depacked_max: p.dsp_depacked_max.unwrap_or(0),
             main_staged_max: p.main_staged_max,
+            main_dest: p.main_dest,
+            main_stage: p.main_stage,
+            main_margin_min: p.main_margin_min.unwrap_or(8192),
             stream_id: p.stream_id,
             build_floor: match p.build_floor {
                 None => None,
@@ -385,6 +460,7 @@ fn parse_all(files: &[(&str, &str)]) -> Result<(Vec<Identity>, Vec<DeviceInfo>)>
             dsp_blocks_per_second: f.board.as_ref().and_then(|b| b.dsp_blocks_per_second),
             machine_voices: f.adapter.and_then(|a| a.machine).and_then(|m| m.voices),
             protect: f.protect.map(|p| p.windows).unwrap_or_default(),
+            switches: bool_switches(&raw),
         });
     }
     Ok((ids, out))
@@ -400,6 +476,30 @@ fn tables() -> &'static (Vec<Identity>, Vec<DeviceInfo>) {
     ALL.get_or_init(|| {
         parse_all(DEVICE_FILES).unwrap_or_else(|e| panic!("embedded device files: {e}"))
     })
+}
+
+/// Whether `key` is an integer in `[limits]` or `[digikit]` of every device file that is a runtime target (has `[digikit]`): the names a service
+/// manifest may write as `profile:<key>`.
+pub fn has_profile_key(key: &str) -> bool {
+    let mut any = false;
+    for (n, text) in DEVICE_FILES {
+        let Ok(raw) = toml::from_str::<toml::Table>(text) else {
+            panic!("devices/{n}: embedded device file does not parse")
+        };
+        if !raw.contains_key("digikit") {
+            continue;
+        }
+        let found = ["limits", "digikit"].iter().any(|t| {
+            raw.get(*t)
+                .and_then(|v| v.get(key))
+                .is_some_and(|v| v.is_integer())
+        });
+        if !found {
+            return false;
+        }
+        any = true;
+    }
+    any
 }
 
 /// Every device file's identity (patchable or not), in file-name order.
@@ -432,6 +532,13 @@ pub fn short_list() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn profile_keys_are_integers_of_every_runtime_device_file() {
+        assert!(has_profile_key("fx_slots") && has_profile_key("modules"));
+        assert!(!has_profile_key("name"), "a string is no profile key");
+        assert!(!has_profile_key("no_such_key"));
+    }
 
     #[test]
     fn the_embedded_device_files_parse() {
@@ -478,7 +585,7 @@ mod tests {
         assert_eq!((ids.len(), patchable.len()), (1, 0));
         assert!(!ids[0].patchable && !ids[0].runtime_target);
         let patch = format!(
-            "[device]\nname = \"X\"\nshort = \"x\"\nsyx_id = 0x30\n{caps}[patch]\ncontainer_max = 1\nmain_staged_max = 1\nstream_id = 1\n"
+            "[device]\nname = \"X\"\nshort = \"x\"\nsyx_id = 0x30\n{caps}[patch]\ncontainer_max = 1\nmain_staged_max = 1\nstream_id = 1\nmain_dest = 16\nmain_stage = 32\n"
         );
         let (ids, patchable) = parse_all(&[("x.toml", patch.as_str())]).unwrap();
         assert!(ids[0].patchable && !ids[0].runtime_target);
@@ -508,6 +615,19 @@ mod tests {
             .unwrap_err()
             .to_string();
         assert!(e.contains("must be patchable"), "{e}");
+    }
+
+    #[test]
+    fn repack_names_a_read_only_role_section() {
+        let text = "[device]\nname = \"S\"\nshort = \"st\"\n[capabilities]\ndsp = \"none\"\nseal = \"none\"\nsample_pool = \"none\"\ncard = \"unknown\"\n[container]\nmain = 3\ncf2 = 7\nfpga = 1\nreadonly = [1, 2, 4, 6, 7, 8]\n";
+        let ok = format!("{text}repack = [\"cf2\"]\n");
+        let (ids, _) = parse_all(&[("s.toml", ok.as_str())]).unwrap();
+        assert_eq!(ids[0].container.repack, ["cf2"]);
+        // the role's section must be read-only: the same file without 7 in readonly is already refused, so test the other roles
+        let no_role = text.replace("cf2 = 7\n", "") + "repack = [\"cf2\"]\n";
+        assert!(parse_all(&[("s.toml", no_role.as_str())]).is_err());
+        let unknown = format!("{text}repack = [\"cpu9\"]\n");
+        assert!(parse_all(&[("s.toml", unknown.as_str())]).is_err());
     }
 
     #[test]
@@ -552,6 +672,22 @@ mod tests {
             (
                 "fpga section not read-only",
                 edit(DT2, "dsp = 7\n", "dsp = 7\nfpga = 9\n"),
+            ),
+            (
+                "repack of a role the device lacks",
+                edit(
+                    DT2,
+                    "readonly = [2, 4, 8]",
+                    "readonly = [2, 4, 8]\nrepack = [\"cf2\"]",
+                ),
+            ),
+            (
+                "repack of the main section",
+                edit(
+                    DT2,
+                    "readonly = [2, 4, 8]",
+                    "readonly = [2, 4, 8]\nrepack = [\"main\"]",
+                ),
             ),
             (
                 "one section, two roles",

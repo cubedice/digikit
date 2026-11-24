@@ -58,7 +58,7 @@ The cached preset copy means last *confirmed* save in this boot; the runtime may
 retry failed writes independently. Never call the RAM settings value durable.
 The four firmware-backed custom controls are not yet unified with setup controls.
 
-Relevant code: `modules/core/adapters/instrument-play/src/cf/preset.{h,c}`,
+Relevant code: `image-modules/adapters/instrument-play/src/cf/preset.{h,c}`,
 `control.c`, `keyboard.{h,c}`, and runtime `src/rs/src/settings.rs`.
 Read `docs/design/canopy.md` SRC interface and persistence sections before proceeding.
 
@@ -335,7 +335,7 @@ It has not been booted for acceptance or installed on hardware.
 
 ## 2026-11-02: CANOPY audio-side status producer
 
-Added `modules/machines/canopy/src/dsp/status.s`, called only after successful
+Added `modules/machine/digikit/canopy/src/dsp/status.s`, called only after successful
 finite-output validation. V5 validates its borrowed sink and clears ready before
 configuration/event validation; publication sets ready last. V2/V3/V4 remain
 supported. Fine synchronized arp accepts V5's unchanged V4 phase fields.

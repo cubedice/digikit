@@ -3,7 +3,7 @@
 
     mise run dk:dev -- MODULE_OR_SET [--device dn2[,dt2]] [--keys FILE|INLINE] [--store IDS] [--trace] [--out DIR] [--stop]
 
-MODULE_OR_SET is a patch set of devices/<device>.toml (`emulator`), or module ids separated by commas (`test/ui-demo`); the modules
+MODULE_OR_SET is a patch set of devices/<device>.toml (`emulator`), or module ids separated by commas (`core/ui`); the modules
 they require are added. Per device the tool
 
 1. builds the objects of every module in the set whose sources changed (`patchkit build`: unchanged objects cost nothing),
@@ -302,9 +302,7 @@ def prepare_store(
             spec = run_dir / f"{name}.toml"
             spec.write_text(f'name = "dev/{name}"\nbss = {int(bss) // 4 * 4}\n')
             pack_store("synth-dkm", spec, "--device", device, "-o", out)
-        elif pk_services.is_service(
-            device, mid
-        ):  # a service is a bound file of the card
+        elif pk_services.is_service(device, mid):  # a service is a file of the card
             explicit.append(mid)
             continue
         else:
@@ -321,7 +319,7 @@ def prepare_store(
         if pick:
             selected.append(f"modules/{out.name}")
     # the services of the card: those named, then those the packed modules need (as the device tests put them on the card)
-    for svc in pk_services.bound_services(
+    for svc in pk_services.card_services(
         device,
         ROOT / "out" / "cache" / "devreload-svc" / device,
         files=sorted((folder / "digikit" / "modules").glob("*.dkm")),
@@ -329,7 +327,7 @@ def prepare_store(
     ):
         to = folder / "digikit" / svc["store_path"]
         to.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(svc["bound_path"], to)
+        shutil.copyfile(svc["file"], to)
     files = {}
     for path in sorted(folder.rglob("*")):
         if path.is_file():
@@ -407,7 +405,7 @@ def stop_connected(emu: Emu, run_dir: Path, timeout: float = 5) -> None:
 
 def upload_store(emu: Emu, candidate: Path, prepared: dict[str, Any]) -> None:
     """Update one preview DKM on the mounted card, then soft-reset the guest."""
-    from tools.device import dkmodule, dkrun, dkupload
+    from tools.device import dkmodule, dkproto, dkrun, dkupload
 
     def idle() -> None:
         if emu.status().get("job"):
@@ -420,7 +418,8 @@ def upload_store(emu: Emu, candidate: Path, prepared: dict[str, Any]) -> None:
     try:
         emu.subscribe()
         up = dkupload.Uploader(dkupload.EmuTransport(emu))
-        dkrun.require_runtime(up.info())
+        info = up.info()
+        dkrun.require_runtime(info)
         path = prepared["selected"][0]
         source = candidate / "plus_drive/digikit" / path
         data = source.read_bytes()
@@ -430,6 +429,29 @@ def upload_store(emu: Emu, candidate: Path, prepared: dict[str, Any]) -> None:
         dkrun.upload_if_changed(up, path, data)
         if up.verify(path) != dkupload.file_hash(data).hex():
             raise H.HarnessError("preview module did not verify on the mounted card")
+        # A module that is loaded already and a runtime that can reload it: no boot (RELOAD, docs/TESTING.md "Fast iteration"). The emulator is stepped
+        # between the asks, as the guest runs only then.
+        loaded = {m["name"] for m in up.modules()["modules"]}
+        if (
+            header["name"] in loaded
+            and info.get("caps", 0) >> dkproto.CAP["RELOAD"] & 1
+        ):
+            print("preview: upload verified; reloading module", flush=True)
+            result, unloaded = up.reload_and_wait(
+                path, lambda: emu.step(int(0.05 * dkrun.EMU_IPS))
+            )
+            if result == 0:
+                print(f"preview: module reloaded ({header['name']})", flush=True)
+                return
+            # refused before anything changed (the old module still runs), or failed after the old one was removed (the module is not loaded): the boot below takes the file as it is
+            what = (
+                "failed, the module is not loaded"
+                if unloaded
+                else "the DSP loader is retained, restart needed"
+                if result == -87
+                else "refused, the old module ran"
+            )
+            print(f"preview: reload {what} ({result}); restarting instead", flush=True)
         # A preview selects one module explicitly; all other card contents stay.
         print("preview: upload verified; selecting module", flush=True)
         up.select(prepared["selected"])
@@ -656,8 +678,9 @@ def runtime_fingerprint(modules: list[str], device: str, syx: Path) -> str | Non
         Path(modroots.__file__),
         patchkit.binary(),
     }
-    for tree in (ROOT / "devices", ROOT / "packages/patchkit/src"):
+    for tree in (ROOT / "devices", ROOT / "ports/fw", ROOT / "packages/patchkit/src"):
         paths.update(p for p in tree.rglob("*") if p.is_file())
+    paths.update(p for p in (ROOT / "ports").glob("*.toml") if p.is_file())
     digest = hashlib.sha256(f"preview-runtime-v1:{device}".encode())
     try:
         for mid in closure(modules):

@@ -9,12 +9,21 @@ import { parse } from 'smol-toml';
 import { ROOT } from './rig.ts';
 import { patchkit } from './toolchain.ts';
 import { galleryGaps as rigGalleryGaps, hasGallery } from './gallery-gaps.mjs';
+import {
+  CONFORMANCE_ROOTS,
+  NEGATIVE_VARIANTS,
+  conformanceKind,
+  dspSourcePaths,
+  negativeVariantsOf,
+} from './conformance-manifest.mjs';
 
 export const DEVICES = ['dt2', 'dn2'] as const;
 export type Device = (typeof DEVICES)[number];
 
 /** Stock rows of the knob list that a DSP routine reads (a code in `knobs`, not a `[[param]]` id): name, min, max, default. 0xca is TUNE of SAMPLE. */
-const STOCK_KNOBS: Record<number, [string, number, number, number]> = { 0xca: ['tune', 0, 0x7f00, 0x4000] };
+const STOCK_KNOBS: Record<number, [string, number, number, number]> = {
+  0xca: ['tune', 0, 0x7f00, 0x4000],
+};
 /** Level bound of a block: full scale is +-1.0; a bound 18 dB above it flags a runaway, not a loud but valid sound. */
 export const LEVEL_BOUND = 8.0;
 
@@ -24,29 +33,11 @@ export const NEGATIVE: Record<string, string> = {
   'test/dyn-guard-nan': 'guard stepped in',
 };
 
-/**
- * Negative fixtures that are a source file of a module, not a module of their own: id `module#name` -> path under the module,
- * render symbol, note_on symbol, description symbol, expected message. The spec is the module's with these replaced.
- */
-const NEGATIVE_VARIANTS: Record<string, [string, string, string, string, string]> = {
-  'test/dyn-guard-nan#overrun': [
-    'src/dsp/overrun.s',
-    '_ov_render',
-    '_ov_note_on',
-    '_ov_desc',
-    'wrote memory it does not own',
-  ],
-};
 for (const [id, v] of Object.entries(NEGATIVE_VARIANTS)) NEGATIVE[id] = v[4];
 
 export const FX_NEGATIVE: Record<string, string> = {
   'test/dyn-fx-nan': 'guard stepped in',
 };
-/** Fixtures of the runtime's fault tests that the suite does not run. */
-const FX_SKIP = new Set(['test/dyn-fx-hang']);
-/** Fixtures that declare a machine and that the suite does not run. */
-const MACHINE_SKIP = new Set(['test/commit-demo']);
-
 export class ConformError extends Error {}
 
 export interface Param {
@@ -123,19 +114,19 @@ function readToml(file: string): Toml {
 }
 const manifest = (moddir: string): Toml => readToml(path.join(moddir, 'module.toml'));
 
-/** Module id -> module directory: `modules/`, `tests/fixtures/modules/`, then the roots of PATCHKIT_MODULES (tools/patchkit/modroots.py). */
+/** Module id -> module directory: the committed roots, then PATCHKIT_MODULES (tools/patchkit/modroots.py). */
 export function moduleDirs(): Map<string, string> {
   const extra = process.env.PATCHKIT_MODULES ?? '';
-  const known = dirsCache.get(extra);
+  const selected = process.env.DIGI_CONFORM_ROOT ?? '';
+  const key = JSON.stringify([extra, selected]);
+  const known = dirsCache.get(key);
   if (known) return known;
-  const roots = [
-    path.join(ROOT, 'modules'),
-    path.join(ROOT, 'tests/fixtures/modules'),
-    ...extra.split(path.delimiter).filter(Boolean),
-  ];
+  const roots = selected
+    ? [path.resolve(ROOT, selected)]
+    : [...CONFORMANCE_ROOTS.map((r) => path.join(ROOT, r)), ...extra.split(path.delimiter).filter(Boolean)];
   const found = new Map<string, string>();
   for (const root of roots) {
-    const files = globSync('**/module.toml', { cwd: root }).sort((a, b) => cmpPath(a, b));
+    const files = globSync(selected ? 'module.toml' : '**/module.toml', { cwd: root }).sort((a, b) => cmpPath(a, b));
     for (const file of files) {
       const dir = path.dirname(path.join(root, file));
       const id = manifest(dir).module.id as string;
@@ -144,7 +135,7 @@ export function moduleDirs(): Map<string, string> {
       found.set(id, dir);
     }
   }
-  dirsCache.set(extra, found);
+  dirsCache.set(key, found);
   return found;
 }
 const dirsCache = new Map<string, Map<string, string>>();
@@ -170,9 +161,9 @@ export function moduleDir(id: string): string {
   return dir;
 }
 
-function voices(man: Toml): { render: string; noteOn: string; desc: string } | null {
+function voices(man: Toml, n = 0): { render: string; noteOn: string; desc: string } | null {
   if (man.module?.type === 'machine' && man.machine?.length) {
-    const m = man.machine[0];
+    const m = man.machine[n];
     const p = m.dsp || String(m.id).replaceAll('-', '_');
     return { render: `_${p}_render`, noteOn: `_${p}_note_on`, desc: `_${p}_desc` };
   }
@@ -180,8 +171,8 @@ function voices(man: Toml): { render: string; noteOn: string; desc: string } | n
 }
 
 /** (render symbol, literal type or null) of the module's voice. */
-function entryRow(man: Toml): [string, string | null] | null {
-  const v = voices(man);
+function entryRow(man: Toml, n = 0): [string, string | null] | null {
+  const v = voices(man, n);
   if (v) return [v.render, null];
   for (const e of man.entry ?? [])
     if (e.registry === 'voices' && typeof e.pc === 'string') return [e.pc, e.type ?? null];
@@ -189,19 +180,13 @@ function entryRow(man: Toml): [string, string | null] | null {
 }
 
 function dspSources(man: Toml, moddir: string, device: string): string[] {
-  const out: string[] = [];
-  for (const o of man.object ?? []) {
-    if (!(o.devices ?? DEVICES).includes(device)) continue;
-    for (const s of o.sources ?? [])
-      if (s.endsWith('.s') && s.split('/').includes('dsp')) out.push(path.resolve(moddir, s));
-  }
-  return out;
+  return dspSourcePaths(man, device).map((source: string) => path.resolve(moddir, source));
 }
 
-function typeNumber(mid: string, man: Toml, device: string, literal: string | null): number {
+function typeNumber(mid: string, man: Toml, device: string, literal: string | null, n = 0): number {
   if (literal !== null && /^[0-9][0-9a-zA-Z_]*$/.test(String(literal))) return Number(literal);
-  const types = readToml(path.join(ROOT, 'modules/core/adapters/machines/types.toml'))[device];
-  let mach: string | undefined = man.machine?.length ? man.machine[0].id : undefined;
+  const types = readToml(path.join(ROOT, 'image-modules/points/machines/types.toml'))[device];
+  let mach: string | undefined = man.machine?.length ? man.machine[n].id : undefined;
   if (literal !== null) mach = String(literal).split('.')[1];
   const key = `${mid}:${mach}`;
   if (types.alloc && key in types.alloc) return Number(types.alloc[key]);
@@ -223,12 +208,12 @@ function readGallery(moddir: string, mid: string, hint: string): Toml {
   return JSON.parse(readFileSync(file, 'utf8')) as Toml;
 }
 
-function machineParams(moddir: string, man: Toml, device: string): Param[] {
+function machineParams(moddir: string, man: Toml, device: string, n = 0): Param[] {
   const mid = man.module?.id ?? path.basename(moddir);
   const gallery = readGallery(moddir, mid, '`patchkit gen`');
   const machines = gallery.machines ?? [];
   if (!machines.length) return [];
-  const dev = machines[0].devices?.[device];
+  const dev = machines[n]?.devices?.[device];
   if (!dev) return [];
   const decl = new Map<string, Toml>((gallery.params?.[device] ?? []).map((p: Toml) => [p.id, p]));
   const out: Param[] = [];
@@ -288,26 +273,30 @@ export function machineSpec(mid: string, device: Device): MachineSpec | null {
     const [file, render, noteOn, desc] = variant;
     return { ...base, module: mid, sources: [path.resolve(base.moddir, file)], entry: render, noteOn, desc };
   }
-  const moddir = moduleDir(mid);
+  // `module#ID` is the machine ID of a module that declares several (a calibration module: one kernel per machine); `module` is its first
+  const [base, which] = mid.split('#') as [string, string | undefined];
+  const moddir = moduleDir(base);
   const man = manifest(moddir);
+  const n = which === undefined ? 0 : ((man.machine ?? []) as Toml[]).findIndex((m) => m.id === which);
+  if (n < 0) throw new ConformError(`${mid}: the module declares no machine ${which}`);
   const ports: string[] = man.module?.ports ?? [];
   if (ports.length && !ports.some((p) => p.split('-')[0] === device)) return null;
   // a persistent V2 instrument (`instrument = true`) has no voice: its reset and process entries are checked by its own tests
   if (man.machine?.some((m: Toml) => m.instrument === true) || rigSkipped(man)) return null;
-  const row = entryRow(man);
+  const row = entryRow(man, n);
   if (!row) return null;
   const sources = dspSources(man, moddir, device);
   if (!sources.length) return null;
   const f = deviceFile(device).modules.frame;
-  const v = voices(man);
+  const v = voices(man, n);
   return {
     module: mid,
     device,
     moddir,
     sources,
     entry: row[0],
-    machineType: typeNumber(mid, man, device, row[1]),
-    params: machineParams(moddir, man, device),
+    machineType: typeNumber(base, man, device, row[1], n),
+    params: machineParams(moddir, man, device, n),
     frame: { base: f.base, stride: f.stride, group: f.group ?? 0, gap: f.gap ?? 0 },
     noteOn: v?.noteOn ?? null,
     desc: v?.desc ?? null,
@@ -319,19 +308,16 @@ export function machineSpec(mid: string, device: Device): MachineSpec | null {
 /** Every (machine module, device) the suite runs (NEGATIVE fixtures only with `negative`). */
 export function machineSpecs(negative = false): MachineSpec[] {
   const out: MachineSpec[] = [];
-  for (const mid of moduleDirs().keys()) {
-    if (mid in NEGATIVE !== negative || MACHINE_SKIP.has(mid)) continue;
+  const dirs = moduleDirs();
+  const add = (id: string) => {
     for (const device of DEVICES) {
-      const s = machineSpec(mid, device);
+      const s = machineSpec(id, device);
       if (s) out.push(s);
     }
-  }
-  if (negative)
-    for (const id of Object.keys(NEGATIVE_VARIANTS))
-      for (const device of DEVICES) {
-        const s = machineSpec(id, device);
-        if (s) out.push(s);
-      }
+  };
+  for (const [mid, dir] of dirs)
+    if (mid in NEGATIVE === negative && conformanceKind(manifest(dir)) === 'machine') add(mid);
+  if (negative) for (const mid of dirs.keys()) for (const variant of negativeVariantsOf(mid)) add(variant);
   return out;
 }
 
@@ -373,8 +359,8 @@ export function fxSpec(mid: string): FxSpec | null {
 /** Every effect module the FX suite runs (FX_NEGATIVE fixtures only with `negative`). */
 export function fxSpecs(negative = false): FxSpec[] {
   const out: FxSpec[] = [];
-  for (const mid of moduleDirs().keys()) {
-    if (FX_SKIP.has(mid) || mid in FX_NEGATIVE !== negative) continue;
+  for (const [mid, dir] of moduleDirs()) {
+    if (mid in FX_NEGATIVE !== negative || conformanceKind(manifest(dir)) !== 'fx') continue;
     const s = fxSpec(mid);
     if (s) out.push(s);
   }

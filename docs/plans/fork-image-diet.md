@@ -80,7 +80,7 @@ So the plan moves it. What a service cannot provide is code that must run before
 path, or return "absent", while the vector is zero.
 
 No firmware hook is new. The only declaration change: the tails of the `before` hooks the service takes
-(`selection_build`) must be declared `tail = true` in `devices/fw` for `patchkit bind`.
+(`selection_build`) must be declared `tail = true` in `ports/fw` for `patchkit bind`.
 
 ## 4. The design
 
@@ -179,7 +179,7 @@ the hardware image after the merge, plan the track keyboard's own service file w
 - The service crate and its glue (section 4, "Phase B").
 - The NEED rule for V2 instrument sections, or an `instrument.rows` resource owned by the service.
 - patchkit's C sources in a service object.
-- The `tail = true` declarations in `devices/fw` (upstream: `ports/fw`).
+- The `tail = true` declarations in `ports/fw` (upstream: `ports/fw`).
 - The CANOPY half tables need nothing: they live in the module.
 - From sections 9.1 and 9.2: `core/keyboard-panel`, `core/copy-watch`, the image tick (`[[info]] tick = true`, INFO kind 3), the
   image-declared boot need (`boot_need_<service>`, `-` written `_`), `served_by` and its NEED rule, the seam generator with its two
@@ -207,8 +207,8 @@ sections 3 and 4, and why:
   or a neutral result) while the slot is 0. Two slots: `instrument_vec` (36 entries) and `midi_vec` (5), so
   `core/midi-events` does not depend on `core/instrument-play`. The service has no `[[hook]]` and two `[[fill]]`s; it
   uses none of the installer's 48 sites and needs no `tail = true` declaration.
-- **One source for the seam:** `modules/core/services/instrument/seam.toml`, from which
-  `modules/core/services/instrument/tools/seam.py` writes the forwarders (`src/cf/seam.s` of both adapters), the image
+- **One source for the seam:** `services/instrument/seam.toml`, from which
+  `services/instrument/tools/seam.py` writes the forwarders (`src/cf/seam.s` of both adapters), the image
   table `instrument_image` (`seam-table.s`, 71 words: magic, version, count, 28 functions, 20 optional functions, 2 data addresses, 18
   registry codes), the service's vector tables, thunks and the copy of the table (`dks/src/seam.s`), the layout its
   setup checks (`seam_gen.rs`) and the C names (`seam.h`: `IP_HAVE`, `IP_DATA`, `IP_VALUE`). `--check` is a test

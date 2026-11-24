@@ -2,8 +2,8 @@
  * Assertions belong to the TypeScript scenarios, not a second musical model. */
 #include <stdio.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/keyboard.h"
-#include "../../../modules/core/adapters/midi-events/src/cf/transport.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/keyboard.h"
+#include "../../../image-modules/adapters/midi-events/src/cf/transport.h"
 static KbState s;
 static MiLedger ledger;
 static MiTransport transport;

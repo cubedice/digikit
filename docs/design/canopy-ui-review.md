@@ -380,7 +380,7 @@ Elektron's manual distinguishes active-track level, source/sample level, and AMP
 - **Confirmed input intent:** `ip_src_turn` forwards non-A–H turns to the stock handler. `ip_src_parameter` explicitly maps Sound A/H and delegates the remaining indexes. Thus there is no explicit decision to disable LEVEL/DATA in CANOPY.
 - **Unresolved audible fault:** forwarding a handler does not prove the selected track's level is edited or applied to CANOPY audio. Existing native UI acceptance covers A/H edits, not a dedicated LEVEL/DATA sweep with isolated audio. The old statement that level remains downstream is not sufficient physical evidence. The cause could be mapping, audio routing, monitoring, or a combination; it is not established by this review.
 
-Source references: [native bridge](../../modules/core/adapters/instrument-play/src/cf/src-native.c), [painter](../../modules/core/adapters/instrument-play/src/cf/src-display.c), [control mapping](../../modules/core/adapters/instrument-play/src/cf/src-state.c), [native UI tests](../../tests/regression/host/canopy-native.c), and [earlier SRC findings](../findings/337-canopy-src-pages.md). The shared velocity adapter substitutes only its velocity factor; do not replace the entire stock gain calculation with a new CANOPY master multiplier.
+Source references: [native bridge](../../image-modules/adapters/instrument-play/src/cf/src-native.c), [painter](../../image-modules/adapters/instrument-play/src/cf/src-display.c), [control mapping](../../image-modules/adapters/instrument-play/src/cf/src-state.c), [native UI tests](../../tests/regression/host/canopy-native.c), and [earlier SRC findings](../findings/337-canopy-src-pages.md). The shared velocity adapter substitutes only its velocity factor; do not replace the entire stock gain calculation with a new CANOPY master multiplier.
 
 ## Built-in DTII keyboard: original gap and required integration
 
@@ -393,10 +393,10 @@ notes. This is an implementation gap, not a requirement for another keyboard
 setting or a limitation of CANOPY's oscillators.
 
 Code evidence: `mi_channel_message` in
-[the MIDI adapter](../../modules/core/adapters/midi-events/src/cf/adapter.c)
+[the MIDI adapter](../../image-modules/adapters/midi-events/src/cf/adapter.c)
 accepts USB source flags 2/4 and DIN flags 8/16, and falls through for other
 sources. Route enable accepts only those two ports. The
-[instrument controller](../../modules/core/adapters/instrument-play/src/cf/control.c)
+[instrument controller](../../image-modules/adapters/instrument-play/src/cf/control.c)
 enables only those routes and suspends admission if both are off. Stock trigger
 activity does not itself create the note-on/note-off events required by the
 persistent instrument. The currently fixed SOURCE value is not evidence of a

@@ -17,7 +17,7 @@ def test_reset_window_matches_pinned_firmware():
     if not firmware.exists():
         pytest.skip("DTII 1.17 firmware required")
     main = port_resolve.sections_of(firmware)[3]
-    decl = tomllib.loads((REPO_ROOT / "devices/fw/rtos.toml").read_text())
+    decl = tomllib.loads((REPO_ROOT / "ports/fw/rtos.toml").read_text())
     site = next(s for s in decl["site"] if s["name"] == "cf.rtos.site.dsp_reset")
     actual = port_resolve.resolve_cf_window_hash(
         main, 0x40000400, dict(site["rule"], name=site["name"])
@@ -96,7 +96,7 @@ argument: .long 0
 """)
     probe.write_text(probe.read_text().replace("ALLOW", str(int(allow_release))))
     linked = patchkit.cf_link(
-        [REPO_ROOT / "modules/core/adapters/midi-events/src/cf/reset.s", probe],
+        [REPO_ROOT / "image-modules/adapters/midi-events/src/cf/reset.s", probe],
         0x47E00000,
         {},
     )
@@ -175,10 +175,10 @@ ticks: .long 0
 sends: .long 0
 """)
     linked = patchkit.cf_link(
-        [REPO_ROOT / "modules/core/adapters/dsp-link/src/cf/tramp.s", probe],
+        [REPO_ROOT / "runtime/platform/dsp-link/src/cf/tramp.s", probe],
         0x47E00000,
         {},
-        [REPO_ROOT / "modules/core/fw/inc"],
+        [REPO_ROOT / "ports/bindings/inc"],
     )
     ops = [
         {

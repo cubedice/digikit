@@ -2,9 +2,9 @@
  * attaches test snapshots to the admitted Sound. It is not a production fix. */
 #include <stdint.h>
 #include "../../../canopy-two-phase/credit-refill.h"
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/instances.h"
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/sound-state.h"
-#include "../../../../../../modules/core/adapters/midi-events/src/cf/bridge.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/instances.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-state.h"
+#include "../../../../../../image-modules/adapters/midi-events/src/cf/bridge.h"
 extern int32_t dkrt_job_post(uintptr_t, uintptr_t, uint8_t *);
 extern uint32_t tp_probe_sr(void);
 extern uint32_t tp_probe_mask(void *);

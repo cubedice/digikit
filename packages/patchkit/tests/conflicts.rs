@@ -28,7 +28,7 @@ macro_rules! need_toolchain {
 }
 
 fn registry() -> Registry {
-    Registry::from_dir(&root().join("devices/ports")).unwrap()
+    Registry::from_dir(&root().join("ports")).unwrap()
 }
 
 /// The real library (core/expansion, core/fx, ...) plus synthetic modules.
@@ -350,6 +350,10 @@ fn retarget_of_something_that_is_not_a_call_is_refused() {
             offset: 0,
             mode: "retarget".into(),
             clobbers: vec![],
+            len: None,
+            kind: None,
+            check: None,
+            fixups: vec![],
         });
     }
     expect_err(run_with(&reg, &lib, &["t/r"]), "not a direct CALL");

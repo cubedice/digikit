@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../../../modules/core/adapters/keyboard-panel/src/cf/panel.c"
+#include "../../../image-modules/adapters/keyboard-panel/src/cf/panel.c"
 static uint8_t view[0x200], other[0x200], object[4];
 static uint32_t machine = 9, selected, downs, ups, cancels, original_on, original_off, detaches,
                 last_down_key, last_down_note;

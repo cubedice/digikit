@@ -17,8 +17,8 @@
 #undef src_state
 #undef src_status
 #include <assert.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
 
 /* Link production keyboard.c for the real LEARN capture/save behavior. This
  * UI suite must not accidentally exercise the isolated ROOT-selector proof. */

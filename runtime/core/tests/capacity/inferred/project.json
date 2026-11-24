@@ -1,0 +1,29 @@
+{
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "core/runtime-inferred-needs-tests",
+  "tags": ["test-only", "tier:full"],
+  "implicitDependencies": ["core/runtime"],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": ["inferred-needs.device.test.ts"],
+        "firmwareOnly": "the resources the real loader takes equal the needs patchkit infers (full tier; no host test of this seam yet)",
+        "dsp": "sharc",
+        "tags": ["C:loading", "S:machines"],
+        "modules": [
+          "digikit/debug",
+          "digikit/probe",
+          "digikit/remote",
+          "test/c-demo",
+          "test/commit-demo",
+          "test/dyn-fx-gain",
+          "test/dyn-dn2",
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
+        ],
+        "plusdrive": true
+      }
+    ]
+  }
+}

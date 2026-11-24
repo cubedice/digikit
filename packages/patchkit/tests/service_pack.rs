@@ -24,12 +24,20 @@ fn copy_dir(from: &Path, to: &Path) {
     }
 }
 
-/// A repository root of its own for a refusal that happens when the manifest loads: the repository's `modules`, `devices` and `sdk`, and the fixture
+/// A repository root of its own for a refusal that happens when the manifest loads: the repository's module roots, `ports`, `devices` and `sdk`, and the fixture
 /// `test/svc-test` with the text of its `module.toml` changed by `edit`. No toolchain is needed.
 fn manifest_root(dir: &Path, edit: &dyn Fn(&str) -> String) {
     use std::os::unix::fs::symlink;
     std::fs::create_dir_all(dir).unwrap();
-    for n in ["modules", "devices", "sdk"] {
+    for n in [
+        "modules",
+        "runtime",
+        "services",
+        "image-modules",
+        "ports",
+        "devices",
+        "sdk",
+    ] {
         symlink(root().join(n), dir.join(n)).unwrap();
     }
     let to = dir.join("tests/fixtures/modules/svc-test");
@@ -101,8 +109,14 @@ fn a_service_packs_to_a_dks_with_provides_and_exports_and_a_user_has_a_hard_need
     assert!(exports.iter().all(|e| (e.b as usize) < dkm.image.len()));
     let hooks: Vec<_> = k.hooks().collect();
     assert_eq!(hooks.len(), 1, "the hook of the manifest");
-    assert_eq!(hooks[0].a, name_hash("cf.menu.hook.settings_list.tail"));
-    assert!((hooks[0].b as usize) < dkm.image.len());
+    assert_eq!(hooks[0].a, name_hash("cf.menu.hook.settings_list.test"));
+    assert!(((hooks[0].b & dkneeds::keys::HOOK_ENTRY_MASK) as usize) < dkm.image.len());
+    // a service that takes a hook (or names the firmware) has a hard need of the port file
+    let port = k
+        .needs()
+        .find(|n| n.service == name_hash("port"))
+        .expect("a need of port");
+    assert!(port.hard);
 
     let user = packed(&here, "test/svc-test-user", &d.join("svc-test-user.dkm"));
     let dkm = Dkm::parse(&user).unwrap();
@@ -142,13 +156,13 @@ fn the_output_name_must_match_the_role() {
 }
 
 #[test]
-fn a_service_with_an_unknown_service_or_a_foreign_export_is_refused() {
+fn a_service_with_a_reserved_service_or_a_foreign_export_is_refused() {
     let d = scratch("bad");
     let cases: [(&str, &dyn Fn(&str) -> String, &str); 8] = [
         (
-            "unknown service",
-            &|t| t.replace("service = \"svc-test\"", "service = \"no-such\""),
-            "not a [[service]]",
+            "reserved service",
+            &|t| t.replace("service = \"svc-test\"", "service = \"port\""),
+            "unreserved service name",
         ),
         (
             "no service",
@@ -204,6 +218,59 @@ fn a_service_with_an_unknown_service_or_a_foreign_export_is_refused() {
     let _ = std::fs::remove_dir_all(&d);
 }
 
+#[test]
+fn local_service_packages_declare_the_export_order_and_a_bound_versioned_need() {
+    if !toolchain() {
+        return;
+    }
+    use dkneeds::keys::tag;
+    let d = scratch("local");
+    let service = name_hash("local-ping");
+    let symbol = name_hash("local_ping_value");
+    let provider = packed(&root(), "test/local-ping", &d.join("local-ping.dks"));
+    let provider = Dkm::parse(&provider).unwrap();
+    let keys = Keys::parse(&provider.register).unwrap();
+    assert_eq!(keys.provides().collect::<Vec<_>>(), [(service, 0x010200)]);
+    // the exported function, then the resident query of the Query part
+    let query = name_hash(dkrt_sdk::RESIDENT_QUERY_ENTRY);
+    assert_eq!(
+        keys.exports().map(|e| e.a).collect::<Vec<_>>(),
+        [symbol, query]
+    );
+    assert_eq!(keys.words(tag::CALLBACK_ORDER, 0), Some((service, 450, 0)));
+    assert!(
+        keys.exports()
+            .filter(|e| e.a == symbol)
+            .all(|e| e.b & dkneeds::keys::EXPORT_BOUND != 0)
+    );
+    let floor = patchkit::sdkgen::service_registration_runtime();
+    // the resident query of the Query part raises the runtime the provider needs above the floor of a service
+    assert!(
+        keys.needs()
+            .any(|n| n.service == name_hash("runtime") && n.hard && n.min_version >= floor)
+    );
+
+    let user = packed(
+        &root(),
+        "test/local-ping-user",
+        &d.join("local-ping-user.dkm"),
+    );
+    let user = Dkm::parse(&user).unwrap();
+    let keys = Keys::parse(&user.register).unwrap();
+    let need = keys.needs().find(|need| need.service == service).unwrap();
+    assert!(need.hard);
+    assert_eq!(need.min_version, 0x010200);
+    assert_eq!(
+        keys.words(tag::SERVICE_IMPORTS, 0),
+        Some((symbol, service, 0))
+    );
+    assert!(
+        keys.needs()
+            .any(|n| n.service == name_hash("runtime") && n.hard && n.min_version == floor)
+    );
+    let _ = std::fs::remove_dir_all(d);
+}
+
 /// The big-endian bytes of `word` occur in a section of the committed object `path` (a `.dko.json`).
 fn object_holds_word(path: &Path, word: u32) -> bool {
     let v: serde_json::Value = serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
@@ -245,11 +312,8 @@ fn lfo_packs_to_a_dks_that_owns_lfo_shape_and_its_users_need_it() {
     let abi = u32::from_be_bytes(svc[dkneeds::H_SVC_ABI as usize..][..4].try_into().unwrap());
     assert_ne!(abi, 0);
     assert!(
-        object_holds_word(
-            &here.join("modules/core/runtime/build/runtime.dko.json"),
-            abi
-        ),
-        "H_SVC_ABI {abi:#x} is not the runtime's SVC_ABI: rebuild the objects (`patchkit build --tree modules/core`)"
+        object_holds_word(&here.join("runtime/core/build/runtime.dko.json"), abi),
+        "H_SVC_ABI {abi:#x} is not the runtime's SVC_ABI: rebuild the objects (`patchkit build core/runtime`)"
     );
 
     // a module with an lfo_shape key needs the service; any other module of the tree needs no more than before
@@ -285,7 +349,7 @@ fn fx_packs_to_a_dks_that_owns_effect_and_takes_nine_hooks_by_entry() {
         len: dkneeds::LEN_EFFECT,
         entry: dkm.init.unwrap(),
     }]));
-    // the nine hooks of the effect pages, each by the offset of its entry in the image (a service with hooks is bound to the firmware before it is loaded)
+    // the nine hooks of the effect pages, each by the offset of its entry in the image (the port file of the firmware lists the sites before the service is loaded)
     let hooks: Vec<_> = k.hooks().collect();
     assert_eq!(hooks.len(), 9);
     for name in [
@@ -310,11 +374,8 @@ fn fx_packs_to_a_dks_that_owns_effect_and_takes_nine_hooks_by_entry() {
     }
     let abi = u32::from_be_bytes(svc[dkneeds::H_SVC_ABI as usize..][..4].try_into().unwrap());
     assert!(
-        object_holds_word(
-            &here.join("modules/core/runtime/build/runtime.dko.json"),
-            abi
-        ),
-        "H_SVC_ABI {abi:#x} is not the runtime's SVC_ABI: rebuild the objects (`patchkit build --tree modules/core`)"
+        object_holds_word(&here.join("runtime/core/build/runtime.dko.json"), abi),
+        "H_SVC_ABI {abi:#x} is not the runtime's SVC_ABI: rebuild the objects (`patchkit build core/runtime`)"
     );
     // an effect module needs the service: its effect record is a kind of the fx service, which has no row in the runtime any more
     let user = packed(&here, "test/dyn-fx-gain", &d.join("dyn-fx-gain.dkm"));
@@ -426,5 +487,56 @@ fn a_dsp_fill_without_a_dsp_object_for_the_device_is_refused() {
     assert!(!out.status.success());
     let e = String::from_utf8_lossy(&out.stderr);
     assert!(e.contains("no DSP section that defines it"), "{e}");
+    let _ = std::fs::remove_dir_all(&d);
+}
+
+/// A service file is one file for every device: the fill of a slot that only one device has stays in it under a device mask in the flags of its `SLOTS` item
+/// (the loader skips the other device's fills), so the packs for the two devices are the same bytes.
+#[test]
+fn fills_of_one_device_each_pack_to_the_same_file_under_a_device_mask() {
+    if !toolchain() {
+        return;
+    }
+    // the two runtime devices with a SHARC DSP, from the device registry
+    let devs: Vec<_> = patchkit::devdata::all()
+        .iter()
+        .filter(|d| d.digikit_id.is_some() && d.identity.capabilities.dsp == "sharc")
+        .take(2)
+        .collect();
+    assert_eq!(devs.len(), 2, "two runtime devices with a DSP");
+    let (first, second) = (&devs[0].short, &devs[1].short);
+    let d = scratch("fills-masked");
+    let r = d.join("root");
+    building_root(&r, &|t| {
+        format!(
+            "{t}\n[[fill]]\nslot = \"voice_unpack\"\nentry = \"svc_test_hook\"\ndevices = [\"{first}\"]\n\n[[fill]]\nslot = \"frametype\"\nentry = \"svc_test_hook\"\ndevices = [\"{second}\"]\n"
+        )
+    });
+    let packs: Vec<Vec<u8>> = [first, second]
+        .iter()
+        .map(|dev| {
+            pack_for(
+                &r,
+                "test/svc-test",
+                dev,
+                &d.join(format!("svc-test-{dev}.dks")),
+            )
+        })
+        .collect();
+    assert!(packs[0] == packs[1], "the packs differ between the devices");
+    let keys_bytes = Dkm::parse(&packs[0]).unwrap().register;
+    let slots: Vec<_> = Keys::parse(&keys_bytes).unwrap().slots().collect();
+    assert_eq!(slots.len(), 2);
+    let mut masks: Vec<u32> = slots
+        .iter()
+        .map(|s| (s.flags & dkneeds::keys::SLOT_DEVICES_MASK) >> dkneeds::keys::SLOT_DEVICES_SHIFT)
+        .collect();
+    masks.sort();
+    let mut want: Vec<u32> = devs
+        .iter()
+        .map(|d| 1 << (d.digikit_id.unwrap() - 1))
+        .collect();
+    want.sort();
+    assert_eq!(masks, want, "one fill for each device");
     let _ = std::fs::remove_dir_all(&d);
 }

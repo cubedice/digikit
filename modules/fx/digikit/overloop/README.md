@@ -1,0 +1,152 @@
+# Overloop
+
+Overloop is a looper that listens all the time. It records what is heard, the master mix behind every other effect but
+PRISM's echoes (below), into a rolling record. Press ARM, change the pattern, and at the change the last cycle of the pattern that was playing becomes a
+loop: it goes on playing where the old pattern would have, the crossfader stands at LOOP, and the new pattern runs
+underneath, unheard. Turn the crossfader to LIVE to bring the new pattern in.
+
+Steps 1 to 4 of [the redesign](../../../../docs/plans/prism-overloop-redesign.md) are built: this module is step 3
+([finding 360](../../../../docs/findings/360-overloop-automatic-loop.md)), and in step 4 it carries PRISM's output past its
+crossfader and gives PRISM the loop ([finding 361](../../../../docs/findings/361-prism-loop-input-and-return.md)). Digitakt II
+OS 1.17, proven on the SHARC-only rig and on the emulated device. Nothing ran on hardware, and nobody has listened.
+
+## Playing it
+
+FUNC + FX opens the FX pages; Overloop's is one of them.
+
+| Control | Does |
+| --- | --- |
+| E: press | ARM: the next pattern change keeps the cycle that was playing. One-shot: the change uses it up. A second press takes it back |
+| E: turn | right arms, left takes the arm back (turned further it stays) |
+| H, or LEVEL | XFAD, the crossfader: 0 is LIVE (the input, untouched), 127 is LOOP (the loop alone) |
+| H: press | ARM as well, as on PRISM's page |
+| FUNC + NO | Drop the loop |
+
+The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`) above one framed waveform. The highest positive peak
+and deepest negative peak from either stereo channel share the same centre line. Each pixel column covers its own
+time interval. The display scales to the strongest peak in view, up to about eightfold visual gain for quiet phrases.
+During recording, a dashed cursor writes peaks into fixed columns from left to right over the expected cycle
+(two seconds until its length is known). The cursor wraps and replaces the previous pass one column at a time. An
+armed change freezes the captured cycle's picture with its audio. The mark on the frame follows the loop playhead.
+STOP keeps the frozen picture and DROP returns to the live view. The line below
+shows the cycle length or capture limit. On the bottom row, E is `ARM` and H is `XFAD`; the bar between them shows the
+crossfade as heard.
+
+What happens, case by case:
+
+- **A change at the pattern's end** (the usual one): the loop is the cycle that just ended, to the block. What is heard
+  after the change is what was heard one cycle earlier. A pattern queued early in the cycle changes nothing until it is
+  heard: up to then what is played live is heard ([finding 365](../../../../docs/findings/365-loop-transport-and-playing-pattern.md)).
+- **A direct change in the middle of a pattern** (direct start or direct jump): the loop is the last L frames before the
+  step where the new pattern begins, L the length of the last whole cycle. It starts in the middle of a bar and goes on
+  from there.
+- **Less than one cycle since START:** L is the frames a step has taken so far times the pattern's steps; the loop holds
+  what was heard before START as well (the record runs while the transport is stopped). Frames from before the module
+  was loaded are silence.
+- **A change while the transport is stopped** takes no loop, and the arm stays for the next change while it plays.
+- **STOP** (or a pause) fades the loop out over 256 frames (5 ms, eased), and while the transport is stopped the input
+  passes as at LIVE: what is played live (the keys, CANOPY, the input) is heard wherever XFAD stands. The loop, XFAD and
+  an arm are kept; PRISM at INPT LOOP hears silence. **START** begins the loop again at its first frame with the
+  pattern's first step, faded in over 256 frames, to where XFAD stands. **CONTINUE** after a pause goes on where the loop
+  stood, in time with the pattern, which goes on where it paused too.
+- **A tempo change after the capture** leaves the loop its recorded length.
+- **Arming again while a loop plays** is allowed: the next change keeps what is heard then, the new pattern and
+  whatever of the old loop the crossfader mixes in. If that change comes sooner than about half its cycle after the
+  one before, the earliest part of the new loop is silence (the record in the other buffer is still being filled).
+- **A cycle longer than the buffers** (21.5 s: 128 steps below about 89 BPM) is cut to its last 21.5 s. The page says
+  `LAST 21.5 S ONLY` while armed and `CUT TO ITS LAST PART` on the loop.
+- With the crossfader at LIVE the loop is silent and stays ready. It stays until the next armed change replaces it or
+  it is dropped.
+
+The crossfader, the armed state and the loop are not kit values: they are the same in every kit and do not change at a
+pattern change. Nothing of Overloop is saved; after a restart there is no loop and the crossfader is at LIVE.
+
+A kit saved with an earlier Overloop holds values for its four old knobs (REC, START, FADE, LENGTH). They are not read
+any more: the kit loads as any kit does and changes nothing in Overloop.
+
+## How it works
+
+```
+ input (the master mix) ──┬──────────────────────────────► x (1 - XFAD) ──┐
+                          │                                               ├──► rolling record (the other buffer)
+                          │        loop ──► seam ──► x XFAD ──────────────┘          │
+                          │                              └──► tap (PRISM's input)    ├──► output
+ PRISM's output (the wet mailbox) ──► x +10 dB x the master volume ramp ─────────────┘
+```
+
+- **Two buffers** of 1,032,192 frames (21.5 s) from `core/loop-storage`: its loop lease and the second phrase bank
+  (PRISM's tape is the first). One holds the rolling record. An armed change freezes it as the loop and the record goes
+  on in the other one, where the frames heard before the change are filled in from the loop's buffer, a block each
+  block, so that a second change soon after the first finds them. Both descriptors are checked every block; no address is embedded.
+- **The boundary** comes from `core/pattern-position`: a step boundary begins with the block whose record counts it, as
+  the notes of that step do, so the loop is a whole number of blocks and is exactly what was heard. The record carries
+  the pattern whose step begins there (the playing pattern, not the one the sequencer schedules a step ahead from). A
+  boundary of another pattern is the change; a boundary of another start generation is a START. No hook into the
+  firmware was added.
+- **The transport:** the record's RUNNING flag and raw transport (0 stopped, 2 paused). At the first record that does not
+  run, the loop's phase is kept (for a CONTINUE) and the loop side fades out; at the first boundary after the transport
+  runs again it begins (at its first frame, or after a pause where it stood) and fades in. The fade is
+  `OL_TFADE_FRAMES` (256), the weight a·a·(3 - 2a) applied to the crossfader. The status shows `LS_STOPPED` meanwhile.
+  If the position stream expires, the loop side also fades out and the recorded loop stays available.
+- **A record that comes again or late** (on the device a frame of the link comes twice or late when the ColdFire's block
+  interrupt is held off; the position receiver then keeps the last good record, [finding 363](../../../../docs/findings/363-loop-link-jitter.md)):
+  the recording runs through gaps in the send sequence while the musical boundaries remain consecutive. A single new
+  boundary takes effect in the block that delivers it, so gaps away from the cycle edges leave its length exact.
+  An expired record (750 repeated blocks), invalid position, backwards send sequence or skipped musical boundary
+  ends the run. The next usable boundary starts a new run while ARM stays on.
+- **The seam:** the last 480 frames of the loop run into the 480 frames before its start, so the turn is as it was
+  recorded. For a pattern that repeats those are the same samples, and the turn is exact.
+- **The crossfader:** output = input + (loop - input) * XFAD, moving by at most 1/256 a frame. LIVE passes the input
+  bit for bit; LOOP is the loop alone. At an armed change it jumps to LOOP in the block of the change.
+- **PRISM's output:** while this engine runs, PRISM gives its output to the wet mailbox instead of the FX return; the engine
+  adds it after the crossfader and after the record, at the master stage's gain for it (its +10 dB and the volume ramp,
+  sample by sample; the ramp is read from two words of the stock master, anchors `dsp.master.value.volume_ramp.*`). PRISM
+  is heard in full at every crossfader position, and the loop never holds PRISM's echoes. The master's compressor,
+  overdrive and clip do not act on it. Without this engine PRISM goes to the FX return as before.
+- **The tap** is the loop times the crossfader, divided by the master's gain at the block's end (at most 1024 times): the
+  loop at the level of the mix before the master stage. PRISM reads it in the next block, and the loop count in its flags.
+- **The controls** are held by `core/loop-control`, outside the kit; the fx service hands them to the engine as the
+  parameter words of the effect's row. The engine publishes its status there; the tap and the wet mailbox are
+  `core/loop-storage`'s, which PRISM also requires (`sdk/dsp/contract/dk_loop.inc`). A new engine goes on counting loops
+  from its status, so a loop taken after a restart always has a new count.
+- **The page** is `core/loop-display`.
+
+Sources: `src/dsp/overloop.s` (the engine), `src/overloop.h` (its state and the constants that can be tuned),
+`src/module.c` (the effect's declaration).
+
+## Verification
+
+```bash
+pnpm nx:pilot run digikit/overloop:test-rig        # the engine on the SHARC-only rig, 45 cases, about 15 s
+pnpm nx:pilot run core/loop-control:test-host      # the control home
+pnpm nx:pilot run core/loop-display:test-host      # the page: keys, turns, the texts of every state
+pnpm nx:pilot run digikit/overloop:test-device     # the emulated Digitakt II: an armed change, a queued one, the transport
+pnpm nx:pilot run digikit/overloop:pack            # the package for the Digitakt II
+```
+
+`tests/loop.rig.test.ts` runs the assembled engine behind the production effect adapter as a master effect, with
+stand-ins for the storage descriptors, the position record, the status mailbox and the tap (`tests/provider.s`,
+`tests/loop-rig.ts`). Each case above has a number there, and the heaviest block is the `dsp_cost_fx` of `module.toml`.
+`tests/transition.device.test.ts` plays two patterns of the test instrument on the patched firmware, arms, changes the
+pattern, and compares what is heard across the change with one cycle earlier. `tests/transport.device.test.ts` queues the
+change early in the cycle and plays track 1 live after it, reads the sequencer's scheduled and playing pattern words while
+it waits, and shows where the loop takes over; then STOP, START, PAUSE and CONTINUE with the loop at LOOP. The rig models
+the change modes (sequential, direct start, direct jump), a pause and a CONTINUE, and the record of the provider before
+finding 365 (`identity: 'scheduled'`) as a control.
+
+### Listening
+
+```bash
+pnpm nx:pilot run-many -t build,cli -p sharc-rig patchkit          # the rig and patchkit binaries, once
+node modules/fx/digikit/overloop/tests/render-audio.ts out/runs/overloop-audio
+```
+
+writes `<name>-in.wav` and `<name>-out.wav` for a change at the pattern's end and for a direct change in the middle of a
+pattern, and a `README.txt` with the time of every event. The files are renders of the rig, not recordings of a device,
+and are never committed.
+
+## What is not there yet
+
+- When this engine faults or is switched off while PRISM gives it its output, PRISM's block of that moment is not heard
+  (0.7 ms); PRISM is back on the FX return in the next block, faded in over that block.
+- Nothing ran on hardware, and nobody has listened.

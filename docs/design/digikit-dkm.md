@@ -1,6 +1,6 @@
 # The `.dkm` module file
 
-Status: built, 2026-10-16 (packer `packages/patchkit/src/dkm.rs`, loader `modules/core/runtime/src/rs/src/loader/mod.rs`). Plan:
+Status: built, 2026-10-16 (packer `packages/patchkit/src/dkm.rs`, loader `runtime/core/src/rs/src/loader/`). Plan:
 `docs/plans/digikit-runtime.md` (Module file, Load sequence). Runtime: `docs/design/digikit-runtime.md`. Store the file lives in:
 `docs/design/digikit-store.md`.
 
@@ -19,7 +19,7 @@ deterministic: the same object gives the same bytes.
 
 ## Format
 
-All integers are big endian. The file must fit the device's staging buffer: DT2 permits 256 KiB and DN2 64 KiB. Each device object owns an aligned allocation of exactly that size; the runtime reads larger files in native reads of at most 64 KiB, then verifies the complete SHA-256 before loading. Offsets are from the start of the
+All integers are big endian. The file is at most 128 KiB in v0 (the runtime's staging buffer). Offsets are from the start of the
 file; the loaded image starts at a 16-byte aligned file offset.
 
 | Offset | Size | Field |
@@ -65,6 +65,7 @@ the DSP section (16-byte aligned), padding to 16, then the image.
   references between the module's own sections are resolved by the packer (the base cancels), and a PC-relative reference to an
   import is refused by the packer (the distance to the firmware would depend on where the module is loaded).
 - **Header table** (`table_off`, layout in `sdk/sdk.toml` `[limits.format]` and `packages/dkneeds/src/keys.rs`): magic `DKTB`, a version, then tagged entries: NEEDS (services and versions), USES (`(resource id, count)`: the `[uses]` lines of `module.toml` for this device and `record_bytes`), KEYS (`(kind, n, keys)`), and the entries of a service module (KINDS, SLOTS, HOOKS, EXPORTS, RESOURCES). The machine and effect keys are hashes the packer computes from the packed name and the id (`register.rs`: `machine_key`, `effect_id`). The machine, parameter, page and effect records are not in the file: `init` declares them and the runtime builds them at commit (`docs/design/digikit-registry.md`).
+  In a service's `EXPORTS` entry, bit 31 of the image offset marks an owner-bound export. Bit 30 together with bit 31 identifies the reserved `dk_service_query_v1` entry. The latter stays outside card import resolution, and the packer records runtime 0.11.2 as a hard minimum. Legacy bound exports have bit 30 clear.
 - **Image**: the linked bytes at base 0; every word named by a relocation holds `S + A` (symbol offset plus addend) for kind 0 and
   `A` for kind 1.
 
@@ -101,13 +102,15 @@ It does not read the image, the tables' entries, the records' bodies or the DSP 
 
 Names that are capacity kinds (`[capacity.kinds]` of `sdk/sdk.toml`) are in the unit of that kind's CAPACITY entry, so "fits" is need <= limit - used, with the largest free block for the arena and the DSP area.
 
-Who calls it: the DIGIKIT menu (`modules/core/apps/digikit-menu`, on the card's files, once per open of the menu); patchkit (`patchkit needs [--json] FILE.dkm...`, and a `needs` line of `dkm-info`);
+Who calls it: the DIGIKIT menu (`runtime/apps/digikit-menu`, on the card's files, once per open of the menu); patchkit (`patchkit needs [--json] FILE.dkm...`, and a `needs` line of `dkm-info`);
 `patchkit.wasm` (`pk_needs`, read by the Transfer page through `apps/web/src/modules/dkneeds.ts`); the Python tools through the command line (`tools/device/dkneeds.py`: `dk run`, `module:check`, `dktransfer`). The arithmetic exists once.
 
-The rule that compares the needs with a device is `fits_now` (docs/plans/what-fits.md; `dkrt_fit` in `modules/core/runtime/fit`, vectors in `modules/core/runtime/vectors/fit-vectors.json`; the compare and the needs are each written once, in Rust: the web app calls the compare through `pk_fit` and the tools through `patchkit fit --json -`): the staging buffer holds the file, a module record and a selection path are free,
+The rule that compares the needs with a device is `fits_now` (docs/plans/what-fits.md; `dkrt_fit` in `runtime/core/fit`, vectors in `runtime/core/vectors/fit-vectors.json`; the compare and the needs are each written once, in Rust: the web app calls the compare through `pk_fit` and the tools through `patchkit fit --json -`): the staging buffer holds the file, a module record and a selection path are free,
 the DSP range (with up to `DSP_ALIGN - 8` bytes for alignment) is at most the largest free range, the arena holds the module's block and the block of its DSP image together (each block at most the largest free block), and every row count is at most
 limit - used. A kind that a device's CAPACITY lacks is not judged.
-The `inferred needs` tests of `modules/core/runtime/tests/capacity/inferred/inferred-needs.device.test.ts` (full tier) load a set of run-time modules and fixtures alone, coupled, and compare
+
+The key rules (`Keys::first_repeat`, `first_shared_key`, `first_missing_key`: the planner's and the reload's) are asked by the Transfer page before an upload through `pk_keys_check` of `patchkit.wasm` (`keyWarnings` in `packages/workbench-core/src/modules/fit.ts`): a key the file has twice, a key of another module that is on the card, a key of the version on the card that the new file lacks. They show as `keys` events of the install, which only warn: the device refuses the module itself.
+The `inferred needs` tests of `runtime/core/tests/capacity/inferred/inferred-needs.device.test.ts` (full tier) load a set of run-time modules and fixtures alone, coupled, and compare
 CAPACITY and MODULES with `needs_of` of the file (rows of a DSP module come in after the DSP acknowledges). The Rust tests of `dkneeds` cover the arithmetic and malformed files (truncated sections, absurd counts, every cut of a file).
 
 ## DSP section
@@ -251,13 +254,13 @@ reader still takes. A test of the SDK crate edits every word of the canonical se
 also used by the tests of `dkneeds` and patchkit) and holds both readers to one answer. The runtime's scan (the MODULES page of the DIGIKIT menu) and the
 hosts read with it: `patchkit needs` and `dump`, the wasm `pk_needs`, and through them `dk run`, `module:check` and the
 Transfer page give a V2 file its needs. The types and the track instances of its instruments are resources like the rows:
-`INSTRUMENT_ROWS` and `INSTRUMENT_TRACKS` are fields of `Needs`, CAPACITY kinds 17 and 18 (`[capacity.kinds]`) and resources 7
+`INSTRUMENT_ROWS` and `INSTRUMENT_TRACKS` are fields of `Needs`, CAPACITY kinds 18 and 19 (`[capacity.kinds]`) and resources 7
 and 8 of a module's `USES` (`[records.resources]`), which the packer writes from the DSP section (a module does not declare them).
 The fit rule (`dkrt_fit`), the boot plan and the menu's scan (`DkrtScan.need_instrument_rows`, `need_instrument_tracks`) count
 them: a file with more tracks than the firmware adapter admits, or a second file of instruments in one selection, is refused
 before it loads (`E_PLAN_FIT` with the kind), and the Transfer page and the menu say so. The owner takes one file of instruments
 a boot: the `largest` of `INSTRUMENT_ROWS` is what a file can still take, 0 once one is taken. A device without the adapter
-reports 0 rows. `INSTRUMENT_STATE` (bytes, a part of `DSP_AREA`) is said by the hosts only. `modules/machines/canopy/tests/needs.device.test.ts`
+reports 0 rows. `INSTRUMENT_STATE` (bytes, a part of `DSP_AREA`) is said by the hosts only. `modules/machine/digikit/canopy/tests/needs.device.test.ts`
 compares the needs with CAPACITY after a load and reads the MODULES row.
 `needs_of`, the reader without instruments, still rejects V7/V8.
 
@@ -312,7 +315,7 @@ implementation of it. The runtime's loader is checked in the emulator (`tools/pa
 
 ## Open
 
-- Streaming load for files above the device staging limit; compression.
+- Streaming load for files over 128 KiB; compression.
 - Signing: the sha256 is an integrity check, not authentication (the store is on the user's own card).
 - Pages and `own_dsp` machine records (Digitone II, lane B).
 - The selector word of a run-time type (finding 32, open).

@@ -39,6 +39,13 @@ export interface CheckRow {
 }
 
 /** The rows of the Checks step; the runtime version joins the label of "Patched". */
+/**
+ * Whether the flashed image leaves a runtime to follow up on (bind the card's services, install the default modules): a patch with the runtime, not a
+ * restore and not a patch without it (`imageId` is the id the runtime's INFO reports, null when there is no runtime).
+ */
+export const leavesRuntime = (p: Pick<PreparedFlash, 'restore' | 'imageId'>): boolean =>
+  !p.restore && p.imageId !== null;
+
 export function checkRows(p: PreparedFlash): CheckRow[] {
   return p.checks.map((c) => {
     let label = CHECK_LABELS[c.name] ?? c.name;
@@ -60,7 +67,7 @@ export const shortSha = (sha: string): string => `${sha.slice(0, 4)}…`;
 /** The .syx file name of the image that can be downloaded. */
 export function imageFileName(p: PreparedFlash): string {
   const name = deviceNameOf(p.device);
-  return `${name.replace(/\s+/g, '_')}_OS${p.os}${p.restore ? '' : `+digikit-${p.runtime ?? 'runtime'}`}.syx`;
+  return `${name.replace(/\s+/g, '_')}_OS${p.os}${p.restore ? '' : p.runtime ? `+digikit-${p.runtime}` : '+patched'}.syx`;
 }
 
 // ---- the device ----------------------------------------------------------------------------------------------------------------
@@ -73,6 +80,8 @@ export interface DeviceFacts {
   model: DeviceId | undefined;
   /** The OS version the stock firmware reports (SoftwareVersion), when it answered. */
   os?: string;
+  /** Stock base of the loaded emulator; physical targets do not report it. */
+  baseSha256?: string;
   /** The runtime version, when the digikit runtime answered INFO. */
   runtime?: string;
   /** The id of the flashed image INFO reports. */
@@ -110,8 +119,15 @@ export function matchView(p: PreparedFlash | undefined, dev: DeviceState): Match
   if (d.model !== p.device) {
     return { state: 'mismatch', text: `This is a ${have}. The image is for a ${want}: it would not start.` };
   }
+  if (d.baseSha256 !== undefined && d.baseSha256 !== p.shaStock) {
+    return { state: 'mismatch', text: 'Load the same stock firmware on the Emulator page before flashing this image.' };
+  }
   const os = d.os ? `The device runs OS ${d.os}. ` : '';
-  const installs = `The image installs OS ${p.os}${p.restore ? ' (stock)' : ` with digikit runtime ${p.runtime ?? ''}`.trimEnd()}.`;
+  const installs = p.restore
+    ? `The image installs OS ${p.os} (stock).`
+    : leavesRuntime(p)
+      ? `The image installs OS ${p.os} with digikit runtime ${p.runtime ?? ''}.`.replace(' .', '.')
+      : 'This flash installs no digikit runtime.';
   return { state: 'match', text: 'matches the image', os: `${os}${installs}` };
 }
 
@@ -138,7 +154,9 @@ export type FlashState =
       flashing?: boolean;
     }
   | { phase: 'stopped'; reason: 'cancelled' | 'error'; sent: number; total: number; message: string; unit?: 'bytes' }
-  | { phase: 'rebooting'; stage: 'leaving' | 'returning' | 'asking'; sinceMs: number; nowMs: number; rpc?: true }
+  | ({ phase: 'rebooting'; sinceMs: number; nowMs: number; rpc?: true } & (
+      { stage: 'leaving' | 'returning' } | { stage: 'asking'; setup?: { text: string; fraction?: number } }
+    ))
   | { phase: 'done'; message: string; lines: string[] }
   | { phase: 'failed'; code: FailCode; message: string };
 
@@ -227,12 +245,15 @@ export type Verdict = { ok: true; message: string; lines: string[] } | { ok: fal
  */
 export function judge(p: PreparedFlash, a: Answer): Verdict {
   const name = deviceNameOf(p.device);
-  if (p.restore) {
+  // an image without a runtime (a restore, or a patch like the Syntakt's first step) ends when the stock OS answers and no runtime does
+  if (!leavesRuntime(p)) {
     if (a.runtime) {
       return {
         ok: false,
         code: 'still-runtime',
-        message: `The device still runs the digikit runtime ${a.runtime}. The stock image did not take effect: look at the device screen, then send it again.`,
+        message: p.restore
+          ? `The device still runs the digikit runtime ${a.runtime}. The stock image did not take effect: look at the device screen, then send it again.`
+          : `The device still runs the digikit runtime ${a.runtime}, but this image has none. The new image did not take effect: look at the device screen, then send it again.`,
       };
     }
     if (a.os !== p.os) {
@@ -244,7 +265,9 @@ export function judge(p: PreparedFlash, a: Answer): Verdict {
     }
     return {
       ok: true,
-      message: `Restarted · stock OS ${p.os}, no runtime`,
+      message: p.restore
+        ? `Restarted · stock OS ${p.os}, no runtime`
+        : `Restarted · OS ${p.os}, patched without a runtime`,
       lines: [`${name} reports OS ${a.os}`, 'No digikit runtime answers.'],
     };
   }

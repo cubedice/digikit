@@ -17,7 +17,7 @@ from tools.patchkit import patchkit, port_resolve
 ROOT = Path(__file__).resolve().parents[2]
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 FIXTURE = ROOT / "tests/regression/fixtures/canopy-load-bracket"
-ADAPTER = ROOT / "modules/core/adapters/instrument-play/src/cf"
+ADAPTER = ROOT / "image-modules/adapters/instrument-play/src/cf"
 
 
 def test_actual_load_bracket_captures_and_rolls_back(tmp_path):

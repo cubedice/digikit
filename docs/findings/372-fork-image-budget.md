@@ -40,7 +40,7 @@ transport and the keyboard mapper (`kb_process`, `mt_prepare_mapped`) under the 
 
 ## CANOPY's wavetables
 
-`src/dsp/wavetables.s` equals `modules.machines.canopy.tools.wavetables.assembly()`. Its 46,360 samples (92,720 bytes) are
+`src/dsp/wavetables.s` equals `modules.machine.digikit.canopy.tools.wavetables.assembly()`. Its 46,360 samples (92,720 bytes) are
 five tables of eight frames of seven mip levels with a guard sample. Each of the 280 levels, as quantized, is exactly
 antisymmetric: `w[N-n] = -w[n]` for every n, and `w[0]`, `w[N/2]` and `w[N]` are 0. So 22,760 samples (45,520 bytes)
 determine the tables exactly. The package was 147,768 bytes in the install record; 131,072 needs 16,696 fewer.

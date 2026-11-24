@@ -1,6 +1,6 @@
 """The seam between the image adapters core/instrument-play, core/midi-events, core/keyboard-panel and services/instrument.dks
 (docs/plans/fork-image-diet.md): the generated files are current and every forwarder is a symbol of its image object. That CANOPY
-needs the service is a test of modules/machines/canopy."""
+needs the service is a test of modules/machine/digikit/canopy."""
 
 import json
 import subprocess
@@ -9,7 +9,7 @@ import tomllib
 
 from support.paths import REPO_ROOT
 
-SEAM = REPO_ROOT / "modules/core/services/instrument/seam.toml"
+SEAM = REPO_ROOT / "services/instrument/seam.toml"
 FIRMWARE = REPO_ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 
@@ -22,7 +22,7 @@ def test_the_generated_seam_files_are_current():
         [
             sys.executable,
             "-m",
-            "modules.core.services.instrument.tools.seam",
+            "services.instrument.tools.seam",
             "--check",
         ],
         cwd=REPO_ROOT,
@@ -39,9 +39,9 @@ def defined(obj):
 
 def test_each_forwarder_is_in_its_image_object_and_no_moved_function_stays_there():
     objs = {
-        "core/instrument-play": "modules/core/adapters/instrument-play/build/play-cf.dko.json",
-        "core/midi-events": "modules/core/adapters/midi-events/build/midi-events-cf.dko.json",
-        "core/keyboard-panel": "modules/core/adapters/keyboard-panel/build/keyboard-panel-cf.dko.json",
+        "core/instrument-play": "image-modules/adapters/instrument-play/build/play-cf.dko.json",
+        "core/midi-events": "image-modules/adapters/midi-events/build/midi-events-cf.dko.json",
+        "core/keyboard-panel": "image-modules/adapters/keyboard-panel/build/keyboard-panel-cf.dko.json",
     }
     for vec in spec()["vector"]:
         names = [e[0] for e in vec["entries"]]

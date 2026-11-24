@@ -1,0 +1,45 @@
+diff --git a/packages/patchkit/src/dkmsynth.rs b/packages/patchkit/src/dkmsynth.rs
+index ff16146e8..c020351aa 100644
+--- a/packages/patchkit/src/dkmsynth.rs
++++ b/packages/patchkit/src/dkmsynth.rs
+@@ -295,6 +295,8 @@ pub fn synth(spec: &Spec, dev: &str, models: &Models, decl: Option<&Dko>) -> Res
+                 relocs: vec![],
+                 voices,
+                 fxs: vec![],
++                instruments: vec![],
++                executable: vec![],
+             }
+             .encode()
+         }
+@@ -306,6 +308,7 @@ pub fn synth(spec: &Spec, dev: &str, models: &Models, decl: Option<&Dko>) -> Res
+         stereo: false,
+         gate: false,
+         service: None,
++        served: vec![],
+     };
+     let max = if spec.oversize {
+         usize::MAX
+@@ -379,10 +382,11 @@ mod tests {
+         );
+         let d = Dkm::parse(&f).unwrap();
+         assert_eq!(d.name, "cap/a");
+-        // the loader allocates image + bss: code 4 + pad 100
+-        assert_eq!((d.image.len(), d.bss), (104, 4096));
++        // The four-byte stub owns a full cache line before writable padding.
++        assert_eq!((d.image.len(), d.bss), (116, 4096));
+         assert_eq!(&d.image[..4], &[0x70, 0x00, 0x4e, 0x75]);
+-        assert!(d.image[4..].iter().all(|b| *b == 0xa5));
++        assert!(d.image[4..16].iter().all(|b| *b == 0));
++        assert!(d.image[16..].iter().all(|b| *b == 0xa5));
+         assert_eq!(d.init, Some(0));
+         assert!(d.register.len() == dkneeds::keys::HEAD && d.dsp.is_empty());
+         // deterministic
+@@ -468,7 +472,7 @@ mod tests {
+ 
+     #[test]
+     fn an_oversize_file_needs_the_flag_and_bad_specs_are_refused() {
+-        let big = "name = \"cap/big\"\npad = 70000\n";
++        let big = "name = \"cap/big\"\npad = 270000\n"; // over the DT2 staging buffer and the SDK maximum (`max_file`)
+         let e = synth(&Spec::parse(big).unwrap(), "dt2", &models(), None).unwrap_err();
+         assert!(e.0.contains("runtime stages"), "{}", e.0);
+         let f = make(&format!("{big}oversize = true\n"), "dt2");

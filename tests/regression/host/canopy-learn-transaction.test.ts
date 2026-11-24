@@ -9,7 +9,7 @@ const executable = path.join(directory, 'learn-transaction');
 
 beforeAll(() => {
   const root = path.resolve(import.meta.dirname, '../../..');
-  const source = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
+  const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
   execFileSync(
     'cc',
     [

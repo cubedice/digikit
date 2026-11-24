@@ -1,0 +1,20 @@
+diff --git a/packages/patchkit/src/bind.rs b/packages/patchkit/src/bind.rs
+index 67645ddc0..6033fd2de 100644
+--- a/packages/patchkit/src/bind.rs
++++ b/packages/patchkit/src/bind.rs
+@@ -1385,6 +1385,7 @@ mod tests {
+                 fills: vec![],
+                 dsp_fills: vec![],
+             }),
++            served: vec![],
+         };
+         pack_keys(None, &table, &[], &o).unwrap()
+     }
+@@ -1846,6 +1847,7 @@ mod tests {
+             stereo: false,
+             gate: false,
+             service: None,
++            served: vec![],
+         };
+         let dkm = pack_keys(None, &table, &[], &o).unwrap();
+         let e = bind(&dkm, &[], &Registry::default(), &[]).unwrap_err();

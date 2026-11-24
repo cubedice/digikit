@@ -21,7 +21,7 @@ beforeAll(() => {
       },
     );
   rlib('dkneeds', 'packages/dkneeds/src/lib.rs', needs);
-  rlib('dkrt_sdk', 'modules/core/runtime/sdk/src/lib.rs', library, ['--extern', `dkneeds=${needs}`]);
+  rlib('dkrt_sdk', 'runtime/core/sdk/src/lib.rs', library, ['--extern', `dkneeds=${needs}`]);
   execFileSync(
     'rustc',
     [

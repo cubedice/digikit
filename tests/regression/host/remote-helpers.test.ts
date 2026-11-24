@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { beforeEach, expect, test, vi } from 'vitest';
-import type { DkSession } from '@digi/dk-session';
+import { HOST_COUNT, HOST_DIR_MAGIC, HOST_DIR_READY, HOST_ID, type DkSession } from '@digi/dk-session';
 import { emulatorClock, type Session } from '@digi/test-support';
 import { withWaitApi, type PatchedSession } from '../support.ts';
 
@@ -42,7 +42,12 @@ import {
   type RuntimePlan,
 } from '../runtime/runtime-plan.ts';
 import { fakeClock } from './fake-status.ts';
-import { readAboutRows, expectRuntimeAbout, providerFailureLine } from '../runtime/runtime-menu.ts';
+import {
+  readAboutRows,
+  expectRuntimeAbout,
+  providerFailureLine,
+  rootProviderFailures,
+} from '../runtime/runtime-menu.ts';
 import { openRuntimeAbout } from '../runtime/flows/menu.ts';
 
 const patchedSha256 = 'c'.repeat(64);
@@ -51,11 +56,25 @@ const plan: RuntimePlan = {
   base: { device: 'dt2', version: '1.17', syx_sha256: 'a'.repeat(64) },
   modules: ['core/runtime@0.1.0', 'core/digikit-menu@0.1.0'],
   symbols: {
-    'core/digikit-menu@0.1.0:DK_ABOUT': 4096,
-    'core/digikit-menu@0.1.0:DK_ABOUT_N': 8192,
     'core/runtime@0.1.0:DKRT_BOOT': 12288,
+    'core/runtime@0.1.0:DKRT_HOST_DIR': 16384,
   },
 };
+/** The menu is part of the system package: its statics are found through the host directory (`DKRT_HOST_DIR`, a resident symbol). */
+const ABOUT_AT = 4096;
+const ABOUT_N_AT = 8192;
+const DIRECTORY_AT = 16384;
+const directory = Buffer.alloc(4 * (3 + HOST_COUNT));
+directory.writeUInt32BE(HOST_DIR_MAGIC, 0);
+directory.writeUInt32BE(HOST_COUNT, 4);
+directory.writeUInt32BE(HOST_DIR_READY, 8);
+directory.writeUInt32BE(ABOUT_AT, 12 + 4 * HOST_ID.MENU_ABOUT);
+directory.writeUInt32BE(ABOUT_N_AT, 12 + 4 * HOST_ID.MENU_ABOUT_N);
+/** The word of the directory at `address`, or undefined outside it. */
+const directoryWord = (address: number): number | undefined =>
+  address >= DIRECTORY_AT && address < DIRECTORY_AT + directory.length
+    ? directory.readUInt32BE(address - DIRECTORY_AT)
+    : undefined;
 const session = {
   options: { device: 'dt2', firmware: '1.17' },
   dsp: 'sharc',
@@ -351,20 +370,23 @@ test('negative setup installs natively on its own device-set daemon without patc
   // the module is read to upload it and to find the services it needs
   expect(fake.read).toHaveBeenCalledWith(expect.stringMatching(/dt2\/remote\.dkm$/));
   expect(calls).toEqual(['put', 'verifyFile', 'select', 'restart', 'waitForBoot', 'modules']);
-  expect(dk.put.mock.calls[0]?.[0]).toBe('modules/remote.dkm');
-  expect(dk.verifyFile.mock.calls[0]?.[0]).toBe('modules/remote.dkm');
-  expect(dk.select).toHaveBeenCalledExactlyOnceWith(['modules/remote.dkm']);
+  expect(dk.put.mock.calls[0]?.[0]).toBe('modules/tool/digikit-remote.dkm');
+  expect(dk.verifyFile.mock.calls[0]?.[0]).toBe('modules/tool/digikit-remote.dkm');
+  expect(dk.select).toHaveBeenCalledExactlyOnceWith(['modules/tool/digikit-remote.dkm']);
 });
 
 test('ABOUT reads are bounded and assert the live protocol runtime identity without a Python formatter', async () => {
-  const memPeek = vi.fn().mockResolvedValue(25);
+  const memPeek = vi.fn(async (address: number) => directoryWord(address) ?? 25);
   const menuSession = { client: { memPeek } } as unknown as Session;
   await expect(readAboutRows(menuSession, plan)).rejects.toThrow('invalid ABOUT row count');
-  expect(memPeek.mock.calls).toEqual([[8192]]);
+  expect(memPeek.mock.calls.at(-1), 'the count is the last read: no row is read for an invalid count').toEqual([
+    ABOUT_N_AT,
+  ]);
   const rows = ['DIGIKIT 0.1.0', 'RUNTIME 0.2.5', 'BOOT: 1 OF 1 OK', 'RAM KEPT: NO'];
   const bytes = Buffer.from(rows.map((row) => row.padEnd(24, '\0')).join(''), 'latin1');
-  memPeek.mockImplementation(async (address: number) =>
-    address === 8192 ? rows.length : bytes.readUInt32BE(address - 4096),
+  memPeek.mockImplementation(
+    async (address: number) =>
+      directoryWord(address) ?? (address === ABOUT_N_AT ? rows.length : bytes.readUInt32BE(address - ABOUT_AT)),
   );
   const info = vi.fn().mockResolvedValue({ runtime: 0x205 });
   await expect(expectRuntimeAbout(menuSession, { info } as unknown as DkSession, plan, '/artifacts')).resolves.toEqual(
@@ -436,7 +458,7 @@ function fakeRuntime(client: Record<string, unknown>, dk: Record<string, unknown
 }
 
 test('ABOUT refuses stale content before pressing YES', async () => {
-  const memPeek = vi.fn().mockResolvedValue(4);
+  const memPeek = vi.fn(async (address: number) => directoryWord(address) ?? 4);
   const rt = fakeRuntime({ memPeek }, {});
   await expect(openRuntimeAbout(rt, plan, '/artifacts')).rejects.toThrow('ABOUT buffer is empty');
   expect(rt.session.client.inputTap).not.toHaveBeenCalled();
@@ -451,8 +473,10 @@ test('ABOUT returns only the complete snapshot after the new open', async () => 
   let counts = 0;
   const memPeek = vi.fn(async (address: number) => {
     // Pre-open is empty; after the open the buffer fills: identity only, then BOOT, then the final RAM row (each poll reads the count twice).
-    if (address === 8192) return opened ? [2, 3, 4][Math.min(Math.floor(counts++ / 2), 2)]! : 0;
-    return bytes.readUInt32BE(address - 4096);
+    const dir = directoryWord(address);
+    if (dir !== undefined) return dir;
+    if (address === ABOUT_N_AT) return opened ? [2, 3, 4][Math.min(Math.floor(counts++ / 2), 2)]! : 0;
+    return bytes.readUInt32BE(address - ABOUT_AT);
   });
   const rt = fakeRuntime(
     { memPeek, inputTap: vi.fn(async () => ((opened = true), {})) },
@@ -591,4 +615,18 @@ test('a provider refused by the declare-check names the item that differs', () =
   expect(e(-79, 0x00000006, 4)).toBe('provider mach res -79 E_DECL_KIND (KINDS 00000006 not in the header)');
   expect(e(-79, 0x12345678, 0)).toBe('provider mach res -79 E_DECL_KIND');
   expect(e(-7, 0x12345678, 0)).toBe('provider mach res -7 E_IMPORT');
+});
+
+test('a provider refused for a failed need is dropped only when that need failed with a cause of its own', () => {
+  const index = 0xffff_fffe;
+  const line = (res: number, hash: number) => ({ args: [index, res >>> 0, 0x73766320, hash, 0] });
+  const port = line(-90, 0xaaaa); // the port file: its own cause
+  const dependent = line(-73, 0xaaaa); // a service refused for the port file: the line names the port file's hash
+  const other = line(-73, 0xbbbb); // refused for a need that is not a failed provider of the log
+  expect(rootProviderFailures([port, dependent])).toEqual([port]);
+  expect(rootProviderFailures([dependent, port, other])).toEqual([port, other]);
+  expect(rootProviderFailures([dependent])).toEqual([dependent]);
+  // two refusals with a cause of their own both stay
+  const second = line(-7, 0xbbbb);
+  expect(rootProviderFailures([port, second, other, dependent])).toEqual([port, second]);
 });

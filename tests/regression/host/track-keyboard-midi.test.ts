@@ -7,7 +7,7 @@ import { test } from 'vitest';
 test('USB and DIN claim native routes, pair keys, clean up sustain, and scope selectors', () => {
   const directory = mkdtempSync(join(tmpdir(), 'digikit-track-midi-'));
   const root = resolve(import.meta.dirname, '../../..');
-  const module = join(root, 'modules/core/adapters/track-keyboard');
+  const module = join(root, 'image-modules/adapters/track-keyboard');
   const binary = join(directory, 'midi');
   try {
     execFileSync(

@@ -9,7 +9,7 @@ beforeAll(() => {
   binary = path.join(dir, 'test');
   panelBinary = path.join(dir, 'panel');
   const root = path.resolve(import.meta.dirname, '../../..');
-  const src = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
+  const src = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
   execFileSync(
     'cc',
     [
@@ -20,11 +20,11 @@ beforeAll(() => {
       '-fsanitize=undefined',
       '-fno-pie',
       '-no-pie',
-      '-I' + path.join(root, 'modules/core/fw/include'),
+      '-I' + path.join(root, 'ports/bindings/include'),
       '-I' + path.join(root, 'sdk/include'),
       path.join(import.meta.dirname, 'canopy-native.c'),
       ...['src-state.c', 'src-display.c', 'src-lock-packed.c', 'status.c', 'preset.c'].map((p) => path.join(src, p)),
-      path.join(root, 'modules/core/adapters/machines/src/cf/dt2/src-pages.c'),
+      path.join(root, 'image-modules/points/machines/src/cf/dt2/src-pages.c'),
       '-o',
       binary,
     ],

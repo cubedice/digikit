@@ -26,15 +26,15 @@ import {
   type CardOptions,
   type SelRecord,
 } from './card-kit.ts';
-import { cachedCard, cachedCardId, cardKey, fileSha } from './card-cache.ts';
+import { cachedCard, cachedCardId, cardSpecKey, fileSha } from './card-cache.ts';
 import { uploadStore } from './device-data.ts';
 import { bounded, options, rpc, SETTLE } from './fx-live.ts';
 import { drainInputs, withPausedFxProtocol } from './fx-session.ts';
 import { emulatorDk, pollEmulated } from './waits.ts';
 import { record } from './artifacts.ts';
 import { FIRMWARE, FULL_TIER, claimRunDir, selectDevices, skipEmptyHalf } from './devices.ts';
-import { moduleArtifact } from './install.ts';
-import { boundService, neededServices, requireCoupledForServices, servicePath } from './service-files.ts';
+import { moduleArtifact, moduleStorePath } from './install.ts';
+import { neededServices, portFile, requireCoupledForServices, servicePath } from './service-files.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { RING_SYMBOLS } from './runtime-menu.ts';
 import {
@@ -57,6 +57,7 @@ import {
   withoutOwn,
 } from './write-safety.ts';
 import { rootsOf } from './image-roots.ts';
+import { systemPackageSectors } from './system-package.ts';
 
 /**
  * The one card fixture of the runtime device tests (settings, round trip, equiv, debug, card, crash, safe mode and upload): an owned daemon
@@ -67,7 +68,7 @@ import { rootsOf } from './image-roots.ts';
 
 /** The runtime image of the Python scenarios (`B.RT`). */
 export const RT = rootsOf('rt');
-/** Runtime variables the card scenarios read or poke (`DKRT_BOOT` is always planned). */
+/** Runtime variables the card scenarios read or poke (`DKRT_BOOT` and the host directory `DKRT_HOST_DIR`, which holds the addresses of the package's statics, are always planned). */
 export const CARD_SYMBOLS = ['DKRT_CARD', 'DKRT_CRASH', 'DKRT_MAILBOX', 'DKRT_STATE', ...RING_SYMBOLS];
 /** The test knob `DKRT_STORE_CAP` keeps every sector from here to header B out of the allocations (a DN2 store of 20 GiB then fits INFO's 32 bits). */
 export const CAP_SECTORS = 0x40000;
@@ -85,7 +86,7 @@ export interface CardRigOptions {
   roots?: string[];
   /** The image has no runtime (a patched-in module only): no `DKRT_BOOT`, no runtime readiness; the case is ready 300 emulated ms after the stock firmware's ready point. */
   plain?: boolean;
-  /** Plan symbols besides `DKRT_BOOT`. */
+  /** Plan symbols besides `DKRT_BOOT` and `DKRT_HOST_DIR`. */
   symbols?: string[];
   /** Daemon environment besides the write watch; it overrides the watch's variables. A function gets the prepared runtime plan when the daemon starts. */
   env?: Record<string, string> | ((prepared: PreparedRuntimePlan) => Record<string, string>);
@@ -94,7 +95,7 @@ export interface CardRigOptions {
   /** Configure coupled audio without loading stock firmware before the first explicit baseline. */
   startEmpty?: boolean;
   /** The first card: a function that gives its spec (default a blank store card) or `small`, a blank 1 MiB file (a test sets `DIGI_CARD_IDENTITY=small`). */
-  initial?: 'small' | (() => CardSpec);
+  initial?: 'small' | ((rig: { mod: (id: string, as?: string) => { name: string; file: string } }) => CardSpec);
   /** Seed every card with the stock firmware's project (Python `Env.card`). */
   project?: boolean;
   /** Uploads and project writes are part of the scenario: the card writes may be the store range and the firmware project sectors only (`common_checks_upload`). */
@@ -133,7 +134,7 @@ export interface CardRig {
   readonly overlays: readonly string[];
   /** The protocol session of the last `pausedBoot`. */
   readonly dk: DkSession;
-  /** A module for a card: store path `modules/<as>.dkm` (default the last part of `id`) and its prepared .dkm. */
+  /** A module for a card: store path `modules/<kind>/<as>.dkm` (default `modules/<kind>/<author>-<name>.dkm`, `moduleStorePath`) and its prepared .dkm. */
   mod(id: string, as?: string): { name: string; file: string };
   /** A file below `cfg/` for a card (the fault and crash modules read their delay from it). */
   cfg(name: string, bytes: Uint8Array): { name: string; file: string };
@@ -153,8 +154,8 @@ export interface CardRig {
   ): Promise<TestRuntime>;
   /** Poll until the UI loop was reached (and the boot is safe mode when `safe`); returns the boot's fields. */
   ready(safe?: boolean): Promise<Awaited<ReturnType<typeof bootInfo>>>;
-  /** A protocol restart (the card and its guest writes stay); returns the runtime of the new boot, settled. */
-  restart(runtime: PatchedSession): Promise<TestRuntime>;
+  /** A protocol restart (the card and its guest writes stay); returns the runtime of the new boot, settled. `coreOnly`: the new boot never reaches the runtime UI, so it is not settled on it: the call returns once the new boot is installed (a new epoch), and `ready(true)` proves its boot info. */
+  restart(runtime: PatchedSession, o?: { coreOnly?: boolean }): Promise<TestRuntime>;
   /** Run protocol calls on the paused daemon (the transport steps the emulator). */
   usb<T>(runtime: PatchedSession, run: (dk: DkSession) => Promise<T>): Promise<T>;
   /** The card the guest left: `base` (default the card booted last) with the overlay of its writes laid over a copy (Python `card_after`). */
@@ -181,6 +182,8 @@ export interface CardRig {
   applyCap(): Promise<void>;
   /** INFO's free bytes of a card with no store: used 1, room for a one-entry table (cut by the cap). */
   freeFresh(): number;
+  /** INFO's free bytes of a card whose store holds the system package only: `freeFresh` less the package's sectors and the table sector beside it. */
+  freeWithPackage(): number;
   /** One request and its reply, whatever the status. `version` sends the request raw with that protocol version byte. */
   request(cmd: number, body?: Uint8Array, version?: number): Promise<{ status: number; body: Uint8Array }>;
   /** The status of one request. */
@@ -224,7 +227,7 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
   const cardServices = new Set<string>();
   const epochs = new Set<number>();
   const extra = new Set(o.storeExtra ?? []);
-  const symbols = [...(o.plain ? [] : ['DKRT_BOOT']), ...(o.symbols ?? [])];
+  const symbols = [...(o.plain ? [] : ['DKRT_BOOT', 'DKRT_HOST_DIR']), ...(o.symbols ?? [])];
 
   const baseline = (cardImage: string, deliverExceptions = o.deliverExceptions): RuntimeBaseline => {
     if (o.roots && !prepared.preparedImage)
@@ -252,7 +255,7 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
     return file;
   };
   const mod = (id: string, as?: string) => ({
-    name: `modules/${as ?? id.split('/').at(-1)}.dkm`,
+    name: moduleStorePath(device, id, as),
     file: moduleArtifact(device, id),
   });
   /**
@@ -262,17 +265,18 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
   const build = async (session: Session, tag: string, spec: CardSpec = {}) => {
     const { modules = [], name: _name, ...rest } = spec;
     const files = modules.map((m) => (typeof m === 'string' ? mod(m) : m));
-    // the services that these modules need go on the card too, bound to the stock firmware (`service-files.ts`)
+    // the services that these modules need go on the card too, as packed, with the port file of the firmware (`service-files.ts`)
     // only the files of `modules/` are modules: samples, other data and the service files of a test have no NEEDS
     const needed = neededServices(files.filter((m) => m.name.startsWith('modules/')).map((m) => m.file));
-    const services = await Promise.all(
-      needed
-        .filter((n) => !files.some((m) => m.name === servicePath(n.service)))
-        .map(async (n) => ({
-          name: servicePath(n.service),
-          file: await boundService(device, n, moduleArtifact(device, n.moduleId)),
-        })),
-    );
+    const services: { name: string; file: string }[] = needed
+      .filter((n) => !files.some((m) => m.name === servicePath(n.service)))
+      .map((n) => ({ name: servicePath(n.service), file: moduleArtifact(device, n.moduleId) }));
+    // the port file the services resolve their firmware names from (a test that lists its own port file keeps it)
+    if (
+      (services.length || files.some((m) => m.name.startsWith('services/'))) &&
+      !files.some((m) => m.name.startsWith('ports/'))
+    )
+      services.push(portFile(device));
     requireCoupledForServices([...files, ...services], o.dsp);
     for (const n of needed) cardServices.add(n.service);
     const options = {
@@ -282,12 +286,7 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
     };
     const base = options.base ? cachedCardId(options.base) : undefined;
     if (options.base && !base) return buildCard(device, { ...options, dir: freshDir(session, tag) });
-    const key = cardKey(device, {
-      ...options,
-      syx: options.syx ? fileSha(options.syx) : undefined,
-      modules: options.modules.map((m) => ({ name: m.name, sha: fileSha(m.file) })),
-      base,
-    });
+    const key = cardSpecKey(device, { ...options, base });
     return cachedCard(key, (work) => buildCard(device, { ...options, dir: work, name: 'card' }));
   };
 
@@ -332,7 +331,7 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
         if (o.initial === 'small') {
           image = path.join(freshDir(session), 'small-card.img');
           fs.writeFileSync(image, Buffer.alloc(1 << 20)); // blank; the identity, not the file, sets the capacity
-        } else image = await build(session, 'initial', o.initial?.());
+        } else image = await build(session, 'initial', o.initial?.({ mod }));
         return baseline(image);
       },
       finishCase: async (runtime) => {
@@ -476,13 +475,23 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
       );
       return bootInfo(session, prepared.plan);
     },
-    async restart(runtime) {
+    async restart(runtime, { coreOnly = false } = {}) {
       const { session } = runtime;
       const before = Number((await bounded(() => session.status())).epoch);
       await rpc(session, 'run.mode', { mode: 'free' });
       await bounded(() => runtime.dk.restart());
       runtime.dk.cancelPending();
       const dk = emulatorDk(session);
+      if (coreOnly) {
+        // a core-only boot draws the reason frame and keeps the stock firmware: no runtime UI to settle on; the new boot is the new epoch
+        cap = undefined;
+        await pollEmulated(session, async () => Number((await session.status()).epoch) > before, Boolean, {
+          emulatedMs: 120_000,
+          intervalMs: 500,
+          message: 'the restarted core-only boot was installed',
+        });
+        return withWaitApi({ session, dk, close: runtime.close });
+      }
       // This controller can answer throughout the guest reset: settle proves the fresh ready epoch/UI hook.
       cap = undefined;
       // The reset boots to the boot window again and no daemon press answers it, so the rig answers it before its UI checks, as `Session.start` and `reloadRuntimeBaseline` do:
@@ -600,6 +609,7 @@ export function cardRig(device: Device, scope: string, o: CardRigOptions = {}): 
       }
     },
     freeFresh: () => Math.min(((cap ?? rig.store.limit) - 2) * 512, 0xffffffff),
+    freeWithPackage: () => rig.freeFresh() - systemPackageSectors() * 512,
     async request(cmd, body = new Uint8Array(), version) {
       if (!stepping) throw new Error('no protocol session: boot with pausedBoot');
       if (version === undefined) return stepping.dk.request(cmd, body);

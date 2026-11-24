@@ -7,7 +7,7 @@ import { test } from 'vitest';
 test('native due trigs feed bounded phrases and recorder commits retain input timing', () => {
   const directory = mkdtempSync(join(tmpdir(), 'digikit-track-sequence-'));
   const root = resolve(import.meta.dirname, '../../..');
-  const module = join(root, 'modules/core/adapters/track-keyboard');
+  const module = join(root, 'image-modules/adapters/track-keyboard');
   const binary = join(directory, 'sequence');
   try {
     execFileSync(

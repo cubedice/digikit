@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 use dkrt_sdk::{proto::*, *};
 use std::sync::atomic::{AtomicI32, AtomicU32, Ordering};
-#[path = "../../../modules/core/runtime/src/rs/src/settings.rs"]
+#[path = "../../../runtime/core/src/rs/src/settings.rs"]
 mod settings;
 static ERROR: AtomicI32 = AtomicI32::new(0);
 static WRITES: AtomicU32 = AtomicU32::new(0);

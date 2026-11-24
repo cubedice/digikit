@@ -77,6 +77,10 @@
    "owner": "ts:packages/sharc-rig-kit",
    "purpose": "Directory of the conformance reports of the SHARC-only rig (default dist/conformance-rig of the worktree)"
   },
+  "DIGI_CONFORM_ROOT": {
+   "owner": "ts:packages/sharc-rig-kit",
+   "purpose": "Single module root scanned by a scoped merge conformance rig target"
+  },
   "DIGI_COUPLED_DSP_EXPORT": {
    "owner": "rust:packages/emulator",
    "purpose": "Output file path: the pinned coupled ready workload test writes the DSP export there"
@@ -409,6 +413,22 @@
    "owner": "rust:packages/emulator",
    "purpose": "Hex guest ranges LO-HI or LO+LEN; logs CPU loads from them with the PC and per-byte load counts (read-watch instrument)."
   },
+  "DIGI_REMOTE_AUDIO_INPUT": {
+   "owner": "rust:apps/desktop",
+   "purpose": "Exact stereo input name or ID for the opt-in desktop USB audio monitor test"
+  },
+  "DIGI_REMOTE_AUDIO_OUTPUT": {
+   "owner": "rust:apps/desktop",
+   "purpose": "Expected default output device name for the desktop USB audio monitor test"
+  },
+  "DIGI_REMOTE_AUDIO_REQUIRE_SIGNAL": {
+   "owner": "rust:apps/desktop",
+   "purpose": "1 requires a nonzero signal on both monitored channels during the hardware test"
+  },
+  "DIGI_REMOTE_AUDIO_SECONDS": {
+   "owner": "rust:apps/desktop",
+   "purpose": "Duration in seconds of each playback check in the desktop USB audio monitor test"
+  },
   "DIGI_RENDER_CACHE": {
    "owner": "python:tests/devtools",
    "purpose": "Set to 0 to turn off the render cache of tools/devtools/render_cache.py."
@@ -452,6 +472,10 @@
   "DIGI_SHARC_CORE_STORE": {
    "owner": "python:tools/devtools",
    "purpose": "Directory of the core library store instead of <git common dir>/sharc-core-cache (tests only)"
+  },
+  "DIGI_SHARC_PGO_INSTRUMENT_STORE": {
+   "owner": "python:tools/devtools",
+   "purpose": "Directory of the instrumented core library store of PGO training instead of <git common dir>/sharc-core-pgo-instrument (tests only)"
   },
   "DIGI_SHARC_RIG": {
    "owner": "ts:packages/sharc-rig-kit",
@@ -500,6 +524,10 @@
   "DIGI_STORAGE_FAULT_ISR_SYX": {
    "owner": "rust:packages/patchkit",
    "purpose": "Path to the stock DT2 image for the storage fault ISR patchkit Rust test."
+  },
+  "DIGI_SYMBOL_DB_OUT": {
+   "owner": "rust:apps/desktop",
+   "purpose": "Directory containing cfdb and sharcdb for the opt-in desktop symbol source test"
   },
   "DIGI_USB_TRACE": {
    "owner": "rust:packages/emulator",

@@ -39,7 +39,7 @@ has not been made, and the optimized firmware has not been installed. [O]
 
 ## The main loop during the load
 
-Measured in the emulator on 2026-11-18 (DT2 1.17, the image of `modules/fx/prism/tests/coexistence.device.test.ts`:
+Measured in the emulator on 2026-11-18 (DT2 1.17, the image of `modules/fx/digikit/prism/tests/coexistence.device.test.ts`:
 CANOPY, Overloop, PRISM and the remote module selected): a restart of the runtime, with the daemon's status (program
 counter, instruction count, main-loop hits) read about every 1.9 ms of emulated time through the boot.
 

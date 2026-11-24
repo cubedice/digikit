@@ -30,15 +30,15 @@ export const deviceNameOf = (id: string): string => (deviceIds.includes(id) ? re
 /** The short label of a device on a card (the id in upper case). */
 export const deviceShort = (id: string): string => id.toUpperCase();
 
-/** The names of the runtime devices as prose: "A and B" (`and`) or "A or B" (`or`). */
-export function deviceNamesText(conj: 'and' | 'or'): string {
-  const names = runtimeDeviceIds.map(deviceNameOf);
+/** The names of `ids` (default: the runtime devices) as prose: "A and B" (`and`) or "A or B" (`or`). The site passes its own list (apps/web/src/firmware/site-policy.ts). */
+export function deviceNamesText(conj: 'and' | 'or', ids: readonly string[] = runtimeDeviceIds): string {
+  const names = ids.map(deviceNameOf);
   return names.length < 2 ? (names[0] ?? '') : `${names.slice(0, -1).join(', ')} ${conj} ${names[names.length - 1]}`;
 }
 
-/** The newest firmware release of each runtime device that the site can patch (it has a boot profile), as prose: "A OS 1.2 or B OS 3.4". */
-export function newestReleasesText(): string {
-  return runtimeDeviceIds
+/** The newest firmware release of each device of `ids` (default: the runtime devices) that the site can patch (it has a boot profile), as prose: "A OS 1.2 or B OS 3.4". */
+export function newestReleasesText(ids: readonly string[] = runtimeDeviceIds): string {
+  return ids
     .flatMap((id) => {
       const newest = deviceProfiles[id]?.firmware.filter((f) => f.main_sha256).at(-1);
       return newest ? [`${deviceNameOf(id)} OS ${newest.version}`] : [];
@@ -48,6 +48,12 @@ export function newestReleasesText(): string {
 
 /** Is `id` a device of the registry? */
 export const isDeviceId = (id: string): id is DeviceId => deviceIds.includes(id);
+
+/** The device id from a firmware INFO port, reported as `<id>` or `<id>-<version>`. */
+export function deviceOfInfoPort(port: string): DeviceId | undefined {
+  const id = port.split('-')[0] ?? '';
+  return isDeviceId(id) ? id : undefined;
+}
 
 /** Which device a MIDI port name belongs to: the first word of a device name in the port name ("Elektron A II" is the device named "A II"). */
 export function deviceOfPort(port: string): DeviceId | undefined {

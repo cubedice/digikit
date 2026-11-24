@@ -20,7 +20,7 @@ The name literal has no other use in the Ping branch. The same dispatcher also b
 Payload after the type byte 0x81: `u8 blobLen`, the blob of advertised request types (DT2 1.16: 44 commands, finding 25 and MIDI-SYSEX-RPC.md section "Device-advertised command set" **[V]**), then NUL-terminated strings. The first string after the blob is the model name. The DT2 1.16 emulator reply is 66 payload bytes and DN2 1.11 is 41 (finding 25). **[D]**
 The branch builds a second string after the name: DT2 from the object at 0x4099d5a4 (`FUN_400c1160`), DN2 at 0x405ce878 (`FUN_400bb790`), Syntakt at 0x40653420 (`FUN_4006f264`). Its content is not read (hardware revision or serial?). The byte 0x2a, 0x2b or 0x1e that follows is not decoded. **[O]**
 The blob sizes 44, 22 and 22 fit the advertised sets: the DN2 has no StorageSpace handler (finding 25) and the Syntakt has no FsSample handlers (finding 142). Not checked against a DN2 1.12 or Syntakt reply **[O]**: the emulator has no recorded Ping reply for those two.
-A client must not depend on the blob or the trailing bytes: read `blobLen`, skip the blob, take the first NUL-terminated string.
+A client must not depend on the blob or the trailing bytes: read `blobLen`, skip the blob, take the first NUL-terminated string. **[C]** A real Syntakt 1.42 reply (emulator, 2026-11-19) is length-prefixed: `u8 rest` in front of the plain layout, `rest` being the number of bytes after the `blobLen` byte. The payload is `1e 16 <22 request types> "Syntakt" 00` (32 bytes, `1e` = 22 + 8). A reader tells the layouts apart by the framing (the first byte is the payload length minus two) and reads the name as the first NUL-terminated string after the blob (`parsePing`, `flash_rpc::parse_ping`; vectors in `tests/fixtures/ping-vectors.json`). The layout of the DT2 and DN2 replies is not rechecked **[O]**.
 
 ## SoftwareVersion
 
@@ -41,6 +41,6 @@ Request has no payload. Reply: NUL-terminated strings `"00"`, `"79"`, `"1.16"` o
 - packages/dk-session/src/identify.ts holds `RPC_PING`, `RPC_SOFTWARE_VERSION`, `parsePing`, `parseSoftwareVersion` and `identifyDevice`. connection-core.ts (packages/workbench-core/src/transfer) re-exports them.
 - `identifyDevice` sends Ping first and takes the model name from the reply. It matches the name with the registry. Then it sends SoftwareVersion for the OS version. Then it sends one INFO with a 2.5 s timeout and one retry; E_BUSY is retried. Only a lost INFO reply means "no runtime".
 - When Ping is silent, the id comes from the `port` field of the INFO reply. When Ping is silent and INFO is lost too, `identifyDevice` throws.
-- The desktop samples backend (apps/desktop/ui/src/samples-backend.ts) and tools/devtools/wb.mjs identify devices with `identifyDevice`.
+- The [desktop Samples session](../../apps/desktop/ui/src/samples/device-session.ts) and tools/devtools/wb.mjs identify devices with `identifyDevice`.
 - `askSession` (firmware-ask.ts) and `osVersion` / `probeInfo` (transfer-backend.ts) use `parseSoftwareVersion` for the OS only. The Firmware page's `askDevice` returns `model` only from INFO (`info.port`), so it names no stock device.
 - `RpcPort.rpc(type, payload, timeoutMs)` carries the Ping request unchanged.

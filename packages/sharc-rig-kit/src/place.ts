@@ -8,29 +8,29 @@ import path from 'node:path';
 import { SLOTS, STOCK_BP, TABLE, TYPE_CACHE, FRAME, PARAM_REC, RELEASE, UNPACK_BP } from './context.ts';
 import { ROOT } from './rig.ts';
 import { ConformError, type MachineSpec } from './spec.ts';
-import { assembleSource, link, sharcIncludeDirs, type Linked, type SharcObject } from './toolchain.ts';
+import { assembleSource, link, sharcIncludeDirs, stripSpans, type Linked, type SharcObject } from './toolchain.ts';
 
 export const CODE_BASE = 0xb90000;
 export const DATA_BASE = 0x200a0000; // byte address of the first data symbol (free L2)
 export const DATA_END = 0x20100000;
 
 /** The adapter's sources of a device, assembled as separate objects that see each other's data symbols. */
-const DSP = path.join(ROOT, 'modules/core/adapters/dsp-voice/src/dsp');
+const DSP = path.join(ROOT, 'image-modules/points/dsp-voice/src/dsp');
 const WRAPPER: Record<string, string[]> = {
-  dt2: [path.join(DSP, 'dsp-voice.s'), path.join(ROOT, 'modules/core/services/machines/dks/dsp/dispatch-dt2.s')],
+  dt2: [path.join(DSP, 'dsp-voice.s'), path.join(ROOT, 'services/machines/dks/dsp/dispatch-dt2.s')],
   dn2: [
     path.join(DSP, 'dsp-voice-dn2.s'),
     path.join(DSP, 'dsp-voice-dn2-stereo.s'),
-    path.join(ROOT, 'modules/core/services/machines/dks/dsp/dispatch-dn2.s'),
+    path.join(ROOT, 'services/machines/dks/dsp/dispatch-dn2.s'),
   ],
 };
-const FX_DSP = path.join(ROOT, 'modules/core/adapters/fx/src/dsp');
+const FX_DSP = path.join(ROOT, 'image-modules/points/fx/src/dsp');
 const FX_ADAPTER = path.join(FX_DSP, 'fx.s');
 const FX_SEND: Record<string, string> = { dt2: path.join(FX_DSP, 'fxsend.s'), dn2: path.join(FX_DSP, 'fxsend-dn2.s') };
 /** The dispatch code of the fx service for a device (master chain and send route). */
 const FX_DISPATCH: Record<string, string> = {
-  dt2: path.join(ROOT, 'modules/core/services/fx/dks/dsp/fx-dt2.s'),
-  dn2: path.join(ROOT, 'modules/core/services/fx/dks/dsp/fx-dn2.s'),
+  dt2: path.join(ROOT, 'services/fx/dks/dsp/fx-dt2.s'),
+  dn2: path.join(ROOT, 'services/fx/dks/dsp/fx-dn2.s'),
 };
 const FX_FIXED_OBJECTS = 3; // the adapter's stub, the send stub and the dispatch object
 
@@ -180,18 +180,18 @@ function externsFixed(device: string): Record<string, number> {
 const built = new Map<string, MachineBuilt>();
 
 /** Assemble, place and link the wrapper and the module's DSP sources (cached per spec). */
-export function buildMachine(sp: MachineSpec): MachineBuilt {
-  const key = JSON.stringify([sp.module, sp.device, sp.sources, sp.entry, sp.noteOn, sp.desc]);
+export function buildMachine(sp: MachineSpec, withoutSpans = false): MachineBuilt {
+  const key = JSON.stringify([sp.module, sp.device, sp.sources, sp.entry, sp.noteOn, sp.desc, withoutSpans]);
   let b = built.get(key);
-  if (!b) built.set(key, (b = buildMachineUncached(sp)));
+  if (!b) built.set(key, (b = buildMachineUncached(sp, withoutSpans)));
   return b;
 }
 
-function buildMachineUncached(sp: MachineSpec): MachineBuilt {
+function buildMachineUncached(sp: MachineSpec, withoutSpans: boolean): MachineBuilt {
   const wrappers = WRAPPER[sp.device]!;
   const nwrap = wrappers.length;
   const objs = [
-    ...wrappers.map((w) => assembleSource(w, includeDirs(moduleAround(w)!))),
+    ...wrappers.map((w) => assembleSource(w, includeDirs(moduleAround(w)!), withoutSpans ? stripSpans : undefined)),
     ...sp.sources.map((s) => assembleSource(s, includeDirs(sp.moddir))),
   ];
   const layout = placeData(objs, DATA_BASE);
@@ -267,26 +267,26 @@ export interface FxBuilt {
 const fxBuilt = new Map<string, FxBuilt>();
 
 /** Assemble, place and link the adapter, the send hook of the device and the effect sources (cached). */
-export function buildFx(sources: readonly string[], device: 'dt2' | 'dn2' = 'dt2'): FxBuilt {
-  const key = JSON.stringify([device, sources]);
+export function buildFx(sources: readonly string[], device: 'dt2' | 'dn2' = 'dt2', withoutSpans = false): FxBuilt {
+  const key = JSON.stringify([device, sources, withoutSpans]);
   let b = fxBuilt.get(key);
-  if (!b) fxBuilt.set(key, (b = buildFxUncached(sources, device)));
+  if (!b) fxBuilt.set(key, (b = buildFxUncached(sources, device, withoutSpans)));
   return b;
 }
 
 /** A DSP source of an effect: its module's directories and the SDK's, or the SDK's alone for a source outside a module. */
-function fxObject(file: string): SharcObject {
+function fxObject(file: string, withoutSpans = false): SharcObject {
   const mod = moduleAround(file);
   const sdk = [path.join(ROOT, 'sdk/dsp/contract'), path.join(ROOT, 'sdk')];
-  return assembleSource(file, mod ? includeDirs(mod) : sdk);
+  return assembleSource(file, mod ? includeDirs(mod) : sdk, withoutSpans ? stripSpans : undefined);
 }
 
-function buildFxUncached(sources: readonly string[], device: 'dt2' | 'dn2'): FxBuilt {
+function buildFxUncached(sources: readonly string[], device: 'dt2' | 'dn2', withoutSpans: boolean): FxBuilt {
   const objs = [
     fxObject(FX_ADAPTER),
     fxObject(FX_SEND[device]!),
-    fxObject(FX_DISPATCH[device]!),
-    ...sources.map(fxObject),
+    fxObject(FX_DISPATCH[device]!, withoutSpans),
+    ...sources.map((s) => fxObject(s)),
   ];
   const layout = placeData(objs, DATA_BASE);
   let { end: addr } = layout;

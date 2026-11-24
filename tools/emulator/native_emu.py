@@ -18,6 +18,7 @@ perf:pgo` retrains it (or launch once with DIGI_EMU_PGO_TRAIN=1).
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import pathlib
 import subprocess
@@ -141,22 +142,16 @@ def default_audio_args(
     the app opens empty and uses --audio-profile-syx only for its audio profile.
     """
     args = [] if args is None else list(args)
-    positional = next(
-        (
-            value
-            for index, value in enumerate(args)
-            if not value.startswith("--")
-            and (index == 0 or args[index - 1] not in VALUE_OPTIONS)
-        ),
-        None,
-    )
-    syx = pathlib.Path(positional) if positional else digi_env.firmware()
+    positional = positional_firmware(args)
+    syx = positional or digi_env.firmware()
     device = digi_env.device_for_syx(syx) or "dn2"
     if device not in digi_env.READY_DIRS:
         # A device with no DSP (no ready inputs, no generated core): ColdFire-only build; its audio, if any, is the peer's.
         return args
     paths = digi_env.ready_inputs(device=device)
-    if positional and device != "dn2":
+    # A patched build of the stock firmware (a runtime image) boots from the positional file while its audio state is the stock firmware's (the device whose snapshot is built from the stock firmware alone does the same): the
+    # snapshot is only valid for the firmware it was taken from (the daemon refuses another one: "snapshot was taken from different firmware").
+    if positional and device != "dn2" and not ready_is_of_another_firmware(paths, syx):
         paths["firmware"] = syx
     card = (
         pathlib.Path(args[args.index("--card-image") + 1])
@@ -205,6 +200,19 @@ def default_audio_args(
     if "--audio-buffer" not in args:
         args.extend(["--audio-buffer", "0.3"])
     return args
+
+
+def ready_is_of_another_firmware(
+    paths: dict[str, pathlib.Path], syx: pathlib.Path
+) -> bool:
+    """True when the ready directory records (`SOURCE.json`, written by ready.py) another firmware than `syx`. A directory that records nothing is not known to differ."""
+    try:
+        recorded = json.loads(
+            (paths["CF snapshot"].parent / "SOURCE.json").read_text()
+        )["syx_sha256"]
+    except (OSError, KeyError, ValueError):
+        return False
+    return recorded != hashlib.sha256(syx.read_bytes()).hexdigest()
 
 
 def ready_for(
@@ -280,7 +288,9 @@ def has_peer_audio(data: device_data.Device) -> bool:
     return "peer_audio" in data.emulator
 
 
-def cargo_command(args: list[str], pgo: object | None = None) -> list[str]:
+def cargo_command(
+    args: list[str], data: device_data.Device | None, pgo: object | None = None
+) -> list[str]:
     """The cargo command line; pgo is a native_pgo.LaunchPlan for the PGO build.
 
     The app holds no generated core, so it builds into the no-core target dir.
@@ -304,7 +314,7 @@ def cargo_command(args: list[str], pgo: object | None = None) -> list[str]:
         # It has its own target dir: switching devices does not rebuild the shared nogen one.
         features = [CF_PROFILE]
         variant = CF_PROFILE_VARIANT
-        if has_peer_audio(launch_device(syx_from_args(args))):
+        if data and has_peer_audio(data):
             features.insert(0, "play")
             variant = f"play-{CF_PROFILE_VARIANT}"
         command.extend(["--features", ",".join(features)])
@@ -323,6 +333,16 @@ def device_for_args(args: list[str]) -> str:
     else:
         syx = digi_env.firmware()
     return (digi_env.device_for_syx(syx) if syx else None) or "dn2"
+
+
+# What a training takes (measured on a lane, 2026-11-20). Warm: host build and instrumented library are in the
+# lane and the store, so only the runs and the merge are left. Cold: the instrumented library and host builds
+# (DN2 library 11 min, DT2 library 2.5 min, host builds 2 to 3 min each) are added; a full cold `perf:pgo` took 29 min.
+TRAIN_ESTIMATE = {
+    "dn2": "about 10 s warm, 13 s after an engine edit, 15 min with a cold library and host build",
+    "dt2": "about 1.5 min warm, 5 min with a cold library and host build",
+    "both": "about 4 min warm, 8 min with a cold two-core host build",
+}
 
 
 def train_profile(device: str = "dn2") -> str:
@@ -371,7 +391,8 @@ def pgo_plan(args: list[str]) -> object | None:
     Each single-core device has its own profile (`native_pgo.py train --device dt2`): a DN2
     profile gives a DT2 build only the shared-engine 3%, a DT2 profile 19%. A launch with a second engine (`--also-coupled`,
     the desktop default) has the profile of device `both` (`train --device both`), built in a target dir of its
-    own. The launcher never trains on its own. A stale or missing profile falls back
+    own; `mise run perf:pgo` trains it after dn2 and dt2, so a missing or stale `both` profile only prints
+    the notice and the launch builds without PGO. The launcher never trains on its own. A stale or missing profile falls back
     to the ordinary build (its own target dir, not the launcher's pgo-use). DIGI_EMU_PGO_TRAIN=1 trains a stale or missing
     profile here when the training inputs exist (`mise run perf:pgo` is the usual
     way); DIGI_EMU_PGO=0 skips PGO. Any failure falls back to the ordinary
@@ -396,7 +417,7 @@ def pgo_plan(args: list[str]) -> object | None:
                 detail = f"{detail}; cannot train: {blocker}"
             else:
                 print(
-                    f"native PGO: profile {status} ({detail}); training (~6 min, "
+                    f"native PGO: profile {status} ({detail}); training ({TRAIN_ESTIMATE[device]}, "
                     "DIGI_EMU_PGO_TRAIN=1)",
                     file=sys.stderr,
                     flush=True,
@@ -415,7 +436,11 @@ def pgo_plan(args: list[str]) -> object | None:
             print(native_pgo.fallback_notice(status, detail, device), file=sys.stderr)
             return None
     if status == "partial":
-        profile = native_pgo.current_profile(device)
+        profile = native_pgo.current_profile(
+            device,
+            native_pgo.device_generated(device, environ),
+            native_pgo.second_generated(environ) if device == "both" else None,
+        )
         if profile:
             note_pgo(status, detail)
             print(native_pgo.PARTIAL_NOTICE, file=sys.stderr)
@@ -666,9 +691,8 @@ def take_option(args: list[str], name: str) -> tuple[str | None, list[str]]:
     return args[i + 1], args[:i] + args[i + 2 :]
 
 
-def syx_from_args(args: list[str]) -> pathlib.Path:
-    """The firmware file the launcher will run: the first positional argument,
-    else the default."""
+def positional_firmware(args: list[str]) -> pathlib.Path | None:
+    """The firmware named on the command line, if any."""
     syx_arg = next(
         (
             v
@@ -677,7 +701,7 @@ def syx_from_args(args: list[str]) -> pathlib.Path:
         ),
         None,
     )
-    return pathlib.Path(syx_arg) if syx_arg else digi_env.firmware(os.environ)
+    return pathlib.Path(syx_arg) if syx_arg else None
 
 
 def launch_device(syx: pathlib.Path) -> device_data.Device:
@@ -709,7 +733,7 @@ def core_library_env(args: list[str], plan: object | None = None) -> dict[str, s
     from tools.emulator import native_pgo
 
     profiles = native_pgo.library_profiles(plan)  # type: ignore[arg-type]
-    own = digi_env.device_for_syx(syx_from_args(args))
+    own = digi_env.device_for_syx(positional_firmware(args) or digi_env.firmware())
     second: dict[str, str] = {}
     if "--also-coupled" in args:
         at = args.index("--also-coupled")
@@ -761,11 +785,22 @@ def main(args: list[str] | None = None) -> None:
     folder = pathlib.Path(plus_drive or samples) if (plus_drive or samples) else None
     if folder is not None and "--card-image" in args:
         raise SystemExit("--plus-drive/--samples and --card-image cannot be combined")
-    syx = syx_from_args(args)
-    data = launch_device(syx)
-    device = data.short
+    positional = positional_firmware(args)
+    syx = positional or digi_env.firmware()
+    needs_firmware = (
+        positional is not None
+        or daemon
+        or folder is not None
+        or any(option in args for option in ("--coupled", "--auto-coupled"))
+    )
+    data = launch_device(syx) if needs_firmware or syx.exists() else None
+    if data is None:
+        print(
+            f"Default firmware missing ({syx}). Opening Workbench without an audio profile.",
+            file=sys.stderr,
+        )
     # A device that is not a runtime target (no `[digikit]`) boots stock; a device without a DSP runs the ColdFire-only build.
-    if not data.runtime_target:
+    if data and not data.runtime_target:
         if "--runtime" in args:
             raise SystemExit(f"{data.name} is not a digikit runtime target: --runtime")
         if "--no-runtime" not in args:
@@ -774,22 +809,19 @@ def main(args: list[str] | None = None) -> None:
                 file=sys.stderr,
             )
             args = [*args, "--no-runtime"]
-    if folder is not None and not data.has_card():
+    if folder is not None and data and not data.has_card():
         raise SystemExit(
             f"{data.name} has no card the launcher can seed: --plus-drive/--samples"
         )
     if folder is not None:
+        assert data is not None
         if plus_drive is None and samples is None:
             print(f"+Drive: {folder}", file=sys.stderr)
         env = digi_env.rust_env(dict(os.environ))
         # A patched image gets the card of its stock base (the same card as `inject` keeps).
-        card = plusdrive_card(folder, digi_env.base_firmware(syx), env, device)
-        first_positional = any(
-            not v.startswith("--") and (j == 0 or args[j - 1] not in VALUE_OPTIONS)
-            for j, v in enumerate(args)
-        )
+        card = plusdrive_card(folder, digi_env.base_firmware(syx), env, data.short)
         args = [
-            *([] if first_positional else [str(syx)]),
+            *([] if positional else [str(syx)]),
             *args,
             "--card-image",
             str(card),
@@ -809,7 +841,7 @@ def main(args: list[str] | None = None) -> None:
     # when it holds something the card takes, and mirrors the module store to it while the emulator runs (the Card panel: files,
     # "Sync now"). --plus-drive/--samples name the folder of the first load instead (a card built here from it). --no-sync turns
     # the mirror and the export on exit off.
-    if data.has_card() and "--device-folders" not in args:
+    if (data is None or data.has_card()) and "--device-folders" not in args:
         args = [
             *args,
             "--device-folders",
@@ -819,10 +851,15 @@ def main(args: list[str] | None = None) -> None:
         args = [*args, "--mirror-dir", str(folder.resolve())]
     if force_cf and ("--coupled" in args or "--auto-coupled" in args):
         raise SystemExit("--cf-only cannot be combined with coupled audio options")
-    if not data.has_dsp() and ("--coupled" in args or "--auto-coupled" in args):
+    if (
+        data
+        and not data.has_dsp()
+        and ("--coupled" in args or "--auto-coupled" in args)
+    ):
         raise SystemExit(f"{data.name} has no DSP: coupled audio options do not apply")
     if (
-        data.has_dsp()
+        data
+        and data.has_dsp()
         and not force_cf
         and "--coupled" not in args
         and "--auto-coupled" not in args
@@ -832,7 +869,8 @@ def main(args: list[str] | None = None) -> None:
         )
     fast = None
     if "--coupled" in args or "--auto-coupled" in args:
-        generated = generated_core(args, device)
+        assert data is not None
+        generated = generated_core(args, data.short)
         if not generated.is_dir():
             raise SystemExit(
                 "--coupled needs a local generated core: SHARC_GEN_DIR_<DEV> (or SHARC_GEN_DIR) names it"
@@ -842,7 +880,7 @@ def main(args: list[str] | None = None) -> None:
     # The daemon has no window: no PGO.
     plan = None if daemon else pgo_plan(args)
     env = digi_env.rust_env({**os.environ, **(plan.env if plan is not None else {})})  # type: ignore[attr-defined]
-    command = daemon_command(args) if daemon else cargo_command(args, plan)
+    command = daemon_command(args) if daemon else cargo_command(args, data, plan)
     binary = app_binary(command, plan)
     before = binary.stat().st_mtime_ns if binary.exists() else None
     if plan is not None:
@@ -855,10 +893,10 @@ def main(args: list[str] | None = None) -> None:
         print(binary)
         return
     # Devices whose MAIN mixes the voices of a peer CPU play them (`[emulator.peer_audio]`); the other devices ignore it.
-    if not daemon and has_peer_audio(data):
+    if not daemon and data and has_peer_audio(data):
         env.setdefault("DIGI_EMU_PEER_AUDIO", "0" if force_cf else "1")
     env.update(core_library_env(args, plan))
-    if not daemon and data.has_dsp():
+    if not daemon and data and data.has_dsp():
         env.update(pgo_env())
         # Workbench default from config/emulator.json; an explicit value, including an empty one, still wins.
         context = digi_env.resolve_tiers(

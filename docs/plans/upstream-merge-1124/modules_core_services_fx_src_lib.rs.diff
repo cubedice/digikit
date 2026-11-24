@@ -1,0 +1,11 @@
+diff --git a/modules/core/services/fx/src/lib.rs b/modules/core/services/fx/src/lib.rs
+index 5b1545026..8df83a307 100644
+--- a/modules/core/services/fx/src/lib.rs
++++ b/modules/core/services/fx/src/lib.rs
+@@ -12,5 +12,6 @@ pub mod build;
+ pub mod dsp;
+ pub mod fxpage;
+ pub mod fxsend;
++pub mod phrase;
+ pub mod records;
+ pub mod slots;

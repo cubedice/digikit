@@ -4,15 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, test } from 'vitest';
 import type { Device } from '@digi/test-support';
 import { cardStore, uploadStore } from '../runtime/device-data.ts';
-import {
-  dmaHoles,
-  KIT_AREAS,
-  overlayWrites,
-  runtimeSafety,
-  runtimeWatchEnv,
-  type SafetyPolicy,
-} from '../runtime/write-safety.ts';
-import type { RuntimePlan } from '../runtime/runtime-plan.ts';
+import { KIT_AREAS, overlayWrites, runtimeSafety, type SafetyPolicy } from '../runtime/write-safety.ts';
 
 const directories: string[] = [];
 afterEach(() => {
@@ -62,40 +54,6 @@ const check = (
   return safety(device, output, [overlay], 1, policy, storeExtra, cardServices);
 };
 
-test.each([
-  ['dt2', '1.17', 0x25000], // [limits] stage_bytes of devices/digitakt-ii.toml: 148 KiB
-  ['dn2', '1.12', 0x10000],
-] as const)('DMA watch excludes the full %s stage and keeps its neighbors watched', (device, version, stageSize) => {
-  const stage = 0x47f00000;
-  const plan: RuntimePlan & { regions: Record<string, number[]> } = {
-    base: { device, version, syx_sha256: 'test' },
-    modules: ['core/runtime@0.1.0'],
-    output: null,
-    regions: { 'cf.expansion': [0x1000] },
-    symbols: {
-      'core/runtime@0.1.0:DKRT_STAGE': stage,
-      'core/runtime@0.1.0:DKRT_SECBUF': 0x47ef0000,
-    },
-  };
-  expect(dmaHoles(plan)).toEqual([
-    [0x47ef0000, 512],
-    [stage, stageSize],
-  ]);
-  const { output } = run([]);
-  const file = path.join(path.dirname(output), 'plan.json');
-  fs.writeFileSync(file, JSON.stringify(plan));
-  const ranges = runtimeWatchEnv(file, output)
-    .DIGI_WRITE_WATCH!.split(',')
-    .map((range) => range.split('-').map(Number));
-  const watched = (address: number) => ranges.some(([lo, hi]) => lo! <= address && address < hi!);
-  expect(watched(stage - 1)).toBe(true);
-  expect(watched(stage)).toBe(false);
-  expect(watched(stage + stageSize - 1)).toBe(false);
-  expect(watched(stage + stageSize)).toBe(true);
-  expect(watched(0x47ef0000)).toBe(false);
-  expect(watched(0x47ef0200)).toBe(true);
-});
-
 describe.each(['dt2', 'dn2'] as const)('runtime safety on %s', (device) => {
   const store = cardStore(device);
   const [kitLo, kitHi] = KIT_AREAS[device][0]!;
@@ -144,11 +102,7 @@ describe.each(['dt2', 'dn2'] as const)('runtime safety on %s', (device) => {
 
   test('fx-routes also allows the settings copies, and nothing else in the store', () => {
     expect(check(device, [kitLo, store.setA, store.setB], 'fx-routes').pass).toBe(true);
-    // a settings record longer than a sector uses the next sectors of its copy (16 sectors each)
-    expect(check(device, [store.setA + 1, store.setA + 15, store.setB + 1, store.setB + 15], 'fx-routes').pass).toBe(
-      true,
-    );
-    for (const sector of [kitLo - 1, kitHi, store.first, store.setA - 1]) {
+    for (const sector of [kitLo - 1, kitHi, store.first, store.setA + 1, store.setB + 1]) {
       expect(check(device, [sector], 'fx-routes').pass, `sector ${sector}`).toBe(false);
     }
   });
