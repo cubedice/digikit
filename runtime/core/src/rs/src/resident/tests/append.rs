@@ -166,7 +166,7 @@ fn the_ui_hooks_are_the_last_group_of_the_package_hooks() {
 #[test]
 fn the_appended_groups_are_the_last_ones_so_an_older_package_is_a_prefix() {
     use core::mem::{offset_of, size_of};
-    assert_eq!(RESIDENT_MINOR, 4, "this test is about the appends of 1.1 to 1.3; minor 4 appended only an entry to the `ui` group of `PackageHooks` (above): a later minor that appends to this table after `exports` needs its own case");
+    assert!(RESIDENT_MINOR >= 4, "this test is about the appends of 1.1 to 1.3; minor 4 appended only an entry to the `ui` group of `PackageHooks` (above) and minor 5 only entries inside two groups (below): a later minor that appends to this table after `exports` needs its own case");
     let pointer = size_of::<*const ()>();
     assert_eq!(offset_of!(ResidentTable, links) + pointer, offset_of!(ResidentTable, host_dir));
     assert_eq!(offset_of!(ResidentTable, host_dir) + pointer, offset_of!(ResidentTable, exports));
@@ -217,4 +217,21 @@ fn a_change_of_a_shared_view_layout_is_a_major_version() {
     let mut newer_core = copy();
     newer_core.header.major = 3;
     assert_eq!(open(&newer_core, RESIDENT_MINOR).err().map(|r| r.reason), Some(Reason::Major));
+}
+
+/// Minor 5 (the fork's instrument host in the package, docs/plans/upstream-merge-1124) appended one entry at the end of two groups: `instrument` of `LinkRows` (the
+/// image functions the host calls) and `instrument` of `Views` (the image's instrument words). A minor-4 package reads both groups as the prefix it knows; a minor-5
+/// package is refused by a minor-4 core (by the minor, before it reads a group the core built shorter).
+#[test]
+fn minor_5_appended_the_instrument_entries_at_the_end_of_links_and_views() {
+    use core::mem::{offset_of, size_of};
+    use dkrt_abi::resident::{InstrumentLinks, InstrumentViews, LinkRows, Views};
+    assert_eq!(RESIDENT_MINOR, 5, "minor 5 appended the instrument entries: a later minor needs its own case");
+    assert_eq!(offset_of!(LinkRows, instrument) + size_of::<InstrumentLinks>(), size_of::<LinkRows>());
+    assert_eq!(offset_of!(Views, instrument) + size_of::<InstrumentViews>(), size_of::<Views>());
+    let mut core_1_4 = copy();
+    core_1_4.header.minor = 4;
+    let refused = open(&core_1_4, 5).err().expect("a minor-5 package on a minor-4 core is refused");
+    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 4, 5));
+    assert!(open(&copy(), 4).is_ok());
 }

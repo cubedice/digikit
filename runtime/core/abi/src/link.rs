@@ -8,9 +8,9 @@
 //!   only. `Bulk` is a run of bytes (a buffer the caller keeps valid until the result, or bytes the queue owns); `Sequence` is a list of word writes in
 //!   order (the type or pc word last), with a rollback on failure.
 //!
-//! The windows of `core/dsp-link`: 0 is the area (byte addresses), 1 the voice rows, 2 the effect rows (word offsets). The field is 2 bits wide; window 3 is
+//! The windows of `core/dsp-link`: 0 is the area (byte addresses), 1 the voice rows, 2 the effect rows (word offsets). The field is 3 bits wide (bits 31, 30 and 29 of the header; windows 0 to 3 leave bit 29 clear); window 3 is
 //! the profiler's statistics control (P8d): `link_set` and `link_submit` refuse it for every writer; the runtime writes its two control words for the
-//! owner of the span channel only (`Link::set_stats_ctl`).
+//! owner of the span channel only (`Link::set_stats_ctl`). Window 4 is the V2 registration data of the fork, sent by the instrument host through `dl_send_owned`, not through this API.
 
 /// The most steps of one `Sequence`: an effect row takes 18.
 pub const SEQ_MAX: usize = 18;

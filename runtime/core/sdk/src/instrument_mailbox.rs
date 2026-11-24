@@ -1,6 +1,6 @@
 //! Single-owner V2 mailbox client. Logical DSP words, not host-endian wire bytes.
 //! The caller must retain this instance for the entire DSP boot and serialize all
-//! window-3 traffic through it. This does not enable V2 or schedule SPI writes.
+//! window-4 traffic through it. This does not enable V2 or schedule SPI writes.
 //! DSP lifecycle/install operations remain gated by trusted admission.
 //! This client does not establish live SPI drainage or enable audio dispatch.
 use crate::instrument_load::{Command, Loads};

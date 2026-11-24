@@ -380,8 +380,8 @@ interleaved owners, cancellation at each transfer stage, stale completions and
 retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
 `out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
 
-DSP-link now carries optional V2 registration data through window 3. The existing
-ColdFire sender encodes the fourth window, and both SHARC receivers use optional
+DSP-link now carries optional V2 registration data through window 4 (window 3 is upstream's statistics control; the window field took bit 29). The existing
+ColdFire sender encodes the fifth window, and both SHARC receivers use optional
 `_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
 providers fail closed; each write must fit the declared region. Existing frame
 suffixes and reply allocations are unchanged. Component tests execute the actual

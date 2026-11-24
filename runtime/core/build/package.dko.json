@@ -38093,7 +38093,7 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffc448d70c042d48ffd2206e000810280038660000e673e800047402b481660000e2226e000c20290044b480676a72fdc0817401b480671a70017201246effd2148115400001200a4cee0c04ffc44e5e4e754aa9004866e07001226e000cb0a9004c66d4226e000c226900402d49ffe24a8967c4226e000c2029004ce5882d40ffe6d3c02d49ffde246e000c2d4affd642aeffda600000907001226e000cb0a900486694700f226e000cb0a9004c67b46086202effe22d40fff0226e000c45e900442d52fff470013d40ffee486effee2f2effe62f290048487800032f0841eeffea4eb900000000302effea2200e08973814fef00146000ff44700372016000ff3c72016000ff3624680030d5c92213e0a91481528950807220b28066ea58aeffda58aeffd6246effd6b5eeffde67824a8a6700ff7e264a226effda428060d8",
+   "hex": "4e56ffc448d70c042d48ffd2206e000810280038660000e673e800047402b481660000e2226e000c20290044b480676a72fdc0817401b480671a70017201246effd2148115400001200a4cee0c04ffc44e5e4e754aa9004866e07001226e000cb0a9004c66d4226e000c226900402d49ffe24a8967c4226e000c2029004ce5882d40ffe6d3c02d49ffde246e000c2d4affd642aeffda600000907001226e000cb0a900486694700f226e000cb0a9004c67b46086202effe22d40fff0226e000c45e900442d52fff470013d40ffee486effee2f2effe62f290048487800042f0841eeffea4eb900000000302effea2200e08973814fef00146000ff44700372016000ff3c72016000ff3624680030d5c92213e0a91481528950807220b28066ea58aeffda58aeffd6246effd6b5eeffde67824a8a6700ff7e264a226effda428060d8",
    "kind": "text",
    "name": ".text._RNvMs1_NtCskt2sAo3rUBF_8dkrt_sdk20instrument_transportINtB5_6DriverNtNtB7_16instrument_lease8OwnedApiE13start_mailboxCs2yzMVYl0abe_4dkrt",
    "size": 322
@@ -44175,7 +44175,7 @@
    "size": 24
   }
  ],
- "source_sha256": "869a76dfc131871d38360e744eda7608915b23855f0bb353c6dbc92fdebb6052",
+ "source_sha256": "f538acc0d1b20e81644270c14f676109b448ea0a2b2892975de79a15b4f9d9cf",
  "symbols": [
   {
    "global": false,
@@ -51063,7 +51063,7 @@
  "toolchain": {
   "exports": "DKPKG_TABLE DKRT_CTXS DKRT_DSP DKRT_PROVIDERS DKRT_TABLE_BAD DKRT_TICKS dk_app_instrument_module_settings dk_app_instrument_settings_rows dk_dsp_stats_ctl dk_dsp_stats_read dk_ui_choice dk_ui_confirm dk_ui_core_handle dk_ui_menu_add_action dk_ui_menu_add_submenu dk_ui_menu_add_text dk_ui_menu_check dk_ui_menu_close dk_ui_menu_is_open dk_ui_menu_new dk_ui_menu_open dk_ui_menu_refresh dk_ui_menu_select dk_ui_stock_row dkpkg_entry dkrt_blocks dkrt_boot_info dkrt_boot_name dkrt_capacity dkrt_diag dkrt_dsp_stats_feed dkrt_fit dkrt_fx dkrt_health dkrt_image_file_abort dkrt_image_file_close dkrt_image_file_create dkrt_image_file_write dkrt_live dkrt_live_state dkrt_menu_built dkrt_menu_release dkrt_module dkrt_module_header dkrt_poll_add dkrt_poll_remove dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_service_query dkrt_settings_flush dkrt_settings_put dkrt_status",
   "instructions_redecoded": "68613",
-  "isa_check": "22d133249edb5464ee088078642d81a15c6432b363348f9375b56dff0f6faeed",
+  "isa_check": "37195c987eda31f01d0ef987b28ad85adbe72692a28b681e95806826e8670c7c",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
   "rustc_codegen_gcc": "a7d8a5227b520187e3d93c1f7fc01dd1ba8659cf",
