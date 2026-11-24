@@ -28,7 +28,7 @@ cpu = "cf"
 sig = "void (u32 len, const u8 *msg, u32 port)"
 rule = { kind = "cf_func", hash = "2a29225a7abd75aa3be8d59d049af587", offset = 0x0, len = 2 }
 mark = "D"
-users = ["core/runtime"]
+users = ["core/runtime", "core/services/track-keyboard"]
 doc = "The firmware's MIDI send `void f(u32 len, const u8 *msg, u32 port)` (DT2 1.16 FUN_401217fc): port 2 sends to USB through the TX function with the TX mutex taken. Same hash on all four images."
 
 [[site]]

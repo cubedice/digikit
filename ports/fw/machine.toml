@@ -65,7 +65,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 34, offset = 2, len = 4, sha256 = "ca5d8a04c28179478e1bfade400e12e95025fc0076ff3fc5966569ea774d805b" }
 mark = "D"
-users = ["core/instrument-play"]
+users = ["core/instrument-play", "core/services/instrument"]
 doc = "DT2 1.17 frame ISR lea operand: load the operand value, then dereference the current track-zero type byte in the SRAM machine row. It is not a selected UI track."
 
 [[fn]]
@@ -74,7 +74,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 172, sha256 = "73fa55909e763ea88f19b800ea655cb0e36fd5bae161120e37e9ea4228eba9a9", len = 172 }
 mark = "D"
-users = ["test/canopy-carrier"]
+users = ["test/canopy-carrier", "core/services/instrument"]
 doc = "DT2 1.17 stock Sound-to-track refresh: source pointer and track index on the C stack. Validates the type, caches the source, copies the parameter and machine rows, and refreshes modulation. Emulator admission proof only; caller must resolve a live Sound."
 
 [[data]]
@@ -124,7 +124,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "abb082366c00e8016d04660320944930", offset = 0x0, len = 6 }
 mark = "D"
-users = ["core/machines", "core/services/machines"]
+users = ["core/machines", "core/services/machines", "core/services/instrument"]
 doc = "DT2: returns the current track's machine type as a signed long, -1 without a track; the SRC page hook calls it."
 
 [[fn]]
@@ -256,7 +256,7 @@ sig = "void (u32 view)"
 rule = { kind = "cf_func", hash = "aba88709b609b69b6441121c296634f8", offset = 0x0, len = 8 }
 devices = ["dt2", "dn2"]
 mark = "D"
-users = ["core/dynreg"]
+users = ["core/dynreg", "core/services/instrument"]
 doc = "`void f(MachineSelectionView *)`: fills the items of the machine selection view from the list getter (it clears its items first); the view's constructor calls it once at boot. The list is cached in the view, so a reload calls it again on the stored view (the hook `cf.machine.hook.view.build` remembers the view)."
 
 [[site]]

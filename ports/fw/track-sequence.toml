@@ -166,7 +166,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 512, offset = 0, len = 512, sha256 = "eaf2117edb0f38c435154da4f0ae1af4902cee48bd7617654657b2d2d289653d" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Stock note LEN table used in both audio and MIDI dispatch."
 
 [[site]]
@@ -175,7 +175,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 26, offset = 8, len = 4, sha256 = "309a4d391c212d80c02d97b681795b6c3437bf44f1ea18413597b39ab44ce555" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "ISR operand for the stock audio mute mask."
 
 [[site]]
@@ -184,7 +184,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 26, offset = 18, len = 4, sha256 = "309a4d391c212d80c02d97b681795b6c3437bf44f1ea18413597b39ab44ce555" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "ISR operand for the stock audio solo mask."
 
 [[site]]
@@ -193,7 +193,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 26, offset = 6, len = 4, sha256 = "14dd55c695ef849bef3ef050b4ae006cdb61a183a2ade9b2633ec128cc339c3f" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "MIDI worker operand for the mute mask."
 
 [[site]]
@@ -202,7 +202,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 26, offset = 12, len = 4, sha256 = "14dd55c695ef849bef3ef050b4ae006cdb61a183a2ade9b2633ec128cc339c3f" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "MIDI worker operand for the solo mask."
 
 [[site]]
@@ -211,7 +211,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 10, len = 4, sha256 = "83ec2fec465288b0e583b2d374cfd5a691c6a0053d037bb2e99281e8fbad546e" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Operand of the UI state singleton used by native recording."
 
 [[site]]
@@ -220,7 +220,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 8, len = 4, sha256 = "9bad250f664c202703477b928ab78c77b707e6fca862142fbe4cbc57b23c91c2" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Operand of the native scheduled audio event free list."
 
 [[site]]
@@ -229,7 +229,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 = "9bad250f664c202703477b928ab78c77b707e6fca862142fbe4cbc57b23c91c2" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Reserve a native audio scheduler event with the stock allocator."
 
 [[site]]
@@ -238,7 +238,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 34, offset = 0, len = 6, sha256 = "3ce3e61a5e606f369ce31639b3fdab2edfc25b67b7840a45c6849b9c07991328" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Reserve a native parameter-lock context for one generated note."
 
 [[site]]
@@ -247,7 +247,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 34, offset = 8, len = 4, sha256 = "3ce3e61a5e606f369ce31639b3fdab2edfc25b67b7840a45c6849b9c07991328" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Operand of the native lock-context free list."
 
 [[site]]
@@ -256,7 +256,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 30, offset = 8, len = 4, sha256 = "6c9a65660ab8e57b520c849effc19a3cd9ee20b5bcdfa29714371d984d2ca5de" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Operand of the native event-bucket free list."
 
 [[site]]
@@ -265,7 +265,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 8, sha256 = "7f234554084fafd5063c27d3a7094101ffdae1dbaa9fd09b8c433202d2784e05" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Append a native immediate event after existing due events."
 
 [[site]]
@@ -274,7 +274,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 = "a6f6c4dac1558c83491e5b779ecb9be904a3e89b82baf1e6cfcbd450387afbdc" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Effective active native Sound for a track under live audition."
 
 [[site]]
@@ -310,7 +310,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 26, offset = 8, len = 4, sha256 = "4dedefcc944a837eb7d40316e064f1303279af94ad0d3272ac116d3c01b00b41" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native queued pattern operand and base for its scheduled and queued kit companions."
 
 [[site]]
@@ -319,7 +319,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "e9be0efbd468205430ab3b8996695974093d061fc7971c2473ae0db7ddc643e5" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native direct-switch target pattern operand followed by its kit."
 
 [[site]]
@@ -328,7 +328,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 32, offset = 12, len = 4, sha256 = "3f80514142e7dbb4d81c44522ac5c3a9f01a29a06db669ab7a2f9c61d2cc3bf8" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native direct-switch request flag before the sequencer accepts it."
 
 [[site]]
@@ -337,7 +337,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "7f0f47d73fa661ecf137e6668fb3978633146e397c7e10a85ed1dd40dae2b443" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native direct-switch countdown after the sequencer accepts a request."
 
 [[hook]]

@@ -22,7 +22,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "361fe837b2396c461a9d27ab769b6274faf8d3027bb8830deebb614647534a49" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Tests the active playback kit MIDI-mode bit for a track."
 
 [[fn]]
@@ -31,7 +31,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "6edaccade546e593ec95830bbd0bbd9476ae233a88f6690e056b5923c66afe74" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Reads the active MIDI-track output channel, or -1 when disabled."
 
 [[site]]
@@ -49,7 +49,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 8, len = 4, sha256 = "d65fbc623e672a90b1af0025473d2c9625ee757204e30fcf59ae843e2bfc0b8d" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native MIDI event free-list head pointer operand. Allocator pops and follows the link at +0x5c."
 
 [[site]]
@@ -58,7 +58,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 10, len = 4, sha256 = "f52227d13096d101768d66f40ebff9a1063079bebd9d08ec0fad04776cf8716f" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native MIDI event task mailbox address operand. A 64-entry ring backs audition notes."
 
 [[site]]
@@ -67,7 +67,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 10, len = 4, sha256 = "7b3099fd5c1e0ad1e02c1c641babb2c45977c09f49092eb6547ac31362b467c9" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native MIDI held-note free-list head pointer operand. The MIDI task allocates on note-on and follows the link at +0x14."
 
 [[fn]]
@@ -76,7 +76,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "2c3b2208997880e725ffea495e795550ff457912c54053516b44423303ccfb01" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Pass a 64-byte note record to the native MIDI track task without selecting the task from the current machine type."
 
 [[fn]]
@@ -85,7 +85,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 6, sha256 = "55e8feb077368a4f4f1670fc90841d0ad3cc6891c962cfaae9d6413effc4fb97" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Pass a 64-byte note record to the native audio voice task, including after a track has changed machine type."
 
 [[fn]]
@@ -94,7 +94,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 20, offset = 0, len = 8, sha256 = "c392e8fd6754990d40156a745831bb031741203e24c48242f8dd9f52cdbb709b" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Read the pending audio-event list before admitting a reserved voice."
 
 [[site]]
@@ -123,7 +123,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 6, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "MIDI note router operand for the selected track used by Auto Channel."
 
 [[site]]
@@ -132,7 +132,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "11fa7691434bcc3697a196c57320ff8229f2de7bda5b64d8347bd84a2e589d19" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "MIDI note router operand for its signed per-track input channel table."
 
 [[site]]
@@ -141,7 +141,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 14, len = 4, sha256 = "afe9f20e67b04da4ed307eb7979c337e7eaaddd7f46429cf15c34717e1ad22c6" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Stock MIDI Receive Notes flag used at the entry of the MIDI note-on parser."
 
 [[site]]
@@ -150,7 +150,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 12, len = 4, sha256 = "63e397027bfe366553da8661df48013408cd8310d9317a902e308ccc157f47d9" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "MIDI gatherer receive port mask operand. Bit 0 enables DIN and bit 1 enables USB."
 
 [[site]]
@@ -199,7 +199,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "02022f3ad3a26c2a6251bbd7669ede3c0f5fb0789c900d33ac255fe087ca014d" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Native output mask operand. Bit 0 routes to DIN and bit 1 routes to USB."
 
 [[site]]
@@ -208,7 +208,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 4, sha256 = "841c1330bf94f9f68afd7f2b5c7416fc8250274a52017b8e6a9c796f9795f1bb" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Worker note buffer count used before sending one explicitly routed message."
 
 [[site]]
@@ -217,7 +217,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "4c9592542e5ccc034aed687ecf2840c9019e1cb5700c124e0846a11b6db60234" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Append one MIDI message to the native worker buffer."
 
 [[site]]
@@ -226,7 +226,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 28, offset = 8, len = 6, sha256 = "ad6b50634e908475d64f6137bdda6de2ab3e34ccf3dded06cf0c7d8f73a27d57" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Send the native MIDI worker buffer through the configured output mask."
 
 [[site]]

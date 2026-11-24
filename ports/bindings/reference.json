@@ -179,7 +179,9 @@
       "sig": "void (u8 *bitmap, i32 x0, i32 y0, i32 x1, i32 y1, i32 color)",
       "subsystem": "draw",
       "users": [
-        "core/ui"
+        "core/ui",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -1011,7 +1013,9 @@
       "users": [
         "core/runtime",
         "core/services/machines",
-        "core/ui"
+        "core/ui",
+        "core/services/instrument",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -3500,7 +3504,8 @@
       "subsystem": "machine",
       "users": [
         "core/machines",
-        "core/services/machines"
+        "core/services/machines",
+        "core/services/instrument"
       ],
       "was": [
         "cf.machine.fn.srcpage_type",
@@ -3743,7 +3748,8 @@
       },
       "subsystem": "machine",
       "users": [
-        "test/canopy-carrier"
+        "test/canopy-carrier",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -3935,7 +3941,8 @@
       "sig": "void (u32 view)",
       "subsystem": "machine",
       "users": [
-        "core/dynreg"
+        "core/dynreg",
+        "core/services/instrument"
       ],
       "was": [
         "cf.dynreg.msv_build"
@@ -5112,7 +5119,8 @@
       },
       "subsystem": "machine",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -6522,7 +6530,8 @@
       "subsystem": "mem",
       "users": [
         "core/plusdrive-write",
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard"
       ],
       "was": [
         "dkrt.fw.free"
@@ -6587,7 +6596,8 @@
       "users": [
         "core/digikit-menu",
         "core/plusdrive-write",
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard"
       ],
       "was": [
         "cf.menu.fn.new",
@@ -8837,7 +8847,8 @@
       "sig": "void (u32 len, const u8 *msg, u32 port)",
       "subsystem": "midi",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard"
       ],
       "was": [
         "dkrt.fw.midi_send"
@@ -9280,6 +9291,43 @@
       "subsystem": "page",
       "users": [
         "core/machines"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4004d8da",
+            "len": 48
+          }
+        ]
+      },
+      "bindings": {
+        "c": "dk_fw_page_instrument_panel_trig_mode",
+        "rust": "dkfw::page::instrument_panel_trig_mode"
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 the trig mode of the project settings, `u32 f(settings)` (2: retrig): the panel's note-on wrapper asks it when the stock performance caller (`cf.page.site.instrument_panel_trig_return`) auditions a TRIG key. DT2 0x4004d8da.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "fn",
+      "mark": "D",
+      "name": "cf.page.fn.instrument_panel_trig_mode",
+      "rule": {
+        "dt2": {
+          "kind": "cf_func",
+          "len": 48,
+          "offset": 0
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play",
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -10998,7 +11046,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11029,7 +11079,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11060,7 +11112,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11091,7 +11145,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11122,7 +11178,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11215,7 +11272,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11246,7 +11304,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11277,7 +11337,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11401,7 +11462,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11432,7 +11494,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11494,7 +11557,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11618,7 +11682,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11649,7 +11714,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11711,7 +11777,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11742,7 +11809,41 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
+      ],
+      "was": []
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x4005d4aa",
+            "len": 12
+          }
+        ]
+      },
+      "cpu": "cf",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "DT2 1.17 the return address of the stock performance caller's call of the note-on action (12 bytes from it): the panel's note-on wrapper compares `__builtin_return_address(0)` with it. DT2 0x4005d4aa.",
+      "file": "devices/fw/instrument-src.toml",
+      "kind": "site",
+      "mark": "D",
+      "name": "cf.page.site.instrument_panel_trig_return",
+      "rule": {
+        "dt2": {
+          "kind": "cf_window_hash",
+          "len": 12,
+          "offset": 16
+        }
+      },
+      "subsystem": "page",
+      "users": [
+        "core/instrument-play",
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11804,7 +11905,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11866,7 +11968,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11897,7 +12000,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -11959,7 +12063,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12021,7 +12126,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12145,7 +12251,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12176,7 +12283,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12238,7 +12346,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12269,7 +12378,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12331,7 +12441,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12362,7 +12474,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12393,7 +12506,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12455,7 +12569,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12517,7 +12632,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/instrument-play"
+        "core/instrument-play",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12548,7 +12664,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -12579,7 +12696,9 @@
       },
       "subsystem": "page",
       "users": [
-        "core/keyboard-panel"
+        "core/keyboard-panel",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -13141,7 +13260,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -13171,7 +13291,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -13201,7 +13322,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -13261,7 +13383,8 @@
       },
       "subsystem": "page",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -15545,7 +15668,9 @@
       "sig": "u32 (u32 project)",
       "subsystem": "project",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": [
         "cf.project.fn.kit_of",
@@ -15723,7 +15848,8 @@
       "sig": "u32 (u32 project)",
       "subsystem": "project",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -15785,7 +15911,9 @@
       "sig": "u32 ()",
       "subsystem": "project",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": [
         "cf.project.fn.get",
@@ -15850,7 +15978,8 @@
       "sig": "i32 (u32 kit, i32 track)",
       "subsystem": "project",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/track-keyboard"
       ],
       "was": [
         "dkrt.fw.track_type"
@@ -21405,7 +21534,9 @@
       "sig": "i32 (u8 *bitmap, u8 *font, i32 x, i32 y, i32 align, i32 arg6, const char *prefix, const char *fmt, ...)",
       "subsystem": "text",
       "users": [
-        "core/ui"
+        "core/ui",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": []
     },
@@ -21581,7 +21712,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -21616,7 +21748,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -21651,7 +21784,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -21686,7 +21820,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -21721,7 +21856,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22025,7 +22161,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22056,7 +22193,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22087,7 +22225,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22118,7 +22257,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22149,7 +22289,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22180,7 +22321,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22211,7 +22353,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22335,7 +22478,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22366,7 +22510,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22397,7 +22542,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22552,7 +22698,8 @@
       },
       "subsystem": "track_keys",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22786,7 +22933,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22941,7 +23089,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -22972,7 +23121,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23003,7 +23153,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23034,7 +23185,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23065,7 +23217,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23096,7 +23249,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23127,7 +23281,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23251,7 +23406,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23375,7 +23531,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23406,7 +23563,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23437,7 +23595,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23468,7 +23627,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23623,7 +23783,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23654,7 +23815,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23778,7 +23940,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -23809,7 +23972,8 @@
       },
       "subsystem": "track_sequence",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -24003,7 +24167,8 @@
       },
       "subsystem": "track_steps",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -24038,7 +24203,8 @@
       },
       "subsystem": "track_steps",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -24073,7 +24239,8 @@
       },
       "subsystem": "track_steps",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -24108,7 +24275,8 @@
       },
       "subsystem": "track_steps",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -24143,7 +24311,8 @@
       },
       "subsystem": "track_steps",
       "users": [
-        "core/track-keyboard"
+        "core/track-keyboard",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -25385,7 +25554,9 @@
       "sig": "u8 *()",
       "subsystem": "view",
       "users": [
-        "core/digikit-menu"
+        "core/digikit-menu",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": [
         "cf.menu.fn.brain",
@@ -25515,7 +25686,9 @@
       "sig": "u8 *(u8 *brain)",
       "subsystem": "view",
       "users": [
-        "core/digikit-menu"
+        "core/digikit-menu",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": [
         "cf.menu.fn.mgr_of",
@@ -25580,7 +25753,9 @@
       "subsystem": "view",
       "users": [
         "core/digikit-menu",
-        "core/ui"
+        "core/ui",
+        "core/services/track-keyboard",
+        "core/services/instrument"
       ],
       "was": [
         "cf.menu.fn.invalidate"
@@ -26435,7 +26610,8 @@
       "sig": "void (u8 *ui_states, const char *fmt, ...)",
       "subsystem": "window",
       "users": [
-        "core/ui"
+        "core/ui",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -26558,7 +26734,8 @@
       "sig": "u8 *()",
       "subsystem": "window",
       "users": [
-        "core/ui"
+        "core/ui",
+        "core/services/track-keyboard"
       ],
       "was": []
     },
@@ -33186,7 +33363,7 @@
       "name": "midi"
     },
     {
-      "count": 117,
+      "count": 119,
       "cpu": "cf",
       "file": "devices/fw/instrument-src.toml",
       "meaning": "parameter and FX pages",

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+/* cf.page.fn.instrument_panel_trig_mode: no sig yet */
 /* DN2 browser-selected sound from view+0x68 and the selected-sound index, as used by its draw and parameter mapper. */
 uint8_t * dk_fw_page_native_library_sound(uint8_t *sounds, uint32_t index) __asm__("cf.page.fn.native_library_sound");
 /* DN2 selected-sound/browser index of MultiSourcePageView (not page index); values below 0x80 select the browser sound instead of the current track sound. */

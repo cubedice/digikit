@@ -55,7 +55,7 @@ cpu = "cf"
 sig = "void (u8 *ui_states, const char *fmt, ...)"
 rule = { kind = "cf_func", hash = "9582a093a5d20214e23283925ebeb058", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/ui"]
+users = ["core/ui", "core/services/track-keyboard"]
 doc = "Shows a short message on the main screen: if the byte at `UIStates+0x45` is 0, formats `fmt` with vsnprintf into 256 bytes, keeps up to 32 characters in the string at `UIStates+0x48`, sets the timeout at +0x4c and requests a redraw. The text shows for a short time and then goes away; no view is pushed."
 
 [[fn]]
@@ -75,7 +75,7 @@ rule.dt2 = { kind = "cf_func", hash = "eae813a5ca189660d787e01b9a909c62", offset
 rule.dn2 = { kind = "cf_func", hash = "eae813a5ca189660d787e01b9a909c62", offset = 0x0, len = 4 }
 rule.st = { kind = "cf_func", hash = "2eb0f9476c77c0210505ac8d2447eedd", offset = 0x0, len = 4, mark = "D" }
 mark = "D"
-users = ["core/ui"]
+users = ["core/ui", "core/services/track-keyboard"]
 doc = "Returns the UIStates singleton (0x2f8 bytes, created on first use), the first argument of the toast functions. Read in the stock `shared_ptr<UIStates>` accessor."
 
 [[struct]]

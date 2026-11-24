@@ -16,7 +16,7 @@ cpu = "cf"
 sig = "void (u8 *bitmap, i32 x0, i32 y0, i32 x1, i32 y1, i32 color)"
 rule = { kind = "cf_func", hash = "c613cb2d63aff4380cffc91378aa5dec", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/ui"]
+users = ["core/ui", "core/services/track-keyboard", "core/services/instrument"]
 doc = "Fills the rectangle x0, y0 to x1, y1 (inclusive, corners in any order, clipped) in a Bitmap with `color`; the screen Bitmap is 0x80 x 0x40, 1 bpp."
 
 [[fn]]

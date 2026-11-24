@@ -487,6 +487,8 @@ pub mod midi {
 }
 
 pub mod page {
+    // cf.page.fn.instrument_panel_trig_mode: no sig yet
+
     unsafe extern "C" {
         /// DN2 browser-selected sound from view+0x68 and the selected-sound index, as used by its draw and parameter mapper.
         #[link_name = "cf.page.fn.native_library_sound"]

@@ -25,7 +25,7 @@ cpu = "cf"
 sig = "i32 (u8 *bitmap, u8 *font, i32 x, i32 y, i32 align, i32 arg6, const char *prefix, const char *fmt, ...)"
 rule = { kind = "cf_func", hash = "0427dd2957059338b926578b23d5b087", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/ui"]
+users = ["core/ui", "core/services/track-keyboard", "core/services/instrument"]
 doc = "Draws printf-formatted text in a cleared box next to `x`, `y`: `align` 0 left, 1 centre, 2 right of x; `prefix` is an optional C string (0 = none) measured with the text; a frame is cleared first with fill_rect. The meaning of `arg6` is not read; the signature is from the entry code only."
 
 [[fn]]

@@ -86,7 +86,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 36, offset = 8, len = 6, sha256 = "0b2ccea1fdca52fe90a527e3dba366b985341e4cec1d878a23a5fb611114b6cd" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Return the native clipboard and undo slots."
 
 [[fn]]
@@ -104,7 +104,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "062823c8bf77be0fbcefacfcf52dc09a162a7c7b3fcaaf7ff33caa49faf14db2" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Acquire another native clipboard reference."
 
 [[fn]]
@@ -113,7 +113,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "9367592607f3ffd893c8e72ba2c610c32a69cba0a1bf0ecf0af175d922746972" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Release a native clipboard reference."
 
 [[fn]]
@@ -122,7 +122,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 88, offset = 0, len = 6, sha256 = "7f5fbc57b2541f37244fdd9656cf48f1198eed269ca175991e75715a8a8d8999" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Replace one clipboard or undo slot with a retained native object."
 
 [[fn]]
@@ -131,5 +131,5 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 88, offset = 0, len = 6, sha256 = "961ac964092d7f05c4f5ebebb2d2037b1f03536ebf9a41d8c5fd2df8019d0d59" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Return a track's native sequence length in steps."

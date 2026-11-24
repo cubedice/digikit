@@ -49,7 +49,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "446a3c0e2f392db912b347ca577d0f0f6f8db12fa6076534e62a1153109ae96e" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Unmodified entry called when wrapping the TRIG view key method."
 
 [[site]]
@@ -58,7 +58,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "d17760e9c50dce8f5315dbaff5609dba83c0798ad63ef2c273c1f7c9add59a5f" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Unmodified entry called when wrapping the TRIG view draw method."
 
 [[site]]
@@ -67,7 +67,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "a923baf036b38dc5303a27fc20f4ab6cbc923767f6a6a7c5234815fbb946f969" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Unmodified entry called when wrapping the TRIG view turn method."
 
 [[site]]
@@ -76,7 +76,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "c8b3769c5f48e59c0c160ea38f10ebd451882524bb4eafdc34cf57eae15c1d26" }
 mark = "D"
-users = ["core/track-keyboard"]
+users = ["core/track-keyboard", "core/services/track-keyboard"]
 doc = "Unmodified entry called when wrapping the TRIG view parameter method."
 
 [[site]]
