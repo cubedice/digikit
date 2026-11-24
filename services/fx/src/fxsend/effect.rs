@@ -50,8 +50,17 @@ pub unsafe fn saved_sends<C: CoreApi>(core: &C) -> u32 {
     sends
 }
 
+/// The rows (bits) whose send bus takes no cell of the send page: the phrase effect's, when its adapters give its amounts (`phrase::sends_row`).
+fn cellless() -> u32 {
+    match crate::phrase::row() {
+        Some(p) if p < dsp::MAX_FX && crate::phrase::sends_row(p) => 1 << p,
+        _ => 0,
+    }
+}
+
 /// Effect row `k`, or `None` when it has no page. The routes allowed are the effect's own (`allowed_choices`): SEND is absent when every send cell is taken by another effect
-/// (the saved sends of the other rows count, the row's own does not). UI task.
+/// (the saved sends of the other rows count, the row's own does not). The phrase effect takes no cell: its saved send counts for no other row, and SEND stays open to it
+/// while the image has a send page. UI task.
 pub unsafe fn effect<C: CoreApi>(core: &C, k: usize) -> Option<Effect> {
     effect_in(core, k, saved_sends(core))
 }
@@ -62,7 +71,12 @@ pub unsafe fn effect_in<C: CoreApi>(core: &C, k: usize, saved_sends: u32) -> Opt
         return None;
     }
     let s = ss();
-    let allowed = allowed_choices(s.allow[k], k as u32, saved_sends, slots(core)) as u8;
+    let slots = slots(core);
+    let allowed = if slots != 0 && cellless() & (1 << k) != 0 {
+        s.allow[k]
+    } else {
+        allowed_choices(s.allow[k], k as u32, saved_sends & !cellless(), slots) as u8
+    };
     Some(Effect {
         owner: fxpage::page_owner(k),
         id: s.id[k],

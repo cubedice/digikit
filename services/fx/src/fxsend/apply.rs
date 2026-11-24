@@ -8,7 +8,8 @@ use dkrt_abi::dsp;
 use dkrt_abi::mem::{cstr_len, iw};
 
 /// Effect row `k` (module record `owner - 1`, tab string `tab`) has been registered: read its route and amounts from the settings and, for a send effect within the limit, give it a
-/// cell of the send page. The route and the four amount words go to the DSP with the row (`dsp::fx_set_route`).
+/// cell of the send page. The route and the four amount words go to the DSP with the row (`dsp::fx_set_route`): a send effect past the limit runs on the master when it may, else
+/// on neither route (`route_word`). The phrase effect (`phrase::sends_row`) runs on a send bus without a cell: its amounts are its adapters'.
 pub unsafe fn apply<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
     apply_row(core, k, owner, tab);
     publish(core);
@@ -37,23 +38,33 @@ unsafe fn apply_row<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
         n += 1;
     }
     s.idlen[k] = cstr_len(name, 32) as u8;
-    // an image with no send page (no cells) has every effect on the master, whatever the settings say
+    // an image with no send page (no cells) has every effect on the master, whatever the settings say; a send-only effect does not run
     if inf.is_null() {
+        fxdsp::fx_set_route(core, k, route_word(allow, false), [0; 4]);
         return;
     }
     let want = saved_route(core, k) == ROUTE_SEND;
-    let mut key = [0u8; KEY_MAX];
+    // the phrase effect's amounts are the phrase adapters' (its page selects the tracks): a send bus without a cell
+    let adapter = crate::phrase::sends_row(k);
     let mut a = [0u8; TRACKS];
-    let kn = key_of(&mut key, b"fx/send/", &s.id[k], s.idlen[k] as usize);
-    if core.settings_get(&key[..kn], &mut a) != TRACKS as i32 {
-        a = [0u8; TRACKS];
-    }
-    let mut t = 0;
-    while t < TRACKS {
-        if a[t] > 127 {
-            a[t] = 127;
+    if adapter {
+        // none before the adapters have bound the effect (`phrase::bind` follows): the next pass has them
+        if let Some(given) = crate::phrase::sends() {
+            a = given;
         }
-        t += 1;
+    } else {
+        let mut key = [0u8; KEY_MAX];
+        let kn = key_of(&mut key, b"fx/send/", &s.id[k], s.idlen[k] as usize);
+        if core.settings_get(&key[..kn], &mut a) != TRACKS as i32 {
+            a = [0u8; TRACKS];
+        }
+        let mut t = 0;
+        while t < TRACKS {
+            if a[t] > 127 {
+                a[t] = 127;
+            }
+            t += 1;
+        }
     }
     s.amt[k] = a;
     s.dsp[k] = words_of(&a);
@@ -63,7 +74,10 @@ unsafe fn apply_row<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
     while c < cells && s.row[c] != 0 {
         c += 1;
     }
-    if want && c < cells {
+    if want && adapter {
+        // the phrase effect: its bus, no cell, no send slot
+        s.route[k] = 1;
+    } else if want && c < cells {
         s.route[k] = 1;
         s.cell[k] = c as u8 + 1;
         s.row[c] = k as u8 + 1;
@@ -101,15 +115,19 @@ unsafe fn apply_row<C: CoreApi>(core: &C, k: usize, owner: u8, tab: *const u8) {
         s.kit = 0;
         publish_count(core, inf);
     }
-    fxdsp::fx_set_route(core, k, s.route[k] as u32, s.dsp[k]);
+    fxdsp::fx_set_route(core, k, route_word(allow, s.route[k] != 0), s.dsp[k]);
     // the FX view lists the send effects first: the list is built again now that the route is known
     fxpage::relist(core);
 }
 
-/// Give back the cell of effect row `k` (if it has one).
+/// Give back the send bus of effect row `k`, and its cell (if it has one: the phrase effect has none).
 unsafe fn release<C: CoreApi>(core: &C, inf: *const u32, k: usize) {
     let s = ss();
     if s.route[k] == 0 {
+        return;
+    }
+    if s.cell[k] == 0 {
+        s.route[k] = 0;
         return;
     }
     let c = s.cell[k] as usize - 1;

@@ -4,9 +4,13 @@
 //! adapters own (core/phrase-control, core/phrase-ui). Its route is the one of any effect (`fxsend`: the routes its record
 //! allows; PRISM is a send effect); its row MIX stays at unity, since its level is one of the adapters' controls, and the
 //! kit's page values are not read for it (`fxpage`). On a send bus its amounts are the adapters' too (`sends`: the tracks
-//! the page selects), so it has no cell of the send page. The service's DSP hooks call it (`records`).
+//! the page selects), so it has no cell of the send page and takes no send slot. The parts of the owner `Fx` call it: `DspPart`
+//! (`dsp/part.rs`: `check` in `check_sections`, `admit`, `remove` in `release`; `dsp::claim` reserves the row), `Ticker` (`tick`),
+//! `Provider::start` (`setup`), and the effect pages bind and revoke the adapters' page (`fxpage::apply`, `fxpage::remove`).
 //! The service is a file of its own (`fx.dks`), so it has no link to the image: the three functions of the adapters it calls
-//! are `[[info]]` entries of their modules, found by name through `CoreApi::info` (`setup`).
+//! are `[[info]]` entries of their modules, found by name through `CoreApi::info` (`setup`, from `Fx::start`).
+//! The claim and the addresses are statics of this file, like the tables of `fxpage` and `fxsend`: the code of the effect pages
+//! and of the send route reads them with no owner object in hand (`is_row`, `sends_row`, `row`).
 use core::ptr::addr_of_mut;
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::dsp::{DspSec, Job, DSP_IMPORT_LEN};
@@ -41,7 +45,7 @@ fn image() -> &'static mut Image {
     unsafe { &mut *addr_of_mut!(IMAGE) }
 }
 
-/// Find the phrase functions of the image (the service file's `setup`; a host test that gives its `FakeCore` the entries calls it too).
+/// Find the phrase functions of the image (`Fx::start`, once the table of the effect pages is bound; a host test that gives its `FakeCore` the entries calls it too).
 /// An image without the phrase adapters leaves every address 0: a phrase effect is then refused by `check`.
 pub unsafe fn setup<C: CoreApi>(core: &C) {
     let i = image();
@@ -50,9 +54,24 @@ pub unsafe fn setup<C: CoreApi>(core: &C) {
     i.sends = core.info(SENDS_HASH) as usize;
 }
 
+/// Back to the start: no claim and no function of the image (`rows::reset`, the host tests' reset between two cores).
+pub fn reset() {
+    *owner() = Owner::EMPTY;
+    *image() = Image {
+        bind: 0,
+        ui_tick: 0,
+        sends: 0,
+    };
+}
+
 /// Set the address of `phrase_sends` (`setup`; a host test gives a function of its own, 0 for none).
 pub unsafe fn set_sends(f: usize) {
     image().sends = f;
+}
+
+/// Set the address of `phrase_bind` (`setup`; a host test gives a function of its own, 0 for none: no phrase effect is then accepted).
+pub unsafe fn set_bind(f: usize) {
+    image().bind = f;
 }
 
 /// The phrase effect's row, while one is claimed.

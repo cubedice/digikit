@@ -5,6 +5,7 @@
 //! passes a `FakeCore`.
 //! Layout (README.md): `fx` (the owner `Fx` with `Provider`, `Ticker` and `Describe`), `records` (the `Records` part), `dsp/` (the `DspPart` and the effect rows' loader steps),
 //! `routing` (the FX ROUTING list and its picks, over a small `Ui` trait), `builder` (the builder calls' collection), `rule` (the rule for the effect records), `slots` (docs only: the file fills no pointer slot, see `service-check`); `fxpage`, `fxsend` and `rows` are the tables the service keeps by name;
+//! `phrase` (the exclusive phrase effect, PRISM: its claim, its row and the image functions of its adapters);
 //! `tests/` (host tests over `FakeCore`).
 #![no_std]
 #[cfg(test)]
@@ -14,6 +15,7 @@ pub mod dsp;
 pub mod fx;
 pub mod fxpage;
 pub mod fxsend;
+pub mod phrase;
 pub mod records;
 pub mod routing;
 pub mod rows;

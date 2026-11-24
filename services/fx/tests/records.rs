@@ -105,6 +105,132 @@ fn a_declared_effect_publishes_its_words_in_order() {
     }
 }
 
+/// The phrase effect's row (PRISM): the route is the one the send code gives it, like any effect's, and its MIX word stays at unity whatever a
+/// record or a kit holds for it (a kit saved while PRISM was a master effect holds a MIX for its page: it is not used).
+#[test]
+fn the_phrase_row_takes_its_route_and_keeps_its_mix_at_unity() {
+    let (_rows, core, _fx) = core_with_row();
+    const MODULE: u8 = 9;
+    unsafe {
+        let d = frows();
+        d.fx_owner[2] = MODULE;
+        dkrt_svc_fx::phrase::reserve(MODULE, 2);
+        assert!(dkrt_svc_fx::phrase::is_row(2) && !dkrt_svc_fx::phrase::is_row(1));
+        dkrt_svc_fx::dsp::fx_set_route(&core, 2, 1, [0x40, 0, 0, 0]);
+        assert_eq!((d.fx_route[2], d.fx_amt[2]), (1, [0x40, 0, 0, 0]));
+        dkrt_svc_fx::dsp::fx_set_route(&core, 2, 2, [0; 4]);
+        assert_eq!(d.fx_route[2], 2);
+        dkrt_svc_fx::dsp::fx_set_mix(&core, 2, 0x1234);
+        assert_eq!(d.fx_mix[2], MIX_ONE);
+        // another effect's row takes the MIX it is given
+        dkrt_svc_fx::dsp::fx_set_mix(&core, 1, 0x1234);
+        assert_eq!(d.fx_mix[1], 0x1234);
+        dkrt_svc_fx::phrase::remove(MODULE);
+        assert!(dkrt_svc_fx::phrase::free());
+    }
+}
+
+/// The phrase control's import (`_phrase_control_info`) as the one entry of a DSP import table.
+fn phrase_imports() -> Vec<u8> {
+    let mut t = vec![0u8; dkrt_abi::dsp::DSP_IMPORT_LEN as usize];
+    t[..b"_phrase_control_info".len()].copy_from_slice(b"_phrase_control_info");
+    t
+}
+
+/// What the phrase adapters were told in these tests (`phrase_bind`): (owner, row, page), in order.
+static BINDS: std::sync::Mutex<Vec<(u32, u32, u32)>> = std::sync::Mutex::new(Vec::new());
+unsafe extern "C" fn phrase_bind(
+    owner: u32,
+    row: u32,
+    page: u32,
+    _module: *const u8,
+    _title: *const u8,
+) {
+    BINDS
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .push((owner, row, page));
+}
+
+/// A phrase effect is admitted while no other holds the claim: the claim of its module reserves its row (with the MIX at unity from the start), a second
+/// phrase effect is refused before anything is reserved while an effect that does not import the phrase control is not, and the release of the module revokes
+/// the adapters' page once and gives the claim up for the next phrase effect. The owner's tick calls no phrase function the image does not have.
+#[test]
+fn one_phrase_effect_is_admitted_and_its_release_revokes_the_page() {
+    use dkrt_abi::dsp::{Job, FX_REC};
+    use dkrt_abi::service::Claim;
+    let (_rows, core, mut fx) = core_with_row();
+    BINDS.lock().unwrap_or_else(|e| e.into_inner()).clear();
+    let imports = phrase_imports();
+    let entry = vec![0u8; FX_REC as usize];
+    let mut job = Job::empty();
+    job.imports = imports.as_ptr();
+    job.nimport = 1;
+    job.fxs = entry.as_ptr();
+    job.nfx = 1;
+    let plain = {
+        let mut j = Job::empty();
+        j.fxs = entry.as_ptr();
+        j.nfx = 1;
+        j
+    };
+    const MODULE: usize = 4;
+    unsafe {
+        dkrt_svc_fx::phrase::set_bind(phrase_bind as *const () as usize);
+        assert_eq!(DspPart::admit(&mut fx, &core, &job), Ok(()), "no claim yet");
+        let mut c = Claim {
+            rec: MODULE,
+            job: &job,
+            // the image's base in the DSP's byte space (L2)
+            base: dkrt_abi::dsp::L2_BYTE_BASE + 0x1000,
+            byte_shift: 0,
+            state_at: 0,
+        };
+        DspPart::claim(&mut fx, &core, &mut c);
+        let d = frows();
+        // row 1 is the other module's: the phrase effect takes row 0
+        assert_eq!(d.fx_owner[0], MODULE as u8 + 1);
+        assert_eq!(dkrt_svc_fx::phrase::row(), Some(0));
+        assert_eq!(d.fx_mix[0], MIX_ONE);
+        dkrt_svc_fx::dsp::fx_set_mix(&core, 0, 0x1234);
+        assert_eq!(
+            d.fx_mix[0], MIX_ONE,
+            "a record's MIX does not reach the row"
+        );
+        assert_eq!(
+            DspPart::admit(&mut fx, &core, &job),
+            Err(dkrt_sdk::E_BUSY),
+            "a second phrase effect"
+        );
+        assert_eq!(
+            DspPart::admit(&mut fx, &core, &plain),
+            Ok(()),
+            "an effect without the phrase control"
+        );
+        Ticker::tick(&mut fx, &core, tick_phase::LATE);
+        DspPart::release(&mut fx, &core, MODULE);
+        assert_eq!(
+            *BINDS.lock().unwrap_or_else(|e| e.into_inner()),
+            vec![(0, 0, 0)],
+            "the page is revoked once"
+        );
+        assert!(dkrt_svc_fx::phrase::free());
+        assert_eq!(d.fx_owner[0], 0);
+        DspPart::release(&mut fx, &core, MODULE);
+        assert_eq!(
+            BINDS.lock().unwrap_or_else(|e| e.into_inner()).len(),
+            1,
+            "nothing more to revoke"
+        );
+        assert_eq!(
+            DspPart::admit(&mut fx, &core, &job),
+            Ok(()),
+            "the claim is free again"
+        );
+        dkrt_svc_fx::phrase::set_bind(0);
+    }
+}
+
 /// Clearing the rows of a module sends one sequence for the row (the pc to "free" first), drops its live values and frees the row.
 #[test]
 fn clearing_a_module_sends_the_free_pc_first_and_frees_the_row() {

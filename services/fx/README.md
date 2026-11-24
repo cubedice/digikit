@@ -2,7 +2,8 @@
 
 A service of the digikit runtime for run-time effects: a module's effect gets a page after CHO in the FX view, its knobs and MIX are written to its row of the effect chain, its route
 (master or send bus) and send amounts are kept in the settings, and the kit values of the effect are saved with the kit. The service owns the effect record kind and takes nine hooks
-of the effect pages. The design is in `docs/design/digikit-registry.md` ("Effect pages") and `docs/findings/61-fx-pages.md`, `64-fx-send-page.md`, `65-fx-routes.md`.
+of the effect pages. The design is in `docs/design/digikit-registry.md` ("Effect pages") and `docs/findings/61-fx-pages.md`, `64-fx-send-page.md`, `65-fx-routes.md`; the phrase effect
+(PRISM) in `352-prism-phrase-fx.md` and `359-prism-send-effect-and-page.md`, the held values and the page painter of Overloop in `360-overloop-automatic-loop.md`.
 
 Layout (the template is `services/shortcuts`, see its README for the pattern):
 
@@ -12,17 +13,21 @@ src/records.rs    the `Records` part of the owner (begin, commit, check, apply) 
 src/builder.rs    the builder calls (`dk_module_ctx_add_fx`, `dk_fx_add_page`, `dk_page_add_fx_param`, `dk_fx_routes`, `dk_fx_mix`): `Builder` holds the collection of one module's
                   `init` and the gate, lowers it to the effect records and declares the route flags and defaults at the commit; the owner gives it out with `Fx::builder()`
 src/rule.rs       the rule for the effect records (`effects`), shared by `Records::check` and `validate`
-src/dsp/          the effect rows of the DSP loader (`mod.rs`) and the `DspPart` of the owner (`part.rs`: check_sections, check_rows, claim, release, clear, row_step, attribute, diag)
+src/dsp/          the effect rows of the DSP loader (`mod.rs`) and the `DspPart` of the owner (`part.rs`: check_sections, check_rows, admit, claim, release, clear, row_step, attribute, diag)
 src/routing.rs    FX ROUTING: the SETTINGS list of the effects, the routes offered and what a pick does, over `CoreApi` and the `Ui` trait (`routing/tests.rs`: FakeCore and a fake UI)
-src/fxpage/       the effect pages: page rows, parameter rows, the kit's values, the page list and the tick that sends changed values (`DKRT_FXP`, `DKRT_FXP_*`)
+src/fxpage/       the effect pages: page rows, parameter rows, the kit's values, the page list and the tick that sends changed values (`DKRT_FXP`, `DKRT_FXP_*`); `image.rs`: the
+                  optional image functions the pages use (the page painter `loop_ui_paint` into `DKRT_FXP_PAINT`, the holder of an effect's values `fx_held_values`)
 src/fxsend/       the send route and send amounts: cells, settings, the tick over the 16 Sound objects (`DKRT_FXS`), and `describe`: the MODULES words of an effect module
+src/phrase.rs     the phrase effect (PRISM): the one effect a module that imports `_phrase_control_info` has; its claim (exclusive), its row and the three image functions of the
+                  phrase adapters (`phrase_bind`, `phrase_sends`, `phrase_ui_tick`)
 src/rows.rs       the effect rows of the chain (`DKRT_FROWS`)
 src/slots.rs      docs only: the file fills no pointer slot (`patchkit service-check` wants the file because the manifest has DSP `[[fill]]`s)
 src/lib.rs        docs, `mod` only
 dks/              the service file: `lib.rs` (the `service!` call), `hooks.rs` (the nine hooks, assembler), `builder.rs` (the builder exports, which reach the owner), `ui.rs` (the FX ROUTING row; its three callbacks hand an `Event` to the owner's `Reentry` queue, so a pick that arrives while the service is busy runs after it, and a full queue shows `BUSY: TRY AGAIN`). A pick saves the route, queues the reload and shows its toast when the job ends (`Routing::poll_job` from the tick): `NAME: ROUTE`, or `NAME: ROUTE ON STOP` when the transport plays (the runtime then reloads the module at stop: `dkc_reload_when_possible`; no toast follows that reload), or `NAME: RESTART TO APPLY`; the job is matched by its serial (`DkrtLive::serial`), and a wait ends when the effect is torn down by anything but that job (`Routing::effect_gone` from `detach`). Picking the saved route while its reload is queued shows `NAME: ROUTE PENDING`. A pick while the reload is deferred to the stop saves a changed route, calls `dkc_reload_when_possible` again (the runtime ignores it while the module is queued and marks it again when its queue gave up, so no second reload job starts) and shows `NAME: ROUTE ON STOP`. `gen_exports.rs` (generated: never edit); `dsp/*.s` is the effect dispatch of the DSP
 tests/            host tests over `FakeCore`: `contract.rs` (the shared suite through `provider_contract`, and the cases of reload and park), `records.rs` (apply, tick, detach, check,
-                  DSP steps), `builder.rs` (the collection, the lowering and the commit), `table.rs` and `fxpage_checks.rs` (the image table, the record
-                  rule), `guard.rs` (diagnostics, table check, attribute, section check), `file.rs` (the file's code over the owner cell); `stubs/` (the `dkc_*` imports as host functions)
+                  DSP steps, the phrase effect's row, admission and release), `builder.rs` (the collection, the lowering and the commit), `table.rs` and `fxpage_checks.rs` (the image
+                  table, the image functions the start finds, the record rule), `guard.rs` (diagnostics, table check, attribute, section check with the phrase import), `file.rs` (the
+                  file's code over the owner cell); `stubs/` (the `dkc_*` imports as host functions)
 ```
 
 State: the owner holds what is private to it (the builder's collection and gate, what the guard has logged). Four tables stay named statics in the concept file that owns them, written only
@@ -33,12 +38,14 @@ through that concept's functions, because something outside the service reads th
 | `DKRT_FROWS` | `src/rows.rs` | `core/dsp-link` (`_dl_frows = "fx.rows"` in its module.toml), the contract suite (`rows.kept`), the runtime's host tests of cleanup and invariants |
 | `DKRT_FXP` | `src/fxpage/state.rs` | the device tests `fx-kit-persist` and the shot module's link test (`sent`, `errors`, `seeds`) |
 | `DKRT_FXS` | `src/fxsend/state.rs` | the device test `fx-track-route` (`allow`, `dflt`) |
-| `DKRT_FXP_TAB`, `DKRT_FXP_ROWS`, `DKRT_FXP_LIST_BUF`, `DKRT_FXP_COUNT`, `DKRT_FXP_IDS`, `DKRT_FXP_DEFS`, `DKRT_FXP_*` counters and cells | `src/fxpage/symbols.rs` | the assembler of the nine hooks (`dks/src/hooks.rs`) |
+| `DKRT_FXP_TAB`, `DKRT_FXP_ROWS`, `DKRT_FXP_LIST_BUF`, `DKRT_FXP_COUNT`, `DKRT_FXP_IDS`, `DKRT_FXP_DEFS`, `DKRT_FXP_PAINT` (the page painter `fxp_graph` calls), `DKRT_FXP_*` counters and cells | `src/fxpage/symbols.rs` | the assembler of the nine hooks (`dks/src/hooks.rs`) |
 
 `DKRT_FXP` and `DKRT_FXS` hold more than the counters the device tests read: the strings (`tab`, `title`, `name`, `short`, the `rep_*` placeholders) that the page and parameter rows
 of the firmware's tables point at, and the values the tick and the nine assembler hooks reach by symbol with no owner object in hand. The firmware, the DSP and the hooks read them by
 address, so the address must be one fixed, named object (not an instance block that `start` could place elsewhere). `DKRT_FROWS` is read by the DSP code through `core/dsp-link`.
-Only the owner's private data (the builder's collection and gate, the guard's log) is in the owner object.
+Only the owner's private data (the builder's collection and gate, the guard's log) is in the owner object. Two more are statics that no one reads by symbol, for the same reason as the
+tables (the code of the pages, the send route and the rows reads them with no owner in hand): the phrase effect's claim and the addresses of the phrase adapters (`src/phrase.rs`), and the
+address of the holder of an effect's values (`src/fxpage/image.rs`). `Fx::start` writes the addresses; `rows::reset` (the host tests' reset) clears the claim and the phrase addresses.
 
 `DKRT_FXP_FW` is the other way: two words of the hooks' assembler (the stock page list of the FX view and the `moveq` of its builder, resolved by the port file) that `Fx::start` copies into
 `DKRT_FXP_TAB` (`fxpage::firmware`). A host build has none.
@@ -46,7 +53,16 @@ Only the owner's private data (the builder's collection and gate, the guard's lo
 How it works:
 
 - `Fx::start` is the file's `init` step before the hooks are installed: it binds the image table of `core/fxpages` (`fxpage::bind`) or refuses the file with `E_NO_REGISTRY`. A file that
-  starts has a table, so the resident query reads it without a core (`fxsend::bound_slots`).
+  starts has a table, so the resident query reads it without a core (`fxsend::bound_slots`). Then it finds the optional functions of the image, each an `[[info]]` entry found by the hash of
+  its name (0 when the image lacks it): the page painter `loop_ui_paint` into `DKRT_FXP_PAINT` (`fxpage::painter_setup`; no module of the image has it since Overloop's page moved to
+  `core/fxview`, finding 360, so the word stays 0 and `fxp_graph` takes the stock path), the holder of an effect's values `fx_held_values` of core/loop-control (`fxpage::held_setup`:
+  the tick reads that effect's knobs from it, never from the kit, and keeps its MIX at the record's default), and `phrase_bind`, `phrase_sends`, `phrase_ui_tick` of the phrase adapters
+  (`phrase::setup`).
+- The phrase effect (PRISM, `src/phrase.rs`): a module whose DSP section imports `_phrase_control_info` (the import, never a module name). `DspPart::check_sections` refuses it unless it is
+  one effect and no voice in an image with `phrase_bind`; `DspPart::admit` refuses a second one before anything is reserved (`E_BUSY`); `claim` reserves its row, whose MIX stays at unity
+  (`dsp::fx_set_mix`); `fxpage::apply` binds the adapters' page to its row (`phrase_bind`: owner, physical row, native page, module id, title) and the tick does not read its kit values;
+  `fxsend` runs it on a send bus without a cell, with the amounts `phrase_sends` gives; `fxpage::remove` (detach) and `DspPart::release` revoke the page once and give the claim up. The
+  owner's tick calls `phrase_ui_tick` when the image has it.
 - A module's `init` calls the builder exports; they reach the owner through `DK_SVC_OWNER.with` and fill its `Builder`. With no owner (before `init` or after `fini`) an export that
   opens a handle returns null and a setter does nothing. `Records::commit` checks and lowers the collection to `EFFECT` records and declares the route flags and defaults of the effect's
   DSP row; `check` runs the rule (`rule::effects`) over the block; `apply` writes the page, parameter rows and list entry of one record.

@@ -44,12 +44,16 @@ unsafe fn fxiw<C: CoreApi>(core: &C, k: usize) -> u32 {
     iw(dynfx(core), k)
 }
 
-/// Effect rows the image reserves for run-time effects (0 without `core/dynfx`).
-/// The first physical effect row of the image's reserved rows (`dynfx_info`).
+/// The first physical effect row of the image's reserved rows (`dynfx_info`; 0 without `core/dynfx`).
 pub unsafe fn fx_first_row<C: CoreApi>(core: &C) -> u32 {
-    fxiw(core, F_FIRST)
+    if dynfx(core).is_null() {
+        0
+    } else {
+        fxiw(core, F_FIRST)
+    }
 }
 
+/// Effect rows the image reserves for run-time effects (0 without `core/dynfx`).
 pub unsafe fn fx_free_rows<C: CoreApi>(core: &C) -> u32 {
     if dynfx(core).is_null() {
         0
@@ -135,7 +139,11 @@ pub unsafe fn fx_flags_of<C: CoreApi>(_core: &C, k: usize) -> u32 {
 /// or of a kit never reaches it.
 pub unsafe fn fx_set_mix<C: CoreApi>(_core: &C, k: usize, bits: u32) {
     if k < MAX_FX {
-        frows().fx_mix[k] = if crate::phrase::is_row(k) { MIX_ONE } else { bits };
+        frows().fx_mix[k] = if crate::phrase::is_row(k) {
+            MIX_ONE
+        } else {
+            bits
+        };
     }
 }
 

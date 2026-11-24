@@ -9,7 +9,8 @@ use dkrt_sdk::*;
 /// `name_hash` (FNV-1a 32) of `fxpages_info`, the data table of `core/fxpages` in the image: the service reads it through `CoreApi::info`, so it has no link name.
 pub const INFO_HASH: u32 = fnv1a(b"fxpages_info");
 
-const fn fnv1a(s: &[u8]) -> u32 {
+/// `dkneeds::keys::name_hash` as a `const fn`: the hashes of the info entries the service looks up (`INFO_HASH`, `image`, `crate::phrase`).
+pub(crate) const fn fnv1a(s: &[u8]) -> u32 {
     let mut h: u32 = 0x811c_9dc5;
     let mut i = 0;
     while i < s.len() {

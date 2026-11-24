@@ -46,3 +46,7 @@ pub static mut DKRT_FXP_LOAD_SRC: u32 = 0;
 pub static mut DKRT_FXP_SAVE_DST: u32 = 0;
 #[no_mangle]
 pub static mut DKRT_FXP_NINIT: u32 = 0;
+/// The page painter of the image (`loop_ui_paint(view, bitmap, page) -> handled` of core/loop-display), or 0: the hook `fxp_graph` calls it before the stock paint of an
+/// FX page, and a page it painted skips the stock paint. `Fx::start` finds it (`painter_setup`).
+#[no_mangle]
+pub static mut DKRT_FXP_PAINT: u32 = 0;
