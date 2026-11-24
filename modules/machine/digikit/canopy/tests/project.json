@@ -25,7 +25,6 @@
         ],
         "patchModules": [
           "core/instrument-play",
-          "core/digikit-menu",
           "core/health"
         ],
         "tags": [
@@ -52,7 +51,6 @@
         ],
         "patchModules": [
           "core/instrument-play",
-          "core/digikit-menu",
           "core/health"
         ],
         "tags": [

@@ -51,7 +51,6 @@ describeOn('dt2', 'DTII Overloop: a queued change and the transport', () => {
         'core/loop-storage',
         'core/pattern-position',
         'core/loop-display',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory: [SINE, 'digikit/overloop'],

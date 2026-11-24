@@ -43,7 +43,7 @@ if (process.env.DIGI_CANOPY_MEMORY_CANCEL === '1') {
       const { syx, plan } = await prepareRuntimePlanModulesOffline(
         session.options, session.runDir, artifacts,
         ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state', 'canopy_sound_proof', 'canopy_memory_probe_entry', 'canopy_memory_probe_tick', 'canopy_memory_test', 'canopy_memory_target', 'canopy_memory_cleanup_count', 'canopy_memory_cleanup_ptr', 'canopy_load_guard'],
-        { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health', 'test/canopy-sound-proof', 'test/canopy-memory-cancel'] },
+        { modules: ['test/instrument-play-proof', 'core/health', 'test/canopy-sound-proof', 'test/canopy-memory-cancel'] },
       );
       await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
         auto_no: true, card: session.cardPath });

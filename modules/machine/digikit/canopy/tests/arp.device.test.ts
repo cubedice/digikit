@@ -60,7 +60,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
           session.runDir,
           artifacts,
           ['DKRT_BOOT', '_ir_rows', '_iv_input'],
-          { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+          { modules: ['core/instrument-play', 'core/health'] },
         );
     const image = prepared?.syx ?? path.resolve(root, process.env.CANOPY_ARP_IMAGE!);
     const plan: RuntimePlan =

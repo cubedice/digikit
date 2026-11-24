@@ -22,7 +22,6 @@
           "core/loop-storage",
           "core/pattern-position",
           "core/loop-display",
-          "core/digikit-menu",
           "core/health"
         ],
         "plusdrive": true,

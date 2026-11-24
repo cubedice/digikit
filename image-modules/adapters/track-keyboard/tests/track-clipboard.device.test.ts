@@ -19,7 +19,7 @@ describeOn('dt2', 'shared keyboard track clipboard', () => {
         session.runDir,
         session.runDir,
         ['DKRT_BOOT', 'tk_storage_info', 'pattern_slots'],
-        { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+        { modules: ['core/track-keyboard', 'core/health'] },
       );
       await session.client.firmwareLoad({
         syx,

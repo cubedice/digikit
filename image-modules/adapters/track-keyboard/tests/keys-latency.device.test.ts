@@ -16,7 +16,7 @@ describeOn('dt2', 'track keyboard display', () => {
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
       ['DKRT_BOOT'],
-      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx: image.syx, base_sha256: image.plan.base.syx_sha256,

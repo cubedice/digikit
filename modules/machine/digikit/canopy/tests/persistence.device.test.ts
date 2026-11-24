@@ -60,7 +60,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       artifacts,
       ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats',
         ...(checkWorkingBoot ? ['DKRT_SAVE_MODE'] : [])],
-      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/health'] },
     );
     expect(createHash('sha256').update(fs.readFileSync(syx)).digest('hex')).toBe(plan.output?.syx_sha256);
     await session.client.firmwareLoad({

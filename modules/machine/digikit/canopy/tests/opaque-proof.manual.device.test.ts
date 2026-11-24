@@ -26,7 +26,7 @@ if (process.env.DIGI_CANOPY_OPAQUE_PROOF === '1') {
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
     const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'canopy_opaque_result'],
-      { modules: ['core/digikit-menu', 'core/health', 'test/canopy-opaque-proof'] });
+      { modules: ['core/health', 'test/canopy-opaque-proof'] });
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });
     await session.client.call('run.mode', { mode: 'free' });

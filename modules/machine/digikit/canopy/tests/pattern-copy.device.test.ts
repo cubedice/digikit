@@ -46,7 +46,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     const { syx, plan } = await prepareRuntimePlanListedOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats'],
-      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/health'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });

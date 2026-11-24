@@ -41,7 +41,7 @@ if (process.env.DIGI_CANOPY_WORKER_REFILL === '1') {
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'canopy_sound_proof',
         'canopy_memory_probe_entry', 'worker_refill_tick', 'worker_refill_test'],
-      { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health',
+      { modules: ['test/instrument-play-proof', 'core/health',
         'test/canopy-sound-proof', 'test/canopy-worker-refill'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,

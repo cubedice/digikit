@@ -18,7 +18,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
       session.runDir,
       session.runDir,
       ['DKRT_BOOT'],
-      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx: image.syx,

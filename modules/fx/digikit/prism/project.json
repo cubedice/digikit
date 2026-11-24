@@ -17,7 +17,6 @@
         ],
         "patchModules": [
           "core/phrase-ui",
-          "core/digikit-menu",
           "core/health"
         ],
         "plusdrive": true,
@@ -43,7 +42,6 @@
         ],
         "patchModules": [
           "core/phrase-ui",
-          "core/digikit-menu",
           "core/health"
         ],
         "plusdrive": true,
@@ -76,7 +74,6 @@
           "core/loop-storage",
           "core/loop-display",
           "core/phrase-ui",
-          "core/digikit-menu",
           "core/health"
         ],
         "plusdrive": true,
@@ -106,7 +103,6 @@
           "core/pattern-position",
           "core/loop-display",
           "core/phrase-ui",
-          "core/digikit-menu",
           "core/health"
         ],
         "plusdrive": true,

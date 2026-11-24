@@ -50,7 +50,7 @@ test.skipIf(!enabled)('switching away invalidates the Sound handle and a new CAN
     const { syx, plan } = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state', 'canopy_sound_proof'],
-      { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health', 'test/canopy-sound-proof'] },
+      { modules: ['test/instrument-play-proof', 'core/health', 'test/canopy-sound-proof'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });

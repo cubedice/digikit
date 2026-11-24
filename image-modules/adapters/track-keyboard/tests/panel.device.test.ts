@@ -174,7 +174,7 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         session.runDir,
         ['DKRT_BOOT'],
         {
-          modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'],
+          modules: ['core/track-keyboard', 'core/health'],
           timeoutMs: 90_000,
         },
       );

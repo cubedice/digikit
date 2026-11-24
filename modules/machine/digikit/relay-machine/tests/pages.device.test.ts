@@ -8,7 +8,7 @@ import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 describeOn('dt2','RELAY track SRC pages',()=>{
   const id='digikit/relay-machine';
   const ctx=withPreparedFxSession('dt2','RELAY track SRC controls',{
-    image:{name:'relay-track', modules:['core/relay-track','core/digikit-menu','core/health','core/input'],
+    image:{name:'relay-track', modules:['core/relay-track','core/health','core/input'],
       inventory:[id],symbols:['DKRT_BOOT','fx.rows','_relay_status','relay_files'],policy:'settings'},
     usedCard:true,initial:'empty',presets:{empty:{seedProject:true,selection:['modules/m0.dkm']}}
   });

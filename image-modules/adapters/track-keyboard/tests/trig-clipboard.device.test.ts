@@ -19,7 +19,7 @@ describeOn('dt2', 'individual shared keyboard trigs', () => {
         session.runDir,
         session.runDir,
         ['DKRT_BOOT', 'pattern_slots'],
-        { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+        { modules: ['core/track-keyboard', 'core/health'] },
       );
       await session.client.firmwareLoad({
         syx,

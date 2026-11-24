@@ -43,7 +43,7 @@ if (process.env.DIGI_CANOPY_LIVE_PROOF === '1') {
       const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, artifacts,
         ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state',
           'canopy_sound_proof', 'canopy_memory_probe_entry', 'canopy_live_tick', 'canopy_live_test'],
-        { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health',
+        { modules: ['test/instrument-play-proof', 'core/health',
           'test/canopy-sound-proof', 'test/canopy-live-proof'] });
       await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
         auto_no: true, card: session.cardPath });

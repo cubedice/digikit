@@ -59,7 +59,7 @@ def defined(obj):
 
 def test_the_track_keyboard_links_without_canopys_host_and_has_its_tick(tmp_path):
     plan = plan_of(
-        tmp_path, ["core/track-keyboard", "core/digikit-menu", "core/health"]
+        tmp_path, ["core/track-keyboard", "core/health"]
     )
     assert "core/instrument-play" not in ids(plan)
     assert {"core/keyboard-panel", "core/midi-events"} <= ids(plan)

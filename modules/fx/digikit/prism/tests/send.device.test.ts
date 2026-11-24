@@ -58,7 +58,6 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory: [SINE, 'digikit/prism'],

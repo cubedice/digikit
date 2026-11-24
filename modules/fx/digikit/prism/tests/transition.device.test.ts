@@ -52,7 +52,6 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
         'core/pattern-position',
         'core/loop-display',
         'core/phrase-ui',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory: [SINE, 'digikit/overloop', 'digikit/prism'],

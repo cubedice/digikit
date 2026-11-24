@@ -18,7 +18,6 @@
         ],
         "patchModules": [
           "core/relay-track",
-          "core/digikit-menu",
           "core/health",
           "core/input"
         ],

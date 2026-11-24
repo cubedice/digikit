@@ -48,7 +48,7 @@ test.skipIf(!enabled)('save an edited CANOPY state for Sound-copy instruction tr
     const { syx, plan } = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'src_state', 'canopy_sound_proof', 'canopy_copy_probe_match'],
-      { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health', 'test/canopy-sound-proof', 'test/canopy-copy-probe'] },
+      { modules: ['test/instrument-play-proof', 'core/health', 'test/canopy-sound-proof', 'test/canopy-copy-probe'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });

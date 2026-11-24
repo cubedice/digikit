@@ -19,7 +19,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
         session.runDir,
         session.runDir,
         ['DKRT_BOOT'],
-        { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+        { modules: ['core/track-keyboard', 'core/health'] },
       );
       await session.client.firmwareLoad({
         syx: image.syx,

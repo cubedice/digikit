@@ -38,7 +38,6 @@ describeOn('dt2', 'DTII PRISM native page', () => {
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory: ['digikit/prism'],

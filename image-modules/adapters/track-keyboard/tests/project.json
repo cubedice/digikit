@@ -29,7 +29,6 @@
         "modules": ["core/services/track-keyboard"],
         "patchModules": [
           "core/track-keyboard",
-          "core/digikit-menu",
           "core/health"
         ],
         "tags": [
@@ -57,7 +56,6 @@
         "patchModules": [
           "core/track-keyboard",
           "core/instrument-play",
-          "core/digikit-menu",
           "core/health"
         ],
         "tags": [

@@ -27,7 +27,7 @@ describeOn('dt2', 'track 10 arpeggio phase', () => {
       session.runDir,
       session.runDir,
       ['DKRT_BOOT', 'pp_position'],
-      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx,

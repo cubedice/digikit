@@ -48,7 +48,7 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
       session.runDir,
       artifacts,
       ['DKRT_BOOT'],
-      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx,

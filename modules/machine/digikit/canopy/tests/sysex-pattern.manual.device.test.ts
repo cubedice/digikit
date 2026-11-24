@@ -66,7 +66,7 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
       session.runDir,
       artifacts,
       ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_src_debug', 'src_state', 'ip_sa_info', 'ip_sa_stats'],
-      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/health'] },
     );
     expect(createHash('sha256').update(fs.readFileSync(syx)).digest('hex')).toBe(plan.output?.syx_sha256);
     await session.client.firmwareLoad({

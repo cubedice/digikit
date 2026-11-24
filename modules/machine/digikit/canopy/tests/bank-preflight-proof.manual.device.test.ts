@@ -39,7 +39,7 @@ if (process.env.DIGI_CANOPY_BANK_PREFLIGHT === '1') {
     onTestFinished(() => fs.writeFileSync(path.join(artifacts, 'probe.json'), JSON.stringify(evidence, null, 2)));
     const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'canopy_bank_loads', 'canopy_bank_tick', 'canopy_bank_test'],
-      { modules: ['test/instrument-play-proof', 'core/digikit-menu', 'core/health',
+      { modules: ['test/instrument-play-proof', 'core/health',
         'test/canopy-bank-preflight'] });
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });

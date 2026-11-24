@@ -54,7 +54,7 @@ describeOn('dt2', 'stock audio helper group', () => {
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
       ['DKRT_BOOT', 'pp_position'],
-      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/health'] },
     );
     let sym = (name: string) => planSymbol(image.plan, name);
     const word = (name: string, offset = 0) => session.client.memPeek(sym(name) + offset);

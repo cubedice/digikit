@@ -47,7 +47,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
         '_iv_lock_slots',
         '_iv_shared_controls',
       ],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'], timeoutMs: 90_000 },
+      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/health'], timeoutMs: 90_000 },
     );
     await session.client.firmwareLoad({
       syx,

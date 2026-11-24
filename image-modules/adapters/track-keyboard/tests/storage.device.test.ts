@@ -26,7 +26,7 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
         session.runDir,
         session.runDir,
         ['DKRT_BOOT', 'tk_storage_info', 'pattern_slots'],
-        { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+        { modules: ['core/track-keyboard', 'core/health'] },
       );
       const boot = async (target: Session, card: string | undefined) => {
         const epoch = Number((await target.status()).epoch);

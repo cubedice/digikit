@@ -56,7 +56,6 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
         'core/loop-storage',
         'core/pattern-position',
         'core/loop-display',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory: [SINE, 'digikit/overloop'],

@@ -52,7 +52,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
       session.runDir,
       artifacts,
       ['DKRT_BOOT', 'DK_LOAD', 'DK_LOAD_N'],
-      { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx,

@@ -47,7 +47,6 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
         'core/loop-storage',
         'core/loop-display',
         'core/phrase-ui',
-        'core/digikit-menu',
         'core/health',
       ],
       inventory,

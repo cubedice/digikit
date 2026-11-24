@@ -28,7 +28,7 @@ describeOn('dt2', 'automatic stock audio helper pool', () => {
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
       ['DKRT_BOOT', 'pp_position'],
-      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/health'] },
     );
     let sym = (name: string) => planSymbol(image.plan, name);
     const word = async (symbol: string, offset = 0) => (await session.client.memPeek(sym(symbol) + offset)) ?? 0;
