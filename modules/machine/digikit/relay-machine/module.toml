@@ -29,6 +29,7 @@ place = "dsp.l2"
 
 [conformance]
 patch_set = "relay-track"
+rig_skip = "reads the tapes and read heads of core/relay-storage (_rtm_tracks, _rtm_tapes, _relay_pool), which the rig does not place; tests/*.rig.test.ts run it with them"
 
 [uses.dt2]
 machine_rows = 1
