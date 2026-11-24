@@ -11,7 +11,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
     pub(super) unsafe fn uninstall_dsp(&mut self, rec: usize) -> bool {
         let area = if dsp::have_link() { dsp::area_base() } else { 0 };
         if let Some(seq) = self.dsp_install.clear_sequence(rec as u8, area) {
-            if !crate::package::link::lk().run(Owner::Loader, &seq) {
+            if !crate::package::link::run(Owner::Loader, &seq) {
                 return false;
             }
         }

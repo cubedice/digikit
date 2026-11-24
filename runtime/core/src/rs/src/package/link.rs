@@ -14,15 +14,8 @@ impl Transport for DspTransport {
         // queue keeps it. While it drains, the module loads already queued must finish: they are what the drain waits for (`instrument::tick`
         // takes the link only when the loader is idle with nothing waiting), so their transfers go on. With the loader idle a drain holds
         // every other transfer (a live effect value), as before the queue (`fx_word_start`).
-        match crate::package::instrument::legacy_policy() {
-            dkrt_sdk::instrument_coordinator::LegacyPolicy::Run => {}
-            dkrt_sdk::instrument_coordinator::LegacyPolicy::Drain => {
-                let d = crate::package::dsp::ds();
-                if d.phase == crate::package::dsp::PH_IDLE && d.nwait == 0 {
-                    return Sent::Refused;
-                }
-            }
-            dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause => return Sent::Refused,
+        if legacy_held() {
+            return Sent::Refused;
         }
         // What the loader did before the queue: the area send (`dl_send`) answered -2 (retained or a bad destination) with a failure, and every other
         // refusal, a word write included, was tried again until the loader's guard ended it. A retained state therefore holds word writes; it fails area sends.
@@ -79,4 +72,27 @@ pub fn lk() -> &'static mut Link<DspTransport> {
 /// One UI pass of the link: settle the transfer in flight and start the next. `dkrt_tick` calls it before the loader and the services.
 pub unsafe fn pump() {
     lk().pump()
+}
+
+/// Whether a V2 instrument transaction holds the legacy side of the DSP link now (instrument.rs): it owns the link (`Pause`), or it drains it and
+/// the loader has nothing left that the drain waits for (`Drain` with the loader idle). The transport refuses every send then.
+pub unsafe fn legacy_held() -> bool {
+    match crate::package::instrument::legacy_policy() {
+        dkrt_sdk::instrument_coordinator::LegacyPolicy::Run => false,
+        dkrt_sdk::instrument_coordinator::LegacyPolicy::Drain => {
+            let d = crate::package::dsp::ds();
+            d.phase == crate::package::dsp::PH_IDLE && d.nwait == 0
+        }
+        dkrt_sdk::instrument_coordinator::LegacyPolicy::Pause => true,
+    }
+}
+
+/// `Link::run` for the legacy side: false at once while a V2 instrument transaction holds the link (`legacy_held`). `run` waits in the UI task
+/// for its result, and the transaction's owner runs later in the same pass (the last tick phase): spinning to the bound there froze the UI loop
+/// (upstream's machines service parks a voice row with it at the boot). Every caller takes false as "try again later".
+pub unsafe fn run(owner: Owner, seq: &Sequence) -> bool {
+    if legacy_held() {
+        return false;
+    }
+    lk().run(owner, seq)
 }

@@ -152,7 +152,7 @@ impl CoreApi for RealCore {
         crate::package::link::lk().drain(owner)
     }
     unsafe fn link_run(&self, owner: Owner, seq: &Sequence) -> bool {
-        crate::package::link::lk().run(owner, seq)
+        crate::package::link::run(owner, seq)
     }
 }
 
