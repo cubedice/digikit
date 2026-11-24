@@ -67,7 +67,8 @@
           "digikit/prism",
           "digikit/remote",
           "core/services/fx",
-          "core/services/machines"
+          "core/services/machines",
+          "core/services/instrument"
         ],
         "patchModules": [
           "core/input",

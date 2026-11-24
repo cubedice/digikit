@@ -20,7 +20,8 @@
         "dsp": "sharc",
         "modules": [
           "digikit/canopy",
-          "core/services/machines"
+          "core/services/machines",
+          "core/services/instrument"
         ],
         "patchModules": [
           "core/instrument-play",
@@ -46,7 +47,8 @@
         "dsp": "sharc",
         "modules": [
           "digikit/canopy",
-          "core/services/machines"
+          "core/services/machines",
+          "core/services/instrument"
         ],
         "patchModules": [
           "core/instrument-play",

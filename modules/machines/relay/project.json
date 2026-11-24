@@ -13,7 +13,8 @@
         "dsp": "sharc",
         "modules": [
           "digikit/relay-machine",
-          "core/services/machines"
+          "core/services/machines",
+          "core/services/instrument"
         ],
         "patchModules": [
           "core/relay-track",
