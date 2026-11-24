@@ -40,7 +40,12 @@ afterAll(() => {
   }
   fs.rmSync(owned, { recursive: true });
 });
-const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
+const h = withSession({
+  ...options,
+  cardImage: () => seededCard('dt2', options.firmware, cardSeed!),
+  dsp: 'sharc',
+  restart: false,
+});
 test('CANOPY track trig locks: stock lock storage and playback', { timeout: 900_000 }, async () => {
   const root = repoRoot(),
     image = path.resolve(root, process.env.CANOPY_PLOCK_IMAGE ?? 'out/patch/canopy-multi-release.syx');

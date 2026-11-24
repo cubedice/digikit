@@ -570,7 +570,11 @@ fn rust_services(sdk: &Sdk) -> String {
     let mut s = format!("// {HEADER}\n\n");
     s.push_str("use dkrt_abi::provider::ProviderHandle;\n\n");
     // the image-declared boot need (`boot_need_<service>`, loader/plan.rs) looks the services up by name: the runtime names none itself
-    let names: Vec<String> = sdk.service.iter().map(|d| format!("{:?}", d.name)).collect();
+    let names: Vec<String> = sdk
+        .service
+        .iter()
+        .map(|d| format!("{:?}", d.name))
+        .collect();
     s.push_str(&format!(
         "/// The name of every `[[service]]`, in file order (the image-declared boot need, `boot_need_<service>`, is searched for each).\npub const ORDER: [&str; {}] = [{}];\n\n",
         names.len(),

@@ -42,7 +42,12 @@ afterAll(() => {
   }
   fs.rmSync(owned, { recursive: true });
 });
-const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
+const h = withSession({
+  ...options,
+  cardImage: () => seededCard('dt2', options.firmware, cardSeed!),
+  dsp: 'sharc',
+  restart: false,
+});
 test('CANOPY records keyboard presses', { timeout: 900_000 }, async () => {
   const root = repoRoot(),
     image = path.resolve(root, process.env.CANOPY_RECORD_IMAGE ?? 'out/patch/canopy-multi-release.syx');

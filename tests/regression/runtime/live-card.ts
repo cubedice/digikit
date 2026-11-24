@@ -49,7 +49,12 @@ export async function liveCard(device: Device, firmware: string, stableBlocks = 
  * filesystem, the boot project of the firmware; a selection record with `stableBlocks`), content-named in the card cache. The fork's proofs
  * (CANOPY, the track keyboard) pass `cardImage: () => seededCard(...)` where they passed the seed as `card` before the upstream merge.
  */
-export async function seededCard(device: Device, firmware: string, seed: string, stableBlocks = LIVE_STABLE_BLOCKS): Promise<string> {
+export async function seededCard(
+  device: Device,
+  firmware: string,
+  seed: string,
+  stableBlocks = LIVE_STABLE_BLOCKS,
+): Promise<string> {
   const syx = deviceProfile(device).capabilities.card === 'path-fs' ? resolveInputs(device, firmware).syx : undefined;
   const spec = { selection: [] as string[], stableBlocks, folder: seed, syx };
   const key = cardKey(device, { ...spec, folder: folderSha(seed), syx: syx ? fileSha(syx) : undefined });

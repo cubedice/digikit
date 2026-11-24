@@ -315,7 +315,12 @@ fn cf_module_include_dirs(
 
 /// The include directories of the C and assembler sources of `o`: its `include_dirs` (relative to the module directory) when it has them, else the
 /// module's ([`cf_module_include_dirs`]); then the global directories of pins.toml.
-fn object_include_dirs(env: &Env, moddir: &Path, o: &ObjectToml, header: Option<&workbench::Header>) -> Vec<PathBuf> {
+fn object_include_dirs(
+    env: &Env,
+    moddir: &Path,
+    o: &ObjectToml,
+    header: Option<&workbench::Header>,
+) -> Vec<PathBuf> {
     if o.include_dirs.is_empty() {
         return cf_module_include_dirs(env, moddir, header);
     }
@@ -394,7 +399,12 @@ fn source_hash(
         }
         Kind::Rust => {
             let (manifest, _) = rust_sources(sources)?;
-            rust::object_sha256(env, &moddir.join(manifest), &o.cargo_flags(), &c_sources(env, moddir, o)?)
+            rust::object_sha256(
+                env,
+                &moddir.join(manifest),
+                &o.cargo_flags(),
+                &c_sources(env, moddir, o)?,
+            )
         }
         Kind::Cf => cf::source_digest_with_workbench(
             env,

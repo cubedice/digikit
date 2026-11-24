@@ -74,7 +74,11 @@ it('makes the C and assembler sources of a Rust object and the headers of its in
           manifest: { category: 'test' },
           objects: [
             {
-              sources: ['Cargo.toml', '../../../adapters/play/src/cf/control.c', '../../../adapters/play/src/cf/hooks.s'],
+              sources: [
+                'Cargo.toml',
+                '../../../adapters/play/src/cf/control.c',
+                '../../../adapters/play/src/cf/hooks.s',
+              ],
               ...(include_dirs && { include_dirs }),
             },
           ],

@@ -221,7 +221,12 @@ pub fn source_sha256(manifest: &Path, cargo_flags: &[String]) -> Result<String> 
 /// that, then the `cf::source_digest` of the sources: their bytes, the headers and `.include` files they read (path and bytes, as listed with the
 /// object's include directories and defines), the C toolchain record (the gcc, as and ld versions and the CFLAGS) and the defines ([`SERVICE_DEFINE`]
 /// and the build's own).
-pub fn object_sha256(env: &Env, manifest: &Path, cargo_flags: &[String], c: &CSources) -> Result<String> {
+pub fn object_sha256(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    c: &CSources,
+) -> Result<String> {
     let crate_sha = source_sha256(manifest, cargo_flags)?;
     if c.files.is_empty() {
         return Ok(crate_sha);
@@ -847,7 +852,11 @@ pub fn object_proto_with(
         let cflags = toolchain.get("cflags").cloned().unwrap_or_default();
         toolchain.insert("cflags".into(), format!("{cflags} {}", defines.join(" ")));
     }
-    Ok((proto, object_sha256(env, &manifest, cargo_flags, c)?, toolchain))
+    Ok((
+        proto,
+        object_sha256(env, &manifest, cargo_flags, c)?,
+        toolchain,
+    ))
 }
 
 #[cfg(test)]
