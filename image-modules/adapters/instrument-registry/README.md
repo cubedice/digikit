@@ -5,8 +5,11 @@ By default it answers capability queries and rejects lifecycle work. A trusted
 admission flag enables the protected row scheduler described below. It does not
 publish audio dispatch or make CANOPY installable. V2 admission remains disabled.
 
-The provider exports `_dl_irows`, a 64-byte mailbox for DSP-link window 3, and
-`_dl_iwords`, the address of its 16-word capacity constant. The protected MIDI
+The provider exports `_dl_irows`, a 64-byte mailbox for DSP-link window 4, and
+`_dl_iwords`, the address of its 16-word capacity constant. Window 4 is the V2
+registration window of `core/dsp-link` (bit 29 of the chunk header; window 3 is
+upstream's stats control). The runtime's V2 coordinator writes it with
+`dl_send_owned` under a `dl_claim` lease. The protected MIDI
 block wrapper calls `_instrument_registry_block` before processing MIDI input.
 The provider uses no firmware anchors of its own.
 
@@ -157,7 +160,7 @@ These worker tests alone do not prove mailbox completion or live device admissio
 ## Internal DSP row lifecycle
 
 `src/dsp/rows.s` now owns eight 16-word DSP rows. This table is separate from the
-window-3 command buffer and is not writable through that window. Trusted future
+window-4 command buffer and is not writable through that window. Trusted future
 admission must populate metadata only while a row is unreachable, after validating
 allocation ownership, executable ranges, descriptor limits and callback budgets.
 The INSTALL handler copies its payload into a private snapshot and invokes the
@@ -218,7 +221,7 @@ Production admission and audio dispatch remain disconnected.
 
 ## Mailbox lifecycle scheduling
 
-`_ir_lifecycle_ready` is an internal, cold-boot-zero flag outside window 3. Only
+`_ir_lifecycle_ready` is an internal, cold-boot-zero flag outside window 4. Only
 trusted admission may set it to exactly 1, after arranging valid owned rows and
 callback budgets. Keep it stable while work is pending. No production path sets
 it yet. When enabled, query and completion replies report capability bits 0/1.

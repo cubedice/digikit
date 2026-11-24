@@ -88,7 +88,7 @@ unsafe impl Transport for Link {
                 assert_eq!(dest, 0x20010000 + w.image.len() as u32);
                 w.image.extend_from_slice(data);
             } else {
-                assert_eq!(window, 3);
+                assert_eq!(window, 4);
                 for (i, bytes) in data.chunks_exact(4).enumerate() {
                     w.words[dest as usize + i] = u32::from_le_bytes(bytes.try_into().unwrap());
                 }

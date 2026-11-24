@@ -200,7 +200,7 @@ impl<T: Transport> Driver<T> {
             }
         }
         self.start(
-            3,
+            4,
             write.offset,
             write.count * 4,
             Target::Mailbox {

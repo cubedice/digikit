@@ -269,7 +269,7 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
     static uint32_t payload=0x12345678;
     uint32_t out[16], i;
     if (step == 1 && RESET_NOTIFICATION) {
-        if(dl_claim(&lease) || dl_send_owned(lease,3,0,&payload,4,&ticket)) return 15;
+        if(dl_claim(&lease) || dl_send_owned(lease,4,0,&payload,4,&ticket)) return 15;
     }
     if (!step) {
         mi_dsp_reset_hook(1); /* initial assertion before adapter use is harmless */
