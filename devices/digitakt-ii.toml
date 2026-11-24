@@ -333,9 +333,10 @@ device = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui",
 device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/introblank", "core/sdhc-large"]
 # Same roots as `emulator`; the name stays for the per-track sample tests (API 1.5).
 sample-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool"]
-# Experimental exclusive phrase-FX image. Same base as emulator, plus the
+# Experimental exclusive phrase-FX image (PRISM's device tests). The base of emulator without core/sample-pool (about 55 KB of cf.expansion,
+# which the image does not have room for since the upstream merge of 2026-11-24; PRISM's tests load no samples), plus the
 # phrase page (core/phrase-ui), which brings the controls (core/phrase-control) and their storage (core/loop-storage).
-phrase = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool", "core/phrase-ui"]
+phrase = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/phrase-ui"]
 
 # Overloop alone: its storage (core/loop-storage), the pattern position its engine follows (core/pattern-position) and its page (core/loop-display; it brings
 # the control home core/loop-control and the FX view dispatcher core/fxview). No phrase adapter is needed.
