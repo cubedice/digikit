@@ -22,6 +22,7 @@ macro_rules! entries {
 entries! {
     instrument_vec_table,
     midi_vec_table,
+    kbp_vec_table,
 }
 
 #[cfg(target_arch = "m68k")]

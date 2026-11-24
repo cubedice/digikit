@@ -4,8 +4,8 @@
  * handler, or a neutral result). Clobbers d0 and a0 only, as a C call may; the arguments stay on the stack. */
     .text
     .even
-    .globl mi_channel_message
-mi_channel_message:
+    .globl mi_legacy_channel_message
+mi_legacy_channel_message:
     move.l slot.midi_vec,%d0
     beq.s 1f
     movea.l %d0,%a0

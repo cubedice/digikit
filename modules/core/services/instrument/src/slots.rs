@@ -6,3 +6,5 @@
 pub const INSTRUMENT: (&str, &str) = ("instrument_vec", "instrument_vec_table");
 /// The slot of `core/midi-events` and the table the file fills it with.
 pub const MIDI: (&str, &str) = ("midi_vec", "midi_vec_table");
+/// The slot of `core/keyboard-panel` and the table the file fills it with.
+pub const KEYBOARD: (&str, &str) = ("kbp_vec", "kbp_vec_table");

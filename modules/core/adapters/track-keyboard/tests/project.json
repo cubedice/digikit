@@ -1,0 +1,75 @@
+{
+  "$schema": "../../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "track-keyboard-tests",
+  "tags": [
+    "test-only"
+  ],
+  "implicitDependencies": [
+    "core/track-keyboard"
+  ],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "panel.device.test.ts",
+          "midi.device.test.ts",
+          "sequence.device.test.ts",
+          "sequence-transition.device.test.ts",
+          "arp-phase.device.test.ts",
+          "keys-latency.device.test.ts",
+          "pool.device.test.ts",
+          "storage.device.test.ts",
+          "track-clipboard.device.test.ts",
+          "trig-clipboard.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [],
+        "patchModules": [
+          "core/track-keyboard",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "tags": [
+          "A:core/track-keyboard",
+          "A:core/keyboard-panel",
+          "A:core/copy-watch",
+          "C:transport",
+          "C:state"
+        ]
+      },
+      {
+        "files": [
+          "canopy.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "core/services/machines",
+          "core/services/instrument"
+        ],
+        "patchModules": [
+          "core/track-keyboard",
+          "core/instrument-play",
+          "core/digikit-menu",
+          "core/health"
+        ],
+        "tags": [
+          "S:machines",
+          "A:core/track-keyboard",
+          "A:core/instrument-play"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

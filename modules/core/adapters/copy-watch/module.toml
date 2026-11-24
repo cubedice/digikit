@@ -1,0 +1,45 @@
+[module]
+id = "core/copy-watch"
+version = "0.1.0"
+name = "Copy watch"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "stable"
+summary = "The stock memcpy, memset and bzero, watched for long copies and fills: pattern and track copies for the track keyboard, Sound copies for CANOPY's Sound persistence."
+requires = ["core/runtime"]
+conflicts = []
+ports = ["dt2-1.17"]
+
+[targets]
+"dt2-1.17" = "stable"
+
+# The entries of copy-watch.s were CANOPY's (sound-persist.s of core/instrument-play) until the track keyboard needed them without
+# CANOPY (docs/plans/fork-image-diet.md section 9). Both clients are optional symbols of copy-watch.c.
+[[object]]
+path = "build/copy-watch-cf.dko.json"
+sources = ["src/cf/copy-watch.c", "src/cf/copy-watch.s"]
+place = "cf.expansion"
+devices = ["dt2"]
+optional = ["ip_sa_copy_before", "ip_sa_copy_after", "ip_sa_cleared", "tk_pattern_copied", "tk_pattern_cleared"]
+
+[object.externs]
+cw_memcpy_resume = "hook.cf.util.site.memcpy.return"
+cw_memset_resume = "hook.cf.util.site.memset.return"
+cw_bzero_resume = "hook.cf.util.site.bzero.return"
+
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memcpy"
+to = "cw_memcpy_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.util.hook.memset"
+to = "cw_memset_entry"
+
+[[op]]
+op = "hook"
+hook = "cf.util.hook.bzero"
+to = "cw_bzero_entry"

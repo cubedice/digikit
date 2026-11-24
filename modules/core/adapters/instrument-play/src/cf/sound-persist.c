@@ -26,6 +26,8 @@ enum { SA_MEMORY = 0x20000 };
 static SaStore store;
 /* Nonzero once the store exists; the assembly hooks test it first. */
 volatile uint32_t ip_sa_ready;
+/* core/copy-watch: set once the store exists, so every long copy and fill reaches ip_sa_copy_* and ip_sa_cleared */
+extern volatile uint32_t cw_long_watch;
 /* [0] store ready, [1] allocation failures, [2] temporary entries,
  * [3] extensions written to records, [4] loads with an extension,
  * [5] long copies and fills seen (most touch no Sound). */
@@ -107,6 +109,7 @@ SaStore *ip_sa_ensure(void)
         for (uint32_t i = 0; i < sizeof(store); ++i)
             ((volatile uint8_t *)&store)[i] = ((const uint8_t *)&fresh)[i];
         ip_sa_ready = 1;
+        cw_long_watch = 1;
         ip_sa_info[0] = 1;
         ip_sa_info[2] = temps;
     }
@@ -170,8 +173,7 @@ uint32_t ip_sa_saved(uint32_t record, uint32_t sound, uint32_t result)
     return result;
 }
 
-extern void tk_pattern_copied(uint32_t, uint32_t, uint32_t) __attribute__((weak));
-extern void tk_pattern_cleared(uint32_t, uint32_t) __attribute__((weak));
+/* core/copy-watch calls the three below (copy-watch.c) and tells the track keyboard of pattern copies itself. */
 
 /* memcpy of at least one Sound's length, before and after the stock copy. */
 void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
@@ -182,8 +184,6 @@ void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
 }
 void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 {
-    if (tk_pattern_copied && (length == 0x1db8cu || length == 0x6a5u))
-        tk_pattern_copied(destination, source, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();
@@ -194,8 +194,6 @@ void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
 /* memset or bzero of at least one Sound's length, after the stock fill. */
 void ip_sa_cleared(uint32_t destination, uint32_t length)
 {
-    if (tk_pattern_cleared && length == 0x1db8cu)
-        tk_pattern_cleared(destination, length);
     if (!ip_sa_ready)
         return;
     uint32_t sr = dkrt_irq_mask();

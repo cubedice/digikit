@@ -82,14 +82,14 @@ The track clipboard test selected track 2, enabled ARP, placed a native trig,
 and copied its sequence in grid recording. Pasting onto track 1 applied the
 saved ARP state. Undo restored the destination state. Clear and undo clear
 changed track 1 while track 2 retained its setting.
-[Track clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/track-clipboard.manual.device.test.ts)
+[Track clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/track-clipboard.device.test.ts)
 
 The individual trig fixture copied an ARP lock to another trig,
 undid the paste to recover its previous GATE lock, cleared and
 restored the source lock, and deleted the source without disturbing
 the destination. A two-trig clipboard wrapped from step 16 to step 2
 and undid both changes, then pasted to steps 6 and 8 using the same
-source spacing. [Trig clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/trig-clipboard.manual.device.test.ts)
+source spacing. [Trig clipboard emulator test](../../modules/core/adapters/track-keyboard/tests/trig-clipboard.device.test.ts)
 
 The portable tests also cover ordered note durations, selector state,
 corrupt payload rejection, preserving populated native lock records and

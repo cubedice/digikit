@@ -8,10 +8,9 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { emulatedClockMs, pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'shared arpeggiator stock sequence', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test('replays audio and MIDI trigs and captures a step-recorded chord', { timeout: 360_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
@@ -29,7 +28,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
         'tk_capture_committed',
         'tk_capture_last_count',
       ],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx: image.syx,

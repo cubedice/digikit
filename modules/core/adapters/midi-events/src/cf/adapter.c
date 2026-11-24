@@ -406,7 +406,7 @@ void mi_panel_release(void)
     dkrt_irq_restore(sr);
 }
 
-static int legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
+int mi_legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {
     uint32_t sr, port;
     int consumed;
@@ -439,14 +439,4 @@ static int legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t sou
     return consumed;
 }
 
-int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
-{
-    if (IP_HAVE(tk_midi_channel_message)) {
-        int owned = tk_midi_channel_message(msg, len, source, 1);
-        if (owned)
-            return owned > 0;
-    }
-    if (legacy_channel_message(msg, len, source))
-        return 1;
-    return IP_HAVE(tk_midi_channel_message) ? tk_midi_channel_message(msg, len, source, 0) : 0;
-}
+/* mi_channel_message is the router of the image part (image.c). */

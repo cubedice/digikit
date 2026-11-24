@@ -6,25 +6,25 @@ category = "core"
 role = "adapter"
 type = "framework"
 author = "digikit"
-status = "experimental"
-summary = "Opt-in track keyboard, arpeggiator and TRIG pages for registered note backends."
+status = "stable"
+summary = "Track keyboard, arpeggiator and TRIG pages for every audio and MIDI track; CANOPY tracks join in while CANOPY is loaded."
 ports = ["dt2-1.17"]
-requires = ["core/runtime", "core/pattern-position", "core/ui", "core/instrument-play", "core/midi-events", "core/relay-input", "core/fxview"]
+requires = ["core/runtime", "core/pattern-position", "core/ui", "core/keyboard-panel", "core/copy-watch", "core/midi-events", "core/relay-input", "core/fxview"]
 conflicts = []
 
 [targets]
-"dt2-1.17" = "experimental"
+"dt2-1.17" = "stable"
 
-# Its keyboard and MIDI paths run through the code of core/instrument-play, which is in services/instrument.dks
-# (docs/plans/fork-image-diet.md section 9): the boot loads that file whether or not a selected module needs it (the runtime
-# looks up `boot_need_<service>`; the address is not read).
+# The runtime calls tk_runtime_init once per UI pass (an image tick): the track keyboard starts and stays polled without any
+# module or service; the call returns at once after the first that succeeded.
 [[info]]
-name = "boot_need_instrument"
+name = "tick_track_keyboard"
 symbol = "tk_runtime_init"
+tick = true
 
 [[object]]
 path = "build/track-keyboard.dko.json"
-optional = ["rtm_is_type"]
+optional = ["rtm_is_type", "cp_valid", "ilp_event_pair", "instrument_lock_source", "instrument_locked_sound", "instrument_src_track_keyboard", "instrument_track_keyboard_lanes", "instrument_track_keyboard_legacy", "instrument_track_keyboard_locked_note", "instrument_track_owned"]
 sources = ["src/track-keyboard.c", "src/track-canopy.c", "src/track-config.c", "src/track-service.c", "src/track-runtime.c", "src/track-native.c", "src/track-native-fw.c", "src/trig-view.c", "src/trig-title.s",
   "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
   "src/track-step-fw.c", "src/track-step-hooks.s",

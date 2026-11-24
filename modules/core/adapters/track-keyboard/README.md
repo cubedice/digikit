@@ -1,7 +1,10 @@
 # Shared DTII track keyboard
 
-The experimental DTII OS 1.17 adapter adds ARP and KEYS after the original
-TRIG pages. Build the firmware with `core/track-keyboard`. It uses the stock
+The DTII OS 1.17 adapter adds ARP and KEYS after the original TRIG pages of
+every audio and MIDI track. It is part of the fork's hardware image
+(`canopy-overloop-prism`) and of any image built with `core/track-keyboard`;
+it needs no module or service: it starts itself (its image tick) and plays
+through `core/keyboard-panel`, the KEYBOARD view handler. It uses the stock
 pattern keyboard and track routing for panel, USB and DIN input. The
 arpeggiator follows the selected pattern tempo when the sequencer is stopped
 or playing. MIDI tracks use the configured output channel.
@@ -66,7 +69,9 @@ before the first note is due. It uses that pattern's step settings and notes,
 including for early steps with negative microtiming. Held keyboard input
 retains ownership across ordinary pattern changes.
 
-Use the matching CANOPY module build with this firmware. An inherited
+CANOPY tracks join in while CANOPY is loaded (its host runs from
+`services/instrument.dks`); without it every track is a stock track to the
+track keyboard. An inherited
 sound continues to use its legacy performer. Its effective controls appear
 on TRIG and go into the pattern on the first performance edit. CANOPY's
 SOURCE page retains MIX and its native TUNE and LEVEL/DATA handling.
@@ -96,8 +101,8 @@ Earlier RELAY builds retain their own motor and recorder. POOL requires
 RELAY 0.5.1, its matching firmware, and the updated DTII machine service.
 
 The full design and release checks are in the
-[proposal](../../../../docs/design/dt2-track-arpeggiator.md). The adapter
-remains experimental. CANOPY uses its internal voices. RELAY is the
+[proposal](../../../../docs/design/dt2-track-arpeggiator.md). CANOPY uses its internal
+voices. RELAY is the
 only qualified dynamic machine that can borrow an empty stock track.
 Physical DIN, heavy MIDI load, isolated USB audio, routing and DSP
 measurements are recorded in the [native output findings](../../../../docs/findings/369-track-keyboard-native-output.md).

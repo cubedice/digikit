@@ -794,6 +794,10 @@ pub struct InfoDef {
     pub symbol: Option<String>,
     #[serde(default)]
     pub devices: Vec<String>,
+    /// `tick = true`: `symbol` is a function `void f(void)` of the adapter that the runtime calls once per pass of its UI-loop tick
+    /// (an entry of kind `INFO_KIND_TICK`), for an image feature that must run without a module or service to start it.
+    #[serde(default)]
+    pub tick: bool,
 }
 
 /// `[[slot]] name = "frame_type", devices = ["dn2"]`: one 4-byte pointer slot in the module's data region, zero at build.
@@ -1481,6 +1485,13 @@ mod manifest_tests {
             let e = load(&format!("[[machine]]\nid = \"a\"\ndsp = \"{bad}\"\n")).unwrap_err();
             assert!(e.to_string().contains("dsp"), "{bad}: {e}");
         }
+    }
+
+    #[test]
+    fn an_info_entry_is_a_data_table_unless_it_is_a_tick() {
+        let m = load("[[info]]\nname = \"tick_x\"\nsymbol = \"x_tick\"\ntick = true\n[[info]]\nname = \"x_info\"\n").unwrap();
+        assert!(m.info[0].tick);
+        assert!(!m.info[1].tick);
     }
 
     #[test]

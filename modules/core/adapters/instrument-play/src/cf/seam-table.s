@@ -7,7 +7,7 @@
 instrument_image:
     .long 0x49505331
     .long 1
-    .long 72
+    .long 71
     .long cp_decode
     .long cp_encode
     .long cp_fm_defaults
@@ -19,12 +19,11 @@ instrument_image:
     .long sa_put
     .long sa_seq
     .long sa_slot
+    .long ip_panel_tick
+    .long ip_panel_step_note
     .long ip_sa_ensure
     .long ip_sa_store
     .long ip_sa_tick
-    .long ip_note_list_original
-    .long ip_panel_original_on
-    .long ip_panel_original_off
     .long dk_ui_core_handle
     .long dkrt_instrument_generation
     .long dkrt_instrument_type

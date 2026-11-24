@@ -6,10 +6,9 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test(
     'keeps USB, DIN and stock fan-out ownership separate',
     { timeout: 180_000 },
@@ -20,7 +19,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
         session.runDir,
         session.runDir,
         ['DKRT_BOOT', 'tk_native_audio_active', 'tk_capture_committed'],
-        { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+        { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
       );
       await session.client.firmwareLoad({
         syx: image.syx,

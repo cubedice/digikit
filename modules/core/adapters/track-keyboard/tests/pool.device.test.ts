@@ -11,7 +11,6 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 const AUDIO_RATE = 48_000;
 const WINDOW = 4096;
@@ -48,13 +47,13 @@ function fundamental(pcm: Float32Array): number {
 }
 
 describeOn('dt2', 'stock audio helper group', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test('leases an empty helper, follows the owner controls, and re-admits after switching to WERP', { timeout: 240_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
       ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_sequence_audio_hits'],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     const word = (name: string, offset = 0) => session.client.memPeek(planSymbol(image.plan, name) + offset);
     const mask = async (name: string) => ((await word(`.sec..bss.${name}`)) ?? 0) >>> 16;

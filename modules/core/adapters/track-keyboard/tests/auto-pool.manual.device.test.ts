@@ -9,7 +9,6 @@ import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { freeClock, waitClock } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 const OWNER = 1;
 const TRIG_9 = 33;
@@ -21,14 +20,14 @@ function trackBits(mask: number): number[] {
 }
 
 describeOn('dt2', 'automatic stock audio helper pool', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
 
   test('borrows only for the notes being played and returns empty tracks after release', { timeout: 180_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
       ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_capture_committed', 'tk_panel_claim_hits'],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     const word = async (symbol: string, offset = 0) => (await session.client.memPeek(planSymbol(image.plan, symbol) + offset)) ?? 0;
     const mask = async (name: string, offset = 0) => (await word('.sec..bss.' + name, offset)) >>> 16;

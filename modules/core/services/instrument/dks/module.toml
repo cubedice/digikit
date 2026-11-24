@@ -9,7 +9,7 @@ type = "raw"
 author = "digikit"
 status = "experimental"
 summary = "The persistent instrument host of CANOPY (V2 transport, admission, SRC pages, keyboard and locks) and its MIDI ownership, moved out of the image of core/instrument-play and core/midi-events; it fills their two forwarding slots"
-requires = ["core/instrument-play", "core/midi-events"]
+requires = ["core/instrument-play", "core/midi-events", "core/keyboard-panel"]
 conflicts = []
 
 [targets]
@@ -26,6 +26,11 @@ devices = ["dt2"]
 [[fill]]
 slot = "midi_vec"
 entry = "midi_vec_table"
+devices = ["dt2"]
+
+[[fill]]
+slot = "kbp_vec"
+entry = "kbp_vec_table"
 devices = ["dt2"]
 
 # Rust glue (src/lib.rs, src/seam.rs) with the C of the two adapters that left the image, and the generated seam (src/seam.s: the
@@ -45,9 +50,8 @@ sources = [
     "../../../adapters/instrument-play/src/cf/src-mod.c",
     "../../../adapters/instrument-play/src/cf/status.c",
     "../../../adapters/instrument-play/src/cf/src-display.c",
-    "../../../adapters/instrument-play/src/cf/src-clock.c",
+    "../../../adapters/keyboard-panel/src/cf/src-clock.c",
     "../../../adapters/instrument-play/src/cf/src-native.c",
-    "../../../adapters/instrument-play/src/cf/panel.c",
     "../../../adapters/instrument-play/src/cf/sound.c",
     "../../../adapters/midi-events/src/cf/ownership.c",
     "../../../adapters/midi-events/src/cf/transport.c",
@@ -60,6 +64,7 @@ include_dirs = [
     "../../../adapters/instrument-play/src",
     "../../../adapters/midi-events/build/gen",
     "../../../adapters/midi-events/src",
+    "../../../adapters/keyboard-panel/src/cf",
 ]
 place = "cf.expansion"
 

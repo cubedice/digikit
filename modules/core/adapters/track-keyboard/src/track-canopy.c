@@ -11,9 +11,29 @@
 #include "../../instrument-play/src/cf/shared-notes.h"
 
 extern uint32_t dkrt_instrument_type(void);
-extern int instrument_track_owned(uint32_t track);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
+
+/* CANOPY's host (core/instrument-play) is optional: in an image without it these are 0, every track is a track CANOPY does not own,
+ * and the bridge below is not used (docs/plans/fork-image-diet.md section 9). */
+extern int cp_valid(const CpPreset *p) __attribute__((weak));
+extern int ilp_event_pair(uint16_t parameter, int16_t packed, uint32_t *id, uint32_t *value) __attribute__((weak));
+extern int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out) __attribute__((weak));
+extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out, uint16_t *tune) __attribute__((weak));
+extern void instrument_src_track_keyboard(uint32_t track, int active) __attribute__((weak));
+extern int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes) __attribute__((weak));
+extern int instrument_track_keyboard_legacy(uint32_t track, CpPreset *out) __attribute__((weak));
+extern int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch, uint32_t velocity, uint32_t on,
+                                                 uint32_t lane, const struct IsnSnapshot *snapshot) __attribute__((weak));
+extern int instrument_track_owned(uint32_t track) __attribute__((weak));
+
+/* All of CANOPY's host is in the image. */
+static bool canopy_linked(void)
+{
+    return cp_valid && ilp_event_pair && instrument_lock_source && instrument_locked_sound && instrument_src_track_keyboard &&
+           instrument_track_keyboard_lanes && instrument_track_keyboard_legacy && instrument_track_keyboard_locked_note &&
+           instrument_track_owned;
+}
 
 static const uint8_t order[] = {TK_ORDER_UP, TK_ORDER_DOWN, TK_ORDER_UPDN, TK_ORDER_PLAY,
                                 TK_ORDER_RANDOM};
@@ -35,13 +55,13 @@ static void set_user_recipe(TkRecipe *recipe, const CpPreset *saved)
 
 bool tk_canopy_is_owner(uint8_t track, int type)
 {
-    return type > 0 && (uint32_t)type == dkrt_instrument_type() && instrument_track_owned(track);
+    return canopy_linked() && type > 0 && (uint32_t)type == dkrt_instrument_type() && instrument_track_owned(track);
 }
 
 static bool legacy(uint8_t track, TkTrackConfig *out)
 {
     CpPreset saved;
-    if (!instrument_track_keyboard_legacy(track, &saved) || !cp_valid(&saved))
+    if (!canopy_linked() || !instrument_track_keyboard_legacy(track, &saved) || !cp_valid(&saved))
         return false;
     const uint16_t *p = saved.control;
     TkTrackConfig config = tk_track_defaults();
@@ -77,6 +97,8 @@ bool tk_canopy_routed(uint8_t track)
 static bool send(void *unused, uint8_t track, const TkNoteEvent *event)
 {
     (void)unused;
+    if (!canopy_linked())
+        return false;
     IsnSnapshot snapshot = {.valid = 1};
     if (event->on && (event->token & UINT32_C(0x80000000))) {
         snapshot = sequence_snapshot[track];
@@ -149,6 +171,8 @@ static void load_preset_source(IsnSnapshot *snapshot, const CpPreset *saved, uin
 static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSeed *seed,
                          bool recorded, uint16_t *pinned_controls)
 {
+    if (!canopy_linked())
+        return false;
     const TkSequenceAudio *audio = tk_sequence_audio(track);
     IsnSnapshot snapshot = {.valid = 1};
     CpPreset saved;
@@ -255,6 +279,8 @@ void tk_canopy_sync(uint8_t track, bool active, uint32_t pattern)
         routed |= bit;
     else
         routed &= (uint16_t)~bit;
-    instrument_src_track_keyboard(track, active);
-    instrument_track_keyboard_lanes(track, lanes);
+    if (canopy_linked()) {
+        instrument_src_track_keyboard(track, active);
+        instrument_track_keyboard_lanes(track, lanes);
+    }
 }

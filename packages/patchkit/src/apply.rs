@@ -1821,7 +1821,12 @@ pub fn apply_with(
                         inf.name
                     )
                 })?;
-                entries.push((dkneeds::keys::name_hash(&inf.name), v, prim::INFO_KIND_DATA));
+                let kind = if inf.tick {
+                    prim::INFO_KIND_TICK
+                } else {
+                    prim::INFO_KIND_DATA
+                };
+                entries.push((dkneeds::keys::name_hash(&inf.name), v, kind));
                 names.push(inf.name.clone());
             }
             if let Some((fw_addr, _)) = fw_id_at {

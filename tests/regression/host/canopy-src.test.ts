@@ -23,7 +23,7 @@ beforeAll(() => {
       path.join(source, 'status.c'),
       path.join(source, 'src-display.c'),
       path.join(source, 'src-lock-packed.c'),
-      path.join(source, 'src-clock.c'),
+      path.resolve(import.meta.dirname, '../../../modules/core/adapters/keyboard-panel/src/cf/src-clock.c'),
       '-o',
       binary,
     ],

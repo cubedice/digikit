@@ -85,6 +85,20 @@
    "section": ".text.mi_dsp_reset_release",
    "symbol": "dl_reset_quiesce",
    "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.mi_channel_message",
+   "symbol": "tk_midi_channel_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.mi_channel_message",
+   "symbol": "mi_legacy_channel_message",
+   "type": "cf.32"
   }
  ],
  "sections": [
@@ -101,9 +115,16 @@
    "kind": "text",
    "name": ".text.mi_dsp_reset_release",
    "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "2f0a45f9000000004a8a6724487800012f2f00142f2f00142f2f00144e924fef00104a80670a5ec071004480245f4e752f2f00102f2f00102f2f00104eb9000000004fef000c4a80661a4a8a67de42a72f2f00142f2f00142f2f00144e924fef001060c8700160c4",
+   "kind": "text",
+   "name": ".text.mi_channel_message",
+   "size": 104
   }
  ],
- "source_sha256": "f6ffbb0198f1b12141c8a521937356ddf3ff4671dcf35b03b71efaf1f5608bb6",
+ "source_sha256": "773597ffa1393abbff223ad598f25c23b1df6cf2b249ab26778915633241a458",
  "symbols": [
   {
    "global": true,
@@ -120,8 +141,8 @@
   {
    "global": true,
    "name": "mi_channel_message",
-   "section": ".text",
-   "value": 112
+   "section": ".text.mi_channel_message",
+   "value": 0
   },
   {
    "global": true,
@@ -167,6 +188,12 @@
   },
   {
    "global": true,
+   "name": "mi_legacy_channel_message",
+   "section": ".text",
+   "value": 112
+  },
+  {
+   "global": true,
    "name": "mi_registry_expect_session",
    "section": ".text",
    "value": 148
@@ -182,14 +209,20 @@
    "name": "slot.midi_vec",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_midi_channel_message",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "74",
-  "isa_check": "4728aff5cab2014157ad688f1ec03e03df8ecb52869cdd981ebdc6ac1a3ba30e",
+  "instructions_redecoded": "109",
+  "isa_check": "239b6694b38f6136bef54a6fab30e714590e98b9cd422ab12b6c10f163a539f6",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

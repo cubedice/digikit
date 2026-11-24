@@ -36,14 +36,6 @@ entries = [
     ["ip_current_machine_sound", "zero"],
     ["ip_refresh_machine_track", "zero"],
     ["ip_src_draw_rotary", "rts"],
-    # the targets of the adapter's hooks and vtable writes: without the service each takes the stock path
-    ["ip_note_list_write", "jmp:ip_note_list_original"],
-    ["ip_panel_on", "jmp:ip_panel_original_on"],
-    ["ip_panel_off", "jmp:ip_panel_original_off"],
-    ["ip_panel_key_event", "jmp:ip_panel_stock_key"],
-    ["ip_panel_detach", "jmp:ip_panel_stock_detach"],
-    ["ip_panel_toggle", "jmp:ip_panel_stock_toggle"],
-    ["ip_panel_update", "rts"],
     ["ip_src_attach", "jmp:ip_src_stock_attach"],
     ["ip_src_detach", "jmp:ip_src_stock_detach"],
     ["ip_src_draw", "jmp:ip_src_stock_draw"],
@@ -60,11 +52,30 @@ table = "midi_vec_table"
 adapter = "core/midi-events"
 image_file = "modules/core/adapters/midi-events/src/cf/seam.s"
 entries = [
-    ["mi_channel_message", "zero"],
+    # CANOPY's channel ledger: the router of the image part (mi_channel_message, image.c) asks it after the track keyboard
+    ["mi_legacy_channel_message", "zero"],
     ["mi_dsp_reset_begin", "rts"],
     ["mi_registry_expect_session", "minus1"],
     ["mi_registry_reply", "minus1"],
     ["instrument_write_frame", "rts"],
+]
+
+[[vector]]
+slot = "kbp_vec"
+table = "kbp_vec_table"
+adapter = "core/keyboard-panel"
+image_file = "modules/core/adapters/keyboard-panel/src/cf/seam.s"
+# The KEYBOARD view handler's calls into CANOPY's host: [image name, absent, service function]. Without the service a track is not
+# CANOPY's, so the handler takes the path of any other track (the track keyboard's, or stock).
+entries = [
+    ["kbp_track_owned", "zero", "instrument_track_owned"],
+    ["kbp_track_keyboard_routed", "zero", "instrument_track_keyboard_routed"],
+    ["kbp_track_plays_keys", "zero", "instrument_track_plays_keys"],
+    ["kbp_record_chord", "zero", "instrument_record_chord"],
+    ["kbp_select_track", "rts", "instrument_select_track"],
+    ["kbp_panel_key", "zero", "mi_panel_key"],
+    ["kbp_panel_release", "rts", "mi_panel_release"],
+    ["kbp_seq_mute", "rts", "mi_seq_mute"],
 ]
 
 # The image table `instrument_image` of core/instrument-play (its [[info]]): what the service takes from the image. The service
@@ -79,8 +90,10 @@ functions = [
     "cp_decode", "cp_encode", "cp_fm_defaults", "cp_valid", "cp_wavetable_defaults",
     "sr_decode", "sr_encode",
     "sa_get", "sa_put", "sa_seq", "sa_slot",
+    # core/keyboard-panel (the KEYBOARD view handler): the recorded-chord tick and the step note reader
+    "ip_panel_tick", "ip_panel_step_note",
     "ip_sa_ensure", "ip_sa_store", "ip_sa_tick",
-    "ip_note_list_original", "ip_panel_original_on", "ip_panel_original_off",
+    
     "dk_ui_core_handle",
     "dkrt_instrument_generation", "dkrt_instrument_type", "dkrt_irq_mask", "dkrt_irq_restore",
     "dkrt_settings_flush", "dkrt_settings_get", "dkrt_settings_put",

@@ -234,3 +234,29 @@ The moved C compiled alone with the service flags: text 71,716, rodata 7,881, da
 needs the packed files of the hardware set declare (`dkm-info`): CANOPY 281,168, `machines.dks` 50,576, `fx.dks`
 39,600, remote 1,680, Overloop 864, PRISM 608: 374,496 of the 524,288-byte arena, about 149,800 left for
 `instrument.dks` (about 131 KB with its bss). The fit is close; CANOPY's half tables lower its share.
+
+### 9.1 The track keyboard on its own (owner's request, 2026-11-23)
+
+The owner asked for the track keyboard (ARP and KEYS, the trig polyphony) to be a normal part of the image that does not depend on
+CANOPY. With the move above it ran only while services/instrument.dks was loaded: four of its paths went through CANOPY's code.
+
+| Path | Was | Now |
+| --- | --- | --- |
+| KEYBOARD view: key down and up, retrig, recording, step entry | `panel.c` of core/instrument-play, in the service | **core/keyboard-panel** (image): `panel.c` whole, its hook entries (`panel.s`) and the seven hook ops; its eight calls into CANOPY's host go through the forwarders of a third slot `kbp_vec` (filled by the service; "not CANOPY's track" while it is 0). The pure SRC clock `src-clock.c` moved with it. |
+| MIDI channel messages (USB and DIN) | `mi_channel_message` of core/midi-events, in the service | the router is in the image part of core/midi-events (`image.c`): the track keyboard, then CANOPY's channel ledger through the forwarder `mi_legacy_channel_message`, then the track keyboard's own routes |
+| pattern and track copies and clears (the memcpy, memset and bzero hooks) | CANOPY's Sound persistence (`sound-persist.s`) | **core/copy-watch** (image): the three hooks and their length filter; it calls the track keyboard for pattern and track lengths and CANOPY's persistence callbacks when they are linked. CANOPY sets `cw_long_watch` when its store exists, which was the `ip_sa_ready` test of the hook. |
+| start (`tk_runtime_init`) | CANOPY's tick | an **image tick**: `[[info]] tick = true` is an entry of kind 3 that the runtime calls once per UI pass (`platform::image_ticks`); core/track-keyboard declares `tick_track_keyboard` |
+
+core/track-keyboard requires core/keyboard-panel, core/copy-watch and core/midi-events instead of core/instrument-play; its CANOPY
+bridge (`track-canopy.c`, one call in `track-sequence-fw.c`) links CANOPY's host weakly and treats every track as a stock track when it
+is missing. It is in the hardware set `canopy-overloop-prism`, `status = "stable"`. The image-declared boot need (`boot_need_<service>`)
+that the track keyboard used in between stays in the runtime: a feature served by a service file with no module to need it can ask for
+the file (the track keyboard as its own service file, below).
+
+Measured [D]: an image with core/track-keyboard and without core/instrument-play links (155,732 bytes of cf.expansion free with the
+menu and health); `canopy-overloop-prism` with the track keyboard uses 1,279,340 of 1,396,736 (117,396 free); `panel.c` back in the
+image cost 7,160 of the move's saving.
+
+After the upstream merge (estimate, not measured) the hardware set with the track keyboard would be short by a few KB to nothing: the
+track keyboard (77.5 KB) then becomes its own service file, loaded through its image boot need, with its hook sites kept in the image
+as core/instrument-play's are.

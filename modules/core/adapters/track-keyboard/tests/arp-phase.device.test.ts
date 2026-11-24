@@ -8,7 +8,6 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 const TRACK = 9;
 const QUARTER_TICKS = 21_600_000;
@@ -20,7 +19,7 @@ const NATIVE_TRACK_BYTES = 0x6a5;
 const NATIVE_DEFAULT_LENGTH = 0x481;
 
 describeOn('dt2', 'track 10 arpeggio phase', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test('keeps short-gate generated notes on the running native sequence grid', { timeout: 240_000 }, async () => {
     const { session } = handle;
     const { plan, syx } = await prepareRuntimePlanModulesOffline(
@@ -28,7 +27,7 @@ describeOn('dt2', 'track 10 arpeggio phase', () => {
       session.runDir,
       session.runDir,
       ['DKRT_BOOT', 'pp_position', 'tk_native_try_seed_send', 'tk_sequence_audio_hits'],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx,

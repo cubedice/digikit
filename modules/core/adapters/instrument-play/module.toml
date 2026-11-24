@@ -8,7 +8,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "Single-instance V2 transport, development admission policy and shared carrier."
-requires = ["core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
+requires = ["core/keyboard-panel", "core/copy-watch", "core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
 # Its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): a module that requires it needs the file.
 served_by = "instrument"
 conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
@@ -44,9 +44,9 @@ to = "_mi_velocity_entry"
 [[object]]
 path = "build/play-cf.dko.json"
 optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig", "tk_pattern_cleared", "tk_pattern_copied", "tk_runtime_init", "tk_midi_channel_message", "rtm_can_save", "rtm_mod_carrier", "rtm_mod_param", "rtm_src", "dl_reset_begin", "dl_reset_quiesce"]
-# The image part (docs/plans/fork-image-diet.md): the Sound persistence path, the hook entries that stay, the pure codecs and
-# clock, and the generated forwarders (seam.s) and image table (seam-table.s). Everything else runs from services/instrument.dks.
-sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/src-clock.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/view.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/panel.s", "src/cf/seam.s", "src/cf/seam-table.s"]
+# The image part (docs/plans/fork-image-diet.md): the Sound persistence path, the hook entries that stay, the pure codecs, and the generated forwarders (seam.s) and image table (seam-table.s). Everything else runs from services/instrument.dks.
+sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/view.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/seam.s", "src/cf/seam-table.s"]
+include_dirs = ["build/gen", "src", "../keyboard-panel/src/cf"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
@@ -83,9 +83,6 @@ ip_sound_resume = "hook.cf.machine.site.sound_deserialize.return"
 ip_save_resume = "hook.cf.machine.site.sound_serialize.return"
 ip_init_resume = "hook.cf.machine.site.sound_init_slices.return"
 ip_type_resume = "hook.cf.machine.site.sound_type_write.return"
-ip_memcpy_resume = "hook.cf.util.site.memcpy.return"
-ip_memset_resume = "hook.cf.util.site.memset.return"
-ip_bzero_resume = "hook.cf.util.site.bzero.return"
 ip_kit_table_lit = "cf.project.site.kit_table_lit"
 ip_sound_pool_lit = "cf.project.site.sound_pool_lit"
 fw_alloc = "cf.mem.fn.new"
@@ -159,45 +156,12 @@ op = "hook"
 hook = "cf.machine.hook.instrument_mod_recombine"
 to = "ip_mod_recombine"
 [[op]]
-op = "write"
-anchor = "cf.page.site.instrument_panel_toggle_call"
-offset = 2
-value = "ip_panel_toggle"
-width = 4
-[[op]]
-op = "hook"
-hook = "cf.page.hook.instrument_panel_on"
-to = "ip_panel_on"
-[[op]]
-op = "hook"
-hook = "cf.page.hook.instrument_panel_off"
-to = "ip_panel_off"
-[[op]]
-op = "hook"
-hook = "cf.page.hook.instrument_note_list_write"
-to = "ip_note_list_write"
-[[op]]
-op = "write"
-anchor = "cf.page.site.instrument_panel_key_slot"
-value = "ip_panel_key_event"
-width = 4
-[[op]]
-op = "write"
-anchor = "cf.page.site.instrument_panel_detach_slot"
-value = "ip_panel_detach"
-width = 4
-[[op]]
-op = "write"
-anchor = "cf.page.site.instrument_panel_update_slot"
-value = "ip_panel_update"
-width = 4
-[[op]]
 op = "hook"
 hook = "cf.machine.hook.sound_deserialize"
 to = "ip_sound_entry"
 
 # CANOPY Sound persistence (sound-persist.c): the record extension in the
-# Sound writer, whole-Sound copies and fills, initialization and type changes.
+# Sound writer, initialization and type changes; whole-Sound copies and fills come through core/copy-watch.
 [[op]]
 op = "hook"
 hook = "cf.machine.hook.sound_serialize"
@@ -210,18 +174,6 @@ to = "ip_init_site"
 op = "hook"
 hook = "cf.machine.hook.sound_type_write"
 to = "ip_type_site"
-[[op]]
-op = "hook"
-hook = "cf.util.hook.memcpy"
-to = "ip_memcpy_entry"
-[[op]]
-op = "hook"
-hook = "cf.util.hook.memset"
-to = "ip_memset_entry"
-[[op]]
-op = "hook"
-hook = "cf.util.hook.bzero"
-to = "ip_bzero_entry"
 
 [[op]]
 op = "hook"

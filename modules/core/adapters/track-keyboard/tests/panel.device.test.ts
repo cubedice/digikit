@@ -14,10 +14,9 @@ import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'shared track keyboard panel proof', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test(
     'preserves stock audio and MIDI TRIG pages and plays ARP while stopped',
     {
@@ -175,7 +174,7 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         session.runDir,
         ['DKRT_BOOT', 'tk_panel_claim_hits', 'tk_native_audio_active'],
         {
-          modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'],
+          modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'],
           timeoutMs: 90_000,
         },
       );

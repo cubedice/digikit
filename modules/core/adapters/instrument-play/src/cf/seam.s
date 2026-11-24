@@ -204,75 +204,12 @@ ip_src_draw_rotary:
     jmp (%a0)
 1:
     rts
-    .globl ip_note_list_write
-ip_note_list_write:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 84(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_note_list_original
-    .globl ip_panel_on
-ip_panel_on:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 88(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_panel_original_on
-    .globl ip_panel_off
-ip_panel_off:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 92(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_panel_original_off
-    .globl ip_panel_key_event
-ip_panel_key_event:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 96(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_panel_stock_key
-    .globl ip_panel_detach
-ip_panel_detach:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 100(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_panel_stock_detach
-    .globl ip_panel_toggle
-ip_panel_toggle:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 104(%a0),%a0
-    jmp (%a0)
-1:
-    jmp ip_panel_stock_toggle
-    .globl ip_panel_update
-ip_panel_update:
-    move.l slot.instrument_vec,%d0
-    beq.s 1f
-    movea.l %d0,%a0
-    movea.l 108(%a0),%a0
-    jmp (%a0)
-1:
-    rts
     .globl ip_src_attach
 ip_src_attach:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 112(%a0),%a0
+    movea.l 84(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_attach
@@ -281,7 +218,7 @@ ip_src_detach:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 116(%a0),%a0
+    movea.l 88(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_detach
@@ -290,7 +227,7 @@ ip_src_draw:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 120(%a0),%a0
+    movea.l 92(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_draw
@@ -299,7 +236,7 @@ ip_src_event:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 124(%a0),%a0
+    movea.l 96(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_event
@@ -308,7 +245,7 @@ ip_src_key:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 128(%a0),%a0
+    movea.l 100(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_key
@@ -317,7 +254,7 @@ ip_src_parameter:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 132(%a0),%a0
+    movea.l 104(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_parameter
@@ -326,7 +263,7 @@ ip_src_turn:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 136(%a0),%a0
+    movea.l 108(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_turn
@@ -335,7 +272,7 @@ ip_src_update:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a0
-    movea.l 140(%a0),%a0
+    movea.l 112(%a0),%a0
     jmp (%a0)
 1:
     jmp ip_src_stock_update

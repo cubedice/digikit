@@ -1338,6 +1338,9 @@ pub const INFO_KIND_SLOT: u32 = 1;
 /// The kind of an info table entry: a DSP slot (`[[slot]] space = "dsp"`). The value is the word index in core/dsp-link's slot block (window 0 of the link), not an address. A
 /// `SLOTS` item with the flag `dkneeds::keys::SLOT_DSP` fills it.
 pub const INFO_KIND_DSP_SLOT: u32 = 2;
+/// The kind of an info table entry: a UI tick of an image adapter (`[[info]] tick = true`): the address of a `void f(void)` that the runtime calls once
+/// per UI-loop pass. A service cannot fill it, and `dkc_info` does not return it as a data table.
+pub const INFO_KIND_TICK: u32 = 3;
 
 /// The image's one info table, `dkrt_info_table`: big endian `{magic "DKIT", count}`, then one `{name hash, address, kind}` per entry (`entries` in order: the
 /// `[[slot]]` and `[[info]]` entries of all image adapters; kind is [`INFO_KIND_SLOT`] or [`INFO_KIND_DATA`]). `dkrt_abi::platform::info_find` searches it.

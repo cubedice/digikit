@@ -24,7 +24,7 @@ path = "build/midi-events-cf.dko.json"
 sources = ["src/cf/image.c", "src/cf/din.s", "src/cf/reset.s", "src/cf/seam.s"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["dl_reset_quiesce"]
+optional = ["dl_reset_quiesce", "tk_midi_channel_message"]
 
 [object.externs]
 mi_dsp_reset_next = "hook.cf.rtos.site.dsp_reset.tail"

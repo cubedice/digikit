@@ -1,11 +1,9 @@
-#include "seam.h"
+#include "keyboard-panel.h"
 /* OS1.17 KeyboardView supplies physical key, resolved track and pitch here.
  * Intercept before its stock mono audition and held-note vector. The caller
  * still registers the native key-up closure, so scale/octave edits cannot
  * change the pitch released. No raw button-to-note translation lives here. */
 #include <stdint.h>
-#include "../../../midi-events/src/cf/bridge.h"
-#include "instances.h"
 extern uint32_t dkrt_instrument_type(void);
 extern uint8_t *ip_panel_track_object(uint32_t, uint32_t);
 extern uint32_t ip_panel_track_type(uint8_t *);
@@ -24,14 +22,10 @@ extern uint8_t ip_panel_live_record(uint32_t);
 extern uint8_t ip_panel_trig_held(uint32_t);
 extern uint8_t ip_panel_step_record(uint32_t);
 extern uint32_t ip_panel_key_down(uint32_t);
-extern int instrument_track_keyboard_routed(uint32_t track);
 /* The active pattern (core/pattern-position); without it no chord is stored. */
 extern uint32_t pp_current_pattern(void) __attribute__((weak));
 /* control.c: the track's instance plays held keys as separate notes (PLAY). */
-extern int instrument_track_plays_keys(uint32_t track);
 /* src-native.c: chord-note locks on the given steps of the current track. */
-extern int instrument_record_chord(const uint32_t steps[4], const int8_t *intervals,
-                                   uint32_t count);
 extern uint32_t instrument_src_now(void);
 static uint8_t *panel_view;
 static uint32_t panel_track = IP_NONE;
@@ -107,7 +101,7 @@ static void rec_release(uint32_t key)
             return;
     if (waiting_count && waiting_track == track)
         return;
-    mi_seq_mute(track, 0);
+    kbp_seq_mute(track, 0);
 }
 static void rec_release_all(void)
 {
@@ -182,7 +176,7 @@ int32_t ip_panel_step_note(uint32_t track, uint32_t step)
 static uint32_t chord_intervals(uint32_t track, uint32_t pitch, int8_t out[3])
 {
     uint32_t count = 0;
-    if (!instrument_track_plays_keys(track))
+    if (!kbp_track_plays_keys(track))
         return 0;
     for (uint32_t i = group_count; i-- && count < 3;) {
         int32_t interval = (int32_t)group_pitch[i] - (int32_t)pitch;
@@ -203,7 +197,7 @@ static void store_chord(const uint32_t steps[4], uint32_t track, uint32_t pitch)
     ip_panel_chord_log[ip_panel_chord[3] & 15] =
         (first << 24) | ((pitch & 255) << 16) | ((uint32_t)group_count << 8) | count;
     ip_panel_chord[1] = count;
-    ip_panel_chord[2] = (uint32_t)instrument_record_chord(steps, intervals, count);
+    ip_panel_chord[2] = (uint32_t)kbp_record_chord(steps, intervals, count);
     ++ip_panel_chord[3];
 }
 /* Live and step recording commit the trig and its note list after the key
@@ -253,12 +247,12 @@ static void panel_play(uint8_t *view, uint32_t key, uint32_t track, uint32_t pit
                        uint32_t velocity, int shared_step)
 {
     if (panel_view && (panel_view != view || panel_track != track)) {
-        mi_panel_release();
+        kbp_panel_release();
         rec_release_all();
     }
     panel_view = view;
     panel_track = track;
-    instrument_select_track(track);
+    kbp_select_track(track);
     ++ip_panel_debug[0];
     ip_panel_debug[2] = key;
     ip_panel_debug[3] = track;
@@ -268,13 +262,13 @@ static void panel_play(uint8_t *view, uint32_t key, uint32_t track, uint32_t pit
         if (tk_panel_on(key, track, pitch, velocity))
             shared_step_keys |= 1u << key;
     } else
-        (void)mi_panel_key(key, pitch, velocity, 1, track);
+        (void)kbp_panel_key(key, pitch, velocity, 1, track);
 }
 void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity,
                  uint32_t a, uint32_t b, uint32_t c)
 {
     uint32_t type = dkrt_instrument_type();
-    uint8_t *object = track < 16 && instrument_track_owned(track) && type >= 7 && type < 32
+    uint8_t *object = track < 16 && kbp_track_owned(track) && type >= 7 && type < 32
                           ? ip_panel_track_object(word(view, 0xa4), track)
                           : 0;
     int keyboard = ip_panel_active(word(view, 0xa0));
@@ -286,7 +280,7 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
         step = seq && ip_panel_step_record(seq);
     int recording = live || held || step;
     int shared_step =
-        canopy && step && !live && IP_HAVE(tk_panel_on) && instrument_track_keyboard_routed(track);
+        canopy && step && !live && IP_HAVE(tk_panel_on) && kbp_track_keyboard_routed(track);
     if (key < 16 && shared_live_record[key])
         return;
     if (IP_HAVE(tk_capture_panel_press) && recording)
@@ -315,7 +309,7 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
         rec_keys[key].used = 1;
         rec_keys[key].pitch = (uint8_t)pitch;
         rec_keys[key].track = (uint8_t)track;
-        mi_seq_mute(track, 1);
+        kbp_seq_mute(track, 1);
         if (!held)
             watch_begin(track);
         ip_panel_original_on(view, key, track, pitch, velocity, a, b, c);
@@ -359,7 +353,7 @@ void ip_panel_off(uint8_t *view, uint32_t key)
      * its own vector and still receives releases for non-CANOPY auditions. */
     if (key < 16) {
         if (!shared && !recorded_live)
-            (void)mi_panel_key(key, 0, 0, 0, panel_track);
+            (void)kbp_panel_key(key, 0, 0, 0, panel_track);
         ++ip_panel_debug[1];
     }
     if (key < 16)
@@ -436,7 +430,7 @@ static int step_recording(uint8_t *view, uint32_t *track_out)
     if (!seq || !ip_panel_step_record(seq) || type < 7 || type >= 32)
         return 0;
     uint32_t track = ip_panel_selected_track(word(view, 0xa0));
-    if (track >= 16 || !instrument_track_owned(track))
+    if (track >= 16 || !kbp_track_owned(track))
         return 0;
     uint8_t *object = ip_panel_track_object(word(view, 0xa4), track);
     if (!object || ip_panel_track_type(object) != type)
@@ -543,7 +537,7 @@ static void step_commits(void)
         commit_head = 0;
         dkrt_irq_restore(sr);
         waiting_count = 0;
-        mi_seq_mute(commit_track, 0);
+        kbp_seq_mute(commit_track, 0);
         commit_track = IP_NONE;
         return;
     }
@@ -590,14 +584,14 @@ static void step_commits(void)
         }
         if (!w.released && waiting_view)
             panel_play(waiting_view, w.key, c.track, c.note, 100,
-                       IP_HAVE(tk_panel_on) && instrument_track_keyboard_routed(c.track));
+                       IP_HAVE(tk_panel_on) && kbp_track_keyboard_routed(c.track));
     }
     if (waiting_count && (int32_t)(now - commit_until) >= 0) {
         ip_panel_step[6] += waiting_count;
         waiting_count = 0;
     }
     if (commit_track < 16 && !waiting_count && !keys_held(commit_track)) {
-        mi_seq_mute(commit_track, 0);
+        kbp_seq_mute(commit_track, 0);
         commit_track = IP_NONE;
     }
 }
@@ -614,7 +608,7 @@ void ip_panel_update(uint8_t *view)
     if (keep_step)
         return;
     if (panel_view == view && selected != panel_track) {
-        mi_panel_release();
+        kbp_panel_release();
         rec_release_all();
         panel_view = 0;
         ++ip_panel_debug[6];
@@ -630,7 +624,7 @@ void ip_panel_toggle(uint32_t manager)
     /* KeyboardView is retained when the main controller toggles KEYBOARD.
      * Its detach callback therefore cannot be the only release boundary. */
     if (panel_view && !ip_panel_active(manager)) {
-        mi_panel_release();
+        kbp_panel_release();
         rec_release_all();
         panel_view = 0;
         ++ip_panel_debug[6];
@@ -680,7 +674,7 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
         commit_track = track;
         commit_until = waiting_at + WAIT_MS;
         /* The stock audition of the entry would sound it a second time. */
-        mi_seq_mute(track, 1);
+        kbp_seq_mute(track, 1);
         ++ip_panel_step[1];
     }
     uint32_t result = ip_panel_stock_key(view, event);
@@ -695,7 +689,7 @@ uint32_t ip_panel_key_event(uint8_t *view, uint8_t *event)
                 tk_panel_off(key);
             rec_release(key);
         } else if (rec_keys[key].used && rec_keys[key].track == commit_track) {
-            (void)mi_panel_key(key, 0, 0, 0, commit_track);
+            (void)kbp_panel_key(key, 0, 0, 0, commit_track);
             rec_release(key);
         }
     }
@@ -708,7 +702,7 @@ void ip_panel_detach(uint8_t *view, uint8_t *manager)
     if (IP_HAVE(tk_panel_cancel))
         tk_panel_cancel();
     if (panel_view == view) {
-        mi_panel_release();
+        kbp_panel_release();
         rec_release_all();
         panel_view = 0;
         ++ip_panel_debug[7];

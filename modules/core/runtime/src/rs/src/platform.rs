@@ -595,3 +595,33 @@ pub unsafe fn midi_send(len: u32, msg: *const u8, port: u32) {
 }
 
 pub use dkrt_abi::mem::{cstr_eq, cstr_len, rd32, wr32};
+
+/// Call the UI tick of every image adapter that declares one (`[[info]] tick = true`: entries of kind `INFO_KIND_TICK` of the image's info table), in table
+/// order, once per UI-loop pass (`dkrt_tick`). The runtime names no adapter: an image feature that must run without a module or service to start it (the
+/// track keyboard) declares its tick.
+///
+/// # Safety
+/// On the UI task; each entry is the address of a `void f(void)` of the image.
+pub unsafe fn image_ticks() {
+    use core::ptr::read_volatile;
+    let table = crate::dsp::fn_addr(dkrt_info_table) as *const u32;
+    if table.is_null() || read_volatile(table) != dkrt_abi::platform::INFO_MAGIC {
+        return;
+    }
+    let n = read_volatile(table.add(1));
+    if n > dkneeds::INFO_MAX {
+        return;
+    }
+    let mut i = 0;
+    while i < n as usize {
+        let at = read_volatile(table.add(3 + 3 * i));
+        if read_volatile(table.add(4 + 3 * i)) == INFO_KIND_TICK && at != 0 {
+            let f: unsafe extern "C" fn() = core::mem::transmute(at as usize);
+            f();
+        }
+        i += 1;
+    }
+}
+
+/// The kind word of an entry of the info table of the image that is a UI tick of an image adapter (`[[info]] tick = true`; `INFO_KIND_TICK` of patchkit).
+pub const INFO_KIND_TICK: u32 = 3;

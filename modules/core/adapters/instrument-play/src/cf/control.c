@@ -14,7 +14,7 @@
 #include "preset.h"
 #include "routing.h"
 #include "src-control.h"
-#include "src-clock.h"
+#include "../../../keyboard-panel/src/cf/src-clock.h"
 #include "src-mod.h"
 #include "instances.h"
 #include "shared-notes.h"
@@ -2481,9 +2481,6 @@ void instrument_play_tick(void)
     ip_init();
 #if defined(__m68k__)
     extern void instrument_src_tick(void), ip_panel_tick(void);
-    extern void tk_runtime_init(void) __attribute__((weak));
-    if (IP_HAVE(tk_runtime_init))
-        tk_runtime_init();
     instrument_src_tick();
     ip_panel_tick(); /* recorded chords: steps committed after the key event */
     if (status_menu && dk_ui_menu_is_open(status_menu)) {

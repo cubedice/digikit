@@ -1,0 +1,3263 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text",
+   "symbol": "ip_panel_on_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text",
+   "symbol": "ip_panel_off_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text",
+   "symbol": "ip_note_list_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 138,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 158,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 176,
+   "section": ".text",
+   "symbol": "slot.kbp_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2,
+   "offset": 60,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 1,
+   "offset": 70,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 3,
+   "offset": 76,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2,
+   "offset": 82,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".text.group_append",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.keys_held",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.store_chord",
+   "symbol": "kbp_track_plays_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 112,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 118,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.ip_panel_chord_log",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 156,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 162,
+   "section": ".text.store_chord",
+   "symbol": "kbp_record_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 178,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 184,
+   "section": ".text.store_chord",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.waiting_release",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.waiting_release",
+   "symbol": ".sec..bss.commit_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.step_recording",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.step_recording",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.step_recording",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.step_recording",
+   "symbol": "kbp_track_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 106,
+   "section": ".text.step_recording",
+   "symbol": "ip_panel_track_object",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.step_recording",
+   "symbol": "ip_panel_track_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.rec_release",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.rec_release",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.rec_release",
+   "symbol": ".sec..bss.waiting_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.rec_release",
+   "symbol": "kbp_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text.rec_release_all",
+   "symbol": ".sec..text.rec_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.panel_play",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.panel_play",
+   "symbol": "kbp_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
+   "section": ".text.panel_play",
+   "symbol": ".sec..text.rec_release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.panel_play",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
+   "section": ".text.panel_play",
+   "symbol": "kbp_select_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 98,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 104,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 110,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 116,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 136,
+   "section": ".text.panel_play",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 154,
+   "section": ".text.panel_play",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
+   "section": ".text.panel_play",
+   "symbol": "kbp_panel_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.step_commits",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.step_commits",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.step_commits",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.step_recording",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_head",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.step_commits",
+   "symbol": "kbp_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 132,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 170,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 184,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 192,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 206,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.keys_held",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 220,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 226,
+   "section": ".text.step_commits",
+   "symbol": "kbp_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 236,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 244,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_head",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 252,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_head",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 266,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_head",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 288,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 304,
+   "section": ".text.step_commits",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 318,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 330,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 342,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 352,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 1,
+   "offset": 358,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 2,
+   "offset": 364,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 372,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 386,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 392,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.stored_group",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 402,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.stored_group",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 408,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 418,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.group_append",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 434,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 488,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 494,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 500,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 520,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.store_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 526,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 536,
+   "section": ".text.step_commits",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 554,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 566,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 580,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.note_signature",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 590,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.watch_list",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 608,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.trig_word",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 618,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.watch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 634,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 644,
+   "section": ".text.step_commits",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 658,
+   "section": ".text.step_commits",
+   "symbol": "kbp_track_keyboard_routed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 690,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 696,
+   "section": ".text.step_commits",
+   "symbol": ".sec..text.panel_play",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 732,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.commit_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 742,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 748,
+   "section": ".text.step_commits",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.ip_panel_step_note",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.ip_panel_step_note",
+   "symbol": ".sec..text.step_note",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.ip_panel_on",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.ip_panel_on",
+   "symbol": "kbp_track_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 132,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_track_object",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 146,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_track_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 180,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 190,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_held",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 200,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 258,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 274,
+   "section": ".text.ip_panel_on",
+   "symbol": "kbp_track_keyboard_routed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 298,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 312,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 352,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 396,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 408,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_native_record_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 450,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 456,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 500,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 528,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 592,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 616,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 666,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 674,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 720,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 728,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.group_append",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 766,
+   "section": ".text.ip_panel_on",
+   "symbol": "kbp_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 782,
+   "section": ".text.ip_panel_on",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 808,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 820,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 828,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_list",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 836,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 854,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.note_signature",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 874,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.trig_word",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 906,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 912,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 942,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 990,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.store_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1034,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.panel_play",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1062,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_retrig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1088,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_return",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1110,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_project_settings",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1124,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_mode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1196,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_capture_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_retrig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 110,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
+   "section": ".text.ip_panel_off",
+   "symbol": "kbp_panel_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 138,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..text.waiting_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 174,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..text.rec_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 190,
+   "section": ".text.ip_panel_off",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 202,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.watch_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 216,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 240,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 254,
+   "section": ".text.ip_panel_off",
+   "symbol": "ip_panel_original_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 284,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 298,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 334,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..text.step_commits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 54,
+   "section": ".text.ip_panel_tick",
+   "symbol": "pp_current_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 70,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 134,
+   "section": ".text.ip_panel_tick",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 150,
+   "section": ".text.ip_panel_tick",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 168,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_list",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 180,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.watch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 186,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..text.note_signature",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 192,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..text.trig_word",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 250,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..text.step_note",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 260,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 266,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 272,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 290,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.group_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 330,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.group_pitch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 388,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..text.store_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 400,
+   "section": ".text.ip_panel_tick",
+   "symbol": ".sec..bss.ip_panel_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.ip_note_list_write",
+   "symbol": "tk_capture_note_list_commit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.ip_note_list_write",
+   "symbol": "ip_note_list_original",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 126,
+   "section": ".text.ip_note_list_write",
+   "symbol": "tk_capture_note_list_commit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 174,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..text.step_note",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 204,
+   "section": ".text.ip_note_list_write",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 210,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 220,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 228,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.commit_head",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 236,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.commits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 242,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 248,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.commit_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 254,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 292,
+   "section": ".text.ip_note_list_write",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 298,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 306,
+   "section": ".text.ip_note_list_write",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.ip_panel_update",
+   "symbol": "tk_panel_focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..text.step_recording",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 116,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 132,
+   "section": ".text.ip_panel_update",
+   "symbol": "kbp_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 138,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..text.rec_release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 150,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_stock_toggle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "kbp_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..text.rec_release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 86,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.step_commits",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_capture_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 118,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 172,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.waiting_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 198,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 260,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.step_recording",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 274,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 284,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 302,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 316,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 324,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 346,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 368,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.keys_held",
+   "type": "cf.32"
+  },
+  {
+   "addend": 1,
+   "offset": 384,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 402,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.step_group",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 420,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 426,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 432,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.waiting_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 446,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.step_group",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 460,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 482,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 488,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.commit_until",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 494,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "kbp_seq_mute",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 502,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.ip_panel_step",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 512,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_stock_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 526,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 542,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.ip_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 554,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.ip_panel_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 628,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 646,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 652,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 670,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.rec_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 688,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.rec_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 706,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 716,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..data.commit_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 730,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "kbp_panel_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 738,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.rec_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.ip_panel_detach",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.ip_panel_detach",
+   "symbol": "kbp_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..text.rec_release_all",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 54,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.ip_panel_detach",
+   "symbol": "ip_panel_stock_detach",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.instrument_src_now",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.instrument_src_now",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.instrument_src_now",
+   "symbol": ".sec..text.cc_milliseconds",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4e56ffbc707f4ef9000000004fefffe848d77c044ef9000000004e56ffc848d73cfc4ef9000000002039000000006706204020504ed070004e7520390000000067082040206800044ed070004e7520390000000067082040206800084ed070004e75203900000000670820402068000c4ed070004e7520390000000067082040206800104ed04e7520390000000067082040206800144ed070004e7520390000000067082040206800184ed04e75203900000000670820402068001c4ed04e75",
+   "kind": "text",
+   "name": ".text",
+   "size": 192
+  },
+  {
+   "align": 2,
+   "hex": "1039000000002f032f02428141f9000000007580b282641a77b01800b6af000c66582241d3fc000000005281b48162425380738059814a81661e43f90000000010a8000113d10000000043f90000000013d100000000700322005281718043ef000f13c10000000011910800241f261f4e7552891351ffff60b052816096",
+   "kind": "text",
+   "name": ".text.group_append",
+   "size": 126
+  },
+  {
+   "align": 2,
+   "hex": "2f02243c000006a5202f000c73ef0012206f00084c020800241fd1c030301a004e75",
+   "kind": "text",
+   "name": ".text.trig_word",
+   "size": 34
+  },
+  {
+   "align": 2,
+   "hex": "4feffff4222f001448d7040c202f0018068000009528ef89246f0010327c0004d08173720a00200171c00c8100001fff6234740653894c012800068100009d2873c173721a0020422400eb8a41e86a50d1ca77a80003948071a80002e188b780b5804a8966c44cd7040c4fef000c4e75",
+   "kind": "text",
+   "name": ".text.note_signature",
+   "size": 112
+  },
+  {
+   "align": 2,
+   "hex": "41f90000000093c942804a10671c73a80002b2af000457c173014481d081528956887210b28966e24e75428160ee",
+   "kind": "text",
+   "name": ".text.keys_held",
+   "size": 46
+  },
+  {
+   "align": 2,
+   "hex": "4e56fff048d7040c2f2e000c4eb90000000073b900000000588f22414a80670000ce200191c845f9000000004a8067087203b2886600008a42812001e688246e000802800003fffc24320800701fc0810102660c52810c810000008066dc4281202e00102609e18b740f48404240c4b90000000043f900000000028000ff00008083260880837618e7a9808123802c002f08486efffd2f2e000823c8000000004eb9000000004fef000c4cee040cfff023c00000000052b9000000004e5e4e75538075b20800220292ae0010b4ae00106700ff5a24017660068200000030b6826500ff4a1d8188fd52886000ff4091c86000ff46",
+   "kind": "text",
+   "name": ".text.store_chord",
+   "size": 244
+  },
+  {
+   "align": 2,
+   "hex": "223900000000428041f9000000002f022248b081672c7590b4af000866284a280001662272064c0108007201138108014eb9000000000680000001f423c000000000241f4e7552805c8860c6",
+   "kind": "text",
+   "name": ".text.waiting_release",
+   "size": 76
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7040c246f0010242a00984eb90000000026004a82660c42804cd7040c4fef000c4e752f024eb900000000588f4a0067e6200372185f80b28065dc2f2a00a04eb900000000588f2400700fb08265c82f024eb900000000588f4a8067bc2f022f2a00a44eb900000000508f4a8067a82f004eb900000000588fb680669a206f0014700120826092",
+   "kind": "text",
+   "name": ".text.step_recording",
+   "size": 140
+  },
+  {
+   "align": 2,
+   "hex": "2f02700f226f0008b089655443f19a0041f9000000004a3188006744103098024201758013818800428122424a10670875a80002b4896728528156887410b48166ea71804ab9000000006708b0b900000000670c42a72f004eb900000000508f241f4e75",
+   "kind": "text",
+   "name": ".text.rec_release",
+   "size": 100
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f02428245f9000000002f024e925282588f7010b08266f2241f245f4e75",
+   "kind": "text",
+   "name": ".text.rec_release_all",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe820390000000048d7007c2c2f001c262f0020242f0024282f00282a2f002c2f6f003000144a806718bc806608b4b900000000670c4eb9000000004eb9000000002f0223c60000000023c2000000004eb900000000588f52b90000000023c30000000023c20000000023c40000000023c5000000004aaf0014672a2f052f042f022f034eb9000000004fef00104a80670a7001e7a881b9000000004cd7007c4fef00184e752f42002c70012f4500242f4400202f43001c2f4000284cd7007c4fef00184ef900000000",
+   "kind": "text",
+   "name": ".text.panel_play",
+   "size": 204
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffc048d71cfc4eb90000000047f90000000045f900000000720f2d40ffe870ff2d40ffecb2b90000000065642039000000004a80675a486effec2f004eb900000000508f4a80670c243900000000b4aeffec673c4e9342b90000000042b9000000002f004e9242a72f390000000042b9000000004eb9000000004fef000c70ff23c0000000004cee1cfcffc04e5e4e7549f9000000004e934ab90000000066502f004e92588f2239000000004a8166000224740fb4b90000000065ca4ab90000000066c22f39000000004eb900000000588f4a8066b042a72f39000000004eb900000000508f70ff23c0000000006096207900000000740f2239000000005281c48141f08a0023c2000000001830c800d1cc1a2800011e2800022f0053b9000000004e92588f73842d41ffe4b2b9000000006600ff62202effe890b9000000004a806e00ff522039000000004a806700ff46b2b9000000006600ff3c1439000000001c3900000000227900000000720141f900000000b28066000148538023c000000000b3f900000000670e420023c90000000013c00000000077872f034eb900000000588f4a06661c7182720141f900000000224043f19a001381880011879801118498027985701fca8070012204ea8942aefffc42aefff842aefff442aefff0eba852b90000000052b90000000023c3000000002d801cf02f032f2effe4486efff04eb90000000023c4000000004fef000c41f9000000004a8867524e902a004a80674a4ab9000000006742222effe4b2b90000000066362f042f012f004eb9000000004fef000c41f90000000021804c002f042f2effe42f054eb9000000004fef000c41f90000000031804a004a066600fe224ab9000000006700fe18203c000000004a8067142f2effe44eb900000000588f4a8056c0710044802f007582487800642f032f2effe42f022f39000000004eb9000000004fef00186000fdd65c8831680004fffe2150fffa52816000fea4202effe890b9000000006b00fdd2d3b90000000042b9000000006000fdc2",
+   "kind": "text",
+   "name": ".text.step_commits",
+   "size": 756
+  },
+  {
+   "align": 2,
+   "hex": "2f02202f000c226f0008222f0010ef8820402001068000009528d08830310a0075400c8200001fff630670ff241f4e75c1fc0006204041e86a50d1c97190b0af000c66e671a80001b28066de102800026bd8718060d6",
+   "kind": "text",
+   "name": ".text.step_note",
+   "size": 86
+  },
+  {
+   "align": 2,
+   "hex": "2f0241f9000000004a88660470ff604e4e9024004a8067f4700fb0af000865ec727fb2af000c65e42f2f000c2f2f000c2f024eb9000000004fef000c72ffb280661c202f0008223c000006a520424c010800727fd1c071a80485b2806dae241f4e75",
+   "kind": "text",
+   "name": ".text.ip_panel_step_note",
+   "size": 98
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffb02d6e0010ffd848d73cfc246e0008242e000c262e00142c2e00182d6e001cffe02d6e0020ffe42d6e0024ffe84eb9000000002a00700fb0aeffd865102f2effd84eb900000000588f4a80662042842f2a00a04eb900000000588f73802d41ffec4a0067044a84662242876036200572185f80b28065d62f2effd82f2a00a44eb900000000508f280060c42f044eb900000000588fba8066d0700fb08254c77f074487266a00984a8b6700017c2f0b4eb9000000002f0b1a004eb9000000002f0b18004eb9000000004fef000c4a0056c1730144814a05670001384a0456c43a7c000179044484387c00014a87670001404a00670001404a8d6600013e203c000000004a80670001362f2effd84eb900000000588f22074a8056c57b054485700fb082650e43f9000000004a712a0066000154203c000000004a80672c4a8c67284a8d660000fc200480812f002f062f032f2effd82f022d41ffdc4eb9000000004fef0014222effdc4aaeffec670002ac4a8d670000d282848287660000ca720fb282650000c24bf9000000004a8d670000b641f9000000004a88670000aa2f062f032f2effd82f024e904fef00104a8067000094202effd85280e18841f90000000052b900000000808331802a002f032f2effd84e952f2effe82f2effe42f2effe02f062f032f2effd82f022f0a4eb9000000004fef002842ae000c4cee3cfcffb070102d4000084e5e4ef9000000004a04670878019bcd6000fecc284142849bcd6000fec6428499cc42819bcd42856000feec428160f6220d60f2220760ee42806000ff064a8c671841f9000000004a8867064a8566024e904a8766366000021641f9000000004a88670001a42f062f032f2effd82f024e904fef00104a806700018e4cee3cfcffb04e5e4e754a8c6700018241f900000000428152b90000000093c928484a106700016071a80002b0aeffd857c071004480d280528956887010b08966e04a81660613c1000000002f034eb9000000007001224241f12a0019808800d9c819430001196effdb0002487800012f2effd84eb9000000004fef000c4a846600008a41f9000000004a88677e4e902e004a806776720fb2aeffd8656e4ab900000000670c222effd8b2b900000000675a49f9000000009bcd41f9000000002f0d2f2effd82f072d48ffdc4eb9000000004fef000c28c02f0d2f2effd82f074eb9000000004fef000c528d206effdc30c0bbfc0000008066c6222effd8700123c00000000023c1000000002f2effe82f2effe42f2effe02f062f032f2effd82f022f0a4eb9000000004fef00204a84672c2d6b0258fff02d6b025cfff42d6b0260fff82d6b0264fffc2f032f2effd8486efff04eb9000000004fef000c2d45001c2d4600182d4300142d42000c2d4a00084cee3cfcffb02d6effd800104e5e4ef90000000042806000feac4a87676242ae001c60cc4a876600fe7047f9000000004a8b674c202effd88082e8886642707fb083653c223c00000000b2ae00046630202a00944a8067282f004eb900000000588f4a80671a2f004eb900000000588f55804a80660a2f2effd82f024e93508f2d4600182d4300142d42000c2d4a00084cee3cfcffb02d6effe800242d6effe400202d6effe0001c2d6effd800104e5e4ef900000000",
+   "kind": "text",
+   "name": ".text.ip_panel_on",
+   "size": 1200
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec48d7041c242f001c2f6f0018001041f9000000004a8867062f024e90588f700fb082650000f8780141f900000000e5ac36302a0041f9000000004a88670000e64878ffff2f024e90508f4a80670000d642804684c9b900000000720fb282656a4a80661c4a4366182f390000000042a742a742a72f024eb9000000004fef00142f02244252b9000000004eb900000000588f41f22a0043f9000000004a309800672879b188022f024eb900000000588fb8b90000000067124eb9000000000680000005dc23c0000000004a4367244240220341f900000000738131802a0071c3e08820402f014868ffff4eb900000000508f2f022f2f00144eb900000000508f4a43674e70104cd7041c42af001c2f4000184fef00144ef900000000424342846000ff1241f9000000004a886700ff222f024e90588f4a806700ff184a43670670016000ff0e2004c0b9000000004a8066ee4cd7041c4fef00144e75",
+   "kind": "text",
+   "name": ".text.ip_panel_off",
+   "size": 352
+  },
+  {
+   "align": 2,
+   "hex": "4fefffc848d77c7c4eb9000000004ab9000000006714203900000000b0b900000000661042b9000000004cd77c7c4fef00384e7541f9000000004a88670000fe4e902400263900000000428141f90000000042844a10670000ea71a80002b68057c071004480d880528156887010b08166e24a8267ae2079000000004a8867a42f2800a04eb900000000588fb68066944a84660e4eb90000000090b9000000006a82280f9dce47f90000000006840000002845f9000000004bf90000000049f9000000002f0e2f032f024e954fef000c2f0e2f032f022c004e944fef000c3a00bc9b660873d271c0b081674034852746fffc2f0e2f032f024eb9000000004fef000c52b90000000023ce0000000023c00000000008050000671272ffb280670c7bb9000000004281ba81621c528e548abdfc00000080668c6000fef042826000ff0442806000ff2041f9000000007db01800bc806704528160ce721f2c0e2a0ecc817201ea8d42af003442af003042af002c42af0028eda92f815c282f002f032f044eb9000000002f0e2f032f0223ce000000004e954fef000c2740fffc2f0e2f032f024e944fef001834806000ff7e",
+   "kind": "text",
+   "name": ".text.ip_panel_tick",
+   "size": 432
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe4206f002c48d71c3c266f0020262f0024282f00284a88660a95ca243c000000806036b6b900000000670a203c000000004a8067e4700fb08365de727fb28465d824504a8a67d4b5e8000464cc14126bc87baa0001758224452f082f042f032f0b4eb9000000004fef00100c8200000080670000c24a8b674e49f9000000004a8c674420534a88673e206800284a8867362f0b4e90588f26400c8000006a4f63262f042f03486b95b04eb9000000004fef000cb48066102f0a2f022f042f032f0b4e944fef00144eb900000000b6b9000000006650720fb2b90000000065462239000000007a0f41f900000000d2b90000000052b90000000052b900000000c285244143f21a001383880011849801118298024cd71c3c2f4000204fef001c4ef900000000b6b90000000066e652b90000000060de4cd71c3c4fef001c4e75",
+   "kind": "text",
+   "name": ".text.ip_note_list_write",
+   "size": 322
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffec48d70c04266e0008242b00a02f024eb900000000588f4a00670000862f024eb900000000588f240045f900000000b7f90000000066000086486efffc2f0b4eb900000000508f2d40fff84a806768222efffc2039000000004a8a6648b08157c1730144812d41fff84aaefff86628b7f9000000006620b4b90000000067184eb9000000004eb90000000042b90000000052b9000000004cee0c04ffec4e5e4e7574ff6084b0816706220242aefff82f014e92588f60b24a8a66ee60b24a8a66e860d4",
+   "kind": "text",
+   "name": ".text.ip_panel_update",
+   "size": 198
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f2f00084eb900000000588f45f9000000004a8a67122f2f00084eb900000000588f4a0066024e924ab90000000067282f2f00084eb900000000588f4a0066184eb9000000004eb90000000042b90000000052b900000000245f4e75",
+   "kind": "text",
+   "name": ".text.ip_panel_toggle",
+   "size": 94
+  },
+  {
+   "align": 2,
+   "hex": "4e56ffd048d73cfc266e000c49f900000000246e00084bf9000000004a8b671a70ff720f2c2b000c0686ffffffe72d40fffcb28664664e94600a70ff7c102d40fffc4e9442824280263c000000004a836700008c4a80670002a2202a00984a8067302f004eb900000000588f4a0067222f2a00a04eb90000000048780001487800644878008020432f002f064e904fef00184a8d67664a8267626050262b00100803000467322f0674014eb9000000004e94588f7209c68153834a8366000230487800124eb900000000588f4a8056c0710044806000ff724e94428260d64a8d6714220224004a81670001522f064e95588f200274014a8067000206486efffc2f0a4eb900000000508f720fb286651052b90000000041eb000c23d0000000004a80670000d62a4643f56a0041f9000000004a318800660000c2263900000000428041f9000000002e08b680660000f67204b283670000a42a3900000000282efffc4a836706ba84670242832f044eb900000000588f93c92040ba8457c02a3c000000004480b689660000ce4a88660652b90000000070064c03080020472a47528323c30000000023c40000000023ca00000000dbc011860800420041f9000000002b5000021b4000014eb90000000048780001222efffc0680000001f42f0123c10000000023c0000000004eb900000000508f52b9000000002f0b2f0a4eb900000000508f26004a82671841f9000000004a706a0067562f062f0a4eb900000000508f4e942f0a4eb900000000588f20034cee3cfcffd04e5e4e75200242826000feb47390bc8166064a28000167aa52805c886000fef42a4552894a1557c15c854481c2807381d1c16000ff1a7001eda82239000000002401c4804a8267284680c08141f90000000023c0000000004a8867062f064e90588f2f064eb900000000588f6000ff7e264641f36a0043f9000000004a3098006700ff6a71b18802b0b9000000006600ff5c2f390000000042a742a742a72f064eb9000000002f064eb9000000004fef00186000ff384a8d6716220242826000fdee4a8d6600fde4700fb0866500fef442806000fe04",
+   "kind": "text",
+   "name": ".text.ip_panel_key_event",
+   "size": 782
+  },
+  {
+   "align": 2,
+   "hex": "598f2f02242f000c2f6f0010000441f9000000004a8867024e90b4b90000000066184eb9000000004eb90000000042b90000000052b9000000002f6f000400102f42000c241f588f4ef900000000",
+   "kind": "text",
+   "name": ".text.ip_panel_detach",
+   "size": 78
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_step",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.waiting_view",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.commit_count",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.commit_head",
+   "size": 4
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.commits",
+   "size": 48
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.watch_trig",
+   "size": 256
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.watch_list",
+   "size": 512
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.watch_until",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.watch_track",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.watch_active",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "ffffffff",
+   "kind": "data",
+   "name": ".data.commit_track",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.stored_group",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.step_group",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.commit_until",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.waiting_track",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.waiting_count",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.waiting",
+   "size": 24
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.group_count",
+   "size": 1
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.group_pitch",
+   "size": 4
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.rec_keys",
+   "size": 48
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_chord_log",
+   "size": 64
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_chord",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_recorded",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_debug",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shared_live_record",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shared_step_keys",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "ffffffff",
+   "kind": "data",
+   "name": ".data.panel_track",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.panel_view",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "4feffff491c8226f001c4281202f001448d7001c93ef0018262f00104282d3c0b3c055c071009680701fb0886538781f98882003e8a87801d281d482c08482800c810002039f630a70010681fffdfc60848052887840b88866ce20024cd7001c4fef000c4e75783f9888200960c6",
+   "kind": "text",
+   "name": ".text.cc_milliseconds",
+   "size": 110
+  },
+  {
+   "align": 2,
+   "hex": "4feffff04eb9000000002eb942940a4c223942940a502f410004223942940a542f4100082239fc07000c2f41000c2f004eb9000000002f2f00102f2f00102f2f00102f2f00104eb9000000004fef00244e75",
+   "kind": "text",
+   "name": ".text.instrument_src_now",
+   "size": 82
+  }
+ ],
+ "source_sha256": "2badd91a541542d2532612f0e1ed04f96c556d3e0f06709123e04f4cbbb58016",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.commit_count",
+   "section": ".bss.commit_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.commit_head",
+   "section": ".bss.commit_head",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.commit_until",
+   "section": ".bss.commit_until",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.commits",
+   "section": ".bss.commits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.group_count",
+   "section": ".bss.group_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.group_pitch",
+   "section": ".bss.group_pitch",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_chord",
+   "section": ".bss.ip_panel_chord",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_chord_log",
+   "section": ".bss.ip_panel_chord_log",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_debug",
+   "section": ".bss.ip_panel_debug",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_step",
+   "section": ".bss.ip_panel_step",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.panel_view",
+   "section": ".bss.panel_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.rec_keys",
+   "section": ".bss.rec_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shared_live_record",
+   "section": ".bss.shared_live_record",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shared_step_keys",
+   "section": ".bss.shared_step_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.step_group",
+   "section": ".bss.step_group",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.stored_group",
+   "section": ".bss.stored_group",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.waiting",
+   "section": ".bss.waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.waiting_count",
+   "section": ".bss.waiting_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.waiting_track",
+   "section": ".bss.waiting_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.waiting_view",
+   "section": ".bss.waiting_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.watch_active",
+   "section": ".bss.watch_active",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.watch_list",
+   "section": ".bss.watch_list",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.watch_track",
+   "section": ".bss.watch_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.watch_trig",
+   "section": ".bss.watch_trig",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.watch_until",
+   "section": ".bss.watch_until",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.commit_track",
+   "section": ".data.commit_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.panel_track",
+   "section": ".data.panel_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.cc_milliseconds",
+   "section": ".text.cc_milliseconds",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.group_append",
+   "section": ".text.group_append",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.ip_panel_off",
+   "section": ".text.ip_panel_off",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.ip_panel_update",
+   "section": ".text.ip_panel_update",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.keys_held",
+   "section": ".text.keys_held",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.note_signature",
+   "section": ".text.note_signature",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.panel_play",
+   "section": ".text.panel_play",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.rec_release",
+   "section": ".text.rec_release",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.rec_release_all",
+   "section": ".text.rec_release_all",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.step_commits",
+   "section": ".text.step_commits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.step_note",
+   "section": ".text.step_note",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.step_recording",
+   "section": ".text.step_recording",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.store_chord",
+   "section": ".text.store_chord",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.trig_word",
+   "section": ".text.trig_word",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.waiting_release",
+   "section": ".text.waiting_release",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cc_milliseconds",
+   "section": ".text.cc_milliseconds",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_count",
+   "section": ".bss.commit_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_head",
+   "section": ".bss.commit_head",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_track",
+   "section": ".data.commit_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_until",
+   "section": ".bss.commit_until",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commits",
+   "section": ".bss.commits",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_instrument_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_append",
+   "section": ".text.group_append",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_count",
+   "section": ".bss.group_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_pitch",
+   "section": ".bss.group_pitch",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_src_now",
+   "section": ".text.instrument_src_now",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_original",
+   "section": ".text",
+   "value": 26
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_write",
+   "section": ".text.ip_note_list_write",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_active",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_chord",
+   "section": ".bss.ip_panel_chord",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_chord_log",
+   "section": ".bss.ip_panel_chord_log",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_debug",
+   "section": ".bss.ip_panel_debug",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_detach",
+   "section": ".text.ip_panel_detach",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_key_down",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_key_event",
+   "section": ".text.ip_panel_key_event",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_live_record",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_off",
+   "section": ".text.ip_panel_off",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_off_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_on",
+   "section": ".text.ip_panel_on",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_on_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_original_off",
+   "section": ".text",
+   "value": 12
+  },
+  {
+   "global": true,
+   "name": "ip_panel_original_on",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_project_settings",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_selected_track",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_step",
+   "section": ".bss.ip_panel_step",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_step_note",
+   "section": ".text.ip_panel_step_note",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_step_record",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_detach",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_toggle",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_tick",
+   "section": ".text.ip_panel_tick",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_toggle",
+   "section": ".text.ip_panel_toggle",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_track_object",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_track_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_held",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_mode",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_return",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_update",
+   "section": ".text.ip_panel_update",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "kbp_panel_key",
+   "section": ".text",
+   "value": 136
+  },
+  {
+   "global": true,
+   "name": "kbp_panel_release",
+   "section": ".text",
+   "value": 156
+  },
+  {
+   "global": true,
+   "name": "kbp_record_chord",
+   "section": ".text",
+   "value": 98
+  },
+  {
+   "global": true,
+   "name": "kbp_select_track",
+   "section": ".text",
+   "value": 118
+  },
+  {
+   "global": true,
+   "name": "kbp_seq_mute",
+   "section": ".text",
+   "value": 174
+  },
+  {
+   "global": true,
+   "name": "kbp_track_keyboard_routed",
+   "section": ".text",
+   "value": 58
+  },
+  {
+   "global": true,
+   "name": "kbp_track_owned",
+   "section": ".text",
+   "value": 40
+  },
+  {
+   "global": true,
+   "name": "kbp_track_plays_keys",
+   "section": ".text",
+   "value": 78
+  },
+  {
+   "global": false,
+   "name": "keys_held",
+   "section": ".text.keys_held",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "note_signature",
+   "section": ".text.note_signature",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_play",
+   "section": ".text.panel_play",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_track",
+   "section": ".data.panel_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_view",
+   "section": ".bss.panel_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_current_pattern",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_keys",
+   "section": ".bss.rec_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_release",
+   "section": ".text.rec_release",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_release_all",
+   "section": ".text.rec_release_all",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_live_record",
+   "section": ".bss.shared_live_record",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_step_keys",
+   "section": ".bss.shared_step_keys",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "slot.kbp_vec",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_commits",
+   "section": ".text.step_commits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_group",
+   "section": ".bss.step_group",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_note",
+   "section": ".text.step_note",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_recording",
+   "section": ".text.step_recording",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "store_chord",
+   "section": ".text.store_chord",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "stored_group",
+   "section": ".bss.stored_group",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_note_list_commit",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_panel_press",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_panel_release",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_cancel",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_focus",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_native_record_on",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_off",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_on",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_record_audition",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_retrig",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "trig_word",
+   "section": ".text.trig_word",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting",
+   "section": ".bss.waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_count",
+   "section": ".bss.waiting_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_release",
+   "section": ".text.waiting_release",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_track",
+   "section": ".bss.waiting_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_view",
+   "section": ".bss.waiting_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_active",
+   "section": ".bss.watch_active",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_list",
+   "section": ".bss.watch_list",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_track",
+   "section": ".bss.watch_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_trig",
+   "section": ".bss.watch_trig",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_until",
+   "section": ".bss.watch_until",
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "1824",
+  "isa_check": "5fe5f6bccf3031a7f7ed650840a4cfaeeaf1bb9a54a5ef3c3be358e3cc9dc7fb",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

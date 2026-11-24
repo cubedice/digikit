@@ -8,10 +8,9 @@ import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
-import { trackKeyboardCard } from './track-card.ts';
 
 describeOn('dt2', 'shared keyboard pattern change', () => {
-  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
   test('intercepts the first trig of queued and direct-start patterns', { timeout: 300_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
@@ -19,7 +18,7 @@ describeOn('dt2', 'shared keyboard pattern change', () => {
       session.runDir,
       session.runDir,
       ['DKRT_BOOT', 'pp_position', 'tk_sequence_audio_hits', 'pattern_slots'],
-      { modules: ['core/track-keyboard', 'core/instrument-play', 'core/digikit-menu', 'core/health'] },
+      { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx: image.syx,

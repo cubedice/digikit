@@ -5,7 +5,7 @@ services/instrument.dks from `seam.toml` (docs/plans/fork-image-diet.md).
     uv run python -m modules.core.services.instrument.tools.seam --check  # exit 1 when a file is stale
 
 Writes, for each vector, the image forwarders (`image_file`); for the service the vector tables, the thunks of the image
-functions and the copy of the image table (`dks/src/seam.s`) and the layout its setup checks (`src/seam_gen.rs` of the host crate); the
+functions and the copy of the image table (`dks/src/seam.s`) and the layout its setup checks (`dks/src/seam_gen.rs`); the
 image table (`instrument-play/src/cf/seam-table.s`) and the C names of the table (`instrument-play/src/cf/seam.h`).
 """
 
@@ -68,7 +68,8 @@ def forwarders(vec: dict) -> str:
         "    .text",
         "    .even",
     ]
-    for i, (name, absent) in enumerate(vec["entries"]):
+    for i, entry in enumerate(vec["entries"]):
+        name, absent = entry[0], entry[1]
         lines += [
             f"    .globl {name}",
             f"{name}:",
@@ -114,12 +115,23 @@ def service_asm(spec: dict) -> str:
     ]
     for vec in spec["vector"]:
         lines += [f"    .globl {vec['table']}", f"{vec['table']}:"]
-        lines += [f"    .long {n}" for n, _ in vec["entries"]]
+        # an entry may name the service function it forwards to when the image's name differs (`[image name, absent, target]`)
+        lines += [f"    .long {e[2] if len(e) > 2 else e[0]}" for e in vec["entries"]]
     lines += ["    .text", "    .even"]
     for i, (n, kind) in enumerate(names):
         if kind in ("functions", "optional"):
-            lines += [f"    .globl {n}", f"{n}:", f"    movea.l ip_img+{4 * (FIXED + i)},%a0", "    jmp (%a0)"]
-    lines += ["    .bss", "    .balign 4", "    .globl ip_img", f"ip_img: .space {4 * words}"]
+            lines += [
+                f"    .globl {n}",
+                f"{n}:",
+                f"    movea.l ip_img+{4 * (FIXED + i)},%a0",
+                "    jmp (%a0)",
+            ]
+    lines += [
+        "    .bss",
+        "    .balign 4",
+        "    .globl ip_img",
+        f"ip_img: .space {4 * words}",
+    ]
     return "\n".join(lines) + "\n"
 
 
@@ -131,7 +143,7 @@ def service_rs(spec: dict) -> str:
         [
             f"// {HEAD}",
             "/// The name of the image table (`[[info]]` of core/instrument-play).",
-            f"pub const INFO: &str = \"{img['info']}\";",
+            f'pub const INFO: &str = "{img["info"]}";',
             f"pub const MAGIC: u32 = {img['magic']:#010x};",
             f"pub const VERSION: u32 = {spec['version']};",
             "/// Words of the table: magic, version, count, then one per name.",
@@ -197,7 +209,9 @@ def main(argv: list[str]) -> int:
             path.write_bytes(text.encode())
             print(f"wrote {path.relative_to(ROOT)}")
     for p in stale:
-        print(f"stale: {p} (run uv run python -m modules.core.services.instrument.tools.seam)")
+        print(
+            f"stale: {p} (run uv run python -m modules.core.services.instrument.tools.seam)"
+        )
     return 1 if stale else 0
 
 

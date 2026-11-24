@@ -1,0 +1,270 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text",
+   "symbol": "cw_long_watch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
+   "section": ".text",
+   "symbol": "cw_copy_before",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text",
+   "symbol": "cw_copy_after",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 122,
+   "section": ".text",
+   "symbol": "cw_memcpy_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text",
+   "symbol": "cw_long_watch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 192,
+   "section": ".text",
+   "symbol": "cw_cleared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 220,
+   "section": ".text",
+   "symbol": "cw_memset_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 238,
+   "section": ".text",
+   "symbol": "cw_long_watch",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 282,
+   "section": ".text",
+   "symbol": "cw_cleared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 308,
+   "section": ".text",
+   "symbol": "cw_bzero_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.cw_copy_before",
+   "symbol": "ip_sa_copy_before",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.cw_copy_before",
+   "symbol": "ip_sa_copy_before",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.cw_copy_after",
+   "symbol": "tk_pattern_copied",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
+   "section": ".text.cw_copy_after",
+   "symbol": "ip_sa_copy_after",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.cw_copy_after",
+   "symbol": "ip_sa_copy_after",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.cw_cleared",
+   "symbol": "tk_pattern_cleared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.cw_cleared",
+   "symbol": "ip_sa_cleared",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.cw_cleared",
+   "symbol": "ip_sa_cleared",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "202f000c0c800000045065644ab90000000066100c800001db8c67080c80000006a5664c4feffff448d7001c242f0010262f0014282f00182f042f032f024eb9000000004fef000c2f042f032f0261204fef000c2f042f032f024eb9000000004fef000c20024cd7001c4fef000c4e75226f0004206f00084ef900000000202f000c0c800000045065484ab90000000066080c800001db8c66384feffff448d7001c242f0010262f0014282f00182f042f032f02611c4fef000c2f042f024eb900000000508f20024cd7001c4fef000c4e75206f000871af000b4ef900000000202f00080c8000000450653e4ab90000000066080c800001db8c662e4feffff848d7000c242f000c262f00102f032f026118508f2f032f024eb900000000508f4cd7000c4fef00084e75206f0004202f00084ef900000000",
+   "kind": "text",
+   "name": ".text",
+   "size": 312
+  },
+  {
+   "align": 2,
+   "hex": "202f000441f9000000004a88670a2f4000044ef9000000004e75",
+   "kind": "text",
+   "name": ".text.cw_copy_before",
+   "size": 26
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7001c262f0010282f0014242f001841f9000000004a88671c0c820001db8c67080c82000006a5660c2f022f042f034e904fef000c203c000000004a80671a2f4200182f4400142f4300104cd7001c4fef000c4ef9000000004cd7001c4fef000c4e75",
+   "kind": "text",
+   "name": ".text.cw_copy_after",
+   "size": 104
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02262f000c242f001041f9000000004a8867100c820001db8c66082f022f034e90508f203c000000004a8067122f4200102f43000c241f261f4ef900000000241f261f4e75",
+   "kind": "text",
+   "name": ".text.cw_cleared",
+   "size": 72
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.cw_long_watch",
+   "size": 4
+  }
+ ],
+ "source_sha256": "04ac66150e53ea879a36f818646ee99e4181ed55b00820a4e81b26d5dd13ad42",
+ "symbols": [
+  {
+   "global": true,
+   "name": "cw_bzero_entry",
+   "section": ".text",
+   "value": 224
+  },
+  {
+   "global": true,
+   "name": "cw_bzero_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_cleared",
+   "section": ".text.cw_cleared",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_copy_after",
+   "section": ".text.cw_copy_after",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_copy_before",
+   "section": ".text.cw_copy_before",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_long_watch",
+   "section": ".bss.cw_long_watch",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_memcpy_entry",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_memcpy_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cw_memset_entry",
+   "section": ".text",
+   "value": 126
+  },
+  {
+   "global": true,
+   "name": "cw_memset_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sa_cleared",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sa_copy_after",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sa_copy_before",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_pattern_cleared",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_pattern_copied",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "149",
+  "isa_check": "db2f25aecf15af9e51fb49fbcf290e2c80bb0d606f1bfefb0988ac7109366983",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <dk/platform/ui.h>
 #include "src-control.h"
-#include "src-clock.h"
+#include "../../../keyboard-panel/src/cf/src-clock.h"
 #include "../../../../adapters/machines/src/cf/dt2/src-pages.h"
 #include "dk_fw_draw.h"
 #include "dk_fw_text.h"

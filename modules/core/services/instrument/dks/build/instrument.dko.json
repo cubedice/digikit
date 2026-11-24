@@ -332,13 +332,6 @@
    "type": "cf.32"
   },
   {
-   "addend": 200,
-   "offset": 378,
-   "section": ".text",
-   "symbol": ".sec..bss",
-   "type": "cf.32"
-  },
-  {
    "addend": 0,
    "offset": 0,
    "section": ".rodata",
@@ -489,140 +482,147 @@
    "addend": 0,
    "offset": 84,
    "section": ".rodata",
-   "symbol": "ip_note_list_write",
+   "symbol": "ip_src_attach",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 88,
    "section": ".rodata",
-   "symbol": "ip_panel_on",
+   "symbol": "ip_src_detach",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 92,
    "section": ".rodata",
-   "symbol": "ip_panel_off",
+   "symbol": "ip_src_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 96,
    "section": ".rodata",
-   "symbol": "ip_panel_key_event",
+   "symbol": "ip_src_event",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 100,
    "section": ".rodata",
-   "symbol": "ip_panel_detach",
+   "symbol": "ip_src_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 104,
    "section": ".rodata",
-   "symbol": "ip_panel_toggle",
+   "symbol": "ip_src_parameter",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 108,
    "section": ".rodata",
-   "symbol": "ip_panel_update",
+   "symbol": "ip_src_turn",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 112,
    "section": ".rodata",
-   "symbol": "ip_src_attach",
+   "symbol": "ip_src_update",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 116,
    "section": ".rodata",
-   "symbol": "ip_src_detach",
+   "symbol": "mi_legacy_channel_message",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 120,
    "section": ".rodata",
-   "symbol": "ip_src_draw",
+   "symbol": "mi_dsp_reset_begin",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 124,
    "section": ".rodata",
-   "symbol": "ip_src_event",
+   "symbol": "mi_registry_expect_session",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 128,
    "section": ".rodata",
-   "symbol": "ip_src_key",
+   "symbol": "mi_registry_reply",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 132,
    "section": ".rodata",
-   "symbol": "ip_src_parameter",
+   "symbol": "instrument_write_frame",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 136,
    "section": ".rodata",
-   "symbol": "ip_src_turn",
+   "symbol": "instrument_track_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 140,
    "section": ".rodata",
-   "symbol": "ip_src_update",
+   "symbol": "instrument_track_keyboard_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 144,
    "section": ".rodata",
-   "symbol": "mi_channel_message",
+   "symbol": "instrument_track_plays_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 148,
    "section": ".rodata",
-   "symbol": "mi_dsp_reset_begin",
+   "symbol": "instrument_record_chord",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 152,
    "section": ".rodata",
-   "symbol": "mi_registry_expect_session",
+   "symbol": "instrument_select_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 156,
    "section": ".rodata",
-   "symbol": "mi_registry_reply",
+   "symbol": "mi_panel_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 160,
    "section": ".rodata",
-   "symbol": "instrument_write_frame",
+   "symbol": "mi_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 164,
+   "section": ".rodata",
+   "symbol": "mi_seq_mute",
    "type": "cf.32"
   },
   {
@@ -5260,365 +5260,365 @@
    "type": "cf.32"
   },
   {
-   "addend": 172,
+   "addend": 0,
    "offset": 16,
-   "section": ".text.instrument_play_tick",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
-   "section": ".text.instrument_play_tick",
-   "symbol": "tk_runtime_init",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 30,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_src_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 36,
+   "offset": 22,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_panel_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 42,
+   "offset": 28,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.status_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 54,
+   "offset": 40,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 66,
+   "offset": 52,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_src_now",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 76,
+   "offset": 62,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_src_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 82,
+   "offset": 68,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.status_draw_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 96,
+   "offset": 82,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.status_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 102,
+   "offset": 88,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 110,
+   "offset": 96,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 136,
+   "offset": 122,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.shape_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 142,
+   "offset": 128,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_get",
    "type": "cf.32"
   },
   {
    "addend": 216,
-   "offset": 164,
+   "offset": 150,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 170,
+   "offset": 156,
    "section": ".text.instrument_play_tick",
    "symbol": "kb_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 180,
+   "offset": 166,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
+   "offset": 174,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 194,
+   "offset": 180,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.shapes_share",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
+   "offset": 190,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.preset_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 204,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_present",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 224,
+   "offset": 210,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_records",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 254,
+   "offset": 240,
    "section": ".text.instrument_play_tick",
    "symbol": "cp_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 272,
+   "offset": 258,
    "section": ".text.instrument_play_tick",
    "symbol": "cp_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 286,
+   "offset": 272,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_present",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 296,
+   "offset": 282,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_present",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 326,
+   "offset": 312,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.route_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 352,
+   "offset": 338,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 380,
+   "offset": 366,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 506,
+   "offset": 492,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.cr_valid",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 526,
+   "offset": 512,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 536,
+   "offset": 522,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 542,
+   "offset": 528,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 548,
+   "offset": 534,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 556,
+   "offset": 542,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_channels",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 586,
+   "offset": 572,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.channels_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 718,
+   "offset": 704,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.work_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 740,
+   "offset": 726,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 824,
+   "offset": 810,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 888,
+   "offset": 874,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 894,
+   "offset": 880,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 904,
+   "offset": 890,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 914,
+   "offset": 900,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 924,
+   "offset": 910,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 930,
+   "offset": 916,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.track_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 936,
+   "offset": 922,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_channels",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 942,
+   "offset": 928,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 1,
-   "offset": 948,
+   "offset": 934,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 954,
+   "offset": 940,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 2,
-   "offset": 960,
+   "offset": 946,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 966,
+   "offset": 952,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 3,
-   "offset": 972,
+   "offset": 958,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.restore_route",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 964,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 970,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
    "type": "cf.32"
@@ -5627,11 +5627,11 @@
    "addend": 0,
    "offset": 978,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.channel",
+   "symbol": ".sec..data.selector_octave",
    "type": "cf.32"
   },
   {
-   "addend": 4,
+   "addend": 5,
    "offset": 984,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.restore_route",
@@ -5639,394 +5639,394 @@
   },
   {
    "addend": 0,
-   "offset": 992,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.selector_octave",
-   "type": "cf.32"
-  },
-  {
-   "addend": 5,
-   "offset": 998,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.restore_route",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1004,
+   "offset": 990,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.selector_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1032,
+   "offset": 1018,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.changed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1040,
+   "offset": 1026,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1054,
+   "offset": 1040,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1060,
+   "offset": 1046,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.route_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1066,
+   "offset": 1052,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1078,
+   "offset": 1064,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_result",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1074,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.route_pending",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1080,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1088,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.route_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1094,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1102,
-   "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1144,
+   "offset": 1130,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1170,
+   "offset": 1156,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.channels_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1176,
+   "offset": 1162,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.channels_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1188,
+   "offset": 1174,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1198,
+   "offset": 1184,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_flush",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1204,
+   "offset": 1190,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1210,
+   "offset": 1196,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.route_result",
    "type": "cf.32"
   },
   {
    "addend": 29,
-   "offset": 1220,
+   "offset": 1206,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1226,
+   "offset": 1212,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1236,
+   "offset": 1222,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1244,
+   "offset": 1230,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.input_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1256,
+   "offset": 1242,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1254,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1260,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1268,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1274,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
+   "symbol": ".sec..bss.preset_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1282,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_pending",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1296,
-   "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1302,
+   "offset": 1288,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.preset_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1314,
+   "offset": 1300,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1324,
+   "offset": 1310,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_result",
    "type": "cf.32"
   },
   {
    "addend": 43,
-   "offset": 1336,
+   "offset": 1322,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1342,
+   "offset": 1328,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1348,
+   "offset": 1334,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1358,
+   "offset": 1344,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1366,
+   "offset": 1352,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1378,
+   "offset": 1364,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1390,
+   "offset": 1376,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1396,
+   "offset": 1382,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1404,
+   "offset": 1390,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1412,
+   "offset": 1398,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1418,
+   "offset": 1404,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1442,
+   "offset": 1428,
    "section": ".text.instrument_play_tick",
    "symbol": "kb_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1450,
+   "offset": 1436,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1462,
+   "offset": 1448,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.shape_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1468,
+   "offset": 1454,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1478,
+   "offset": 1464,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1488,
+   "offset": 1474,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_flush",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1494,
+   "offset": 1480,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 83,
-   "offset": 1506,
+   "offset": 1492,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1512,
+   "offset": 1498,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.save_pending",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1518,
+   "offset": 1504,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.ui",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1528,
+   "offset": 1514,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1536,
+   "offset": 1522,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1548,
+   "offset": 1534,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1560,
+   "offset": 1546,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1562,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.learn_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1568,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_close",
    "type": "cf.32"
   },
   {
@@ -6038,170 +6038,170 @@
   },
   {
    "addend": 0,
-   "offset": 1582,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_close",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1590,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.learn_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1602,
+   "offset": 1588,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1614,
+   "offset": 1600,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1628,
+   "offset": 1614,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1636,
+   "offset": 1622,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1644,
+   "offset": 1630,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1650,
+   "offset": 1636,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_revision",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1656,
+   "offset": 1642,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.refreshed_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1662,
+   "offset": 1648,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1670,
+   "offset": 1656,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
-   "addend": 208,
-   "offset": 1686,
+   "addend": 204,
+   "offset": 1672,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1696,
+   "offset": 1682,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.listed_type",
    "type": "cf.32"
   },
   {
-   "addend": 208,
-   "offset": 1704,
+   "addend": 204,
+   "offset": 1690,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1712,
+   "offset": 1698,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_view_build",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1724,
+   "offset": 1710,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.listed_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1740,
+   "offset": 1726,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_registry_reply",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1780,
+   "offset": 1766,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1794,
+   "offset": 1780,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.fault_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1840,
+   "offset": 1826,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1850,
+   "offset": 1836,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_flush",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1856,
+   "offset": 1842,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1878,
+   "offset": 1864,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1888,
+   "offset": 1874,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.preset_records",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1902,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.preset_present",
+   "type": "cf.32"
+  },
+  {
+   "addend": 70,
+   "offset": 1908,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
    "type": "cf.32"
   },
   {
@@ -6212,1151 +6212,1151 @@
    "type": "cf.32"
   },
   {
-   "addend": 70,
-   "offset": 1922,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..rodata.instrument_play_tick.str1.1",
-   "type": "cf.32"
-  },
-  {
    "addend": 0,
-   "offset": 1930,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.preset_present",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1942,
+   "offset": 1928,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.shape_fill.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 257,
-   "offset": 1948,
+   "offset": 1934,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 2663,
-   "offset": 1954,
+   "offset": 1940,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 5069,
-   "offset": 1960,
+   "offset": 1946,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 7475,
-   "offset": 1966,
+   "offset": 1952,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1984,
+   "offset": 1970,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 1990,
+   "offset": 1976,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2000,
+   "offset": 1986,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1992,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2006,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.work_window",
+   "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2020,
+   "offset": 2018,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.healthy",
+   "symbol": ".sec..bss.work_window",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2032,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.work_window",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2046,
-   "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 2054,
+   "offset": 2040,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2076,
+   "offset": 2062,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 672,
-   "offset": 2084,
+   "offset": 2070,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2096,
+   "offset": 2082,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work_quiet",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2104,
+   "offset": 2090,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work_quiet",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2116,
+   "offset": 2102,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2140,
+   "offset": 2126,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2208,
+   "offset": 2194,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work_quiet",
    "type": "cf.32"
   },
   {
    "addend": 672,
-   "offset": 2214,
+   "offset": 2200,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2220,
+   "offset": 2206,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2232,
+   "offset": 2218,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..rodata.work_key",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 2238,
+   "offset": 2224,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_work_info",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2244,
+   "offset": 2230,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 2254,
+   "offset": 2240,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_work_info",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2260,
+   "offset": 2246,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_sound_scan",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2266,
+   "offset": 2252,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_sa_tick",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 2272,
+   "offset": 2258,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 2278,
+   "offset": 2264,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2284,
+   "offset": 2270,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2290,
+   "offset": 2276,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 2296,
+   "offset": 2282,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 2406,
-   "offset": 2302,
+   "offset": 2288,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 4812,
-   "offset": 2308,
+   "offset": 2294,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2314,
+   "offset": 2300,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 7218,
-   "offset": 2320,
+   "offset": 2306,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2326,
+   "offset": 2312,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.selected",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2342,
+   "offset": 2328,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2386,
+   "offset": 2372,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2402,
+   "offset": 2388,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2410,
+   "offset": 2396,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2438,
+   "offset": 2424,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2452,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2458,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2466,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.focus",
+   "symbol": "cs_touch",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2472,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_state",
+   "symbol": ".sec..bss.src_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 2480,
    "section": ".text.instrument_play_tick",
-   "symbol": "cs_touch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2486,
-   "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.src_status",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2494,
-   "section": ".text.instrument_play_tick",
    "symbol": "is_await",
    "type": "cf.32"
   },
   {
    "addend": 128,
-   "offset": 2502,
+   "offset": 2488,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2514,
+   "offset": 2500,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.sa_bind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2524,
+   "offset": 2510,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2550,
+   "offset": 2536,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2566,
+   "offset": 2552,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.src_requested",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2586,
+   "offset": 2572,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_mod_publish",
    "type": "cf.32"
   },
   {
    "addend": 116,
-   "offset": 2632,
+   "offset": 2618,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 2650,
+   "offset": 2636,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2934,
+   "offset": 2920,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2972,
+   "offset": 2958,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.track_keyboard_claim",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 2984,
+   "offset": 2970,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.track_keyboard_lanes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3012,
+   "offset": 2998,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3024,
+   "offset": 3010,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.quarantined",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3036,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 3050,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_sound_suspend",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3064,
-   "section": ".text.instrument_play_tick",
    "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3082,
+   "offset": 3068,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.faulted_ticks.0",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3090,
+   "offset": 3076,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.faulted_ticks.0",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3106,
+   "offset": 3092,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_recoveries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3102,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.faulted_ticks.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 3108,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 3116,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.faulted_ticks.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3122,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dkrt_instrument_generation",
+   "symbol": ".sec..text.instrument_play_faulted",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 3130,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..text.instrument_play_faulted",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 3144,
-   "section": ".text.instrument_play_tick",
    "symbol": "mi_keyboard_recover",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3156,
+   "offset": 3142,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_recoveries",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3162,
+   "offset": 3148,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.release_all",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3206,
+   "offset": 3192,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3240,
+   "offset": 3226,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 12312,
-   "offset": 3264,
+   "offset": 3250,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3294,
+   "offset": 3280,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3322,
+   "offset": 3308,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 12312,
-   "offset": 3342,
+   "offset": 3328,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3358,
+   "offset": 3344,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_sound_prepare",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3374,
+   "offset": 3360,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3382,
+   "offset": 3368,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_sa_ensure",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3398,
+   "offset": 3384,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3408,
+   "offset": 3394,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3414,
+   "offset": 3400,
    "section": ".text.instrument_play_tick",
    "symbol": "ip_admission",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3434,
+   "offset": 3420,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3456,
+   "offset": 3442,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3490,
+   "offset": 3476,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3508,
+   "offset": 3494,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_slot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3532,
+   "offset": 3518,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3576,
+   "offset": 3562,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_instance_bind",
    "type": "cf.32"
   },
   {
    "addend": 12312,
-   "offset": 3610,
+   "offset": 3596,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 3650,
+   "offset": 3636,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3660,
+   "offset": 3646,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_config_submit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3690,
+   "offset": 3676,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 12320,
-   "offset": 3708,
+   "offset": 3694,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3716,
+   "offset": 3702,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_midi_ready",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3736,
+   "offset": 3722,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.channel_of",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3764,
+   "offset": 3750,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_route_enable",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3780,
+   "offset": 3766,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3792,
+   "offset": 3778,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3808,
+   "offset": 3794,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3824,
+   "offset": 3810,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3842,
+   "offset": 3828,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3872,
+   "offset": 3858,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.selector_channel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3884,
+   "offset": 3870,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.usb",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3900,
+   "offset": 3886,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3916,
+   "offset": 3902,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.din",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3934,
+   "offset": 3920,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.route_one",
    "type": "cf.32"
   },
   {
    "addend": 420,
-   "offset": 3970,
+   "offset": 3956,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 424,
-   "offset": 3978,
+   "offset": 3964,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 3990,
+   "offset": 3976,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4040,
+   "offset": 4026,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_publish",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4048,
+   "offset": 4034,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4076,
+   "offset": 4062,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4086,
+   "offset": 4072,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4108,
+   "offset": 4094,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4138,
+   "offset": 4124,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 4160,
+   "offset": 4146,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4196,
+   "offset": 4182,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4226,
+   "offset": 4212,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.preset_snapshot",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4272,
+   "offset": 4258,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.same_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4284,
+   "offset": 4270,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4298,
+   "offset": 4284,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4318,
+   "offset": 4304,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4338,
+   "offset": 4324,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4376,
+   "offset": 4362,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_sound_suspend",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 4734,
+   "offset": 4720,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_state",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4742,
+   "offset": 4728,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4772,
+   "offset": 4758,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_config_submit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4836,
+   "offset": 4822,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4852,
+   "offset": 4838,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4886,
+   "offset": 4872,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4914,
+   "offset": 4900,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.src_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4922,
+   "offset": 4908,
    "section": ".text.instrument_play_tick",
    "symbol": "is_select",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4928,
+   "offset": 4914,
    "section": ".text.instrument_play_tick",
    "symbol": "instrument_src_now",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4936,
+   "offset": 4922,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.instrument_src_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4946,
+   "offset": 4932,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..data.cur",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4954,
+   "offset": 4940,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4960,
+   "offset": 4946,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.storage_result",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 4982,
+   "offset": 4968,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 4988,
+   "offset": 4974,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 4994,
+   "offset": 4980,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 5000,
+   "offset": 4986,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 16,
-   "offset": 5018,
+   "offset": 5004,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 5024,
+   "offset": 5010,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 5034,
+   "offset": 5020,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 28,
-   "offset": 5040,
+   "offset": 5026,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 32,
-   "offset": 5046,
+   "offset": 5032,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 5052,
+   "offset": 5038,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 5058,
+   "offset": 5044,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5064,
+   "offset": 5050,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5074,
+   "offset": 5060,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.enabled",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5080,
+   "offset": 5066,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.healthy",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 5086,
+   "offset": 5072,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 5104,
+   "offset": 5090,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_keyboard_status",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5130,
+   "offset": 5116,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_control",
    "type": "cf.32"
   },
   {
    "addend": 12312,
-   "offset": 5156,
+   "offset": 5142,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 156,
-   "offset": 5180,
+   "offset": 5166,
    "section": ".text.instrument_play_tick",
    "symbol": "mi_transport",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5214,
+   "offset": 5200,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.quarantined",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5228,
+   "offset": 5214,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.learn_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5240,
+   "offset": 5226,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5256,
+   "offset": 5242,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.inst",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5328,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..data.shown_main",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5336,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.input_menu",
    "type": "cf.32"
   },
   {
@@ -7368,119 +7368,112 @@
   },
   {
    "addend": 0,
-   "offset": 5350,
+   "offset": 5354,
+   "section": ".text.instrument_play_tick",
+   "symbol": "dk_ui_menu_is_open",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5366,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.input_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5356,
+   "offset": 5372,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..data.shown_main",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 5368,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_is_open",
+   "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 5380,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.input_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 5386,
-   "section": ".text.instrument_play_tick",
-   "symbol": "dk_ui_menu_refresh",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 5394,
-   "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.shape_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5406,
+   "offset": 5392,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_is_open",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5418,
+   "offset": 5404,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.shape_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5424,
+   "offset": 5410,
    "section": ".text.instrument_play_tick",
    "symbol": "dk_ui_menu_refresh",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5472,
+   "offset": 5462,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5502,
+   "offset": 5492,
    "section": ".text.instrument_play_tick",
    "symbol": "sr_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5510,
+   "offset": 5500,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5578,
+   "offset": 5568,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.sa_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5596,
+   "offset": 5586,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5632,
+   "offset": 5622,
    "section": ".text.instrument_play_tick",
    "symbol": "sa_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5654,
+   "offset": 5644,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5668,
+   "offset": 5658,
+   "section": ".text.instrument_play_tick",
+   "symbol": ".sec..bss.work_window",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 5670,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work_window",
    "type": "cf.32"
@@ -7489,33 +7482,26 @@
    "addend": 0,
    "offset": 5680,
    "section": ".text.instrument_play_tick",
-   "symbol": ".sec..bss.work_window",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 5690,
-   "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.ip_work_info",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5710,
+   "offset": 5700,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..text.cw_set.constprop.0",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5722,
+   "offset": 5712,
    "section": ".text.instrument_play_tick",
    "symbol": ".sec..bss.work_quiet",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 5730,
+   "offset": 5720,
    "section": ".text.instrument_play_tick",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
@@ -8606,21 +8592,21 @@
    "type": "cf.32"
   },
   {
-   "addend": 216,
+   "addend": 212,
    "offset": 8,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 220,
+   "addend": 216,
    "offset": 18,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 224,
+   "addend": 220,
    "offset": 28,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
@@ -8634,105 +8620,105 @@
    "type": "cf.32"
   },
   {
-   "addend": 228,
+   "addend": 224,
    "offset": 44,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 232,
+   "addend": 228,
    "offset": 54,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 236,
+   "addend": 232,
    "offset": 64,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 236,
    "offset": 74,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 240,
    "offset": 84,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 244,
    "offset": 94,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 252,
+   "addend": 248,
    "offset": 104,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 256,
+   "addend": 252,
    "offset": 114,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 260,
+   "addend": 256,
    "offset": 128,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 264,
+   "addend": 260,
    "offset": 138,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 268,
+   "addend": 264,
    "offset": 148,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 272,
+   "addend": 268,
    "offset": 158,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 276,
+   "addend": 272,
    "offset": 168,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 280,
+   "addend": 276,
    "offset": 178,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 284,
+   "addend": 280,
    "offset": 188,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
@@ -8746,7 +8732,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 188,
+   "addend": 184,
    "offset": 20,
    "section": ".text.instrument_mod_param",
    "symbol": "ip_img",
@@ -8802,7 +8788,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 184,
+   "addend": 180,
    "offset": 52,
    "section": ".text.instrument_mod_carrier",
    "symbol": "ip_img",
@@ -12456,7 +12442,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 192,
+   "addend": 188,
    "offset": 32,
    "section": ".text.ip_src_draw",
    "symbol": "ip_img",
@@ -13793,7 +13779,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 192,
+   "addend": 188,
    "offset": 14,
    "section": ".text.ip_src_detach",
    "symbol": "ip_img",
@@ -13975,7 +13961,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 212,
+   "addend": 208,
    "offset": 158,
    "section": ".text.instrument_src_tick",
    "symbol": "ip_img",
@@ -14017,7 +14003,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 192,
+   "addend": 188,
    "offset": 200,
    "section": ".text.instrument_src_tick",
    "symbol": "ip_img",
@@ -14115,7 +14101,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 192,
+   "addend": 188,
    "offset": 10,
    "section": ".text.ip_src_key",
    "symbol": "ip_img",
@@ -14269,7 +14255,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 192,
+   "addend": 188,
    "offset": 78,
    "section": ".text.ip_src_turn",
    "symbol": "ip_img",
@@ -14711,2085 +14697,6 @@
   },
   {
    "addend": 0,
-   "offset": 2,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2,
-   "offset": 60,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 1,
-   "offset": 70,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 3,
-   "offset": 76,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2,
-   "offset": 82,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 100,
-   "section": ".text.group_append",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.keys_held",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 120,
-   "offset": 2,
-   "section": ".text.pattern_object",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text.pattern_object",
-   "symbol": "pp_current_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
-   "section": ".text.store_chord",
-   "symbol": "instrument_track_plays_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 40,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 112,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 118,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.ip_panel_chord_log",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 156,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 162,
-   "section": ".text.store_chord",
-   "symbol": "instrument_record_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 178,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 184,
-   "section": ".text.store_chord",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 2,
-   "section": ".text.waiting_release",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text.waiting_release",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 50,
-   "section": ".text.waiting_release",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 62,
-   "section": ".text.waiting_release",
-   "symbol": ".sec..bss.commit_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 18,
-   "section": ".text.step_recording",
-   "symbol": "dkrt_instrument_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 44,
-   "section": ".text.step_recording",
-   "symbol": "ip_panel_step_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 70,
-   "section": ".text.step_recording",
-   "symbol": "ip_panel_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 88,
-   "section": ".text.step_recording",
-   "symbol": "instrument_track_owned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 106,
-   "section": ".text.step_recording",
-   "symbol": "ip_panel_track_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 120,
-   "section": ".text.step_recording",
-   "symbol": "ip_panel_track_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 18,
-   "section": ".text.rec_release",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 70,
-   "section": ".text.rec_release",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text.rec_release",
-   "symbol": ".sec..bss.waiting_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 90,
-   "section": ".text.rec_release",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 8,
-   "section": ".text.rec_release_all",
-   "symbol": ".sec..text.rec_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 6,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 50,
-   "section": ".text.panel_play",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 58,
-   "section": ".text.panel_play",
-   "symbol": "mi_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 64,
-   "section": ".text.panel_play",
-   "symbol": ".sec..text.rec_release_all",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 72,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text.panel_play",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 84,
-   "section": ".text.panel_play",
-   "symbol": "instrument_select_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 92,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 98,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 104,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 110,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 116,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 136,
-   "section": ".text.panel_play",
-   "symbol": "tk_panel_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 154,
-   "section": ".text.panel_play",
-   "symbol": ".sec..bss.shared_step_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 200,
-   "section": ".text.panel_play",
-   "symbol": "mi_panel_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text.step_commits",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 16,
-   "section": ".text.step_commits",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 22,
-   "section": ".text.step_commits",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 40,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 48,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 64,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.step_recording",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 76,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 90,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 96,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_head",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 108,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 114,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 120,
-   "section": ".text.step_commits",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 132,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 148,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commits",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 156,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 170,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 184,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 192,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 200,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 206,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.keys_held",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 220,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 226,
-   "section": ".text.step_commits",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 236,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 244,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_head",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 252,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_head",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 266,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_head",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 304,
-   "section": ".text.step_commits",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 318,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 330,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 342,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 352,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 1,
-   "offset": 358,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 2,
-   "offset": 364,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 372,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 386,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 392,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.stored_group",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 402,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.stored_group",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 408,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 418,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.group_append",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 434,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 488,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.ip_panel_recorded",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 494,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 500,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 520,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.store_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 526,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 532,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.pattern_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 548,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 560,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 574,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.note_signature",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 584,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.watch_list",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 602,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.trig_word",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 612,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.watch_trig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 628,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 152,
-   "offset": 638,
-   "section": ".text.step_commits",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 650,
-   "section": ".text.step_commits",
-   "symbol": "instrument_track_keyboard_routed",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 682,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 688,
-   "section": ".text.step_commits",
-   "symbol": ".sec..text.panel_play",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 728,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.commit_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 738,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 744,
-   "section": ".text.step_commits",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 4,
-   "section": ".text.ip_panel_step_note",
-   "symbol": ".sec..text.pattern_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 46,
-   "section": ".text.ip_panel_step_note",
-   "symbol": ".sec..text.step_note",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 50,
-   "section": ".text.ip_panel_on",
-   "symbol": "dkrt_instrument_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 70,
-   "section": ".text.ip_panel_on",
-   "symbol": "instrument_track_owned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 88,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 132,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_track_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 146,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_track_type",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 180,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 190,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_trig_held",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 200,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_step_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 152,
-   "offset": 258,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 272,
-   "section": ".text.ip_panel_on",
-   "symbol": "instrument_track_keyboard_routed",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 296,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.shared_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 128,
-   "offset": 310,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 348,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_capture_panel_press",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 392,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 144,
-   "offset": 402,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 422,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_native_record_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 446,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.shared_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 452,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_recorded",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 470,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_record_audition",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 500,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_original_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 528,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_record_audition",
-   "type": "cf.32"
-  },
-  {
-   "addend": 136,
-   "offset": 592,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 604,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_cancel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 152,
-   "offset": 618,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 638,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 670,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 678,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_recorded",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 724,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 732,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.group_append",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 770,
-   "section": ".text.ip_panel_on",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 786,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.pattern_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 806,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 818,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 826,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_list",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 834,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_trig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 852,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.note_signature",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 872,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.trig_word",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 904,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 910,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 940,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_original_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 988,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.store_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1032,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.panel_play",
-   "type": "cf.32"
-  },
-  {
-   "addend": 160,
-   "offset": 1060,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1084,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_trig_return",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1106,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_project_settings",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1120,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_trig_mode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1140,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_retrig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1196,
-   "section": ".text.ip_panel_on",
-   "symbol": "ip_panel_original_on",
-   "type": "cf.32"
-  },
-  {
-   "addend": 132,
-   "offset": 20,
-   "section": ".text.ip_panel_off",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 30,
-   "section": ".text.ip_panel_off",
-   "symbol": "tk_capture_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 48,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.shared_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 160,
-   "offset": 60,
-   "section": ".text.ip_panel_off",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 76,
-   "section": ".text.ip_panel_off",
-   "symbol": "tk_panel_retrig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 94,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.shared_step_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 114,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 128,
-   "section": ".text.ip_panel_off",
-   "symbol": "mi_panel_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 142,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 148,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..text.waiting_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 160,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 178,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..text.rec_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 186,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 194,
-   "section": ".text.ip_panel_off",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 206,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.watch_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 220,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.shared_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 244,
-   "section": ".text.ip_panel_off",
-   "symbol": "tk_panel_record_audition",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 258,
-   "section": ".text.ip_panel_off",
-   "symbol": "ip_panel_original_off",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": ".text.ip_panel_off",
-   "symbol": "tk_panel_record_audition",
-   "type": "cf.32"
-  },
-  {
-   "addend": 148,
-   "offset": 302,
-   "section": ".text.ip_panel_off",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 314,
-   "section": ".text.ip_panel_off",
-   "symbol": "tk_panel_off",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 340,
-   "section": ".text.ip_panel_off",
-   "symbol": ".sec..bss.shared_step_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 10,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.step_commits",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 16,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 30,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 54,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.pattern_object",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 60,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 68,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 112,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 126,
-   "section": ".text.ip_panel_tick",
-   "symbol": "ip_panel_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 142,
-   "section": ".text.ip_panel_tick",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 148,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 160,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_list",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 172,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.watch_trig",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 178,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.note_signature",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 184,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.trig_word",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 242,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.step_note",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 252,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
-   "offset": 258,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 264,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 282,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.group_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 316,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.group_pitch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 374,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..text.store_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 386,
-   "section": ".text.ip_panel_tick",
-   "symbol": ".sec..bss.ip_panel_chord",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 30,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 124,
-   "offset": 38,
-   "section": ".text.ip_note_list_write",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 102,
-   "section": ".text.ip_note_list_write",
-   "symbol": "ip_note_list_original",
-   "type": "cf.32"
-  },
-  {
-   "addend": 124,
-   "offset": 126,
-   "section": ".text.ip_note_list_write",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 172,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..text.step_note",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 196,
-   "section": ".text.ip_note_list_write",
-   "symbol": "tk_capture_note_list_commit",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 206,
-   "section": ".text.ip_note_list_write",
-   "symbol": "dkrt_irq_mask",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 212,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 222,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 230,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.commit_head",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 238,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.commits",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 244,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 250,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.commit_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 8,
-   "offset": 256,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 294,
-   "section": ".text.ip_note_list_write",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 300,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 308,
-   "section": ".text.ip_note_list_write",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 36,
-   "section": ".text.ip_panel_update",
-   "symbol": "ip_panel_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 46,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 62,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..text.step_recording",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 78,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 140,
-   "offset": 98,
-   "section": ".text.ip_panel_update",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 118,
-   "section": ".text.ip_panel_update",
-   "symbol": "tk_panel_focus",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 132,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 140,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 148,
-   "section": ".text.ip_panel_update",
-   "symbol": "mi_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 154,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..text.rec_release_all",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 160,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 166,
-   "section": ".text.ip_panel_update",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 6,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "ip_panel_stock_toggle",
-   "type": "cf.32"
-  },
-  {
-   "addend": 136,
-   "offset": 14,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 26,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "ip_panel_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "tk_panel_cancel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 44,
-   "section": ".text.ip_panel_toggle",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 56,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "ip_panel_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 68,
-   "section": ".text.ip_panel_toggle",
-   "symbol": "mi_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 74,
-   "section": ".text.ip_panel_toggle",
-   "symbol": ".sec..text.rec_release_all",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 80,
-   "section": ".text.ip_panel_toggle",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
-   "offset": 86,
-   "section": ".text.ip_panel_toggle",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 14,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.step_commits",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 86,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.waiting_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 110,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_panel_key_down",
-   "type": "cf.32"
-  },
-  {
-   "addend": 128,
-   "offset": 126,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 148,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_panel_step_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 164,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_panel_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 186,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "tk_capture_panel_press",
-   "type": "cf.32"
-  },
-  {
-   "addend": 132,
-   "offset": 196,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 210,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "tk_capture_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 230,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.step_recording",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 246,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 28,
-   "offset": 256,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 274,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 288,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 296,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 318,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 340,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.keys_held",
-   "type": "cf.32"
-  },
-  {
-   "addend": 1,
-   "offset": 356,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 374,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.step_group",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 392,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting_count",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 398,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 404,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.waiting_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 418,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.step_group",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 432,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "instrument_src_now",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 454,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 460,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.commit_until",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 466,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "mi_seq_mute",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 474,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.ip_panel_step",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 484,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_panel_stock_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 498,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.shared_live_record",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 514,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.ip_panel_off",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 526,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.ip_panel_update",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 600,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.shared_step_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 618,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.shared_step_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 148,
-   "offset": 624,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 634,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "tk_panel_off",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 644,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.rec_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 662,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..bss.rec_keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 680,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 690,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..data.commit_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 704,
-   "section": ".text.ip_panel_key_event",
-   "symbol": "mi_panel_key",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 712,
-   "section": ".text.ip_panel_key_event",
-   "symbol": ".sec..text.rec_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 136,
-   "offset": 16,
-   "section": ".text.ip_panel_detach",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
-   "section": ".text.ip_panel_detach",
-   "symbol": "tk_panel_cancel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 30,
-   "section": ".text.ip_panel_detach",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.ip_panel_detach",
-   "symbol": "mi_panel_release",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 44,
-   "section": ".text.ip_panel_detach",
-   "symbol": ".sec..text.rec_release_all",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 50,
-   "section": ".text.ip_panel_detach",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 28,
-   "offset": 56,
-   "section": ".text.ip_panel_detach",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 76,
-   "section": ".text.ip_panel_detach",
-   "symbol": "ip_panel_stock_detach",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 10,
    "section": ".text.switching",
    "symbol": "dkrt_irq_mask",
@@ -16803,21 +14710,21 @@
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 26,
    "section": ".text.switching",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 38,
    "section": ".text.switching",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 50,
    "section": ".text.switching",
    "symbol": "ip_img",
@@ -17041,28 +14948,28 @@
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 72,
    "section": ".text.instrument_sound_prepare",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 84,
    "section": ".text.instrument_sound_prepare",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 94,
    "section": ".text.instrument_sound_prepare",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 200,
    "offset": 104,
    "section": ".text.instrument_sound_prepare",
    "symbol": "ip_img",
@@ -18455,7 +16362,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 196,
+   "addend": 192,
    "offset": 12,
    "section": ".text.mi_dsp_reset_begin",
    "symbol": "ip_img",
@@ -18469,7 +16376,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 200,
+   "addend": 196,
    "offset": 26,
    "section": ".text.mi_dsp_reset_begin",
    "symbol": "ip_img",
@@ -19267,121 +17174,93 @@
    "type": "cf.32"
   },
   {
-   "addend": 176,
-   "offset": 18,
-   "section": ".text.mi_channel_message",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 38,
-   "section": ".text.mi_channel_message",
-   "symbol": "tk_midi_channel_message",
-   "type": "cf.32"
-  },
-  {
    "addend": 4,
-   "offset": 68,
-   "section": ".text.mi_channel_message",
+   "offset": 18,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 78,
-   "section": ".text.mi_channel_message",
+   "offset": 26,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.reset_seen",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
-   "section": ".text.mi_channel_message",
+   "offset": 70,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 156,
-   "section": ".text.mi_channel_message",
+   "offset": 112,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 174,
-   "section": ".text.mi_channel_message",
+   "offset": 130,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..text.revalidate_track",
    "type": "cf.32"
   },
   {
-   "addend": 176,
-   "offset": 182,
-   "section": ".text.mi_channel_message",
+   "addend": 172,
+   "offset": 138,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 198,
-   "section": ".text.mi_channel_message",
+   "offset": 154,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
-   "section": ".text.mi_channel_message",
+   "offset": 160,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "mi_message",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 220,
-   "section": ".text.mi_channel_message",
+   "offset": 176,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
-   "addend": 176,
-   "offset": 260,
-   "section": ".text.mi_channel_message",
-   "symbol": "ip_img",
-   "type": "cf.32"
-  },
-  {
    "addend": 0,
-   "offset": 280,
-   "section": ".text.mi_channel_message",
-   "symbol": "tk_midi_channel_message",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 304,
-   "section": ".text.mi_channel_message",
+   "offset": 226,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "instrument_track_keyboard_routed",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 320,
-   "section": ".text.mi_channel_message",
+   "offset": 242,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 402,
-   "section": ".text.mi_channel_message",
+   "offset": 318,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 408,
-   "section": ".text.mi_channel_message",
+   "offset": 324,
+   "section": ".text.mi_legacy_channel_message",
    "symbol": "mi_release_known",
    "type": "cf.32"
   },
@@ -19410,33 +17289,47 @@
    "addend": 0,
    "offset": 50,
    "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
+   "symbol": ".sec..rodata.global.16",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 66,
+   "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
    "symbol": "instrument_vec_table",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 90,
    "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
    "symbol": "midi_vec_table",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
+   "offset": 110,
+   "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
+   "symbol": "kbp_vec_table",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
    "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
    "symbol": ".sec..text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks11dk_svc_init",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 154,
    "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
    "symbol": ".sec..rodata._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks10DK_SVC_ROW",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 124,
+   "offset": 164,
    "section": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
    "symbol": "_RNvCs3qJODegQhLd_11dkrt_svc_rt7declare",
    "type": "cf.32"
@@ -19729,7 +17622,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 134,
+   "addend": 130,
    "offset": 56,
    "section": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam6usable",
    "symbol": ".sec..rodata.global.13",
@@ -19746,24 +17639,24 @@
  "sections": [
   {
    "align": 4,
-   "hex": "2079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed0",
+   "hex": "2079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed02079000000004ed0",
    "kind": "text",
    "name": ".text",
-   "size": 384
+   "size": 376
   },
   {
    "align": 4,
-   "hex": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 164
+   "size": 168
   },
   {
    "align": 4,
    "hex": "",
    "kind": "bss",
    "name": ".bss",
-   "size": 288
+   "size": 284
   },
   {
    "align": 2,
@@ -20446,10 +18339,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56fb0c48d73cfc4eb9000000004ab90000000067064eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600030648780030260e0683fffffd082f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685fffffd6c13c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefc402f0b4879000000004e924fef000c26004a806d0002f67e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefc407243b28066d071aefc417852b88066c671aefc4253804a8066bc4a2efc4366b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefc4eb8806682738171aefc4fb0816600ff78486efd6c3d6efc48fd702d6efc44fd6c4eb900000000588f4a806700ff5a43eefd70700133d10000000041eefd6c23d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f24878001449eefca42f0c4879000000004e924fef000c4a806d667814b8806600020071aefca47c43bc80660001f471aefca5bc80660001ea71aefca653804a80660001de42811034180478107780b883650001ced08214005281b88166e87c5abd8073aefca77180b081660001b4428041f408047210179008005280b28066f048780294240e0682fffffd6c2f024879000000004e924fef000c4a806d00019691c8420443f900000000138488005288b1fc000002a166ea0c80000002946600017471aefd6c7c43bc806600016871aefd6d7e57be806600015c71aefd6e53804a806600015071aefd6f7610b6806600014420424280588847f900000000739053814a81661e7c0112bc000195ca13460010284a528a4bf0a80072281795c800b28a66ee528041e80029528947eb00287410b48066c8760123c3000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000ea4878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80674e42b900000000243c00000000607c42b90000000072bcb2806700fdca6000fd08428042027610178208005280b68066f26000fe4e42802040d1fc00000000421052800c80000002a166ec6000feea487800144879000000004879000000004e924fef000c23c0000000004a8066924eb90000000042b90000000023c0000000004a806682243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000204243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683fffffd6c2f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b4243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fb444a80672c2079000000004a906722b0b900000000671a2079000000002f104eb900000000242efb44588f23c200000000487800107610486efc004eb900000000508f2400b680660000de283c494ea103b8aefc0066207c05bcaefc346618262efc384eb900000000b083660a41eefc3823d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefc00660a7603b6aefc34670004c8428023c0000000006000008e4eb90000000023c0000000004a806600fdee203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdac4200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3270feb0826600ff4a42b9000000004ab9000000006600043c42b9000000002039000000000c800000025762404ab90000000067382e00528723c7000000000c800000025766264eb900000000428141f90000000042027610118218005281b68166f22f004eb900000000588f4a3900000000670000a8783b203900000000528023c000000000b880640000924eb9000000002c3c43570110260e0683fffffd6c2443588a43f90000000042812d46fd6c26494a33180056c291c844821482143318006704143188205288158288007e28be8866ea528145ea0029741043e90028b48166ce42042f0042b90000000013c4000000004eb900000000487802942f0348790000000052b9000000004eb9000000004fef001023c0000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f28404a80664241f90000000042802210740fb481650c4a8c6700032ab29465000324528041e809667604b68066e04a8c66162879000000002f144e92588f4a80660649f900000000240c048200000000e282283c2bd64a7b7c0f4c0248002d44fb50bc946540b8b9000000006738203ce0b7dc404c0208002e3c400d9e8a4c07280023c4000000000680000000002f004eb9000000000682000000002f024eb900000000508f41f9000000009bcd2d48fb3447f90000000042aefb4c45f90000000041f2dc00246efb34226efb3443e9ff802d49fb3c23c9000000002550ff80486efc402f094eb900000000508fb9eefb3c660e71aefc822f004eb900000000588f202efb4ce280223c2bd64a7b760b243ce0b7dc404c0018004c0208002d41fb40322efb422240d3fc00000000201148404240c2fc00c02041d1fc0000000073aefc837de800067fe8001c79e80004e1892d46fb482d46fd782d47fb542d47fd7c2d44fb382d44fd742401848071aefc8273e8000a7be800127fe8000e2d40fd7071e8001e7de800102d41fb582d41fd84868222402d40fd8071eefc802d40fd882d43fd6c77e8000c2d45fd902d47fd942d46fd982d43fd8c244379e8001471aefc8477e800162d44fd9c2d40fda0302800082d43fda4320071c0c2fc0003e2892d41fda873d02d41fdac73e800022d40fdbc71e800182d4afdc42d41fdb02d47fdc82d40fddc2d46fdcc2d45fdd02d44fdd42d43fdd845eefdac71e8001a2d49fde843e800202d6efb38fdb42d6efb48fdb82d40fde02d6efb58fdc041e800402d6efb54fde4301948404240809224c0b3c866f2bbf900000000660a00820000800b2d42fd6c206efb34720f2028ff802628ff88b280650000e441f9000000004a300800671c41f90000000010300800222efd6c08c1000e4a00660000ac2d41fd6c4ab90000000067142f2efb3c4eb900000000588f24004a80670000bc5583e28b660006e22f0d4eb900000000600000a2242efc384eb900000000b08257c0710044806000fb28203900000000528023c000000000782cb8806400fbb87c07bcb9000000006500fbac42b9000000004eb9000000002f004eb900000000588f4a806600fb904eb9000000004a806600fb8452b9000000004eb9000000006000fb7428486000fcda7180740be5a8808108c0000d2d40fd6c6000ff484a83670006462f0d4eb900000000206efb3442a8ff88588f600006304a83660a206efb3472012141ff884eb900000000226efb3426002069ff8820085580e28866364ab900000000660002cc2029ff84b0a9ff80660002c0220006810000007143f900000000780322311c00b8886600028e4a81670002a02f037c014eb900000000588f206efb34bca8ff88660002964ab90000000057c0710044802f002f0d4eb900000000508f4a806c00027e2f0d4eb900000000588f4eb9000000002d40fb384a80670000904ab900000000670000864eb90000000041f900000000280071cde78826300c042f032f0d4eb900000000508f2c004a806700023c2f032f2efb384eb900000000508f2d40fb5c4a2b006c670eb693660ab0ab000457c0750044822f044eb900000000588f4a8667262f032f2efb384eb900000000508f4a806d144a82670001f6487800012f0d4eb900000000508f7001206efb34b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0d2f004eb900000000508f7001226efb342429ff84b0a9ff886600044a4aa9ff8c670004b04ab900000000660004a6202efb40223c000000c048780020486efd6c4c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a8066000400206efb3476022143ff8842a8004441f9000000002002068000000c092f300c002f39000000002f024eb9000000004fef000c4a80670004362f2efb3c4eb900000000226efb3442a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fd264ab900000000670000a253824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fcfa4ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fcd8246efb3471aa007453804a80664e2439000000004a82674453824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fc9e4ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fc7c206efb3474032142ff886000034e4a816600fd764ab900000000670ab0b9000000006700fd642f0d4eb900000000588f6000fd5642806000fd74226efb342340ff8c6000fd8442806000fdd04a2b006c6710b693670c42a72f0d4eb900000000508f4eb900000000486efb5c2a0e0685fffffb602f052f0328002f2efb384eb9000000002f0424404eb9000000004fef00144a8a6700010a2f05486efca44eb900000000508f4a8057c479044484206efb34700f2a28ff80b085654a41f9000000004a305810673e70284c0508002e0042800687000000002047722843f0080041eefb88119108005280b28066ea486efb88486efca44eb900000000508f4a806604240628062c0e0686fffffd082f062f2efb3c4eb900000000508f206efb3471a8007455804a8066061d680075fd4b4a84670004a62f062c0e0686fffffca42f064eb900000000508f4a8066464eb9000000002f032f0d2d40fb484eb900000000508f2e004a8067142f032f2efb384eb900000000508fb0aefb5c67287eff2f2efb484eb900000000588f52874a876700fcd44a82670005682e026000046842846000ff0a2f2efb404eb900000000102efce7206efb34588f116efce900ab116efcea00ac116efceb00ad116efcec00ae116efced00af11400074718021400048302efca42200114000767381302efca62141004c11400077220070017381114000b071eefca8214100502140ff9871eefcaa2140ff9c71eefcac2140ffcc71eefcae2140ffa871eefcb02140ffb071eefcb2226efb342140ffb871eefcb443e9ffd057802140ffbc71eefcb62140ffb471eefcb82140ffc071eefcba2140ffc871eefcc02140ffa071eefcc22140ffa42046200641e8002006800000003873d822c1b1c066f8226efb34204641e8004a06860000006471d822c0b1c666f871eefcdc206efb3472787c012140003471eefcde2141ffac214600442140003871eefce02140003c71eefce22140004071aefce62140ff9470022140ffc46000fea00680fffffbb0600003a0206efb347003b0a8ff886654202efb40223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486efd6c2f3c435053422f002f024eb9000000004fef00144a806608206efb3442a80044206efb347002b0a8ff886700fba4203c00000966528dd1aefb4cd1aefb3447eb006e7204b28d6600f6fa23cc00000000740f2014b48065607603b6b900000000655673ac00f47802b8816600023c206c00e82f082c3c0000027e2f0141f9000000002200068100000c092f301c002f00202efb504c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfb382d4dfb3c23c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efb380004216efb3c00084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efb44fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfb0c4e5e4e7591c86000fdc64a8267062e02244660264a8a66f6486efbb045eefd082f0a4eb900000000508f4a8057c77f0744874a84670445eefca4486efbd82f0a4eb9000000002c004eb9000000002683276efb5c0004508f220b91c82800508143f288007064119118005288b08866f0720120051741006c7210b285640270101740006d4a8767482f032f0d4eb900000000508f4a8067382f032f2efb384eb900000000508fb0aefb5c6624200e4a826700fc600680fffffb882f002f032f2efb384eb9000000004fef000c27400004760fb685650c420741f90000000011875810307c01fdb1f900000000650a327c01fe23c9000000004a82670652b9000000004a86661c486efbd871ab006d2f004eb900000000508f4a80670642b9000000002f044eb900000000588f6000f7684a8a6600fa966000fee0",
+   "hex": "4e56fb0c48d73cfc4eb9000000004eb9000000004eb9000000002039000000004a80673a2f004eb900000000588f4a80672c4eb90000000024002f004eb90000000094b900000000588f7063b082640e2f39000000004eb900000000588f2439000000004a826600030648780030260e0683fffffd082f0348790000000045f9000000004e924fef000c4a806d0000d62f002f034879000000004eb9000000004fef000c23c00000000042034879000000004eb9000000002a0e588f47f90000000042840685fffffd6c13c300000000263c00000000487800902f032f1b4e924fef000c4a806d362f002f032f054eb9000000004fef000c4a8066222f032f054eb900000000508f4a8066127001123900000000e9a8808113c00000000052840683000000907c04bc8466aa4878001047eefc402f0b4879000000004e924fef000c26004a806d0002f67e10be80672642b90000000024034a836d0000b874ff600000b272bcb2806700ff4023c0000000006000ff3671aefc407243b28066d071aefc417852b88066c671aefc4253804a8066bc4a2efc4366b6700a1833080066ae52807e0ebe8066f2420591c81033880052887c0ed0842200d28518001a01bc8866ea718079aefc4eb8806682738171aefc4fb0816600ff78486efd6c3d6efc48fd702d6efc44fd6c4eb900000000588f4a806700ff5a43eefd70700133d10000000041eefd6c23d00000000023c00000000023c200000000428047f90000000076104202178208005280b68066f24878001449eefca42f0c4879000000004e924fef000c4a806d667814b8806600020071aefca47c43bc80660001f471aefca5bc80660001ea71aefca653804a80660001de42811034180478107780b883650001ced08214005281b88166e87c5abd8073aefca77180b081660001b4428041f408047210179008005280b28066f048780294240e0682fffffd6c2f024879000000004e924fef000c4a806d00019691c8420443f900000000138488005288b1fc000002a166ea0c80000002946600017471aefd6c7c43bc806600016871aefd6d7e57be806600015c71aefd6e53804a806600015071aefd6f7610b6806600014420424280588847f900000000739053814a81661e7c0112bc000195ca13460010284a528a4bf0a80072281795c800b28a66ee528041e80029528947eb00287410b48066c8760123c3000000004ab9000000006700008a4eb9000000004a80677e4eb9000000004a80677471b90000000041f90000000043f90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b90000000023c00000000071b900000000538023c00000000071b90000000023c000000000428045f108007210119208005280b28066f042a742a74eb900000000508f4ab900000000670000ea4878001048790000000048790000000045f9000000004e924fef000c23c0000000004a80674e42b900000000243c00000000607c42b90000000072bcb2806700fdca6000fd08428042027610178208005280b68066f26000fe4e42802040d1fc00000000421052800c80000002a166ec6000feea487800144879000000004879000000004e924fef000c23c0000000004a8066924eb90000000042b90000000023c0000000004a806682243c000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2439000000004a8267704878009048790000000041f90000000053822f302c004eb9000000004fef000c23c0000000004a8067000204243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4ab900000000677c4eb900000000287900000000260e0683fffffd6c2f0349ec00d82f0c24004eb9000000002f024eb900000000487800302f034879000000004eb9000000004fef001823c0000000004a8066124eb90000000023c0000000004a80670001b4243c0000000042b9000000004eb9000000002f022f004eb900000000508f2039000000004a80672c2f004eb900000000588f4a80671e20790000000071a800f455804a80670e2f39000000004eb900000000588f2039000000004a8067462f004eb900000000588f4a806738207900000000222800ec71a80100b2b9000000006608b0b900000000671a2f390000000023c10000000023c0000000004eb900000000588f45f9000000004e922d40fb444a80672c2079000000004a906722b0b900000000671a2079000000002f104eb900000000242efb44588f23c200000000487800107610486efc004eb900000000508f2400b680660000de283c494ea103b8aefc0066207c05bcaefc346618262efc384eb900000000b083660a41eefc3823d0000000004e924a80670000b27210b282660000b0243c494ea103b4aefc00660a7603b6aefc34670004c8428023c0000000006000008e4eb90000000023c0000000004a806600fdee203c000000904c02080043f90000000020404280d1fc0000000045f108001192080052800c800000009066ee7001e5a8123900000000243c00000000808113c0000000006000fdac4200243c0000000013c00000000013c00000000013c00000000013c0000000006000fe3270feb0826600ff4a42b9000000004ab9000000006600043c42b9000000002039000000000c800000025762404ab90000000067382e00528723c7000000000c800000025766264eb900000000428141f90000000042027610118218005281b68166f22f004eb900000000588f4a3900000000670000a8783b203900000000528023c000000000b880640000924eb9000000002c3c43570110260e0683fffffd6c2443588a43f90000000042812d46fd6c26494a33180056c291c844821482143318006704143188205288158288007e28be8866ea528145ea0029741043e90028b48166ce42042f0042b90000000013c4000000004eb900000000487802942f0348790000000052b9000000004eb9000000004fef001023c0000000004eb9000000004eb90000000045f90000000049f90000000041f90000000023d00000000043f90000000023d10000000023d20000000045f90000000023d4000000002f39000000004e92588f28404a80664241f90000000042802210740fb481650c4a8c6700032ab29465000324528041e809667604b68066e04a8c66162879000000002f144e92588f4a80660649f900000000240c048200000000e282283c2bd64a7b7c0f4c0248002d44fb50bc946540b8b9000000006738203ce0b7dc404c0208002e3c400d9e8a4c07280023c4000000000680000000002f004eb9000000000682000000002f024eb900000000508f41f9000000009bcd2d48fb3447f90000000042aefb4c45f90000000041f2dc00246efb34226efb3443e9ff802d49fb3c23c9000000002550ff80486efc402f094eb900000000508fb9eefb3c660e71aefc822f004eb900000000588f202efb4ce280223c2bd64a7b760b243ce0b7dc404c0018004c0208002d41fb40322efb422240d3fc00000000201148404240c2fc00c02041d1fc0000000073aefc837de800067fe8001c79e80004e1892d46fb482d46fd782d47fb542d47fd7c2d44fb382d44fd742401848071aefc8273e8000a7be800127fe8000e2d40fd7071e8001e7de800102d41fb582d41fd84868222402d40fd8071eefc802d40fd882d43fd6c77e8000c2d45fd902d47fd942d46fd982d43fd8c244379e8001471aefc8477e800162d44fd9c2d40fda0302800082d43fda4320071c0c2fc0003e2892d41fda873d02d41fdac73e800022d40fdbc71e800182d4afdc42d41fdb02d47fdc82d40fddc2d46fdcc2d45fdd02d44fdd42d43fdd845eefdac71e8001a2d49fde843e800202d6efb38fdb42d6efb48fdb82d40fde02d6efb58fdc041e800402d6efb54fde4301948404240809224c0b3c866f2bbf900000000660a00820000800b2d42fd6c206efb34720f2028ff802628ff88b280650000e441f9000000004a300800671c41f90000000010300800222efd6c08c1000e4a00660000ac2d41fd6c4ab90000000067142f2efb3c4eb900000000588f24004a80670000bc5583e28b660006e22f0d4eb900000000600000a2242efc384eb900000000b08257c0710044806000fb28203900000000528023c000000000782cb8806400fbb87c07bcb9000000006500fbac42b9000000004eb9000000002f004eb900000000588f4a806600fb904eb9000000004a806600fb8452b9000000004eb9000000006000fb7428486000fcda7180740be5a8808108c0000d2d40fd6c6000ff484a83670006462f0d4eb900000000206efb3442a8ff88588f600006304a83660a206efb3472012141ff884eb900000000226efb3426002069ff8820085580e28866364ab900000000660002cc2029ff84b0a9ff80660002c0220006810000007143f900000000780322311c00b8886600028e4a81670002a02f037c014eb900000000588f206efb34bca8ff88660002964ab90000000057c0710044802f002f0d4eb900000000508f4a806c00027e2f0d4eb900000000588f4eb9000000002d40fb384a80670000904ab900000000670000864eb90000000041f900000000280071cde78826300c042f032f0d4eb900000000508f2c004a806700023c2f032f2efb384eb900000000508f2d40fb5c4a2b006c670eb693660ab0ab000457c0750044822f044eb900000000588f4a8667262f032f2efb384eb900000000508f4a806d144a82670001f6487800012f0d4eb900000000508f7001206efb34b0a8ff8866204aa8ff8c671a2028ff80b0a8ff8467102140ff842f0d2f004eb900000000508f7001226efb342429ff84b0a9ff886600044a4aa9ff8c670004b04ab900000000660004a6202efb40223c000000c048780020486efd6c4c0108002f3c435053422040d1fc000000002f102f024eb9000000004fef00144a8066000400206efb3476022143ff8842a8004441f9000000002002068000000c092f300c002f39000000002f024eb9000000004fef000c4a80670004362f2efb3c4eb900000000226efb3442a9ff9042972f29ff8442a74878000224004eb9000000004fef00104a806600fd264ab900000000670000a253824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fcfa4ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fcd8246efb3471aa007453804a80664e2439000000004a82674453824ab90000000067182f0242a72f2efb3c4eb9000000004fef000c4a806600fc9e4ab900000000671a2f02487800012f2efb3c4eb9000000004fef000c4a806600fc7c206efb3474032142ff886000034e4a816600fd764ab900000000670ab0b9000000006700fd642f0d4eb900000000588f6000fd5642806000fd74226efb342340ff8c6000fd8442806000fdd04a2b006c6710b693670c42a72f0d4eb900000000508f4eb900000000486efb5c2a0e0685fffffb602f052f0328002f2efb384eb9000000002f0424404eb9000000004fef00144a8a6700010a2f05486efca44eb900000000508f4a8057c479044484206efb34700f2a28ff80b085654a41f9000000004a305810673e70284c0508002e0042800687000000002047722843f0080041eefb88119108005280b28066ea486efb88486efca44eb900000000508f4a806604240628062c0e0686fffffd082f062f2efb3c4eb900000000508f206efb3471a8007455804a8066061d680075fd4b4a84670004a62f062c0e0686fffffca42f064eb900000000508f4a8066464eb9000000002f032f0d2d40fb484eb900000000508f2e004a8067142f032f2efb384eb900000000508fb0aefb5c67287eff2f2efb484eb900000000588f52874a876700fcd44a826700044e2e026000046c42846000ff0a2f2efb404eb900000000102efce7206efb34588f116efce900ab116efcea00ac116efceb00ad116efcec00ae116efced00af11400074718021400048302efca42200114000767381302efca62141004c11400077220070017381114000b071eefca8214100502140ff9871eefcaa2140ff9c71eefcac2140ffcc71eefcae2140ffa871eefcb02140ffb071eefcb2226efb342140ffb871eefcb443e9ffd057802140ffbc71eefcb62140ffb471eefcb82140ffc071eefcba2140ffc871eefcc02140ffa071eefcc22140ffa42046200641e8002006800000003873d822c1b1c066f8226efb34204641e8004a06860000006471d822c0b1c666f871eefcdc206efb3472787c012140003471eefcde2141ffac214600442140003871eefce02140003c71eefce22140004071aefce62140ff9470022140ffc46000fea00680fffffbb0600003a4206efb347003b0a8ff886654202efb40223c000000c04c01080022020681000000712040d1fc00000000201041f900000000b0b01c00633648780020486efd6c2f3c435053422f002f024eb9000000004fef00144a806608206efb3442a80044206efb347002b0a8ff886700fba4203c00000966528dd1aefb4cd1aefb3447eb006e7204b28d6600f6fa23cc00000000740f2014b48065607603b6b900000000655673ac00f47802b8816600023c206c00e82f082c3c0000027e2f0141f9000000002200068100000c092f301c002f00202efb504c0608000680000000002f004eb9000000004eb9000000002f004eb9000000004fef0018247900000000428147f9000000002439000000007baa00f47faa00f671aa00fb79aa010023c50000000023c70000000042b90000000023c00000000041ea00e843ea00ec77aa010123d00000000023d10000000071aa00fc23c40000000023c30000000023c20000000023c00000000043f90000000041f90000000071aa00fd2879000000002a790000000023c00000000071aa00fe2d4cfb382d4dfb3c23c0000000007c0f2011bc80640242804be9000406800000007149f90000000029951c0049f30c00216efb380004216efb3c00084bf900000000508121690008000c43e90966702041e800202c39000000002146fff02155fff42154fff8216efb44fffcb081669e286a00082f0a4eb9000000002a6a0010588f26402039000000004a8067102f004eb900000000588f4a80660000b4720995fc00000000200ce3a8220de98d4a8256c2ed8c80877e0fefa9750244828081720de3ab220ae2818a80700ce1aa88858882243c2bd64a7b4c021800484142418684280b8c8486814a8656c07c0e71004480eda88680b6b900000000675220390000000023c3000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f2039000000004a80671c2f004eb900000000588f4a80670e2f39000000004eb900000000588f4cee3cfcfb0c4e5e4e7591c86000fdc64a82670001262e02244660284a8a6600fbb0486efbb045eefd082f0a4eb900000000508f4a8057c77f0744874a84670445eefca4486efbd82f0a4eb9000000002c004eb9000000002683276efb5c0004508f220b91c82800508143f288007064119118005288b08866f0720120051741006c7210b285640270101740006d4a8767482f032f0d4eb900000000508f4a8067382f032f2efb384eb900000000508fb0aefb5c6624200e4a826700fc5c0680fffffb882f002f032f2efb384eb9000000004fef000c27400004760fb685650c420741f90000000011875810307c01fdb1f900000000650a327c01fe23c9000000004a82670652b9000000004a86661c486efbd871ab006d2f004eb900000000508f4a80670642b9000000002f044eb900000000588f6000f7644a8a6600fed86000fee0",
    "kind": "text",
    "name": ".text.instrument_play_tick",
-   "size": 5750
+   "size": 5740
   },
   {
    "align": 2,
@@ -22483,356 +20376,6 @@
   },
   {
    "align": 2,
-   "hex": "1039000000002f032f02428141f9000000007580b282641a77b01800b6af000c66582241d3fc000000005281b48162425380738059814a81661e43f90000000010a8000113d10000000043f90000000013d100000000700322005281718043ef000f13c10000000011910800241f261f4e7552891351ffff60b052816096",
-   "kind": "text",
-   "name": ".text.group_append",
-   "size": 126
-  },
-  {
-   "align": 2,
-   "hex": "2f02243c000006a5202f000c73ef0012206f00084c020800241fd1c030301a004e75",
-   "kind": "text",
-   "name": ".text.trig_word",
-   "size": 34
-  },
-  {
-   "align": 2,
-   "hex": "4feffff4222f001448d7040c202f0018068000009528ef89246f0010327c0004d08173720a00200171c00c8100001fff6234740653894c012800068100009d2873c173721a0020422400eb8a41e86a50d1ca77a80003948071a80002e188b780b5804a8966c44cd7040c4fef000c4e75",
-   "kind": "text",
-   "name": ".text.note_signature",
-   "size": 112
-  },
-  {
-   "align": 2,
-   "hex": "41f90000000093c942804a10671c73a80002b2af000457c173014481d081528956887210b28966e24e75428160ee",
-   "kind": "text",
-   "name": ".text.keys_held",
-   "size": 46
-  },
-  {
-   "align": 2,
-   "hex": "4ab90000000067064ef90000000042804e75",
-   "kind": "text",
-   "name": ".text.pattern_object",
-   "size": 18
-  },
-  {
-   "align": 2,
-   "hex": "4e56fff048d7040c2f2e000c4eb90000000073b900000000588f22414a80670000ce200191c845f9000000004a8067087203b2886600008a42812001e688246e000802800003fffc24320800701fc0810102660c52810c810000008066dc4281202e00102609e18b740f48404240c4b90000000043f900000000028000ff00008083260880837618e7a9808123802c002f08486efffd2f2e000823c8000000004eb9000000004fef000c4cee040cfff023c00000000052b9000000004e5e4e75538075b20800220292ae0010b4ae00106700ff5a24017660068200000030b6826500ff4a1d8188fd52886000ff4091c86000ff46",
-   "kind": "text",
-   "name": ".text.store_chord",
-   "size": 244
-  },
-  {
-   "align": 2,
-   "hex": "223900000000428041f9000000002f022248b081672c7590b4af000866284a280001662272064c0108007201138108014eb9000000000680000001f423c000000000241f4e7552805c8860c6",
-   "kind": "text",
-   "name": ".text.waiting_release",
-   "size": 76
-  },
-  {
-   "align": 2,
-   "hex": "4feffff448d7040c246f0010242a00984eb90000000026004a82660c42804cd7040c4fef000c4e752f024eb900000000588f4a0067e6200372185f80b28065dc2f2a00a04eb900000000588f2400700fb08265c82f024eb900000000588f4a8067bc2f022f2a00a44eb900000000508f4a8067a82f004eb900000000588fb680669a206f0014700120826092",
-   "kind": "text",
-   "name": ".text.step_recording",
-   "size": 140
-  },
-  {
-   "align": 2,
-   "hex": "2f02700f226f0008b089655443f19a0041f9000000004a3188006744103098024201758013818800428122424a10670875a80002b4896728528156887410b48166ea71804ab9000000006708b0b900000000670c42a72f004eb900000000508f241f4e75",
-   "kind": "text",
-   "name": ".text.rec_release",
-   "size": 100
-  },
-  {
-   "align": 2,
-   "hex": "2f0a2f02428245f9000000002f024e925282588f7010b08266f2241f245f4e75",
-   "kind": "text",
-   "name": ".text.rec_release_all",
-   "size": 32
-  },
-  {
-   "align": 2,
-   "hex": "4fefffe820390000000048d7007c2c2f001c262f0020242f0024282f00282a2f002c2f6f003000144a806718bc806608b4b900000000670c4eb9000000004eb9000000002f0223c60000000023c2000000004eb900000000588f52b90000000023c30000000023c20000000023c40000000023c5000000004aaf0014672a2f052f042f022f034eb9000000004fef00104a80670a7001e7a881b9000000004cd7007c4fef00184e752f42002c70012f4500242f4400202f43001c2f4000284cd7007c4fef00184ef900000000",
-   "kind": "text",
-   "name": ".text.panel_play",
-   "size": 204
-  },
-  {
-   "align": 2,
-   "hex": "4e56ffc048d71cfc4eb90000000047f90000000045f900000000720f2d40ffe870ff2d40ffecb2b90000000065642039000000004a80675a486effec2f004eb900000000508f4a80670c243900000000b4aeffec673c4e9342b90000000042b9000000002f004e9242a72f390000000042b9000000004eb9000000004fef000c70ff23c0000000004cee1cfcffc04e5e4e7549f9000000004e934ab90000000066502f004e92588f2239000000004a8166000220740fb4b90000000065ca4ab90000000066c22f39000000004eb900000000588f4a8066b042a72f39000000004eb900000000508f70ff23c0000000006096207900000000740f2239000000005281c48141f08a0023c2000000001830c800d1cc1a2800011e2800022f0053b9000000004e92588f73842d41ffe4b2b9000000006600ff62202effe890b9000000004a806e00ff522039000000004a806700ff46b2b9000000006600ff3c1439000000001c3900000000227900000000720141f900000000b28066000140538023c000000000b3f900000000670e420023c90000000013c00000000077872f034eb900000000588f4a06661c7182720141f900000000224043f19a001381880011879801118498027985701fca8070012204ea8942aefffc42aefff842aefff442aefff0eba852b90000000052b90000000023c3000000002d801cf02f032f2effe4486efff04eb90000000023c4000000004eb9000000004fef000c2a004a80674a4ab9000000006742222effe4b2b90000000066362f042f012f004eb9000000004fef000c41f90000000021804c002f042f2effe42f054eb9000000004fef000c41f90000000031804a004a066600fe284ab9000000006700fe1e4ab900000000674a2f2effe44eb900000000588f4a8056c0710044802f007582487800642f032f2effe42f022f39000000004eb9000000004fef00186000fdde5c8831680004fffe2150fffa52816000feac428060c6202effe890b9000000006b00fdd6d3b90000000042b9000000006000fdc6",
-   "kind": "text",
-   "name": ".text.step_commits",
-   "size": 752
-  },
-  {
-   "align": 2,
-   "hex": "2f02202f000c226f0008222f0010ef8820402001068000009528d08830310a0075400c8200001fff630670ff241f4e75c1fc0006204041e86a50d1c97190b0af000c66e671a80001b28066de102800026bd8718060d6",
-   "kind": "text",
-   "name": ".text.step_note",
-   "size": 86
-  },
-  {
-   "align": 2,
-   "hex": "2f024eb90000000024004a806708700fb0af0008640470ff603e727fb2af000c65f42f2f000c2f2f000c2f024eb9000000004fef000c72ffb280661c202f0008223c000006a520424c010800727fd1c071a80485b2806dbe241f4e75",
-   "kind": "text",
-   "name": ".text.ip_panel_step_note",
-   "size": 92
-  },
-  {
-   "align": 2,
-   "hex": "4e56ffb02d6e0010ffd848d73cfc246e0008242e000c262e00142c2e00182d6e001cffe02d6e0020ffe42d6e0024ffe84eb9000000002a00700fb0aeffd865102f2effd84eb900000000588f4a80662042842f2a00a04eb900000000588f73802d41ffec4a0067044a84662242876036200572185f80b28065d62f2effd82f2a00a44eb900000000508f280060c42f044eb900000000588fba8066d0700fb08254c77f074487266a00984a8b6700017c2f0b4eb9000000002f0b1a004eb9000000002f0b18004eb9000000004fef000c4a0056c1730144814a05670001384a0456c43a7c000179044484387c00014a87670001404a00670001404a8d6600013e4ab900000000670001382f2effd84eb900000000588f22074a8056c57b054485700fb082650e43f9000000004a712a006600015a4ab900000000672c4a8c67284a8d66000100200480812f002f062f032f2effd82f022d41ffdc4eb9000000004fef0014222effdc4aaeffec670002ae4a8d670000d682848287660000ce720fb282650000c64ab900000000670000bc4ab900000000670000b22f062f032f2effd82f024eb9000000004fef00104a8067000098202effd85280e18841f90000000052b900000000808331802a002f032f2effd84eb9000000002f2effe82f2effe42f2effe02f062f032f2effd82f022f0a4eb9000000004fef002842ae000c4cee3cfcffb070102d4000084e5e4ef9000000004a04670878019bcd6000fecc284142849bcd6000fec6428499cc42819bcd42856000feea428160f6220d60f2220760ee42806000ff024a8c671a4ab900000000670a4a8566064eb9000000004a876638600002144ab900000000670001a22f062f032f2effd82f024eb9000000004fef00104a80670001884cee3cfcffb04e5e4e754a8c6700017c41f900000000428152b90000000093c928484a106700015a71a80002b0aeffd857c071004480d280528956887010b08966e04a81660613c1000000002f034eb9000000007001224241f12a0019808800d9c819430001196effdb0002487800012f2effd84eb9000000004fef000c4a84660000844eb9000000002e004a806776720fb2aeffd8656e4ab900000000670c222effd8b2b900000000675a49f9000000009bcd41f9000000002f0d2f2effd82f072d48ffdc4eb9000000004fef000c28c02f0d2f2effd82f074eb9000000004fef000c528d206effdc30c0bbfc0000008066c6222effd8700123c00000000023c1000000002f2effe82f2effe42f2effe02f062f032f2effd82f022f0a4eb9000000004fef00204a84672c2d6b0258fff02d6b025cfff42d6b0260fff82d6b0264fffc2f032f2effd8486efff04eb9000000004fef000c2d45001c2d4600182d4300142d42000c2d4a00084cee3cfcffb02d6effd800104e5e4ef90000000042806000feb24a87676442ae001c60cc4a876600fe764ab9000000006750202effd88082e8886646707fb0836540223c00000000b2ae00046634202a00944a80672c2f004eb900000000588f4a80671e2f004eb900000000588f55804a80660e2f2effd82f024eb900000000508f2d4600182d4300142d42000c2d4a00084cee3cfcffb02d6effe800242d6effe400202d6effe0001c2d6effd800104e5e4ef900000000",
-   "kind": "text",
-   "name": ".text.ip_panel_on",
-   "size": 1200
-  },
-  {
-   "align": 2,
-   "hex": "4fefffec48d7041c242f001c2f6f001800104ab900000000670a2f024eb900000000588f700fb082650000fa780141f900000000e5ac36302a004ab900000000670000ea4878ffff2f024eb900000000508f4a80670000d642804684c9b900000000720fb282656a4a80661c4a4366182f390000000042a742a742a72f024eb9000000004fef00142f02244252b9000000004eb900000000588f41f22a0043f9000000004a309800672879b188022f024eb900000000588fb8b90000000067124eb9000000000680000005dc23c0000000004a4367244240220341f900000000738131802a0071c3e08820402f014868ffff4eb900000000508f2f022f2f00144eb900000000508f4a43675070104cd7041c42af001c2f4000184fef00144ef900000000424342846000ff104ab9000000006700ff242f024eb900000000588f4a806700ff164a43670670016000ff0c2004c0b9000000004a8066ee4cd7041c4fef00144e75",
-   "kind": "text",
-   "name": ".text.ip_panel_off",
-   "size": 358
-  },
-  {
-   "align": 2,
-   "hex": "4fefffc848d77c7c4eb9000000004ab9000000006714203900000000b0b900000000661042b9000000004cd77c7c4fef00384e754eb900000000263900000000428441f900000000428124004a10670000e471a80002b68057c071004480d880528156887010b08166e24a8267b62079000000004a8867ac2f2800a04eb900000000588fb680669c4a84660e4eb90000000090b9000000006a8a280f9dce47f90000000006840000002845f9000000004bf90000000049f9000000002f0e2f032f024e954fef000c2f0e2f032f022c004e944fef000c3a00bc9b660873d271c0b081674034852746fffc2f0e2f032f024eb9000000004fef000c52b90000000023ce0000000023c00000000008050000671272ffb280670c7bb9000000004281ba816216528e548abdfc00000080668c6000fef842806000ff2641f9000000007db01800bc806704528160d4721f2c0e2a0ecc817201ea8d42af003442af003042af002c42af0028eda92f815c282f002f032f044eb9000000002f0e2f032f0223ce000000004e954fef000c2740fffc2f0e2f032f024e944fef001834806084",
-   "kind": "text",
-   "name": ".text.ip_panel_tick",
-   "size": 416
-  },
-  {
-   "align": 2,
-   "hex": "4fefffe8206f002848d70c3c266f001c262f0020282f00244a886718b6b900000000670a2479000000004a8a6708700fb083640a95ca243c00000080601e727fb28465f024504a8a67ecb5e8000464e414126be07baa0001758224452f082f042f032f0b4eb9000000004fef00100c8200000080670000c44a8b67504ab900000000674820534a886742206800284a88673a2f0b4e90588f26400c8000006a4f632a2f042f03486b95b04eb9000000004fef000cb48066142f0a2f022f042f032f0b4eb9000000004fef00144eb900000000b6b9000000006650720fb2b90000000065462239000000007a0f41f900000000d2b90000000052b90000000052b900000000c285244143f21a001383880011849801118298024cd70c3c2f40001c4fef00184ef900000000b6b90000000066e652b90000000060de4cd70c3c4fef00184e75",
-   "kind": "text",
-   "name": ".text.ip_note_list_write",
-   "size": 324
-  },
-  {
-   "align": 2,
-   "hex": "4e56fff82f0a246e00082f02242a00a02f024eb900000000588f4a00670000982f024eb900000000588f2400b5f90000000066000088486efffc2f0a4eb900000000508f2d40fff84a806714203900000000b0aefffc57c1730144812d41fff84ab90000000067144aaefff86754202efffc2f004eb900000000588f4aaefff86628b5f9000000006620b4b90000000067184eb9000000004eb90000000042b90000000052b900000000242efff0246efff44e5e4e7574ff6000ff7242aefff8609e200260ac",
-   "kind": "text",
-   "name": ".text.ip_panel_update",
-   "size": 198
-  },
-  {
-   "align": 2,
-   "hex": "2f2f00044eb900000000588f4ab90000000067162f2f00044eb900000000588f4a0066064eb9000000004ab90000000067282f2f00044eb900000000588f4a0066184eb9000000004eb90000000042b90000000052b9000000004e75",
-   "kind": "text",
-   "name": ".text.ip_panel_toggle",
-   "size": 92
-  },
-  {
-   "align": 2,
-   "hex": "4e56ffd048d73cfc266e000c49f900000000246e00084a8b671a70ff720f2c2b000c0686ffffffe72d40fffcb28664144e94600a70ff7c102d40fffc4e94428342826038242b001008020004670001d22f0676014eb9000000004e94588f7209c48153824a8266d8487800124eb900000000588f4a8056c2750244824ab900000000673e4a82673a202a00984a8067322f004eb900000000588f4a0067242f2a00a04eb9000000004878000148780064487800802f002f064eb9000000004fef00184ab900000000670e4a83670a2f064eb900000000588f4a82670001f8486efffc2f0a4eb900000000508f720f2400b286651052b90000000041eb000c23d0000000004a82670000d62a4643f56a0041f9000000004a318800660000c2243900000000428041f9000000002e08b480660000f67204b282670000a42a3900000000282efffc4a826706b885670242822f044eb900000000588f93c92040b88557c02a3c000000004480b489660000ce4a88660652b90000000070064c02080020472a47528223c20000000023c40000000023ca00000000dbc011860800420041f9000000002b5000021b4000014eb90000000048780001222efffc0680000001f42f0123c10000000023c0000000004eb900000000508f52b9000000002f0b2f0a4eb900000000508f24004a83671841f9000000004a706a0067562f062f0a4eb900000000508f4e942f0a4eb900000000588f20024cee3cfcffd04e5e4e754e9442836000fe387390bc8166064a28000167aa52805c886000fef42a4552894a1557c15c854481c2807381d1c16000ff1a7001eda82239000000002601c6804a83672a4680c08123c0000000004ab900000000670a2f064eb900000000588f2f064eb900000000588f6000ff7c264641f36a0043f9000000004a3098006700ff6871b18802b0b9000000006600ff5a2f390000000042a742a742a72f064eb9000000002f064eb9000000004fef00186000ff36700fb0866400fe1a6000ff00",
-   "kind": "text",
-   "name": ".text.ip_panel_key_event",
-   "size": 736
-  },
-  {
-   "align": 2,
-   "hex": "598f2f02242f000c2f6f001000044ab90000000067064eb900000000b4b90000000066184eb9000000004eb90000000042b90000000052b9000000002f6f000400102f42000c241f588f4ef900000000",
-   "kind": "text",
-   "name": ".text.ip_panel_detach",
-   "size": 80
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.ip_panel_step",
-   "size": 32
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.waiting_view",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.commit_count",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.commit_head",
-   "size": 4
-  },
-  {
-   "align": 1,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.commits",
-   "size": 48
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.watch_trig",
-   "size": 256
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.watch_list",
-   "size": 512
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.watch_until",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.watch_track",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.watch_active",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "ffffffff",
-   "kind": "data",
-   "name": ".data.commit_track",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.stored_group",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.step_group",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.commit_until",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.waiting_track",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.waiting_count",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.waiting",
-   "size": 24
-  },
-  {
-   "align": 1,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.group_count",
-   "size": 1
-  },
-  {
-   "align": 1,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.group_pitch",
-   "size": 4
-  },
-  {
-   "align": 1,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.rec_keys",
-   "size": 48
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.ip_panel_chord_log",
-   "size": 64
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.ip_panel_chord",
-   "size": 32
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.ip_panel_recorded",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.ip_panel_debug",
-   "size": 32
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.shared_live_record",
-   "size": 32
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.shared_step_keys",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "ffffffff",
-   "kind": "data",
-   "name": ".data.panel_track",
-   "size": 4
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.panel_view",
-   "size": 4
-  },
-  {
-   "align": 2,
    "hex": "206f00044a88660442806070700fb0af000865f4202f0008223c000003c04c01080041f0086c201022000681bffffc000c81003ffbff62d07203c2804a8166c822402029002822000681bffffc000c81003ffbff62b20800000066ac2f0820404e90588f22000681be0000000c8105ffffff62947203c2804a81668c4e75",
    "kind": "text",
    "name": ".text.track_sound",
@@ -23358,10 +20901,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe848d7043c246f001c262f00244ab900000000672a487800012f032f2f00282f0a4eb9000000004fef00104a8067105ec0710044804cd7043c4fef00184e754ab900000000670000b82839000000004a84660000ac7003b0af0020660000a24a8a6700009c7208b283667e78014eb90000000075c47a0f726f2f4000141012e98aca800680ffffff807180d485b28065202002e7882040d1fc000000004a280005670e71a800042f004eb900000000588f4ab9000000006672487800032f0a2f044879000000004eb9000000004fef001024002f2f00144eb900000000588f70014a826600ff5060167008b08365327202b2836700ff787004b0836700ff704ab900000000670000b242a72f032f2f00282f0a4eb9000000004fef00106000ff167210b2836700ff4460d443f9000000004a896784e78a720f2042d1fc000000007190b2806500ff7214122f004e91588f4a806700ff647182e8887208b28067127209b280663c4a2a0002670642826000ff62102a00016bf4122a00026bee7984738171802f012f002f052f044879000000004eb9000000004fef001424006000ff32720bb2806600ff1071aa000153804a8066b86000ff0242806000fe78",
+   "hex": "4fefffec48d7041c246f0018202f00204ab900000000670a2639000000004a83670e428220024cd7041c4fef00144e757203b2af001c66ea4a8a67e67208b280667876014eb90000000075c3780f726f2f4000101012e98ac8800680ffffff807180d484b28065202002e7882040d1fc000000004a280005670e71a800042f004eb900000000588f4ab9000000006650487800032f0a2f034879000000004eb9000000004fef001024002f2f00104eb900000000588f6000ff6c7208b28065147202b2806700ff7e59804a806700ff766000ff507210b2806700ff686000ff4443f9000000004a8967a6e78a720f2042d1fc000000007190b280659414122f004e91588f4a8067887382e8897008b08167107009b081663a4a2a0002670442826088102a00016bf6122a00026bf07783738171802f012f002f042f034879000000004eb9000000004fef001424006000ff5a700bb0816600ff3871aa000153804a8066ba6000ff2a",
    "kind": "text",
-   "name": ".text.mi_channel_message",
-   "size": 450
+   "name": ".text.mi_legacy_channel_message",
+   "size": 360
   },
   {
    "align": 2,
@@ -23596,10 +21139,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffe42f0a4878000e48790000000045f9000000004e922d40ffe4487800084879000000004e92222effe42d41ffe8223c000000002d41ffec72012d41fff02d40fff4203c000000002d40fff82d41fffc42a74878000248780002486effe842a7487800022f2e000c4879000000004879000000002f2e00084eb9000000004fef0038246effe04e5e4e75",
+   "hex": "4e56ffd42f0a4878000e48790000000045f9000000004e922d40ffd8487800084879000000004e922d40ffd4487800074879000000004e92222effd82d41ffdc223c000000002d41ffe072012d41ffe4222effd42d41ffe8223c000000002d41ffec72012d41fff02d40fff4203c000000002d40fff82d41fffc42a74878000248780003486effdc42a7487800022f2e000c4879000000004879000000002f2e00084eb9000000004fef0040246effd04e5e4e75",
    "kind": "text",
    "name": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks14dk_svc_declare",
-   "size": 140
+   "size": 180
   },
   {
    "align": 2,
@@ -23607,6 +21150,13 @@
    "kind": "text",
    "name": ".text._RNvCs89QOYcv5D1e_23dkrt_svc_instrument_dks11dk_svc_init",
    "size": 96
+  },
+  {
+   "align": 1,
+   "hex": "6b62705f766563",
+   "kind": "data",
+   "name": ".rodata.global.16",
+   "size": 7
   },
   {
    "align": 1,
@@ -23624,10 +21174,10 @@
   },
   {
    "align": 2,
-   "hex": "696e737472756d656e74000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e000000330000003400000035",
+   "hex": "696e737472756d656e74000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d000000320000003300000034",
    "kind": "data",
    "name": ".rodata.global.13",
-   "size": 134
+   "size": 130
   },
   {
    "align": 1,
@@ -23694,14 +21244,14 @@
   },
   {
    "align": 2,
-   "hex": "202f0004222f0008204058882241588906800000012022d8b08866fa204120bc495053314e75",
+   "hex": "202f0004222f0008204058882241588906800000011c22d8b08866fa204120bc495053314e75",
    "kind": "text",
    "name": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam4copy",
    "size": 38
   },
   {
    "align": 2,
-   "hex": "206f00044a88670a203c49505331b090670442004e757001b0a8000466f47048b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
+   "hex": "206f00044a88670a203c49505331b090670442004e757001b0a8000466f47047b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
    "kind": "text",
    "name": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam6usable",
    "size": 66
@@ -23728,7 +21278,7 @@
    "size": 28
   }
  ],
- "source_sha256": "e0a76d76db595382c2afe376267741c2b90953e25211bd61c0f9809041b12350",
+ "source_sha256": "d346b66aac9997c5c613d3423ceb7477f24dff365050113281616af32afa0ce4",
  "symbols": [
   {
    "global": false,
@@ -23746,30 +21296,6 @@
    "global": false,
    "name": ".sec..bss.channels_write",
    "section": ".bss.channels_write",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.commit_count",
-   "section": ".bss.commit_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.commit_head",
-   "section": ".bss.commit_head",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.commit_until",
-   "section": ".bss.commit_until",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.commits",
-   "section": ".bss.commits",
    "value": 0
   },
   {
@@ -23818,18 +21344,6 @@
    "global": false,
    "name": ".sec..bss.frame_block",
    "section": ".bss.frame_block",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.group_count",
-   "section": ".bss.group_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.group_pitch",
-   "section": ".bss.group_pitch",
    "value": 0
   },
   {
@@ -23896,36 +21410,6 @@
    "global": false,
    "name": ".sec..bss.ip_lock_capture_error",
    "section": ".bss.ip_lock_capture_error",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.ip_panel_chord",
-   "section": ".bss.ip_panel_chord",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.ip_panel_chord_log",
-   "section": ".bss.ip_panel_chord_log",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.ip_panel_debug",
-   "section": ".bss.ip_panel_debug",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.ip_panel_recorded",
-   "section": ".bss.ip_panel_recorded",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.ip_panel_step",
-   "section": ".bss.ip_panel_step",
    "value": 0
   },
   {
@@ -24044,12 +21528,6 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.panel_view",
-   "section": ".bss.panel_view",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..bss.pending",
    "section": ".bss.pending",
    "value": 0
@@ -24100,12 +21578,6 @@
    "global": false,
    "name": ".sec..bss.published_family",
    "section": ".bss.published_family",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.rec_keys",
-   "section": ".bss.rec_keys",
    "value": 0
   },
   {
@@ -24278,20 +21750,8 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.shared_live_record",
-   "section": ".bss.shared_live_record",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..bss.shared_notes",
    "section": ".bss.shared_notes",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.shared_step_keys",
-   "section": ".bss.shared_step_keys",
    "value": 0
   },
   {
@@ -24368,20 +21828,8 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.step_group",
-   "section": ".bss.step_group",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..bss.storage_result",
    "section": ".bss.storage_result",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.stored_group",
-   "section": ".bss.stored_group",
    "value": 0
   },
   {
@@ -24416,62 +21864,8 @@
   },
   {
    "global": false,
-   "name": ".sec..bss.waiting",
-   "section": ".bss.waiting",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.waiting_count",
-   "section": ".bss.waiting_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.waiting_track",
-   "section": ".bss.waiting_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.waiting_view",
-   "section": ".bss.waiting_view",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..bss.was_owned",
    "section": ".bss.was_owned",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.watch_active",
-   "section": ".bss.watch_active",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.watch_list",
-   "section": ".bss.watch_list",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.watch_track",
-   "section": ".bss.watch_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.watch_trig",
-   "section": ".bss.watch_trig",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.watch_until",
-   "section": ".bss.watch_until",
    "value": 0
   },
   {
@@ -24508,12 +21902,6 @@
    "global": false,
    "name": ".sec..data.channel",
    "section": ".data.channel",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..data.commit_track",
-   "section": ".data.commit_track",
    "value": 0
   },
   {
@@ -24562,12 +21950,6 @@
    "global": false,
    "name": ".sec..data.live_track",
    "section": ".data.live_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..data.panel_track",
-   "section": ".data.panel_track",
    "value": 0
   },
   {
@@ -24814,6 +22196,12 @@
    "global": false,
    "name": ".sec..rodata.global.15",
    "section": ".rodata.global.15",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.global.16",
+   "section": ".rodata.global.16",
    "value": 0
   },
   {
@@ -25598,12 +22986,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.group_append",
-   "section": ".text.group_append",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.guard_fail",
    "section": ".text.guard_fail",
    "value": 0
@@ -25712,18 +23094,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.ip_panel_off",
-   "section": ".text.ip_panel_off",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.ip_panel_update",
-   "section": ".text.ip_panel_update",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.ip_src_draw_rotary",
    "section": ".text.ip_src_draw_rotary",
    "value": 0
@@ -25768,12 +23138,6 @@
    "global": false,
    "name": ".sec..text.kb_reset",
    "section": ".text.kb_reset",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.keys_held",
-   "section": ".text.keys_held",
    "value": 0
   },
   {
@@ -25976,12 +23340,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.note_signature",
-   "section": ".text.note_signature",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.number",
    "section": ".text.number",
    "value": 0
@@ -25994,12 +23352,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.panel_play",
-   "section": ".text.panel_play",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.panel_sync",
    "section": ".text.panel_sync",
    "value": 0
@@ -26008,12 +23360,6 @@
    "global": false,
    "name": ".sec..text.panic",
    "section": ".text.panic",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.pattern_object",
-   "section": ".text.pattern_object",
    "value": 0
   },
   {
@@ -26062,18 +23408,6 @@
    "global": false,
    "name": ".sec..text.quarantined",
    "section": ".text.quarantined",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.rec_release",
-   "section": ".text.rec_release",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.rec_release_all",
-   "section": ".text.rec_release_all",
    "value": 0
   },
   {
@@ -26222,30 +23556,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.step_commits",
-   "section": ".text.step_commits",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.step_note",
-   "section": ".text.step_note",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.step_recording",
-   "section": ".text.step_recording",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.store_chord",
-   "section": ".text.store_chord",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.switching",
    "section": ".text.switching",
    "value": 0
@@ -26294,12 +23604,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.trig_word",
-   "section": ".text.trig_word",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.ui",
    "section": ".text.ui",
    "value": 0
@@ -26314,12 +23618,6 @@
    "global": false,
    "name": ".sec..text.value",
    "section": ".text.value",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..text.waiting_release",
-   "section": ".text.waiting_release",
    "value": 0
   },
   {
@@ -26542,36 +23840,6 @@
    "global": false,
    "name": "collect",
    "section": ".text.collect",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "commit_count",
-   "section": ".bss.commit_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "commit_head",
-   "section": ".bss.commit_head",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "commit_track",
-   "section": ".data.commit_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "commit_until",
-   "section": ".bss.commit_until",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "commits",
-   "section": ".bss.commits",
    "value": 0
   },
   {
@@ -26956,7 +24224,7 @@
    "global": true,
    "name": "dk_ui_core_handle",
    "section": ".text",
-   "value": 136
+   "value": 128
   },
   {
    "global": true,
@@ -27040,55 +24308,55 @@
    "global": true,
    "name": "dkrt_instrument_generation",
    "section": ".text",
-   "value": 144
+   "value": 136
   },
   {
    "global": true,
    "name": "dkrt_instrument_type",
    "section": ".text",
-   "value": 152
+   "value": 144
   },
   {
    "global": true,
    "name": "dkrt_irq_mask",
    "section": ".text",
-   "value": 160
+   "value": 152
   },
   {
    "global": true,
    "name": "dkrt_irq_restore",
    "section": ".text",
-   "value": 168
+   "value": 160
   },
   {
    "global": true,
    "name": "dkrt_settings_flush",
    "section": ".text",
-   "value": 176
+   "value": 168
   },
   {
    "global": true,
    "name": "dkrt_settings_get",
    "section": ".text",
-   "value": 184
+   "value": 176
   },
   {
    "global": true,
    "name": "dkrt_settings_put",
    "section": ".text",
-   "value": 192
+   "value": 184
   },
   {
    "global": true,
    "name": "dl_reset_begin",
    "section": ".text",
-   "value": 368
+   "value": 360
   },
   {
    "global": true,
    "name": "dl_reset_quiesce",
    "section": ".text",
-   "value": 376
+   "value": 368
   },
   {
    "global": false,
@@ -27196,24 +24464,6 @@
    "global": false,
    "name": "frame_block",
    "section": ".bss.frame_block",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "group_append",
-   "section": ".text.group_append",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "group_count",
-   "section": ".bss.group_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "group_pitch",
-   "section": ".bss.group_pitch",
    "value": 0
   },
   {
@@ -27716,188 +24966,26 @@
   },
   {
    "global": true,
-   "name": "ip_note_list_original",
-   "section": ".text",
-   "value": 112
-  },
-  {
-   "global": true,
-   "name": "ip_note_list_write",
-   "section": ".text.ip_note_list_write",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_active",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_chord",
-   "section": ".bss.ip_panel_chord",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_chord_log",
-   "section": ".bss.ip_panel_chord_log",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_debug",
-   "section": ".bss.ip_panel_debug",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_detach",
-   "section": ".text.ip_panel_detach",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_key_down",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_key_event",
-   "section": ".text.ip_panel_key_event",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "ip_panel_live_record",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "ip_panel_off",
-   "section": ".text.ip_panel_off",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_on",
-   "section": ".text.ip_panel_on",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_original_off",
-   "section": ".text",
-   "value": 128
-  },
-  {
-   "global": true,
-   "name": "ip_panel_original_on",
-   "section": ".text",
-   "value": 120
-  },
-  {
-   "global": true,
-   "name": "ip_panel_project_settings",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_recorded",
-   "section": ".bss.ip_panel_recorded",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_selected_track",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_step",
-   "section": ".bss.ip_panel_step",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "ip_panel_step_note",
-   "section": ".text.ip_panel_step_note",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_step_record",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_stock_detach",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_stock_key",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_stock_toggle",
-   "section": null,
-   "value": 0
+   "section": ".text",
+   "value": 96
   },
   {
    "global": true,
    "name": "ip_panel_tick",
-   "section": ".text.ip_panel_tick",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_toggle",
-   "section": ".text.ip_panel_toggle",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_track_object",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_track_type",
-   "section": null,
-   "value": 0
+   "section": ".text",
+   "value": 88
   },
   {
    "global": true,
    "name": "ip_panel_trig_held",
    "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_trig_mode",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_trig_return",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_panel_update",
-   "section": ".text.ip_panel_update",
    "value": 0
   },
   {
@@ -27928,19 +25016,19 @@
    "global": true,
    "name": "ip_sa_ensure",
    "section": ".text",
-   "value": 88
+   "value": 104
   },
   {
    "global": true,
    "name": "ip_sa_store",
    "section": ".text",
-   "value": 96
+   "value": 112
   },
   {
    "global": true,
    "name": "ip_sa_tick",
    "section": ".text",
-   "value": 104
+   "value": 120
   },
   {
    "global": true,
@@ -28285,15 +25373,15 @@
    "value": 0
   },
   {
-   "global": false,
-   "name": "keyboard_initialized",
-   "section": ".bss.keyboard_initialized",
-   "value": 0
+   "global": true,
+   "name": "kbp_vec_table",
+   "section": ".rodata",
+   "value": 136
   },
   {
    "global": false,
-   "name": "keys_held",
-   "section": ".text.keys_held",
+   "name": "keyboard_initialized",
+   "section": ".bss.keyboard_initialized",
    "value": 0
   },
   {
@@ -28498,24 +25586,18 @@
    "global": true,
    "name": "mf_src_register",
    "section": ".text",
-   "value": 200
+   "value": 192
   },
   {
    "global": true,
    "name": "mf_src_unregister",
    "section": ".text",
-   "value": 208
+   "value": 200
   },
   {
    "global": true,
    "name": "mi_ack",
    "section": ".text.mi_ack",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "mi_channel_message",
-   "section": ".text.mi_channel_message",
    "value": 0
   },
   {
@@ -28558,6 +25640,12 @@
    "global": true,
    "name": "mi_ledger",
    "section": ".bss.mi_ledger",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_legacy_channel_message",
+   "section": ".text.mi_legacy_channel_message",
    "value": 0
   },
   {
@@ -28714,7 +25802,7 @@
    "global": true,
    "name": "midi_vec_table",
    "section": ".rodata",
-   "value": 144
+   "value": 116
   },
   {
    "global": false,
@@ -28856,12 +25944,6 @@
   },
   {
    "global": false,
-   "name": "note_signature",
-   "section": ".text.note_signature",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "number",
    "section": ".text.number",
    "value": 0
@@ -28904,38 +25986,14 @@
   },
   {
    "global": false,
-   "name": "panel_play",
-   "section": ".text.panel_play",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "panel_sync",
    "section": ".text.panel_sync",
    "value": 0
   },
   {
    "global": false,
-   "name": "panel_track",
-   "section": ".data.panel_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "panel_view",
-   "section": ".bss.panel_view",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "panic",
    "section": ".text.panic",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "pattern_object",
-   "section": ".text.pattern_object",
    "value": 0
   },
   {
@@ -28960,7 +26018,7 @@
    "global": true,
    "name": "pp_current_pattern",
    "section": ".text",
-   "value": 216
+   "value": 208
   },
   {
    "global": false,
@@ -29092,24 +26150,6 @@
    "global": false,
    "name": "ratios.15",
    "section": ".rodata.ratios.15",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "rec_keys",
-   "section": ".bss.rec_keys",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "rec_release",
-   "section": ".text.rec_release",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "rec_release_all",
-   "section": ".text.rec_release_all",
    "value": 0
   },
   {
@@ -29284,25 +26324,25 @@
    "global": true,
    "name": "rtm_can_save",
    "section": ".text",
-   "value": 336
+   "value": 328
   },
   {
    "global": true,
    "name": "rtm_mod_carrier",
    "section": ".text",
-   "value": 344
+   "value": 336
   },
   {
    "global": true,
    "name": "rtm_mod_param",
    "section": ".text",
-   "value": 352
+   "value": 344
   },
   {
    "global": true,
    "name": "rtm_src",
    "section": ".text",
-   "value": 360
+   "value": 352
   },
   {
    "global": false,
@@ -29528,20 +26568,8 @@
   },
   {
    "global": false,
-   "name": "shared_live_record",
-   "section": ".bss.shared_live_record",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "shared_notes",
    "section": ".bss.shared_notes",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "shared_step_keys",
-   "section": ".bss.shared_step_keys",
    "value": 0
   },
   {
@@ -29672,44 +26700,8 @@
   },
   {
    "global": false,
-   "name": "step_commits",
-   "section": ".text.step_commits",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "step_group",
-   "section": ".bss.step_group",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "step_note",
-   "section": ".text.step_note",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "step_recording",
-   "section": ".text.step_recording",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "storage_result",
    "section": ".bss.storage_result",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "store_chord",
-   "section": ".text.store_chord",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "stored_group",
-   "section": ".bss.stored_group",
    "value": 0
   },
   {
@@ -29746,85 +26738,85 @@
    "global": true,
    "name": "tk_capture_note_list_commit",
    "section": ".text",
-   "value": 224
+   "value": 216
   },
   {
    "global": true,
    "name": "tk_capture_panel_press",
    "section": ".text",
-   "value": 232
+   "value": 224
   },
   {
    "global": true,
    "name": "tk_capture_panel_release",
    "section": ".text",
-   "value": 240
+   "value": 232
   },
   {
    "global": true,
    "name": "tk_midi_channel_message",
    "section": ".text",
-   "value": 328
+   "value": 320
   },
   {
    "global": true,
    "name": "tk_panel_cancel",
    "section": ".text",
-   "value": 248
+   "value": 240
   },
   {
    "global": true,
    "name": "tk_panel_focus",
    "section": ".text",
-   "value": 256
+   "value": 248
   },
   {
    "global": true,
    "name": "tk_panel_native_record_on",
    "section": ".text",
-   "value": 264
+   "value": 256
   },
   {
    "global": true,
    "name": "tk_panel_off",
    "section": ".text",
-   "value": 272
+   "value": 264
   },
   {
    "global": true,
    "name": "tk_panel_on",
    "section": ".text",
-   "value": 280
+   "value": 272
   },
   {
    "global": true,
    "name": "tk_panel_record_audition",
    "section": ".text",
-   "value": 288
+   "value": 280
   },
   {
    "global": true,
    "name": "tk_panel_retrig",
    "section": ".text",
-   "value": 296
+   "value": 288
   },
   {
    "global": true,
    "name": "tk_pattern_cleared",
    "section": ".text",
-   "value": 304
+   "value": 296
   },
   {
    "global": true,
    "name": "tk_pattern_copied",
    "section": ".text",
-   "value": 312
+   "value": 304
   },
   {
    "global": true,
    "name": "tk_runtime_init",
    "section": ".text",
-   "value": 320
+   "value": 312
   },
   {
    "global": false,
@@ -29888,12 +26880,6 @@
   },
   {
    "global": false,
-   "name": "trig_word",
-   "section": ".text.trig_word",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "ui",
    "section": ".text.ui",
    "value": 0
@@ -29942,68 +26928,8 @@
   },
   {
    "global": false,
-   "name": "waiting",
-   "section": ".bss.waiting",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "waiting_count",
-   "section": ".bss.waiting_count",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "waiting_release",
-   "section": ".text.waiting_release",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "waiting_track",
-   "section": ".bss.waiting_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "waiting_view",
-   "section": ".bss.waiting_view",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": "was_owned",
    "section": ".bss.was_owned",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "watch_active",
-   "section": ".bss.watch_active",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "watch_list",
-   "section": ".bss.watch_list",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "watch_track",
-   "section": ".bss.watch_track",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "watch_trig",
-   "section": ".bss.watch_trig",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": "watch_until",
-   "section": ".bss.watch_until",
    "value": 0
   },
   {
@@ -30084,8 +27010,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "22433",
-  "isa_check": "b54f8661359d8e659b74c720ee3bc166a35434351027b581fa70b2b51ff7fb3b",
+  "instructions_redecoded": "20763",
+  "isa_check": "c0e2601382b55058dd693bea29b78006a8cf5e2e1ac932c114f896dc8c55c59d",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

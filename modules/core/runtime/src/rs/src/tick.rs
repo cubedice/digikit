@@ -55,6 +55,8 @@ pub unsafe extern "C" fn dkrt_tick() {
     phase(tick_phase::LATE);
     phase(tick_phase::LAST);
     crate::instrument::tick(s.ticks);
+    // the UI ticks of the image adapters (`[[info]] tick = true`): image features that run without a module or service to start them
+    crate::platform::image_ticks();
     // optional (core/instrument-play): zero when the adapter is absent
     if core::hint::black_box(instrument_play_tick as usize) != 0 {
         instrument_play_tick();

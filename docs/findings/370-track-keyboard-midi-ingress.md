@@ -70,7 +70,7 @@ checks that mixed routing creates one stock and one shared audition,
 that each input's release reaches its correct track, and that both
 ports can own the same pitch. Its USB live recording check observes
 the stock writer committing a shared performance recipe.
-[MIDI emulator test](../../modules/core/adapters/track-keyboard/tests/midi.manual.device.test.ts)
+[MIDI emulator test](../../modules/core/adapters/track-keyboard/tests/midi.device.test.ts)
 
 ## Open [O]
 
