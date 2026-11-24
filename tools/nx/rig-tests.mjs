@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
-import { dirname, join, normalize } from 'node:path';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { dirname, join, normalize, posix } from 'node:path';
 import {
   CONFORMANCE_ROOTS,
   NEGATIVE_VARIANTS,
@@ -164,6 +164,21 @@ export const moduleRigConformance = (workspaceRoot, file, manifest) => {
 // shadow replay test.
 const STEREO_PROOF_ROOT = 'tests/fixtures/modules/dsp-stereo-proof';
 
+// A rig test that imports another module's rig (the two effects of the loop, coupled block by block) keys on that module's files too: the
+// owner of an imported file is the nearest directory above it with a module.toml.
+const importedModules = (root, base = '.') => {
+  const dir = posix.join(root, 'tests');
+  if (!existsSync(join(base, dir))) return [];
+  const out = new Set();
+  for (const name of readdirSync(join(base, dir)).filter((n) => n.endsWith('.ts'))) {
+    for (const m of readFileSync(join(base, dir, name), 'utf8').matchAll(/from '(\.\.\/[^']+)'/g)) {
+      const owner = sourceOwner(base, posix.normalize(posix.join(dir, m[1])));
+      if (owner && owner !== root) out.add(`{workspaceRoot}/${owner}/**/*`);
+    }
+  }
+  return [...out].sort();
+};
+
 export const rigTarget = (root, moduleInputs) => ({
   executor: 'nx:run-commands',
   cache: true,
@@ -184,7 +199,7 @@ export const rigTarget = (root, moduleInputs) => ({
     '{workspaceRoot}/sdk/include/**/*',
     '{workspaceRoot}/devices/*.toml',
     '{workspaceRoot}/tools/patchkit/toolchain/pins.toml',
-    ...importedModules(base, root),
+    ...importedModules(root),
     { runtime: 'node tools/nx/stock-section-hash.mjs' },
     { dependentTasksOutputFiles: '**/*' },
   ],
