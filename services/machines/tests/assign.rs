@@ -245,3 +245,30 @@ fn a_second_settle_over_the_live_set_keeps_every_number_and_gives_a_key_a_reload
     );
     assert_eq!(saved(&core).len(), 2);
 }
+
+/// The runtime's copy of the plan (`Machines::planned_ids`, the export `dk_machines_planned_ids`): the V2 instrument loader asks it for a module by selection index, at any time,
+/// not only while that module loads (`resolve` answers the module being loaded).
+#[test]
+fn the_plan_of_one_module_is_its_key_and_number_pairs_in_plan_order() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    const C: u32 = 0x00cc_00;
+    let core = dt2_core();
+    // module 1 names a pinned number (no hash): the plan has its key with number 0
+    settle(&core, &selection(&[&[A], &[B, FIRST + 4, C]]));
+    let mut out = [[0xffff_ffffu32; 2]; 8];
+    assert_eq!(Machines::planned_ids(0, &mut out), 1);
+    assert_eq!(out[0], [A, FIRST]);
+    assert_eq!(Machines::planned_ids(1, &mut out), 3);
+    assert_eq!(
+        out[..3],
+        [[B, FIRST + 1], [FIRST + 4, 0], [C, FIRST + 2]],
+        "plan order; the pinned key keeps no number of the plan"
+    );
+    assert_eq!(out[3], [0xffff_ffff; 2], "nothing past the module's pairs");
+    // a module of no key, and an index past the selection
+    assert_eq!(Machines::planned_ids(2, &mut out), 0);
+    assert_eq!(Machines::planned_ids(u32::MAX, &mut out), 0);
+    // the copy does not depend on the module being loaded
+    core.boot_index.set(0);
+    assert_eq!(Machines::planned_ids(1, &mut out), 3);
+}

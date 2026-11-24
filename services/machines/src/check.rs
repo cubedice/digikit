@@ -1,6 +1,6 @@
 //! The load check of a `register` section: the seven steps of `Records::check` (counts, actions, native pages, device, records, owners, rows).
 use crate::nativepage;
-use crate::registry::{mach_owner, KNOBS, KNOB_PARAM, MAX_MACH, MAX_PAGE, MAX_PARAM};
+use crate::registry::{row_used, KNOBS, KNOB_PARAM, MAX_MACH, MAX_PAGE, MAX_PARAM};
 use crate::validate::{body_len, Acc};
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::mem::{iw, rd32};
@@ -254,10 +254,7 @@ pub(crate) unsafe fn ck_records<C: CoreApi>(core: &C, c: &Ctx<'_>) -> i32 {
             }
             seen_types[ns] = t;
             ns += 1;
-            let k = (t - dyn0) as usize;
-            let row = iw(inf, w::M_ROWS) + (t - m_first) * iw(inf, w::M_ROW_SIZE);
-            let name = core.rd(row + iw(inf, w::O_NAME));
-            if mach_owner(core, k) != 0 || (name != 0 && core.rd8(name) != 0) {
+            if row_used(core, inf, t, (t - dyn0) as usize) {
                 bad = E_TYPE_USED;
                 return;
             }

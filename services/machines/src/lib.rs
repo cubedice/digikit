@@ -9,8 +9,8 @@
 //! `validate`), `dsp/` (the `DspPart` and the voice rows' loader steps), `apply` (`attach` and the per-record `apply`: the rows of a module), `check/` (the load check),
 //! `unload` and `parking` (give rows back; absent numbers), `registry` (the registry state), `slots/` (the click state; host tests in `slots/tests.rs`), `build/` (the builder
 //! calls and their commit), `assign` (sticky type numbers), `guard` (the machine guard's diagnostics), `modules` (the MODULES reply), `validate` (the record rules), `rows` (the
-//! voice rows), `info` (the image table), `device_profile` (the device's profile), `selection_view` (the machine selection view), `nativepage`, `paramapi`. Tests that cross the
-//! crate are in `tests/`.
+//! voice rows), `info` (the image table), `ext_info` (the optional image table of the SRC pages and modulation routes), `device_profile` (the device's profile), `selection_view`
+//! (the machine selection view), `nativepage`, `paramapi`. Tests that cross the crate are in `tests/`.
 #![no_std]
 #[cfg(test)]
 extern crate std;
@@ -21,6 +21,7 @@ pub mod build;
 pub mod check;
 pub mod device_profile;
 pub mod dsp;
+pub mod ext_info;
 pub mod guard;
 pub mod info;
 pub mod machines;

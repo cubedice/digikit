@@ -1,6 +1,7 @@
 //! The `machines` service as a service file (`services/machines.dks`): the crate `dkrt-svc-machines` over the `dkc_*` imports, the hooks of the machine framework (`hooks.rs`),
-//! the click flow's firmware calls and the exports `dk_param_get` and `dk_param_set` (`fw.rs`), the two builder calls that take a callback (`builder.rs`), the list of all exports (`gen_exports.rs`, written by `patchkit gen`); the image table `machines_info` is bound by `Provider::start` of the owner (`info::bind`)
-//! (docs/plans/runtime-and-services.md section 13.2, R12-6).
+//! the click flow's firmware calls and the exports `dk_param_get` and `dk_param_set` (`fw.rs`), the two builder calls that take a callback (`builder.rs`), the runtime's two
+//! queries `dk_machines_planned_ids` and `dk_machines_id_taken` (`rt.rs`), the list of all exports (`gen_exports.rs`, written by `patchkit gen`); the image tables `machines_info`
+//! and the optional `machines_ext_info` are bound by `Provider::start` of the owner (`info::bind`, `ext_info::bind`) (docs/plans/runtime-and-services.md section 13.2, R12-6).
 // a host build (the assembly test of the runtime) has std; the file is `no_std` on the ColdFire
 #![cfg_attr(target_arch = "m68k", no_std)]
 #![cfg_attr(target_arch = "m68k", feature(asm_experimental_arch))]
@@ -14,6 +15,7 @@ pub mod fw;
 mod gen_exports;
 mod guard;
 mod hooks;
+pub mod rt;
 
 dkrt_svc_rt::service!(
     Machines,

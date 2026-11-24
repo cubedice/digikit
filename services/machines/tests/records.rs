@@ -454,6 +454,50 @@ fn the_machine_types_of_a_module_are_its_machine_rows_in_type_order() {
     clear_mach_owners(&core);
 }
 
+/// The runtime's query `Machines::id_taken` (the export `dk_machines_id_taken`): a type of the run-time range is taken when a module owns its row or the image filled it (the
+/// rule of the load check, `E_TYPE_USED`); a type the service cannot place counts as taken. It needs no owner.
+#[test]
+fn a_machine_type_is_taken_when_a_module_owns_its_row_or_its_row_has_a_name() {
+    let _lock = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    const M_FIRST: u32 = 7;
+    const DYN0: u32 = 16;
+    const ROWS: u32 = 0x30_0000;
+    const NAMES: u32 = 0x31_0000;
+    let mut inf = table();
+    inf[w::M_ROWS] = ROWS;
+    inf[w::M_ROW_SIZE] = 0x40;
+    inf[w::M_FIRST] = M_FIRST;
+    inf[w::M_DYN0] = DYN0;
+    inf[w::M_DYN_N] = 8;
+    inf[w::O_NAME] = 4;
+    let mut core = core();
+    core.set_dynreg(inf);
+    let name_of = |t: u32| ROWS + (t - M_FIRST) * 0x40 + 4;
+    // rows 0 to 3: an empty name (a pointer to a 0 byte), none, an image name, a free row a module owns
+    unsafe {
+        core.wr(NAMES, 0);
+        core.wr(NAMES + 4, u32::from_be_bytes(*b"XSL\0"));
+        core.wr(name_of(DYN0), NAMES);
+        core.wr(name_of(DYN0 + 1), 0);
+        core.wr(name_of(DYN0 + 2), NAMES + 4);
+    }
+    set_mach_owner(&core, 3, 2);
+    let taken = |t: u32| unsafe { Machines::id_taken(&core, t) };
+    assert!(!taken(DYN0), "an empty name");
+    assert!(!taken(DYN0 + 1), "no name");
+    assert!(taken(DYN0 + 2), "the image filled the row");
+    assert!(taken(DYN0 + 3), "a module owns the row");
+    assert!(!taken(DYN0 + 7), "the last row");
+    // outside the run-time range: a stock type, one past the rows
+    assert!(taken(DYN0 - 1));
+    assert!(taken(M_FIRST));
+    assert!(taken(DYN0 + 8));
+    set_mach_owner(&core, 3, 0);
+    assert!(!taken(DYN0 + 3), "its module went");
+    // an image without the registry: nothing can be placed
+    assert!(unsafe { Machines::id_taken(&FakeCore::new(), DYN0) });
+}
+
 #[test]
 fn the_machines_of_a_module_are_its_rows_its_types_and_the_guard_counts_for_them() {
     // TEST_LOCK first (this file's statics, as its neighbours), then the contract lock (the service row statics)

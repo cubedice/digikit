@@ -1,13 +1,14 @@
 //! The owner object of the `machines` service. It holds the state that the old statics held: the collection of the builder calls (`Builder`), the click state of the machine
 //! page (`Slots`), the parking passes of absent numbers (`Parking`) and what `attach` hands to the per-record `apply` (`Applied`). The registry state, the sticky numbers, the voice
-//! rows and the guard's memory are tables the service keeps by name (`registry::DKRT_REG`, `assign::DKRT_ASSIGN`, `rows::DKRT_VROWS`, `guard::DKRT_GUARD`), and the image table the
-//! assembler hooks read is `info::DKRT_MF_TAB`: README.md names the reader of each.
-//! `Provider` (`start`, `attach`, `detach`, `settle`, `reload_done`), `Ticker` and `Describe` are here, in one block each; `records.rs` and `dsp/part.rs` hold the other parts.
+//! rows and the guard's memory are tables the service keeps by name (`registry::DKRT_REG`, `assign::DKRT_ASSIGN`, `rows::DKRT_VROWS`, `guard::DKRT_GUARD`), and the image tables the
+//! assembler hooks read are `info::DKRT_MF_TAB` and `ext_info::DKRT_MF_EXT`: README.md names the reader of each.
+//! `Provider` (`start`, `attach`, `detach`, `settle`, `reload_done`), `Ticker` and `Describe` are here, in one block each; `records.rs` and `dsp/part.rs` hold the other parts. The
+//! runtime's two queries of the type numbers (`planned_ids`, `id_taken`: the internal exports of the file) are functions of the owner with no object, as `Describe::describe`.
 use crate::apply::Applied;
 use crate::build::Builder;
 use crate::parking::Parking;
 use crate::slots::Slots;
-use crate::{assign, dsp, info, registry, selection_view, unload};
+use crate::{assign, dsp, ext_info, info, registry, selection_view, unload};
 use core::mem::MaybeUninit;
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::fw::Fw;
@@ -134,6 +135,37 @@ impl Machines {
     }
 }
 
+/// The runtime's queries (the internal exports `dk_machines_planned_ids` and `dk_machines_id_taken` of the file: the V2 instrument loader numbers its machine types from them).
+/// Like `Describe::describe` they have no object and never enter the owner: the loader asks while it loads a module, maybe inside another call of the owner, and the answers are
+/// in the tables the service keeps by name (`DKRT_ASSIGN`, the `Shared` owners of the machine rows) and the image's rows.
+impl Machines {
+    /// The plan's `[key, number]` pairs of the module at index `selection` of the boot's selection, in plan order, into `out`; how many. A number of 0: the plan gave that key
+    /// none (a pinned key, which names its number itself, is one). The loader resolves a persistent instrument's types from this copy, so no table pointer crosses the boundary.
+    pub fn planned_ids(selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
+        assign::planned(selection, out)
+    }
+
+    /// Whether machine type `id` is taken in the machine rows (`registry::type_taken`): a module owns the row, or the image has filled it. A type the service cannot place
+    /// (outside its range, or no registry) counts as taken.
+    ///
+    /// # Safety
+    /// The registry's words come from the image through the core.
+    pub unsafe fn id_taken<C: CoreApi>(core: &C, id: u32) -> bool {
+        registry::type_taken(core, id)
+    }
+}
+
+/// Bind the image tables the hooks read: `machines_info` into `DKRT_MF_TAB`, or the file is refused (`E_NO_REGISTRY`: no usable `core/machines` in the image); then the
+/// optional `machines_ext_info` into `DKRT_MF_EXT` (all 0 without it).
+fn bind_image<C: CoreApi>(core: &C) -> Result<(), Status> {
+    // SAFETY: both tables are this crate's; nothing reads them before the hooks are declared
+    unsafe {
+        status(info::bind(core))?;
+        ext_info::bind(core);
+    }
+    Ok(())
+}
+
 impl Default for Machines {
     fn default() -> Machines {
         Machines::new()
@@ -151,18 +183,16 @@ pub(crate) fn status(code: i32) -> Result<(), Status> {
 
 impl<C: CoreApi> Provider<C> for Machines {
     /// The file's `init`, before its hooks are installed: the image table `machines_info` is bound into `DKRT_MF_TAB` (the hooks read it), or the file is refused
-    /// (`E_NO_REGISTRY`: no usable `core/machines` in the image).
+    /// (`E_NO_REGISTRY`: no usable `core/machines` in the image), and the optional `machines_ext_info` into `DKRT_MF_EXT` (`bind_image`).
     fn start(core: &C) -> Result<Machines, Status> {
-        // SAFETY: `DKRT_MF_TAB` is this crate's table; nothing reads it before the hooks are declared
-        status(unsafe { info::bind(core) })?;
+        bind_image(core)?;
         Ok(Machines::new())
     }
 
     /// The state is made where it lives: all-zero bytes are valid for every field, and the gate is closed after (`Builder::init`) and the click state is written to its start
     /// value (the detector and the held flow are not zero). This is a fill and a few words, and no copy of the 5 KiB collection through the stack.
     fn start_in(core: &C, slot: &mut MaybeUninit<Machines>) -> Result<(), Status> {
-        // SAFETY: as in `start`
-        status(unsafe { info::bind(core) })?;
+        bind_image(core)?;
         let at = slot.as_mut_ptr();
         // SAFETY: every field of `Machines` is valid as zero bytes (integers, `None`, closed flags) once `init` has written the words that are not zero
         unsafe {
