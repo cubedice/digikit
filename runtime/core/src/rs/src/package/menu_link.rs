@@ -93,3 +93,22 @@ ui_import! {
     dk_ui_menu_add_submenu: fn(m: *mut u8, text: *const u8, sub: *mut u8);
     dk_ui_menu_check: fn(list: *mut u8, row: i32, on: i32);
 }
+
+/// The fork's instrument host rows of SETTINGS > DIGIKIT (`dk_app_instrument_settings_rows` of core/instrument-play), through the resident link rows: nothing
+/// without the adapter (the menu's weak reference saw 0 then).
+#[no_mangle]
+pub unsafe extern "C" fn dk_app_instrument_settings_rows(m: *mut u8) {
+    if let Some(a) = crate::package::instrument::present(crate::package::instrument::links().dk_app_instrument_settings_rows) {
+        (core::mem::transmute::<usize, unsafe extern "C" fn(*mut u8)>(a))(m)
+    }
+}
+
+/// The settings rows of the persistent instrument module `name` (`dk_app_instrument_module_settings` of core/instrument-play; `m` null asks whether it has any):
+/// 0 without the adapter.
+#[no_mangle]
+pub unsafe extern "C" fn dk_app_instrument_module_settings(name: *const u8, m: *mut u8) -> i32 {
+    match crate::package::instrument::present(crate::package::instrument::links().dk_app_instrument_module_settings) {
+        Some(a) => (core::mem::transmute::<usize, unsafe extern "C" fn(*const u8, *mut u8) -> i32>(a))(name, m),
+        None => 0,
+    }
+}

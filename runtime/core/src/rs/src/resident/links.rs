@@ -27,6 +27,8 @@ extern "C" {
     fn instrument_load_probe();
     fn instrument_runtime_policy();
     fn instrument_play_faulted();
+    fn dk_app_instrument_settings_rows();
+    fn dk_app_instrument_module_settings();
 }
 
 /// The address of a symbol only the device image has: a host test links none of them, so its row is null.
@@ -63,5 +65,7 @@ pub(super) static ROWS: Group<LinkRows> = Group::new(LinkRows {
         instrument_load_probe: device_row!(instrument_load_probe),
         instrument_runtime_policy: device_row!(instrument_runtime_policy),
         instrument_play_faulted: device_row!(instrument_play_faulted),
+        dk_app_instrument_settings_rows: device_row!(dk_app_instrument_settings_rows),
+        dk_app_instrument_module_settings: device_row!(dk_app_instrument_module_settings),
     },
 });

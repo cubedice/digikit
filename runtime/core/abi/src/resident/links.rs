@@ -44,6 +44,10 @@ pub struct InstrumentLinks {
     pub instrument_runtime_policy: *const (),
     /// `i32 instrument_play_faulted(u32 generation)`.
     pub instrument_play_faulted: *const (),
+    /// `void dk_app_instrument_settings_rows(dk_ui_menu *)` and `int dk_app_instrument_module_settings(const u8 *name, dk_ui_menu *)`: the DIGIKIT menu's
+    /// rows of the instrument host (the menu is the package's: `menu_link.rs`).
+    pub dk_app_instrument_settings_rows: *const (),
+    pub dk_app_instrument_module_settings: *const (),
 }
 
 // The addresses name functions and tables of the image for the whole run of the system; the rows are built once and only read.
