@@ -319,7 +319,7 @@ pub(super) fn boot_need_hash(name: &[u8]) -> Option<u32> {
 /// (docs/plans/fork-image-diet.md section 9: the track keyboard and services/track-keyboard.dks). The boot then finds and loads the file whether or not the
 /// selection names a module, as it does for a module's hard need; a safe boot loads none.
 #[inline(never)]
-pub(super) unsafe fn boot_needs<P: PackagePlatform>(p: &P, out: &mut [u32; WANT_MAX], mut n: usize) -> usize {
+pub(crate) unsafe fn boot_needs<P: PackagePlatform>(p: &P, out: &mut [u32; WANT_MAX], mut n: usize) -> usize {
     for name in crate::package::gen_services::ORDER.iter() {
         let Some(h) = boot_need_hash(name.as_bytes()) else {
             continue;

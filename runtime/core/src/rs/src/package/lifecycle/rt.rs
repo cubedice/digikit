@@ -132,6 +132,15 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
                 n += 1;
             }
         }
+        // a provider of a service the image asks for itself (`boot_need_<name>`): no module needs it, so it is a root too, after the modules (a module
+        // that also needs it finds it brought up)
+        for j in 0..l.provider_count() {
+            let id = PackageId((MAX_MODULES + j) as u8);
+            if n < roots.len() && !roots[..n].contains(&id) && l.provider_is_boot_need(j) {
+                roots[n] = id;
+                n += 1;
+            }
+        }
         l.set_phase(PhaseKind::Boot);
         let report = match (init, self.mgr()) {
             (Ok(()), Some(m)) => m.boot(&roots[..n]),

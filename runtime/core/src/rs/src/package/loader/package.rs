@@ -89,6 +89,24 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
         self.found.n.min(PROVIDER_MAX)
     }
 
+    /// Whether provider `j` of the search serves a service the image asks the boot for itself (`plan::boot_needs`: an info entry
+    /// `boot_need_<name>`, docs/plans/fork-image-diet.md section 9.2). No module needs such a provider, so the package manager, which brings up the
+    /// providers its roots need, takes it as a root of its own (`lifecycle::rt::Runtime::boot_with`).
+    pub(crate) unsafe fn provider_is_boot_need(&self, j: usize) -> bool {
+        if j >= self.provider_count() || self.found.table_len[j] == 0 {
+            return false;
+        }
+        let Ok(keys) = dkneeds::keys::Keys::parse(self.found.table(j)) else {
+            return false;
+        };
+        let Some((service, _, _)) = keys.words(dkneeds::keys::tag::PROVIDES, 0) else {
+            return false;
+        };
+        let mut want = [0u32; super::plan::WANT_MAX];
+        let n = super::plan::boot_needs(&self.p, &mut want, 0);
+        want[..n].contains(&service)
+    }
+
     /// The store path of provider `j` of the search, NUL terminated into `out`.
     pub(crate) fn provider_path(&self, id: PackageId, out: &mut [u8; discover::PATH_CAP + 1]) -> bool {
         let Some(j) = record_of(id).checked_sub(MAX_MODULES) else {

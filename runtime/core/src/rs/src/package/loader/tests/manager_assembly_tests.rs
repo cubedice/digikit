@@ -261,6 +261,43 @@ fn the_boot_continues_with_the_rest_when_a_service_does_not_come_up_and_reports_
     }
 }
 
+/// A service the image asks for itself (an info entry `boot_need_<name>`, docs/plans/fork-image-diet.md section 9.2: the track keyboard) comes up with a
+/// boot that selects no module: the search finds its file, and the boot takes the provider as a root of its own (`Loader::provider_is_boot_need`), since no
+/// module needs it. Without the entry the same card loads nothing.
+#[test]
+fn a_service_the_image_asks_for_comes_up_with_an_empty_selection() {
+    let _g = clean();
+    for dev in DEVICES.iter().copied().filter(Dev::has_firmware) {
+        let image = Image::read(dev, "emulator");
+        unsafe {
+            let (mut l, plan) = planned(dev, &image, &[], &[], &[SVC_TEST]);
+            assert_eq!(plan.np, 0, "{}: no module and no entry: nothing is searched", dev.name);
+            let rec = boot_record(&[]);
+            let mut rt = Rt::new(&mut l as *mut _);
+            rt.boot_with(&rec, &capacity(&l.p));
+            assert_eq!(records::module(MAX_MODULES).used, 0, "{}", dev.name);
+            clean_state();
+
+            let (mut l, _plan) = planned(dev, &image, &[], &[], &[SVC_TEST]);
+            let h = crate::package::loader::plan::boot_need_hash(SVC_TEST.leaf.as_bytes()).unwrap();
+            assert_eq!(h, dkneeds::keys::name_hash("boot_need_svc_test"));
+            l.p.info_entries.borrow_mut().push((h, vec![0]));
+            l.reset_plan();
+            l.find_providers(0);
+            assert_eq!(l.found.n, 1, "{}: the image asked for the service: the search finds its file", dev.name);
+            assert!(l.provider_is_boot_need(0), "{}", dev.name);
+            let rec = boot_record(&[]);
+            let mut rt = Rt::new(&mut l as *mut _);
+            rt.boot_with(&rec, &capacity(&l.p));
+            assert_eq!(records::module(MAX_MODULES).used, 1, "{}: the provider is loaded", dev.name);
+            let m = rt.manager().unwrap();
+            assert!(m.live().contains(id(MAX_MODULES)), "{}: the manager holds it", dev.name);
+            assert_eq!(crate::boot::info().loaded, 0, "{}: no module is counted", dev.name);
+        }
+        clean_state();
+    }
+}
+
 #[test]
 fn a_failed_dsp_part_takes_down_the_closure_of_its_package_and_marks_the_modules_that_needed_it() {
     let _g = clean();
