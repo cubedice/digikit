@@ -44,3 +44,25 @@ transport and the keyboard mapper (`kb_process`, `mt_prepare_mapped`) under the 
 five tables of eight frames of seven mip levels with a guard sample. Each of the 280 levels, as quantized, is exactly
 antisymmetric: `w[N-n] = -w[n]` for every n, and `w[0]`, `w[N/2]` and `w[N]` are 0. So 22,760 samples (45,520 bytes)
 determine the tables exactly. The package was 147,768 bytes in the install record; 131,072 needs 16,696 fewer.
+
+## Built, 2026-11-23
+
+`patchkit apply --set canopy-overloop-prism` at `5936100a1` (WSL, DT2 1.17), all **[D]**:
+
+- The head uses 1,340,300 of 1,396,736 bytes (56,436 free), not the 1,318,652 of the installed image: PRs 10 to 13 grew the
+  committed objects of the set by 21,648 bytes (`play-cf` +12,694, `loop-control-cf` +3,514, `phrase-ui-cf` +1,780,
+  `midi-events-cf` +1,580, `pattern-position-cf` +754, `fxview-cf` +338, `loop-display-cf` +270, `dsp-link-cf` +208,
+  `phrase-control` `control-cf` +98). The static figure above (about where the installed image was) was wrong.
+- The set with `core/relay-track` and `core/track-keyboard` does not link: `core/relay-track` (51,536 bytes) is refused with
+  1,348,656 used, before the track keyboard is placed.
+- With the split of plan section 9 (`feat/instrument-service`, `4b0a1e411`), the set uses 1,214,192 (182,544 free): the image
+  parts of the two adapters keep about 11 KB of the 137 KB.
+
+Two facts that decided what stays in the image (read in the runtime's sources at `5936100a1`, not run):
+
+- The runtime calls `crate::instrument::bind_once()` at the top of its first `dkrt_tick`, which reads
+  `instrument_runtime_policy()` once and keeps the admitted instance count for the boot; and `instrument::capacity()`, which the
+  boot plan's fit reads before any file loads, returns zeros without the policy. A forwarder that answered 0 there would
+  admit no CANOPY instance.
+- The 25 weak references of the moved C to `core/track-keyboard`, `core/relay-track` and `core/dsp-link` are tests of a
+  function's address; in the service build each reads the word of the image table instead (`IP_HAVE`).

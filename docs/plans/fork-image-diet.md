@@ -1,6 +1,6 @@
 # Fork image diet: the instrument code to a card service, CANOPY to a 128 KiB stage
 
-Date: 2026-11-23. Status: **Phase A stopped after step 1, the measure.** The brief (move the instrument code out of
+Date: 2026-11-23. Status: **Option 1 in progress (section 9).** First written when Phase A stopped after step 1, the measure: The brief (move the instrument code out of
 `cf.expansion` and fit CANOPY's package into a 128 KiB stage, on the fork's base, before the upstream merge) estimates at
 8 to 10 agent days, past the five days its stop rule allows (section 7). Nothing was built: WSL did not start in this
 session (`wsl --status` hung for more than 20 minutes), so the numbers are static [D], from the committed objects at
@@ -181,3 +181,56 @@ the hardware image after the merge, plan the track keyboard's own service file w
 - patchkit's C sources in a service object.
 - The `tail = true` declarations in `devices/fw` (upstream: `ports/fw`).
 - The CANOPY half tables need nothing: they live in the module.
+
+## 9. As built (option 1, from 2026-11-23)
+
+The owner chose option 1, the full move before the merge. Branch `feat/instrument-service`; the CANOPY half tables (step 6)
+and the toolchain step (step 2) were built on their own branches in parallel and merged in. What changed against
+sections 3 and 4, and why:
+
+- **What stays in the image** (`core/instrument-play` and `core/midi-events` keep their ids and every hook site):
+  the Sound persistence path (`sound-record.c`, `sound-assoc.c`, `sound-persist.c` and `.s`, `sound-load.s`), the pure
+  codec `preset.c`, the clock `src-clock.c`, the small hook entries in assembler (`src-lock-capture.s`, `src-mod.s`,
+  `panel.s`, `view.s`, `din.s`, `reset.s`), `mi_dsp_reset_release`, `instrument_runtime_policy` and two "absent" paths
+  for RELAY (`image.c` of each adapter). Reasons: a card service binds after the firmware's boot project load, so the
+  record extensions of a project loaded at power-up are only caught by image code; the runtime binds the policy on its
+  first tick and the boot plan counts the instrument capacity with it, both before any service loads; RELAY's MOD
+  routes run through `instrument_mod_param` and `instrument_mod_carrier` without CANOPY.
+- **No hook moves, no hook is installed at load.** Section 4 had the service take twelve hooks at load. Two of them run
+  in the frame interrupt (`instrument_mod_split`, `_recombine`), the lock hooks in the sequencer path, and
+  `selection_build` declares no scratch register. Instead every hook site stays an image hook as before, and each call
+  of the image into moved code goes through a generated forwarder (18 bytes) that reads a slot word and jumps through
+  the service's vector table, or takes the path the image had without the code (the stock handler, `ip_*_original`,
+  or a neutral result) while the slot is 0. Two slots: `instrument_vec` (36 entries) and `midi_vec` (5), so
+  `core/midi-events` does not depend on `core/instrument-play`. The service has no `[[hook]]` and two `[[fill]]`s; it
+  uses none of the installer's 48 sites and needs no `tail = true` declaration.
+- **One source for the seam:** `modules/core/services/instrument/seam.toml`, from which
+  `modules/core/services/instrument/tools/seam.py` writes the forwarders (`src/cf/seam.s` of both adapters), the image
+  table `instrument_image` (`seam-table.s`, 71 words: magic, version, count, 28 functions, 20 optional functions, 2 data addresses, 18
+  registry codes), the service's vector tables, thunks and the copy of the table (`dks/src/seam.s`), the layout its
+  setup checks (`seam_gen.rs`) and the C names (`seam.h`: `IP_HAVE`, `IP_DATA`, `IP_VALUE`). `--check` is a test
+  (`tests/patchkit/test_instrument_service_seam.py`).
+- **The C did not move.** The service object names the adapters' sources by path and compiles them with
+  `-DDK_SERVICE=1`; under it the 25 tests of an optional function read the image table (`IP_HAVE`), the two data
+  words go through `IP_DATA` and the registry codes of `src-mod.c` are filled at setup (`ip_seam_rows`). The 47 host
+  tests and the Python tests that compile these files are unchanged.
+- **The NEED rule** is not tied to the V2 instrument section: an adapter declares `served_by = "instrument"`, and the
+  packer gives every module whose requires closure holds such an adapter a hard need (`Library::served_needs`). CANOPY
+  and RELAY (through `core/relay-track`) get it; Overloop and PRISM do not.
+- **Open:** `core/track-keyboard` has no card module, so nothing needs the service in an image with the track keyboard
+  and without CANOPY; its keyboard paths would then take the stock path. An image-declared boot need (an adapter asks
+  the boot to load a service) is the fix; it is not built, and the track keyboard is in no patch set that fits.
+
+Measured [D]:
+
+| | `cf.expansion` used of 1,396,736 | free |
+| --- | ---: | ---: |
+| installed image `9ee1ed898e39214e` (`7369a18f5`) | 1,318,652 | 78,084 |
+| `canopy-overloop-prism` at `5936100a1` (PRs 10 to 13 added 21,648) | 1,340,300 | 56,436 |
+| the same with the split | 1,214,192 | 182,544 |
+| with `core/relay-track` and `core/track-keyboard`, at `5936100a1` | does not fit (`core/relay-track` refused at 1,348,656) | |
+
+The moved C compiled alone with the service flags: text 71,716, rodata 7,881, data 80, bss 48,955 bytes. The arena
+needs the packed files of the hardware set declare (`dkm-info`): CANOPY 281,168, `machines.dks` 50,576, `fx.dks`
+39,600, remote 1,680, Overloop 864, PRISM 608: 374,496 of the 524,288-byte arena, about 149,800 left for
+`instrument.dks` (about 131 KB with its bss). The fit is close; CANOPY's half tables lower its share.
