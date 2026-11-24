@@ -29,8 +29,8 @@
     .equ T_N_OVERLAY, 48
     .equ T_SLOTMAP, 52
 
-| the table of the image's SRC page and modulation functions (byte offsets of the words of MF_EXT; `image.rs` has the same layout). Every word is 0
-| when the image has no table `machines_ext_info`.
+| the table of the image's SRC page and modulation functions (byte offsets of the words of DKRT_MF_EXT, bound by the owner's `start`; `ext_info.rs` of the
+| crate has the same layout). Every word is 0 when the image has no table `machines_ext_info`.
     .equ X_SRC_COUNT, 8
     .equ X_SRC_APPLY, 12
     .equ X_MOD_PARAM, 16
@@ -75,7 +75,7 @@ mf_clone5:
 mf_typearg:
     | Optional mapping of a persistent instrument (core/instrument-play, word X_MOD_PARAM): it answers only for the SRC slots it owns; -1 for
     | every other track and slot, which then take the path below. Without the adapter the word is 0.
-    move.l  MF_EXT+X_MOD_PARAM,%d0
+    move.l  DKRT_MF_EXT+X_MOD_PARAM,%d0
     beq.s   5f
     lea     -16(%sp),%sp
     movem.l %d0-%d1/%a0-%a1,(%sp)
@@ -133,7 +133,7 @@ mf_srcpage:
     move.l  %a2,-(%sp)
     jsr     mf_spt
     addq.l  #4,%sp
-    tst.l   MF_EXT+X_SRC_APPLY          | an image with `src-pages.c`: the page count is the adapter's (below)
+    tst.l   DKRT_MF_EXT+X_SRC_APPLY     | an image with `src-pages.c`: the page count is the adapter's (below)
     bne.w   mf_srcpage_ext
     cmp.l   DKRT_MF_TAB+T_FIRST,%d0
     blt.s   1f
@@ -169,18 +169,18 @@ mf_srcpage_ext:
     cmp.l   DKRT_MF_TAB+T_FIRST,%d0
     blt.s   1f
     move.l  %d0,-(%sp)
-    movea.l MF_EXT+X_SRC_COUNT,%a1
+    movea.l DKRT_MF_EXT+X_SRC_COUNT,%a1
     jsr     (%a1)
     addq.l  #4,%sp
     move.l  %d0,-(%sp)
     move.l  %a2,-(%sp)
-    movea.l MF_EXT+X_SRC_APPLY,%a1
+    movea.l DKRT_MF_EXT+X_SRC_APPLY,%a1
     jsr     (%a1)
     addq.l  #8,%sp
     jmp     mf_x_sp_alt
 1:  pea     SRC_STOCK
     move.l  %a2,-(%sp)
-    movea.l MF_EXT+X_SRC_APPLY,%a1
+    movea.l DKRT_MF_EXT+X_SRC_APPLY,%a1
     jsr     (%a1)
     addq.l  #8,%sp
     tst.l   0x90(%a2)

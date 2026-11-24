@@ -13,23 +13,26 @@ src/build/        the builder calls (`Builder`: the collection and its gate) and
 src/slots.rs      the page's click state (`Slots`), with `slots/` the detector and the action lookup
 src/parking.rs    the parking passes of absent numbers (`Parking`)
 src/info.rs       the image table `machines_info`: layout, binding into `DKRT_MF_TAB`
+src/ext_info.rs   the optional image table `machines_ext_info` (the SRC page functions of `src-pages.c` and `instrument_mod_param`): layout, binding into `DKRT_MF_EXT`
 dks/              the service file: `lib.rs` (the `service!` call), `hooks.rs` and `hooks-*.s` (the machine framework's hooks), `fw.rs` (the firmware calls, the page's key and turn
-                  entries, `dk_param_get`, `dk_param_set`), `builder.rs` (the builder exports, which reach the owner), `gen_exports.rs` (generated)
+                  entries, `dk_param_get`, `dk_param_set`), `builder.rs` (the builder exports, which reach the owner), `rt.rs` (the runtime-only exports
+                  `dk_machines_planned_ids` and `dk_machines_id_taken`), `gen_exports.rs` (generated)
 tests/            host tests over `FakeCore`: `state.rs` (the owner), `records.rs`, `build.rs`, `assign.rs`, `guard.rs`, `file.rs` (the file's code over the cell), `contract.rs` (the
                   shared suite on both profiles through `provider_contract`, and the placeholder and parking cases over its `Lifecycle`)
 ```
 
 State: the owner holds the collection of the builder calls, the click state, the parking passes, the state between `attach` and the per-record `apply`, and the registry state
 (`RegState`: the owners of the parameter and page rows, and the strings that the firmware's registry rows point at; they are valid while the service is loaded, which is as long as the owner
-lives). Four tables stay named statics of the crate (D7 of the RC3 briefs), each with its reader, and one cell is shared:
+lives). Five tables stay named statics of the crate (D7 of the RC3 briefs), each with its reader, and one cell is shared:
 
 | Static | Reader |
 | --- | --- |
-| `DKRT_ASSIGN` (`assign.rs`) | device tests by symbol (`machines-kit`, `fx-live`); the sticky map |
+| `DKRT_ASSIGN` (`assign.rs`) | device tests by symbol (`machines-kit`, `fx-live`); the sticky map; the runtime's query `Machines::planned_ids` |
 | `DKRT_VROWS` (`rows.rs`) | the runtime's DSP code (`abi/dsp.rs`); the voice rows; `Describe` on the MODULES task |
 | `DKRT_GUARD` (`guard.rs`) | the MODULES reply (`Describe`), on another task than the poll that writes it |
 | `DKRT_MF_TAB` (`info.rs`) | the assembler hooks (`T_*` offsets of `hooks-*.s`) |
-| `MACH_OWNER` (`registry.rs`, a `Shared<[u8; MAX_MACH]>`) | `Describe` on the MODULES task, and the owner (`attach`, `detach`, the parking pass, the load check) |
+| `DKRT_MF_EXT` (`ext_info.rs`) | the assembler hooks `mf_srcpage` and `mf_typearg` (`X_*` offsets of `hooks-dt2.s`); all 0 without the image table |
+| `MACH_OWNER` (`registry.rs`, a `Shared<[u8; MAX_MACH]>`) | `Describe` on the MODULES task, the runtime's query `Machines::id_taken`, and the owner (`attach`, `detach`, the parking pass, the load check) |
 
 `Describe::describe` (`modules::describe`) gives the five words of the MODULES reply for a module record: the voice rows it owns (mask); the guard's fault count; `nt` with the guard-off flag in bit 8;
 the types 0 to 3 and 4 to 7 (one byte each, type `i` in byte `i % 4`). It has no object and never enters the owner (`Describe::describe` has no `&self`): the command handler may ask while the UI task is
@@ -37,6 +40,15 @@ inside a call of the owner (a tick, a hook), and the owner's guard would refuse 
 under the interrupt mask), `DKRT_VROWS` and `DKRT_GUARD` (read by words: a task switch cannot tear a word). A module with no voice row, no type and no fault gets no word, so no section.
 The registry state moved into the owner in E1 step 4 (it was the static `DKRT_REG`; no tool reads it by symbol any more). The free functions of `unload.rs`, `parking.rs`, `check.rs`, `apply.rs` and
 `build/` take the registry state from the owner's methods.
+
+The runtime asks the file two things by name (`internal = true` in `sdk/sdk.toml`: in the file's export list, in no header and no module's import table): the V2 instrument loader numbers a
+persistent instrument's machine types from `dk_machines_planned_ids` (the plan's `[key, number]` pairs of a module by selection index, `Machines::planned_ids` over `DKRT_ASSIGN`) and refuses
+a number that `dk_machines_id_taken` reports (`Machines::id_taken`: a module owns the row or the image filled it, the rule of the load check `E_TYPE_USED`; a type the service cannot
+place counts as taken). As `Describe::describe` they have no object and never enter the owner, so they answer while the owner is busy and without one.
+
+The optional image table `machines_ext_info` (`mf_ext_info` of `core/machines`, on the device whose hooks call it) is bound by `start` after `machines_info`: whole when its magic, version and both SRC page functions
+are there, else every word of `DKRT_MF_EXT` is 0 (never a refusal). With it, `mf_srcpage` takes the page count and the page vector from `src-pages.c` (up to four SRC pages for an added
+type) and `mf_typearg` asks `instrument_mod_param` first (word 0 without core/instrument-play); without it the hooks keep the one-page rule and the registry's parameter mapping.
 
 Without an owner (before `init` made it, after `fini`) the file's calls answer the neutral way: a builder call returns null or does nothing, `dk_param_get` and
 `dk_param_set` answer `E_STATE` (no flow), the key hook passes the event and the turn hook consumes nothing. The turn hook ends the click flow in the owner, then runs the page's

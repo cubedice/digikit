@@ -28,7 +28,7 @@ mod stubs;
 // the service file's source: its `service!` call is the one place that lists the parts
 #[path = "../dks/src/lib.rs"]
 pub mod file;
-pub use file::{builder, fw, DK_SVC_OWNER};
+pub use file::{builder, fw, rt, DK_SVC_OWNER};
 
 /// The registry state of the owner the suite's driver started: the owners of the parameter and page rows, and the strings the firmware's rows point at. The owner lives as long as the
 /// `Lifecycle` of the test that calls this, and nothing changes it while the test reads.

@@ -1,5 +1,7 @@
 //! The image table `machines_info` and the assembler that reads it. The table is bound over a `FakeCore` (the core's info entry), refused when it is not this device's or lacks the
-//! registry, and the byte offsets the assembler files name (`.equ T_*`) are the word indexes of `info::w` (the crate's `info` owns the table: `Provider::start` binds it).
+//! registry, and the byte offsets the assembler files name (`.equ T_*`) are the word indexes of `info::w` (the crate's `info` owns the table: `Provider::start` binds it). The same
+//! for the optional table `machines_ext_info` (`ext_info`, the offsets `X_*` of `hooks-dt2.s`): taken whole or not at all, never a refusal.
+use dkrt_svc_machines::ext_info;
 use dkrt_svc_machines::info::*;
 use dkrt_svc_rt::name_hash;
 use dkrt_test_support::FakeCore;
@@ -106,43 +108,62 @@ fn the_offsets_the_assembler_names_are_the_word_indexes_of_the_table() {
 }
 
 fn ext_table() -> Vec<u32> {
-    let mut t = vec![0u32; EXT_WORDS];
-    t[x::MAGIC] = EXT_MAGIC;
-    t[x::VERSION] = EXT_VERSION;
-    t[x::SRC_COUNT] = 0x4000_3000;
-    t[x::SRC_APPLY] = 0x4000_3100;
+    let mut t = vec![0u32; ext_info::WORDS];
+    t[ext_info::w::MAGIC] = ext_info::MAGIC;
+    t[ext_info::w::VERSION] = ext_info::VERSION;
+    t[ext_info::w::SRC_COUNT] = 0x4000_3000;
+    t[ext_info::w::SRC_APPLY] = 0x4000_3100;
     t
 }
 
 #[test]
 fn the_src_page_table_is_taken_whole_or_not_at_all() {
+    use ext_info::{bind_table, w, VERSION, WORDS};
     let mut core = core_with(Some(table(1)), 1);
-    let mut dst = [0xffff_ffffu32; EXT_WORDS];
-    assert!(!unsafe { bind_ext(&core, dst.as_mut_ptr()) }, "an image without the table");
-    assert_eq!(dst, [0u32; EXT_WORDS]);
+    let mut dst = [0xffff_ffffu32; WORDS];
+    assert!(
+        !unsafe { bind_table(&core, dst.as_mut_ptr()) },
+        "an image without the table"
+    );
+    assert_eq!(dst, [0u32; WORDS]);
     // without core/instrument-play the modulation word is 0 and the table is still taken
-    core.info_tables.push((name_hash("machines_ext_info"), ext_table()));
-    assert!(unsafe { bind_ext(&core, dst.as_mut_ptr()) });
+    core.info_tables
+        .push((name_hash("machines_ext_info"), ext_table()));
+    assert!(unsafe { bind_table(&core, dst.as_mut_ptr()) });
     assert_eq!(dst[..], ext_table()[..]);
-    for (word, value) in [(x::VERSION, EXT_VERSION + 1), (x::MAGIC, 0), (x::SRC_APPLY, 0), (x::SRC_COUNT, 0)] {
+    for (word, value) in [
+        (w::VERSION, VERSION + 1),
+        (w::MAGIC, 0),
+        (w::SRC_APPLY, 0),
+        (w::SRC_COUNT, 0),
+    ] {
         let mut bad = ext_table();
         bad[word] = value;
         let mut core = core_with(Some(table(1)), 1);
         core.info_tables.push((name_hash("machines_ext_info"), bad));
-        let mut dst = [0xffff_ffffu32; EXT_WORDS];
-        assert!(!unsafe { bind_ext(&core, dst.as_mut_ptr()) }, "word {word}");
-        assert_eq!(dst, [0u32; EXT_WORDS], "word {word}");
+        let mut dst = [0xffff_ffffu32; WORDS];
+        assert!(
+            !unsafe { bind_table(&core, dst.as_mut_ptr()) },
+            "word {word}"
+        );
+        assert_eq!(dst, [0u32; WORDS], "word {word}");
     }
 }
 
 #[test]
 fn the_offsets_the_assembler_names_in_the_src_page_table_are_its_word_indexes() {
     let eq = equates_of(include_str!("../src/hooks-dt2.s"), "X_");
-    assert_eq!(eq.len(), ASM_EXT_OFFSETS.len());
+    assert_eq!(eq.len(), ext_info::ASM_OFFSETS.len());
     for (name, at) in eq {
-        let index = ASM_EXT_OFFSETS.iter().find(|(n, _)| *n == name).unwrap_or_else(|| panic!("{name} is not in ASM_EXT_OFFSETS")).1;
+        let index = ext_info::ASM_OFFSETS
+            .iter()
+            .find(|(n, _)| *n == name)
+            .unwrap_or_else(|| panic!("{name} is not in ext_info::ASM_OFFSETS"))
+            .1;
         assert_eq!(at, 4 * index, "{name}");
     }
+    // the hooks read the table by the name of the crate's static
+    assert!(include_str!("../src/hooks-dt2.s").contains("DKRT_MF_EXT+X_SRC_APPLY"));
 }
 
 #[test]

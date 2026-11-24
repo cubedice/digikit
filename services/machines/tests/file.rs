@@ -1,6 +1,7 @@
 //! The service file's own code over the owner cell, on the host: the builder exports reach the owner through `DK_SVC_OWNER.with` and answer the neutral way when there is none (a
-//! null handle, no effect), `dk_param_get` and `dk_param_set` answer "no flow" without an owner, the machine page's hooks pass without one, and the file's `init` step refuses an
-//! image without the machines table and leaves the cell empty. The imports of the file (`dkc_*`) are stubs here, and the stub image has no tables.
+//! null handle, no effect), `dk_param_get` and `dk_param_set` answer "no flow" without an owner, the machine page's hooks pass without one, the runtime's queries never ask the
+//! owner, and the file's `init` step refuses an image without the machines table and leaves the cell empty. The imports of the file (`dkc_*`) are stubs here, and the stub image
+//! has no tables.
 use core::ptr::{null, null_mut};
 use dkrt_sdk::E_NO_REGISTRY;
 use dkrt_svc_machines::machines::Machines;
@@ -15,7 +16,7 @@ use file::builder::{
     dk_page_bind_local, dk_param_glyph, dk_param_latched, dk_param_range,
 };
 use file::fw::{dk_param_get, dk_param_set, dks_page_key, dks_page_turn};
-pub use file::{builder, fw, DK_SVC_OWNER};
+pub use file::{builder, fw, rt, DK_SVC_OWNER};
 use file::{dk_svc_start, dk_svc_stop};
 
 #[path = "../../../runtime/core/test-support/stubs/core_imports.rs"]
@@ -94,6 +95,28 @@ fn the_exports_reach_the_started_owner() {
     }
     drop(started);
     assert!(DK_SVC_OWNER.with(|_| ()).is_none());
+}
+
+/// The runtime's two queries (`rt.rs`: the internal exports the V2 instrument loader calls by name) enter no owner: they answer the same without one and while the owner is
+/// inside another call. Nothing was planned here and the stub image has no registry, so no pair comes back and every type counts as taken.
+#[test]
+fn the_runtime_queries_answer_without_an_owner_and_while_it_is_busy() {
+    use file::rt::{dk_machines_id_taken, dk_machines_planned_ids};
+    let _t = TURN.lock().unwrap_or_else(|e| e.into_inner());
+    let ask = || {
+        let mut out = [0u32; 16];
+        // SAFETY: `out` holds the 8 pairs the export writes at most
+        unsafe {
+            (
+                dk_machines_planned_ids(0, out.as_mut_ptr()),
+                dk_machines_id_taken(0x20),
+            )
+        }
+    };
+    let alone = ask();
+    assert_eq!(alone, (0, 1));
+    let _o = Started::new();
+    assert_eq!(DK_SVC_OWNER.with(|_| ask()), Some(alone));
 }
 
 #[test]

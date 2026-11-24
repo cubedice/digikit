@@ -29,7 +29,7 @@ COUNT, FIRST, ROWS, SRC, STOCK_LIST = (
     _fw.STOCK_LIST,
 )
 STUBS, SYX, TYPE_FN, tables = _fw.STUBS, _fw.SYX, _fw.TYPE_FN, _fw.tables
-# `mf_typearg` is a routine of the machines service file; it reads the image tables `MF_TAB` and `MF_EXT` (here: the fixtures, with
+# `mf_typearg` is a routine of the machines service file; it reads the image tables `DKRT_MF_TAB` and `DKRT_MF_EXT` (here: the fixtures, with
 # `instrument_mod_param` of src-mod.c in the unit)
 HOOKS, TAB, EXT, NATIVE_CALLS = _fw.HOOKS, _fw.TAB, _fw.EXT, _fw.NATIVE_CALLS
 pytestmark = _fw.pytestmark

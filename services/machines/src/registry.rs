@@ -6,8 +6,9 @@ use dkrt_sdk::*;
 use dkrt_svc_rows::dynreg::{w, RegState, MACH_TEXT};
 
 /// Who owns each reserved machine row (module record index + 1, 0 free). It is the one table of the registry that is read outside the owner: the MODULES reply asks
-/// `Describe::describe` on the command handler's task, which must answer while the owner is busy in another call (the owner's guard would refuse it). So it is a `Shared`
-/// cell of this crate, written by the owner in short sections (a copy of one byte), and read the same way. The rest of the registry state (`RegState`) is a field of the owner.
+/// `Describe::describe` on the command handler's task, which must answer while the owner is busy in another call (the owner's guard would refuse it), and the runtime's
+/// query `Machines::id_taken` (`type_taken`) has no owner either. So it is a `Shared` cell of this crate, written by the owner in short sections (a copy of one byte), and read
+/// the same way. The rest of the registry state (`RegState`) is a field of the owner.
 static MACH_OWNER: Shared<[u8; MAX_MACH]> = Shared::new([0; MAX_MACH]);
 
 /// The owner of machine row `k` (0: free, or `k` past the rows).
@@ -34,6 +35,36 @@ pub(crate) fn mach_owners<C: CoreApi>(core: &C) -> [u8; MAX_MACH] {
 pub fn clear_mach_owners<C: CoreApi>(core: &C) {
     MACH_OWNER.with(core, |o| *o = [0; MAX_MACH]);
     crate::modules::publish(core);
+}
+
+/// Machine row `k` (of type `t`, in the run-time range of `inf`) is in use: a module owns it, or its name is not empty (the image or a module filled it). The load check
+/// refuses a module's type then (`E_TYPE_USED`, `ck_records`).
+///
+/// # Safety
+/// `inf` is the registry's table; `t` is a type of its rows.
+pub(crate) unsafe fn row_used<C: CoreApi>(core: &C, inf: *const u32, t: u32, k: usize) -> bool {
+    let row = iw(inf, w::M_ROWS) + (t - iw(inf, w::M_FIRST)) * iw(inf, w::M_ROW_SIZE);
+    let name = core.rd(row + iw(inf, w::O_NAME));
+    mach_owner(core, k) != 0 || (name != 0 && core.rd8(name) != 0)
+}
+
+/// Whether machine type `t` is taken in the machine rows (`row_used`, the rule of the load check). A type outside the run-time range, and every type without a registry,
+/// counts as taken: the service cannot place it. The answer of `Machines::id_taken`; it reads the `Shared` owners and the image's row, never the owner's state.
+///
+/// # Safety
+/// The registry's words come from the image through the core.
+pub unsafe fn type_taken<C: CoreApi>(core: &C, t: u32) -> bool {
+    let inf = dkrt_svc_rows::dynreg(core);
+    if inf.is_null() {
+        return true;
+    }
+    let Some(k) = t.checked_sub(iw(inf, w::M_DYN0)) else {
+        return true;
+    };
+    if k >= iw(inf, w::M_DYN_N) || k as usize >= MAX_MACH || t < iw(inf, w::M_FIRST) {
+        return true;
+    }
+    row_used(core, inf, t, k as usize)
 }
 
 /// The code of the first run-time parameter row (a row `k` has code `param_first + k`); `u32::MAX` without a registry.

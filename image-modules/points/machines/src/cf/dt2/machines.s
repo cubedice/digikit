@@ -200,8 +200,8 @@ machines_info:
 
 | ---- the table `machines_ext_info` (an [[info]] of module.toml, Digitakt II): the adapter functions the service file's hooks call for the SRC pages
 | (`src-pages.c`: an added type's page count and the page vector, `mf_srcpage` of the service file) and for a persistent instrument's modulation
-| destinations (`instrument_mod_param` of core/instrument-play, 0 without it: `mf_typearg`). The service file copies it into `MF_EXT`
-| (services/machines/dks/src/image.rs has the layout); an image without the table keeps the one-page rule.
+| destinations (`instrument_mod_param` of core/instrument-play, 0 without it: `mf_typearg`). The service file copies it into `DKRT_MF_EXT`
+| (services/machines/src/ext_info.rs has the layout); an image without the table keeps the one-page rule.
     .balign 4
     .globl mf_ext_info
 mf_ext_info:

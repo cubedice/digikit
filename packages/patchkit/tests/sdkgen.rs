@@ -286,8 +286,13 @@ fn the_exports_of_a_service_file_are_generated_from_its_provided_imports() {
     assert!(!machines.contains("fn dk_param_get"));
     assert!(machines.contains("const _: api::DkParamGetFn = crate::fw::dk_param_get;"));
     assert!(machines.contains("const _: api::DkPageCanvasFn = crate::builder::dk_page_canvas;"));
-    // the runtime asks the machines file nothing by name (the MODULES reply uses its `Describe` part): no runtime-only export
-    assert!(!machines.contains("crate::rt::"));
+    // an `internal` export is in the list and has no `api` type (it is in no header): the MODULES reply uses the machines file's `Describe` part, and the runtime asks the
+    // file by name only the two queries of the V2 instrument loader (the plan and the taken types)
+    assert!(machines.contains("crate::rt::dk_machines_planned_ids as *const u8"));
+    assert!(machines.contains("crate::rt::dk_machines_id_taken as *const u8"));
+    assert_eq!(machines.matches("crate::rt::").count(), 2);
+    assert!(!machines.contains("api::DkMachinesPlannedIdsFn"));
+    assert!(!machines.contains("api::DkMachinesIdTakenFn"));
     assert!(
         machines.find("\"dk_param_get\"").unwrap()
             < machines.find("\"dk_page_bind_local\"").unwrap()
