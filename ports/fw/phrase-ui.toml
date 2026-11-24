@@ -104,21 +104,23 @@ users = ["core/fxview"]
 doc = "Wrap the normal cdecl LED setter; the handler invokes the generated callable tail. The FX adapter lets the front picker claim TRIG and page LEDs at native layer 2; otherwise the call is retained."
 
 [[site]]
-name = "cf.page.site.phrase_key_dispatch"
+name = "cf.page.site.phrase_key_walk"
 cpu = "cf"
 devices = ["dt2"]
-rule = { kind = "cf_window_hash", search_len = 48, offset = 0, len = 8, sha256 = "dbc9176ef60626f2b66cec5f4736946cd8e720907b568a69daa9bca0fdb9ba76" }
+rule = { kind = "cf_func", hash = "e741aa3500a20d22aa97ee402dcf9e43", offset = 0x8, len = 8 }
 mark = "V"
 users = ["core/fxview"]
-doc = "DTII OS1.17 primary ViewController key dispatcher, cdecl(manager,event). Its callback invokes primary View slot2 after native key-owner routing. Unique 48-byte window; complete eight-byte lea -96(sp)/movem d2-d7,a2-a6 prologue. This replaces the earlier misidentified secondary-observer dispatcher."
+was = ["cf.page.site.phrase_key_dispatch"]
+doc = "The first two instructions after the prologue of the key walker (`cf.input.site.key_event_walk`, DT2 0x4011c79c; this site 0x4011c7a4): `move.l (0x68,SP),D2; movea.l (0x64,SP),A2` (8 bytes, no PC-relative form, no branch lands inside). Here SP is the walker's frame (0x60 bytes, D2-D7/A2-A6 saved at 0(SP)), 0x64(SP) = the ViewController, 0x68(SP) = the KeyEvent (+0xc code, +0x10 flags). The walker entry itself is upstream's (core/services/shortcuts hooks it through the port file, which refuses a site an image module patched): core/fxview took the entry before the upstream merge of 2026-11-24."
 
 [[hook]]
-name = "cf.page.hook.phrase_key_dispatch"
-site = "cf.page.site.phrase_key_dispatch"
+name = "cf.page.hook.phrase_key_walk"
+site = "cf.page.site.phrase_key_walk"
 cpu = "cf"
-mode = "before"
-regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mode = "replace"
+regs = { in = [], clobbers = ["ccr"] }
 devices = ["dt2"]
 mark = "D"
 users = ["core/fxview"]
-doc = "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases. A note-step picker also owns PAGE."
+was = ["cf.page.hook.phrase_key_dispatch"]
+doc = "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases; a note-step picker also owns PAGE. The routine is jumped to with the walker's frame. Pass: replay the two displaced moves and jump to the end of the site (D0, D1, A0 and A1 kept). Consume: restore D2-D7/A2-A6 from the frame, drop it, `moveq #1,%d0; rts` (the walker returns true: no release callback, no view sees the event). Runs after core/services/shortcuts, which has the walker entry."

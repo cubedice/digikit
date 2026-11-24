@@ -6,7 +6,7 @@
  *
  * The TRIG keys and their LEDs are not the FX view's: the firmware's track and grid handlers take the keys before any view
  * sees them. Two hooks before firmware functions give them to the page while G holds the selection of the tracks: the key
- * dispatcher (phrase_key_dispatch) and the LED setter (phrase_led_set). At any other time both go straight on to the
+ * walker (phrase_key_walk, through core/fxview) and the LED setter (phrase_led_set). At any other time both go straight on to the
  * firmware. */
 #include <stdint.h>
 #include <dk/fxview.h>
@@ -144,7 +144,7 @@ int phrase_fxv_key(uint8_t *view, uint8_t *event)
     dk_fw_view_invalidate(view);
     return 1;
 }
-/* Before the firmware's key dispatcher (cf.page.hook.phrase_key_dispatch, cdecl(manager, event)): a TRIG key goes to the
+/* In the firmware's key walker (cf.page.hook.phrase_key_walk of core/fxview, after its prologue): a TRIG key goes to the
  * page while G holds the selection on the page that is on top, so that it neither plays a note, nor enters a step, nor
  * selects a track or a pattern. The release of a TRIG key the page took is the page's, also after G or the view went.
  * Every other event goes on to the firmware unchanged. */

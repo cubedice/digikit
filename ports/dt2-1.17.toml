@@ -5913,14 +5913,14 @@ mark = "V"
 rule = "fw/phrase-ui:cf_window_hash"
 
 [[anchor]]
-name = "cf.page.site.phrase_key_dispatch"
+name = "cf.page.site.phrase_key_walk"
 cpu = "cf"
 kind = "code"
-addr = 0x4011c79c
+addr = 0x4011c7a4
 len = 8
-sha256 = "3d25d06bf11f3a7bccef894d0016b52adbb4ae468a0f475dd497d7b5966e2694"
+sha256 = "20b3d44e31b3f351fbb10e4ee3dec71040e63b2e0fb878ac6560e9bb339ea4a3"
 mark = "V"
-rule = "fw/phrase-ui:cf_window_hash"
+rule = "fw/phrase-ui:cf_func"
 
 [[anchor]]
 name = "cf.page.site.phrase_led_set"
@@ -5933,9 +5933,9 @@ mark = "V"
 rule = "fw/phrase-ui:cf_window_hash"
 
 [[hook]]
-name = "cf.page.hook.phrase_key_dispatch"
-site = "cf.page.site.phrase_key_dispatch"
-mode = "before"
+name = "cf.page.hook.phrase_key_walk"
+site = "cf.page.site.phrase_key_walk"
+mode = "replace"
 
 [[hook]]
 name = "cf.page.hook.phrase_led_set"

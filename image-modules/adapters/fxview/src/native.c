@@ -21,7 +21,6 @@ extern int loop_fxv_draw(uint8_t *, uint8_t *, int) OPTIONAL;
 extern int loop_fxv_key(uint8_t *, uint8_t *) OPTIONAL;
 extern int loop_fxv_turn(uint8_t *, uint8_t *) OPTIONAL;
 void fxv_view_draw(uint8_t *, uint8_t *);
-extern uint32_t fxv_stock_dispatch(uint8_t *, uint8_t *);
 extern int phrase_dispatch_trig(uint8_t *) OPTIONAL;
 extern int relay_trig(uint8_t *) OPTIONAL;
 extern int tk_picker_key(uint32_t, uint32_t) OPTIONAL;
@@ -30,9 +29,11 @@ extern int phrase_led_claim(uint32_t) OPTIONAL;
 extern void fxv_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 extern void rtm_stop_key(uint32_t) OPTIONAL;
 
-/* TRIG keys reach the stock sequencer before they reach the FX view. */
-uint32_t fxv_key_dispatch(uint8_t *manager, uint8_t *event)
+/* TRIG keys reach the stock sequencer before they reach the FX view. Called by fxv_walk_hook (walk.s) for every key event the key walker
+ * gets (cf.page.hook.phrase_key_walk): 1 consumes the event (the walker returns true at once), 0 lets the walker go on. */
+uint32_t fxv_key_filter(uint8_t *manager, uint8_t *event)
 {
+    (void)manager;
     uint32_t key = *(uint32_t *)(event + 12);
     const uint32_t flags = *(uint32_t *)(event + 16);
     if (key == 21 && rtm_stop_key)
@@ -43,7 +44,7 @@ uint32_t fxv_key_dispatch(uint8_t *manager, uint8_t *event)
         ((phrase_dispatch_trig && phrase_dispatch_trig(event)) ||
          (relay_trig && relay_trig(event))))
         return 1;
-    return fxv_stock_dispatch(manager, event);
+    return 0;
 }
 
 void fxv_panel_led(uint8_t *manager, uint32_t logical, uint32_t layer, uint32_t value)

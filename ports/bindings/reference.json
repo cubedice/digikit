@@ -10237,7 +10237,7 @@
       "at": {
         "dt2-1.17": [
           {
-            "addr": "0x4011c79c"
+            "addr": "0x4011c7a4"
           }
         ]
       },
@@ -10245,26 +10245,26 @@
       "devices": [
         "dt2"
       ],
-      "doc": "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases. A note-step picker also owns PAGE.",
+      "doc": "Offer numbered TRIG presses to the front picker before stock grid processing, and retain the resulting releases; a note-step picker also owns PAGE. The routine is jumped to with the walker's frame. Pass: replay the two displaced moves and jump to the end of the site (D0, D1, A0 and A1 kept). Consume: restore D2-D7/A2-A6 from the frame, drop it, `moveq #1,%d0; rts` (the walker returns true: no release callback, no view sees the event). Runs after core/services/shortcuts, which has the walker entry.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "hook",
       "mark": "D",
-      "mode": "before",
-      "name": "cf.page.hook.phrase_key_dispatch",
+      "mode": "replace",
+      "name": "cf.page.hook.phrase_key_walk",
       "regs": {
         "clobbers": [
-          "d0-d1",
-          "a0-a1",
           "ccr"
         ],
         "in": []
       },
-      "site": "cf.page.site.phrase_key_dispatch",
+      "site": "cf.page.site.phrase_key_walk",
       "subsystem": "page",
       "users": [
         "core/fxview"
       ],
-      "was": []
+      "was": [
+        "cf.page.hook.phrase_key_dispatch"
+      ]
     },
     {
       "at": {
@@ -12866,7 +12866,7 @@
       "at": {
         "dt2-1.17": [
           {
-            "addr": "0x4011c79c",
+            "addr": "0x4011c7a4",
             "len": 8
           }
         ]
@@ -12875,23 +12875,25 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DTII OS1.17 primary ViewController key dispatcher, cdecl(manager,event). Its callback invokes primary View slot2 after native key-owner routing. Unique 48-byte window; complete eight-byte lea -96(sp)/movem d2-d7,a2-a6 prologue. This replaces the earlier misidentified secondary-observer dispatcher.",
+      "doc": "The first two instructions after the prologue of the key walker (`cf.input.site.key_event_walk`, DT2 0x4011c79c; this site 0x4011c7a4): `move.l (0x68,SP),D2; movea.l (0x64,SP),A2` (8 bytes, no PC-relative form, no branch lands inside). Here SP is the walker's frame (0x60 bytes, D2-D7/A2-A6 saved at 0(SP)), 0x64(SP) = the ViewController, 0x68(SP) = the KeyEvent (+0xc code, +0x10 flags). The walker entry itself is upstream's (core/services/shortcuts hooks it through the port file, which refuses a site an image module patched): core/fxview took the entry before the upstream merge of 2026-11-24.",
       "file": "devices/fw/phrase-ui.toml",
       "kind": "site",
       "mark": "V",
-      "name": "cf.page.site.phrase_key_dispatch",
+      "name": "cf.page.site.phrase_key_walk",
       "rule": {
         "dt2": {
-          "kind": "cf_window_hash",
+          "kind": "cf_func",
           "len": 8,
-          "offset": 0
+          "offset": 8
         }
       },
       "subsystem": "page",
       "users": [
         "core/fxview"
       ],
-      "was": []
+      "was": [
+        "cf.page.site.phrase_key_dispatch"
+      ]
     },
     {
       "at": {

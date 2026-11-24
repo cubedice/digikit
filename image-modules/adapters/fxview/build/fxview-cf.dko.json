@@ -4,6 +4,20 @@
  "relocs": [
   {
    "addend": 0,
+   "offset": 18,
+   "section": ".text",
+   "symbol": "fxv_key_filter",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text",
+   "symbol": "fxv_walk_back",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 10,
    "section": ".text.fxv_view_draw",
    "symbol": "fxv_stock_draw",
@@ -25,50 +39,43 @@
   },
   {
    "addend": 0,
-   "offset": 34,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 28,
+   "section": ".text.fxv_key_filter",
    "symbol": "rtm_stop_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 68,
-   "section": ".text.fxv_key_dispatch",
-   "symbol": "fxv_stock_dispatch",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 94,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 76,
+   "section": ".text.fxv_key_filter",
    "symbol": "tk_picker_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 108,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 90,
+   "section": ".text.fxv_key_filter",
    "symbol": "tk_picker_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 124,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 110,
+   "section": ".text.fxv_key_filter",
    "symbol": "phrase_dispatch_trig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 134,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 120,
+   "section": ".text.fxv_key_filter",
    "symbol": "relay_trig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 178,
-   "section": ".text.fxv_key_dispatch",
+   "offset": 158,
+   "section": ".text.fxv_key_filter",
    "symbol": "tk_picker_key",
    "type": "cf.32"
   },
@@ -95,13 +102,6 @@
   },
   {
    "addend": 0,
-   "offset": 80,
-   "section": ".text.fxv_visible_view",
-   "symbol": ".sec..text.fxv_view_draw",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 10,
    "section": ".text.fxv_visible_view",
    "symbol": "cf.view.fn.brain.instance",
@@ -112,6 +112,13 @@
    "offset": 22,
    "section": ".text.fxv_visible_view",
    "symbol": "cf.view.fn.brain.view_manager",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text.fxv_visible_view",
+   "symbol": ".sec..text.fxv_view_draw",
    "type": "cf.32"
   },
   {
@@ -229,6 +236,13 @@
  ],
  "sections": [
   {
+   "align": 4,
+   "hex": "4feffff048d703032f2f00782f2f00784eb900000000508f4a8066164cd703034fef0010242f0068246f00644ef9000000004fef00104cd77cfc4fef006070014e75",
+   "kind": "text",
+   "name": ".text",
+   "size": 66
+  },
+  {
    "align": 2,
    "hex": "2f2f00082f2f00084eb900000000508f41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c4e75",
    "kind": "text",
@@ -237,10 +251,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d7040c246f001876152f6f0014000c202a000c222a0010b680662841f9000000004a8867062f014e90588f2f4a00184cd7040c2f6f000c00144fef00104ef9000000002400760f0682ffffffe7b682645a7616b68066d441f9000000004a8867ca2f012f004eb900000000508f4a80662ee88a66b641f9000000004a88661641f9000000004a8867a22f0a4e90588f4a806798600a2f0a4e90588f4a8067e04cd7040c70014fef00104e7541f9000000004a8867c060aa",
+   "hex": "4feffff448d7040c246f00147415202a000c222a0010b480661c41f9000000004a8867062f014e90588f42804cd7040c4fef000c4e752400760f0682ffffffe7b68264587616b68066e041f9000000004a8867d62f012f004eb900000000508f4a806704700160c4e88a66be41f9000000004a88661a41f9000000004a8867aa2f0a4e90588f4a8056c071004480609c2f0a4e90588f4a8067dc60c841f9000000004a8866ae60c4",
    "kind": "text",
-   "name": ".text.fxv_key_dispatch",
-   "size": 188
+   "name": ".text.fxv_key_filter",
+   "size": 168
   },
   {
    "align": 2,
@@ -320,7 +334,7 @@
    "size": 10
   }
  ],
- "source_sha256": "f4263ad0fd2f5c53cdb8b7ee644cb970bf2ed929cf159833a34ebde50bb0a368",
+ "source_sha256": "b014e6184eaacd98f30e58bcfa29dc80f5fbd1bc7f282db5a275fe33b733d14c",
  "symbols": [
   {
    "global": false,
@@ -396,8 +410,8 @@
   },
   {
    "global": true,
-   "name": "fxv_key_dispatch",
-   "section": ".text.fxv_key_dispatch",
+   "name": "fxv_key_filter",
+   "section": ".text.fxv_key_filter",
    "value": 0
   },
   {
@@ -422,12 +436,6 @@
    "global": true,
    "name": "fxv_panel_led",
    "section": ".text.fxv_panel_led",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "fxv_stock_dispatch",
-   "section": null,
    "value": 0
   },
   {
@@ -488,6 +496,18 @@
    "global": true,
    "name": "fxv_visible_view",
    "section": ".text.fxv_visible_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_walk_back",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_walk_hook",
+   "section": ".text",
    "value": 0
   },
   {
@@ -567,8 +587,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "362",
-  "isa_check": "8a309733bc075baafe7281a7ceab2c0a2dcbe2245fa493c9ab417f1d11a2e400",
+  "instructions_redecoded": "379",
+  "isa_check": "ae5cfd8234cc09281a25b3d2bb8889f3142e1795cf968c0e7ad6a02d39accdf4",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
