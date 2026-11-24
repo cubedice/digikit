@@ -168,6 +168,30 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           message: 'stock setup finished before capturing TRIG pages',
         },
       );
+      // The reference pages come from the same card booted cold by an image without the track keyboard. A stock MAIN starts from the ready
+      // snapshot, which the emulator made without a card (its project is not the card's boot project: track level 100 against 106 on the
+      // live card of the upstream harness), and a patched image boots cold from the card: only two cold boots of the card compare.
+      const reference = await prepareRuntimePlanModulesOffline(
+        session.options,
+        session.runDir,
+        session.runDir,
+        ['DKRT_BOOT'],
+        {
+          modules: ['core/health'],
+          timeoutMs: 90_000,
+        },
+      );
+      await session.client.firmwareLoad({
+        syx: reference.syx,
+        base_sha256: reference.plan.base.syx_sha256,
+        start: 'auto',
+        force: true,
+        auto_no: true,
+        card: session.cardPath,
+      });
+      await session.client.call('run.mode', { mode: 'free' });
+      await expectRuntimeUi(session, reference.plan, session.runDir);
+      await tap('NO');
       const stock = await readPages('stock');
       const image = await prepareRuntimePlanModulesOffline(
         session.options,
