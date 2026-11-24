@@ -8606,21 +8606,21 @@
    "type": "cf.32"
   },
   {
-   "addend": 212,
+   "addend": 216,
    "offset": 8,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 216,
+   "addend": 220,
    "offset": 18,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 220,
+   "addend": 224,
    "offset": 28,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
@@ -8634,105 +8634,105 @@
    "type": "cf.32"
   },
   {
-   "addend": 224,
+   "addend": 228,
    "offset": 44,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 228,
+   "addend": 232,
    "offset": 54,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 232,
+   "addend": 236,
    "offset": 64,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 236,
+   "addend": 240,
    "offset": 74,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 84,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 94,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 104,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 252,
+   "addend": 256,
    "offset": 114,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 256,
+   "addend": 260,
    "offset": 128,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 260,
+   "addend": 264,
    "offset": 138,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 264,
+   "addend": 268,
    "offset": 148,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 268,
+   "addend": 272,
    "offset": 158,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 272,
+   "addend": 276,
    "offset": 168,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 276,
+   "addend": 280,
    "offset": 178,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
-   "addend": 280,
+   "addend": 284,
    "offset": 188,
    "section": ".text.ip_seam_rows",
    "symbol": "ip_img",
@@ -13975,10 +13975,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 154,
+   "addend": 212,
+   "offset": 158,
    "section": ".text.instrument_src_tick",
-   "symbol": ".sec..text.ip_src_draw",
+   "symbol": "ip_img",
    "type": "cf.32"
   },
   {
@@ -19729,7 +19729,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 130,
+   "addend": 134,
    "offset": 56,
    "section": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam6usable",
    "symbol": ".sec..rodata.global.13",
@@ -19763,7 +19763,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss",
-   "size": 284
+   "size": 288
   },
   {
    "align": 2,
@@ -22196,7 +22196,7 @@
   },
   {
    "align": 2,
-   "hex": "2f0a2f0252b9000000004eb90000000024004a8067482f004eb900000000588f204023c20000000023c8000000004a88663020390000000042a742b9000000002f002f390000000042b9000000004eb9000000004fef000c241f245f4e7591c860c0220870202068001c06810000001423c8000000004a8867b8b1c167b4246800084a8a670000ba4a2a0030660000b222524a89670000aa243c00000000b4a900106600009c52b9000000004eb90000000041f90000000023c000000000240023d0000000004ab900000000674242a7487800052f0a4eb9000000004fef000c4a80672c55804a806600ff6e2002721790b900000000b2806400ff5e23c2000000002f0a4eb900000000588f6000ff4a2f0a4eb900000000588f4a806700ff3a2f024eb90000000094b900000000588f7027b0826400ff2252b90000000060c2205053804a806600ff2e6000fee6",
+   "hex": "2f0a2f0252b9000000004eb90000000024004a8067482f004eb900000000588f204023c20000000023c8000000004a88663020390000000042a742b9000000002f002f390000000042b9000000004eb9000000004fef000c241f245f4e7591c860c0220870202068001c06810000001423c8000000004a8867b8b1c167b4246800084a8a670000ba4a2a0030660000b222524a89670000aa22690010b3f9000000006600009c52b9000000004eb90000000041f90000000023c000000000240023d0000000004ab900000000674242a7487800052f0a4eb9000000004fef000c4a80672c55804a806600ff6e2002721790b900000000b2806400ff5e23c2000000002f0a4eb900000000588f6000ff4a2f0a4eb900000000588f4a806700ff3a2f024eb90000000094b900000000588f7027b0826400ff2252b90000000060c2205053804a806600ff2e6000fee6",
    "kind": "text",
    "name": ".text.instrument_src_tick",
    "size": 334
@@ -23624,10 +23624,10 @@
   },
   {
    "align": 2,
-   "hex": "696e737472756d656e74000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e0000003300000034",
+   "hex": "696e737472756d656e74000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e000000330000003400000035",
    "kind": "data",
    "name": ".rodata.global.13",
-   "size": 130
+   "size": 134
   },
   {
    "align": 1,
@@ -23694,14 +23694,14 @@
   },
   {
    "align": 2,
-   "hex": "202f0004222f0008204058882241588906800000011c22d8b08866fa204120bc495053314e75",
+   "hex": "202f0004222f0008204058882241588906800000012022d8b08866fa204120bc495053314e75",
    "kind": "text",
    "name": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam4copy",
    "size": 38
   },
   {
    "align": 2,
-   "hex": "206f00044a88670a203c49505331b090670442004e757001b0a8000466f47047b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
+   "hex": "206f00044a88670a203c49505331b090670442004e757001b0a8000466f47048b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
    "kind": "text",
    "name": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam6usable",
    "size": 66
@@ -23728,7 +23728,7 @@
    "size": 28
   }
  ],
- "source_sha256": "26f4747ab6df8ee467feb70bef4860db64b0630fe2cadd706ae7ccfd407e9fe2",
+ "source_sha256": "e0a76d76db595382c2afe376267741c2b90953e25211bd61c0f9809041b12350",
  "symbols": [
   {
    "global": false,
@@ -25724,12 +25724,6 @@
   },
   {
    "global": false,
-   "name": ".sec..text.ip_src_draw",
-   "section": ".text.ip_src_draw",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..text.ip_src_draw_rotary",
    "section": ".text.ip_src_draw_rotary",
    "value": 0
@@ -26336,6 +26330,12 @@
   },
   {
    "global": false,
+   "name": "CSWTCH.67",
+   "section": ".rodata.CSWTCH.67",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "_RNvCs3qJODegQhLd_11dkrt_svc_rt14running_device",
    "section": ".text._RNvCs3qJODegQhLd_11dkrt_svc_rt14running_device",
    "value": 0
@@ -26377,6 +26377,60 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "activate",
+   "section": ".text.activate",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "active",
+   "section": ".text.active",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "after.3",
+   "section": ".rodata.after.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "alg.14",
+   "section": ".rodata.alg.14",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "amount_changed",
+   "section": ".text.amount_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "black.2",
+   "section": ".rodata.black.2",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "canopy_env_weight",
+   "section": ".rodata.canopy_env_weight",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "canopy_preview_waves",
+   "section": ".rodata.canopy_preview_waves",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "captured",
+   "section": ".bss.captured",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "cc_milliseconds",
    "section": ".text.cc_milliseconds",
@@ -26413,6 +26467,132 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "changed",
+   "section": ".text.changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channel",
+   "section": ".data.channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channel_changed",
+   "section": ".text.channel_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channel_of",
+   "section": ".text.channel_of",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channels_key",
+   "section": ".rodata.channels_key",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "channels_write",
+   "section": ".bss.channels_write",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "chord.9",
+   "section": ".rodata.chord.9",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "chord_name",
+   "section": ".text.chord_name",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "codes.1",
+   "section": ".rodata.codes.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "codes.2",
+   "section": ".rodata.codes.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "codes.3",
+   "section": ".rodata.codes.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "codes.6",
+   "section": ".rodata.codes.6",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "collect",
+   "section": ".text.collect",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_count",
+   "section": ".bss.commit_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_head",
+   "section": ".bss.commit_head",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_track",
+   "section": ".data.commit_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commit_until",
+   "section": ".bss.commit_until",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "commits",
+   "section": ".bss.commits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "context",
+   "section": ".text.context",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "controls",
+   "section": ".rodata.controls",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "copy",
+   "section": ".text.copy",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "cp_decode",
    "section": ".text",
@@ -26441,6 +26621,12 @@
    "name": "cp_wavetable_defaults",
    "section": ".text",
    "value": 32
+  },
+  {
+   "global": false,
+   "name": "cr_valid",
+   "section": ".text.cr_valid",
+   "value": 0
   },
   {
    "global": true,
@@ -26545,6 +26731,18 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "cur",
+   "section": ".data.cur",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "cursor",
+   "section": ".bss.cursor",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "cv_build",
    "section": ".text.cv_build",
@@ -26584,6 +26782,108 @@
    "global": true,
    "name": "cv_preview_notes",
    "section": ".text.cv_preview_notes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "cw_set.constprop.0",
+   "section": ".text.cw_set.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "desc",
+   "section": ".rodata.desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "detail.4",
+   "section": ".rodata.detail.4",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_box.constprop.0",
+   "section": ".text.diagram_box.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_box.part.0",
+   "section": ".text.diagram_box.part.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_envelope.constprop.0",
+   "section": ".text.diagram_envelope.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_legacy.constprop.0",
+   "section": ".text.diagram_legacy.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_line",
+   "section": ".text.diagram_line",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_node",
+   "section": ".text.diagram_node",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_operator",
+   "section": ".text.diagram_operator",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_rect",
+   "section": ".text.diagram_rect",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_sqrt",
+   "section": ".text.diagram_sqrt",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_text",
+   "section": ".text.diagram_text",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "diagram_wavetable.constprop.0",
+   "section": ".text.diagram_wavetable.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "din",
+   "section": ".data.din",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "display",
+   "section": ".bss.display",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "divisions.12",
+   "section": ".rodata.divisions.12",
    "value": 0
   },
   {
@@ -26791,6 +27091,162 @@
    "value": 376
   },
   {
+   "global": false,
+   "name": "emit.isra.0",
+   "section": ".text.emit.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "enabled",
+   "section": ".bss.enabled",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "envelopes.3",
+   "section": ".rodata.envelopes.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fault",
+   "section": ".text.fault",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fault_generation",
+   "section": ".bss.fault_generation",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "faulted_ticks.0",
+   "section": ".bss.faulted_ticks.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fill",
+   "section": ".text.fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "first.2",
+   "section": ".bss.first.2",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fm0.5",
+   "section": ".rodata.fm0.5",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fm_high",
+   "section": ".rodata.fm_high",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fm_labels",
+   "section": ".rodata.fm_labels",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fm_short.4",
+   "section": ".rodata.fm_short.4",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fm_wheel_amount",
+   "section": ".bss.fm_wheel_amount",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fmenv.0",
+   "section": ".rodata.fmenv.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "fmtone.1",
+   "section": ".rodata.fmtone.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "focus",
+   "section": ".data.focus",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "for_track",
+   "section": ".text.for_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "frame_block",
+   "section": ".bss.frame_block",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_append",
+   "section": ".text.group_append",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_count",
+   "section": ".bss.group_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "group_pitch",
+   "section": ".bss.group_pitch",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "guard_fail",
+   "section": ".text.guard_fail",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "h.1",
+   "section": ".bss.h.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "healthy",
+   "section": ".bss.healthy",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "high",
+   "section": ".rodata.high",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "id.2",
+   "section": ".rodata.id.2",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "ilp_control_for",
    "section": ".text.ilp_control_for",
@@ -26821,6 +27277,12 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "ilp_pack.part.0",
+   "section": ".text.ilp_pack.part.0",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "ilp_store_edit_steps",
    "section": ".text.ilp_store_edit_steps",
@@ -26836,6 +27298,54 @@
    "global": true,
    "name": "ilp_unpack",
    "section": ".text.ilp_unpack",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "initialize",
+   "section": ".text.initialize",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "initialized",
+   "section": ".bss.initialized",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "initialized",
+   "section": ".bss.initialized",
+   "value": 4
+  },
+  {
+   "global": false,
+   "name": "input.1",
+   "section": ".bss.input.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "input_desc",
+   "section": ".rodata.input_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "input_fill",
+   "section": ".text.input_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "input_menu",
+   "section": ".bss.input_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "inst",
+   "section": ".bss.inst",
    "value": 0
   },
   {
@@ -27124,6 +27634,12 @@
    "global": true,
    "name": "ip_img",
    "section": ".bss",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ip_init",
+   "section": ".text.ip_init",
    "value": 0
   },
   {
@@ -27667,6 +28183,12 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "is_list",
+   "section": ".text.is_list",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "is_poll",
    "section": ".text.is_poll",
@@ -27688,6 +28210,18 @@
    "global": true,
    "name": "is_waiting",
    "section": ".text.is_waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "isn_submit_locked",
+   "section": ".text.isn_submit_locked",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "journal.0",
+   "section": ".bss.journal.0",
    "value": 0
   },
   {
@@ -27752,8 +28286,212 @@
   },
   {
    "global": false,
+   "name": "keyboard_initialized",
+   "section": ".bss.keyboard_initialized",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "keys_held",
+   "section": ".text.keys_held",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "kit_now",
+   "section": ".text.kit_now",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "label.isra.0",
+   "section": ".text.label.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "labels",
+   "section": ".rodata.labels",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "last_draw",
+   "section": ".bss.last_draw",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_back",
+   "section": ".text.learn_back",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_begin",
+   "section": ".text.learn_begin",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_close",
+   "section": ".text.learn_close",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_desc",
+   "section": ".rodata.learn_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_fill",
+   "section": ".text.learn_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_menu",
+   "section": ".bss.learn_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "learn_row",
+   "section": ".text.learn_row",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "legacy.2",
+   "section": ".rodata.legacy.2",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "length",
+   "section": ".text.length",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "list_reset",
+   "section": ".text.list_reset",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "listed_type",
+   "section": ".bss.listed_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "live_control",
+   "section": ".data.live_control",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "live_token",
+   "section": ".bss.live_token",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "live_track",
+   "section": ".data.live_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "live_value",
+   "section": ".bss.live_value",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_get",
+   "section": ".text.lock_get",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_remove",
+   "section": ".text.lock_remove",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_set",
+   "section": ".text.lock_set",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_show",
+   "section": ".text.lock_show",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_show.part.0",
+   "section": ".text.lock_show.part.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_snapshot",
+   "section": ".text.lock_snapshot",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_state",
+   "section": ".text.lock_state",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_steps",
+   "section": ".text.lock_steps",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "lock_store",
+   "section": ".rodata.lock_store",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "low",
+   "section": ".rodata.low",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "mapping_fault",
+   "section": ".text.mapping_fault",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "masks.2",
+   "section": ".rodata.masks.2",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "memcpy",
    "section": ".text.memcpy",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "menu",
+   "section": ".bss.menu",
    "value": 0
   },
   {
@@ -27790,6 +28528,12 @@
    "global": true,
    "name": "mi_dsp_reset_begin",
    "section": ".text.mi_dsp_reset_begin",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "mi_event_copy",
+   "section": ".text.mi_event_copy",
    "value": 0
   },
   {
@@ -27973,9 +28717,27 @@
    "value": 144
   },
   {
+   "global": false,
+   "name": "minimum",
+   "section": ".text.minimum",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "mirrors",
+   "section": ".rodata.mirrors",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "ml_encode",
    "section": ".text.ml_encode",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "move.constprop.0",
+   "section": ".text.move.constprop.0",
    "value": 0
   },
   {
@@ -28069,10 +28831,454 @@
    "value": 0
   },
   {
+   "global": false,
+   "name": "names.21",
+   "section": ".rodata.names.21",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "names.22",
+   "section": ".rodata.names.22",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "names.5",
+   "section": ".rodata.names.5",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "note_packet",
+   "section": ".text.note_packet",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "note_signature",
+   "section": ".text.note_signature",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "number",
+   "section": ".text.number",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "order.6",
+   "section": ".rodata.order.6",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "orders.18",
+   "section": ".rodata.orders.18",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "output.0",
+   "section": ".bss.output.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "overflow",
+   "section": ".text.overflow",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "owner_generation",
+   "section": ".bss.owner_generation",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "owner_type",
+   "section": ".bss.owner_type",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_play",
+   "section": ".text.panel_play",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_sync",
+   "section": ".text.panel_sync",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_track",
+   "section": ".data.panel_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_view",
+   "section": ".bss.panel_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panic",
+   "section": ".text.panic",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pattern_object",
+   "section": ".text.pattern_object",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pc.1",
+   "section": ".rodata.names.22",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pending",
+   "section": ".bss.pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "pending",
+   "section": ".text.pending",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "pp_current_pattern",
    "section": ".text",
    "value": 216
+  },
+  {
+   "global": false,
+   "name": "preset_desc",
+   "section": ".rodata.preset_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_dirty",
+   "section": ".text.preset_dirty",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_fill",
+   "section": ".text.preset_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_keys",
+   "section": ".rodata.preset_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_load",
+   "section": ".text.preset_load",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_menu",
+   "section": ".bss.preset_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_pending",
+   "section": ".bss.preset_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_present",
+   "section": ".bss.preset_present",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_records",
+   "section": ".bss.preset_records",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_result",
+   "section": ".bss.preset_result",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_save",
+   "section": ".text.preset_save",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_select",
+   "section": ".text.preset_select",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_slot",
+   "section": ".data.preset_slot",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_snapshot",
+   "section": ".text.preset_snapshot",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "preset_write",
+   "section": ".bss.preset_write",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "published",
+   "section": ".bss.published",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "published_family",
+   "section": ".bss.published_family",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "quarantined",
+   "section": ".text.quarantined",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ranges",
+   "section": ".rodata.ranges",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rate.7",
+   "section": ".rodata.rate.7",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ratios.13",
+   "section": ".rodata.ratios.15",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ratios.15",
+   "section": ".rodata.ratios.15",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_keys",
+   "section": ".bss.rec_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_release",
+   "section": ".text.rec_release",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rec_release_all",
+   "section": ".text.rec_release_all",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "recover",
+   "section": ".text.recover",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "recover_done",
+   "section": ".text.recover_done",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "refreshed_revision",
+   "section": ".bss.refreshed_revision",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "refreshed_status",
+   "section": ".bss.refreshed_status",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "registry_guard",
+   "section": ".bss.registry_guard",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "registry_reply",
+   "section": ".bss.registry_reply",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "registry_reply_valid",
+   "section": ".bss.registry_reply_valid",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "release_all",
+   "section": ".text.release_all",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "remember",
+   "section": ".text.remember",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "reply_tick",
+   "section": ".text.reply_tick",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "reset_seen",
+   "section": ".bss.reset_seen",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "resets.10",
+   "section": ".rodata.resets.10",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restart.5",
+   "section": ".rodata.restart.5",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restarts.17",
+   "section": ".rodata.restarts.17",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restore_channels",
+   "section": ".bss.restore_channels",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restore_page",
+   "section": ".bss.restore_page",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restore_pending",
+   "section": ".bss.restore_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "restore_route",
+   "section": ".bss.restore_route",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "retry_save",
+   "section": ".text.retry_save",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "revalidate_track",
+   "section": ".text.revalidate_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_key",
+   "section": ".rodata.route_key",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_one",
+   "section": ".text.route_one",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_pending",
+   "section": ".bss.route_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_restore",
+   "section": ".bss.route_restore",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_result",
+   "section": ".bss.route_result",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_save",
+   "section": ".text.route_save",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "route_write",
+   "section": ".bss.route_write",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "rows",
+   "section": ".bss.rows",
+   "value": 0
   },
   {
    "global": true,
@@ -28099,10 +29305,28 @@
    "value": 360
   },
   {
+   "global": false,
+   "name": "sa_bind",
+   "section": ".bss.sa_bind",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "sa_get",
    "section": ".text",
    "value": 56
+  },
+  {
+   "global": false,
+   "name": "sa_owned",
+   "section": ".text.sa_owned",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "sa_publish",
+   "section": ".text.sa_publish",
+   "value": 0
   },
   {
    "global": true,
@@ -28123,6 +29347,240 @@
    "value": 80
   },
   {
+   "global": false,
+   "name": "same_state",
+   "section": ".text.same_state",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "save_pending",
+   "section": ".bss.save_pending",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "saved_generation",
+   "section": ".bss.saved_generation",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "saved_page",
+   "section": ".bss.saved_page",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "saved_shared_keyboard",
+   "section": ".bss.saved_shared_keyboard",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "saved_track",
+   "section": ".bss.saved_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "saved_valid",
+   "section": ".bss.saved_valid",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_clock_choice",
+   "section": ".text.scan_clock_choice",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_clock_done",
+   "section": ".text.scan_clock_done",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_clocks",
+   "section": ".rodata.scan_clocks",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_restart_choice",
+   "section": ".text.scan_restart_choice",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_restart_done",
+   "section": ".text.scan_restart_done",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scan_restarts",
+   "section": ".rodata.scan_restarts",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "scratch.3",
+   "section": ".bss.scratch.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "seen",
+   "section": ".bss.seen",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "selected",
+   "section": ".data.selected",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "selector.part.0.isra.0",
+   "section": ".text.selector.part.0.isra.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "selector_channel",
+   "section": ".bss.selector_channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "selector_octave",
+   "section": ".data.selector_octave",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "seq_muted",
+   "section": ".bss.seq_muted",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "serial",
+   "section": ".bss.serial",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shape_changed",
+   "section": ".text.shape_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shape_desc",
+   "section": ".rodata.shape_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shape_fill",
+   "section": ".text.shape_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shape_key",
+   "section": ".rodata.shape_key",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shape_menu",
+   "section": ".bss.shape_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shapes.0",
+   "section": ".rodata.shapes.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shapes.11",
+   "section": ".rodata.shapes.11",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shapes_share",
+   "section": ".text.shapes_share",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_envelope.constprop.0",
+   "section": ".text.shared_envelope.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_live_record",
+   "section": ".bss.shared_live_record",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_notes",
+   "section": ".bss.shared_notes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_step_keys",
+   "section": ".bss.shared_step_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "short_labels.3",
+   "section": ".rodata.short_labels.3",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_fault",
+   "section": ".bss.shown_fault",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_main",
+   "section": ".data.shown_main",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_revision",
+   "section": ".bss.shown_revision",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shown_session",
+   "section": ".bss.shown_session",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "sine.1",
+   "section": ".rodata.sine.1",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "sr_decode",
    "section": ".text",
@@ -28135,6 +29593,12 @@
    "value": 48
   },
   {
+   "global": false,
+   "name": "src_requested",
+   "section": ".text.src_requested",
+   "value": 0
+  },
+  {
    "global": true,
    "name": "src_state",
    "section": ".bss.src_state",
@@ -28144,6 +29608,138 @@
    "global": true,
    "name": "src_status",
    "section": ".bss.src_status",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_at",
+   "section": ".bss.status_at",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_count",
+   "section": ".bss.status_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_desc",
+   "section": ".rodata.status_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_draw_at",
+   "section": ".bss.status_draw_at",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_fill",
+   "section": ".text.status_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_head",
+   "section": ".bss.status_head",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_lost",
+   "section": ".bss.status_lost",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_menu",
+   "section": ".bss.status_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_pair",
+   "section": ".text.status_pair",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "status_words",
+   "section": ".bss.status_words",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_commits",
+   "section": ".text.step_commits",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_group",
+   "section": ".bss.step_group",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_note",
+   "section": ".text.step_note",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "step_recording",
+   "section": ".text.step_recording",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "storage_result",
+   "section": ".bss.storage_result",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "store_chord",
+   "section": ".text.store_chord",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "stored_group",
+   "section": ".bss.stored_group",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "suffix.0",
+   "section": ".rodata.suffix.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "switching",
+   "section": ".text.switching",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "text",
+   "section": ".text.text",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "text.part.0",
+   "section": ".text.text.part.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "text.part.0.constprop.0",
+   "section": ".text.text.part.0.constprop.0",
    "value": 0
   },
   {
@@ -28229,6 +29825,258 @@
    "name": "tk_runtime_init",
    "section": ".text",
    "value": 320
+  },
+  {
+   "global": false,
+   "name": "toast",
+   "section": ".text.toast",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "tone_desc",
+   "section": ".rodata.tone_desc",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "tone_fill",
+   "section": ".text.tone_fill",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "tone_menu",
+   "section": ".bss.tone_menu",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "track_channel",
+   "section": ".bss.track_channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "track_keyboard_claim",
+   "section": ".bss.track_keyboard_claim",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "track_keyboard_lanes",
+   "section": ".bss.track_keyboard_lanes",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "track_keyboard_src",
+   "section": ".bss.track_keyboard_src",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "track_sound",
+   "section": ".text.track_sound",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "trig_held",
+   "section": ".text.trig_held",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "trig_word",
+   "section": ".text.trig_word",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ui",
+   "section": ".text.ui",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "ui_channel",
+   "section": ".data.ui_channel",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "unit.constprop.0",
+   "section": ".text.unit.constprop.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "usb",
+   "section": ".data.usb",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "value",
+   "section": ".text.value",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "voice.5",
+   "section": ".rodata.voice.5",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "voice.8",
+   "section": ".rodata.voice.8",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "voicings.19",
+   "section": ".rodata.voicings.19",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting",
+   "section": ".bss.waiting",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_count",
+   "section": ".bss.waiting_count",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_release",
+   "section": ".text.waiting_release",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_track",
+   "section": ".bss.waiting_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waiting_view",
+   "section": ".bss.waiting_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "was_owned",
+   "section": ".bss.was_owned",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_active",
+   "section": ".bss.watch_active",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_list",
+   "section": ".bss.watch_list",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_track",
+   "section": ".bss.watch_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_trig",
+   "section": ".bss.watch_trig",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "watch_until",
+   "section": ".bss.watch_until",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "wave.0",
+   "section": ".rodata.wave.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waves.16",
+   "section": ".rodata.waves.16",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "waves.20",
+   "section": ".rodata.waves.20",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "wheel_amount",
+   "section": ".bss.wheel_amount",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "white.4",
+   "section": ".rodata.white.4",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work",
+   "section": ".bss.work",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_key",
+   "section": ".rodata.work_key",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_quiet",
+   "section": ".bss.work_quiet",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_window",
+   "section": ".bss.work_window",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "wt0.6",
+   "section": ".rodata.wt0.6",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "wtfm_wheel_amount",
+   "section": ".bss.wtfm_wheel_amount",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "zero",
+   "section": ".text.zero",
+   "value": 0
   }
  ],
  "toolchain": {
@@ -28237,7 +30085,7 @@
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "22433",
-  "isa_check": "16d256865bf0f2400174744405f18a072227dccde38cc6ff3386294146211664",
+  "isa_check": "b54f8661359d8e659b74c720ee3bc166a35434351027b581fa70b2b51ff7fb3b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

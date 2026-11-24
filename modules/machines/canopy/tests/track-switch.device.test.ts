@@ -6,7 +6,8 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
@@ -26,7 +27,7 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -46,7 +47,7 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
       session.options,
       session.runDir,
       artifacts,
-      ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_admission', 'ip_src_debug', 'ip_src_fault_toasts', 'src_status'],
+      ['DKRT_BOOT'],
       { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -64,12 +65,13 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
     const epoch = Number((await session.status()).epoch);
     await dk.restart();
     await dk.waitForBoot();
+    const sym = await instrumentSymbols(session, plan);
     const word = async (address: number) => {
       const value = await session.client.memPeek(address);
       if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
       return value >>> 0;
     };
-    const cf = (name: string, index = 0) => word(planSymbol(plan, name) + 4 * index);
+    const cf = (name: string, index = 0) => word(sym(name) + 4 * index);
     await waitInstrumentReady(cf);
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
     const { tap: key, edge } = acknowledgedPanel(session);
@@ -101,7 +103,7 @@ describeOn('dt2', 'CANOPY on two tracks of the DT2', () => {
     // IsStatus is 638 bytes on the ColdFire: its track at +4, the reported track in the low bits of the fast status at
     // +20, the block count of that status at +16 and the validity byte of the fast status at +632.
     const statusOf = async (instance: number) => {
-      const base = planSymbol(plan, 'src_status') + instance * 638;
+      const base = sym('src_status') + instance * 638;
       return {
         track: await word(base + 4),
         reportedTrack: (await word(base + 20)) & 15,

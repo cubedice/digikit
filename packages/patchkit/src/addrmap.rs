@@ -31,7 +31,7 @@ pub fn text_entries(obj: &Dko, l: &Linked, module: Option<&str>) -> Vec<Entry> {
     code_entries(obj, l, module, Cpu::Cf)
 }
 
-/// The global data symbols of a ColdFire object (`data` and `bss` sections, e.g. the `DKRT_*` statics of a service file): one entry each, sized as its section. A host that
+/// The named data symbols of a ColdFire object (`data` and `bss` sections: the `DKRT_*` statics of a service file, and the file-local statics of its C), one entry each, sized as its section. A host that
 /// reads a module's state (a test of a service file, a profiler) finds the cell by name. Only a module map has them: the ship map names code.
 pub fn data_entries(obj: &Dko, l: &Linked, module: Option<&str>) -> Vec<Entry> {
     let kinds: BTreeMap<&str, (&str, u64)> = obj
@@ -42,7 +42,7 @@ pub fn data_entries(obj: &Dko, l: &Linked, module: Option<&str>) -> Vec<Entry> {
     let mut out: Vec<Entry> = obj
         .symbols
         .iter()
-        .filter(|s| s.global && !s.name.is_empty())
+        .filter(|s| !s.name.is_empty() && !s.name.starts_with('.'))
         .filter_map(|s| {
             let sec = s.section.as_deref()?;
             let (kind, size) = *kinds.get(sec)?;

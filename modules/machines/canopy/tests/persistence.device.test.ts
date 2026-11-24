@@ -7,7 +7,8 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
@@ -33,7 +34,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -57,7 +58,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       session.options,
       session.runDir,
       artifacts,
-      ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_src_debug', 'src_state', 'ip_sa_info', 'ip_sa_stats',
+      ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats',
         ...(checkWorkingBoot ? ['DKRT_SAVE_MODE'] : [])],
       { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
@@ -77,8 +78,9 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     const firstEpoch = Number((await session.status()).epoch);
     await dk.restart();
     await dk.waitForBoot();
+    let sym = await instrumentSymbols(session, plan);
     const cf = async (name: string, index = 0) => {
-      const value = await session.client.memPeek(planSymbol(plan, name) + 4 * index);
+      const value = await session.client.memPeek(sym(name) + 4 * index);
       if (value === null) throw new Error(`Unreadable ${name}[${index}]`);
       return value >>> 0;
     };
@@ -156,10 +158,11 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       // Experimental positive control: ask DigiKit's restart to invoke the
       // stock working-state serializer and boot-record writer. This is NOT its
       // default and does not model an ordinary physical power-off by itself.
-      await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'DKRT_SAVE_MODE'), value: 3 });
+      await session.client.call('mem.cf.poke', { addr: sym('DKRT_SAVE_MODE'), value: 3 });
       const epoch = Number((await session.status()).epoch);
       await dk.restart();
       await dk.waitForBoot();
+      sym = await instrumentSymbols(session, plan);
       await waitInstrumentReady(cf);
       await expectRuntimeUi(session, plan, artifacts, { afterEpoch: epoch, emulatedMs: 180_000 });
       await expect.poll(async () => {
@@ -200,6 +203,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       card: savedCard,
     });
     await session.client.call('run.mode', { mode: 'free' });
+    sym = await instrumentSymbols(session, plan);
     await waitInstrumentReady(cf);
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: savedEpoch, emulatedMs: 180_000 });
     await expect.poll(async () => {

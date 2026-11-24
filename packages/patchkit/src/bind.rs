@@ -1385,6 +1385,7 @@ mod tests {
                 fills: vec![],
                 dsp_fills: vec![],
             }),
+            served: vec![],
         };
         pack_keys(None, &table, &[], &o).unwrap()
     }
@@ -1846,6 +1847,7 @@ mod tests {
             stereo: false,
             gate: false,
             service: None,
+            served: vec![],
         };
         let dkm = pack_keys(None, &table, &[], &o).unwrap();
         let e = bind(&dkm, &[], &Registry::default(), &[]).unwrap_err();

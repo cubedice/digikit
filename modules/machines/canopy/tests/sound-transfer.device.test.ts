@@ -8,6 +8,7 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
@@ -29,7 +30,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -54,7 +55,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
       session.options,
       session.runDir,
       artifacts,
-      ['DKRT_BOOT', 'ip_control', 'ip_tracks', 'ip_src_debug', 'src_state', 'ip_sa_info', 'ip_sa_stats'],
+      ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats'],
       { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     expect(createHash('sha256').update(fs.readFileSync(syx)).digest('hex')).toBe(plan.output?.syx_sha256);
@@ -76,7 +77,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     const firstEpoch = Number((await session.status()).epoch);
     await dk.restart();
     await dk.waitForBoot();
-    let p = canopyPanel(session, plan);
+    let p = canopyPanel(session, plan, await instrumentSymbols(session, plan));
     await waitInstrumentReady(p.cf);
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });
 
@@ -127,7 +128,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     session = coldSession;
     const coldEpoch = Number((await session.status()).epoch);
     await boot(savedCard);
-    p = canopyPanel(session, plan);
+    p = canopyPanel(session, plan, await instrumentSymbols(session, plan));
     await waitInstrumentReady(p.cf);
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: coldEpoch, emulatedMs: 180_000 });
     expect((await liveProtocol(session).modules()).map((m) => m.name)).toContain('digikit/canopy');

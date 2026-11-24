@@ -506,6 +506,24 @@ pub fn is_helper(n: &str) -> bool {
 }
 
 /// (defined global symbols, undefined symbols) of an object, by `nm`.
+/// The local symbols the C and assembler objects define (`nm` types t, d, b, r: statics and named file-local labels), sorted,
+/// without the assembler's `.L` labels.
+fn c_locals(env: &Env, objs: &[PathBuf]) -> Result<Vec<String>> {
+    let mut out = vec![];
+    for obj in objs {
+        let r = tc::run(&env.m68k("nm")?, &[obj.display().to_string()], None)?;
+        for line in r.stdout.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() == 3 && "tdbr".contains(parts[1]) && !parts[2].starts_with('.') {
+                out.push(parts[2].to_string());
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    Ok(out)
+}
+
 fn globals(env: &Env, obj: &Path) -> Result<(Vec<String>, Vec<String>)> {
     let args = vec!["--no-demangle".to_string(), obj.display().to_string()];
     let r = tc::run(&env.m68k("nm")?, &args, None)?;
@@ -682,11 +700,14 @@ fn build_object(
         args.push(o.clone());
         tc::run(&objcopy, &args, None)?;
     }
-    tc::run(
-        &env.m68k("strip")?,
-        &tc::strs(&["--strip-unneeded", &o]),
-        None,
-    )?;
+    // The statics of the C and assembler sources keep their names (the address map of the bound file names them, for a crash
+    // report or a test that reads the state); the crate's own locals go, as before.
+    let mut strip = vec!["--strip-unneeded".to_string()];
+    for k in c_locals(env, &c_objs)? {
+        strip.push(format!("--keep-symbol={k}"));
+    }
+    strip.push(o.clone());
+    tc::run(&env.m68k("strip")?, &strip, None)?;
     check_flags(&tc::read(out)?, &o)?;
     let mut missing: Vec<String> = globals(env, out)?
         .1

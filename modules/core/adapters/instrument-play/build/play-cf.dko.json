@@ -1007,124 +1007,131 @@
    "addend": 0,
    "offset": 212,
    "section": ".rodata",
-   "symbol": "ip_mod_color",
+   "symbol": "ip_src_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 216,
    "section": ".rodata",
-   "symbol": "ip_mod_drift",
+   "symbol": "ip_mod_color",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 220,
    "section": ".rodata",
-   "symbol": "ip_mod_mix",
+   "symbol": "ip_mod_drift",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 224,
    "section": ".rodata",
-   "symbol": "ip_mod_strum",
+   "symbol": "ip_mod_mix",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 228,
    "section": ".rodata",
-   "symbol": "ip_mod_gate",
+   "symbol": "ip_mod_strum",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 232,
    "section": ".rodata",
-   "symbol": "ip_mod_swing",
+   "symbol": "ip_mod_gate",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 236,
    "section": ".rodata",
-   "symbol": "ip_mod_position",
+   "symbol": "ip_mod_swing",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 240,
    "section": ".rodata",
-   "symbol": "ip_mod_scan_depth",
+   "symbol": "ip_mod_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 244,
    "section": ".rodata",
-   "symbol": "ip_mod_scan_rate",
+   "symbol": "ip_mod_scan_depth",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 248,
    "section": ".rodata",
-   "symbol": "ip_mod_timbre_env",
+   "symbol": "ip_mod_scan_rate",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 252,
    "section": ".rodata",
-   "symbol": "ip_mod_wtfm_depth",
+   "symbol": "ip_mod_timbre_env",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 256,
    "section": ".rodata",
-   "symbol": "ip_mod_wtfm_env",
+   "symbol": "ip_mod_wtfm_depth",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 260,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_depth",
+   "symbol": "ip_mod_wtfm_env",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 264,
    "section": ".rodata",
-   "symbol": "ip_mod_balance",
+   "symbol": "ip_mod_fm_depth",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 268,
    "section": ".rodata",
-   "symbol": "ip_mod_feedback",
+   "symbol": "ip_mod_balance",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 272,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_env",
+   "symbol": "ip_mod_feedback",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 276,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_attack",
+   "symbol": "ip_mod_fm_env",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 280,
+   "section": ".rodata",
+   "symbol": "ip_mod_fm_attack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 284,
    "section": ".rodata",
    "symbol": "ip_mod_fm_release",
    "type": "cf.32"
@@ -2246,10 +2253,10 @@
   },
   {
    "align": 4,
-   "hex": "4950533100000001000000470000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "495053310000000100000048000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 284
+   "size": 288
   },
   {
    "align": 16,
@@ -2735,7 +2742,7 @@
    "size": 332
   }
  ],
- "source_sha256": "a8920583a257c172110f6a4881c7b3254a1511e435163a12f4d50ff810044330",
+ "source_sha256": "96f6ef0cc8b2af112fe43fa0fc9a5666df5bfdf821ab313f0757bd8300577a8e",
  "symbols": [
   {
    "global": false,
@@ -4249,7 +4256,7 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "2992",
-  "isa_check": "e827157f3004f49056916ec9b537f6850df40c0adc683a94cb75186b66fdb3cc",
+  "isa_check": "3a5f9c710518d618682cd3bd6c2529c05cfd565669a7374114e0a496d06828f7",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

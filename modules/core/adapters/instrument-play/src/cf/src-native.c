@@ -906,7 +906,8 @@ void instrument_src_tick(void)
             if (!view || view[0x30])
                 continue;
             uint8_t *vtable = pointer(view, 0);
-            if (vtable && word(vtable, 16) == (uint32_t)(uintptr_t)ip_src_draw) {
+            /* the vtable holds the entry of the image: in the service build the forwarder of seam.s */
+            if (vtable && word(vtable, 16) == (uint32_t)IP_DATA(ip_src_draw)) {
                 ++ip_src_refresh[4];
                 uint32_t now = instrument_src_now();
                 ip_src_refresh[5] = now;

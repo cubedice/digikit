@@ -7,7 +7,7 @@
 #include <stdint.h>
 #define IP_SEAM_MAGIC 0x49505331u
 #define IP_SEAM_VERSION 1u
-#define IP_SEAM_WORDS 71u
+#define IP_SEAM_WORDS 72u
 #define IPX_cp_decode 3u
 #define IPX_cp_encode 4u
 #define IPX_cp_fm_defaults 5u
@@ -58,24 +58,25 @@
 #define IPX_dl_reset_quiesce 50u
 #define IPX_pp_position 51u
 #define IPX_ip_view 52u
-#define IPX_ip_mod_color 53u
-#define IPX_ip_mod_drift 54u
-#define IPX_ip_mod_mix 55u
-#define IPX_ip_mod_strum 56u
-#define IPX_ip_mod_gate 57u
-#define IPX_ip_mod_swing 58u
-#define IPX_ip_mod_position 59u
-#define IPX_ip_mod_scan_depth 60u
-#define IPX_ip_mod_scan_rate 61u
-#define IPX_ip_mod_timbre_env 62u
-#define IPX_ip_mod_wtfm_depth 63u
-#define IPX_ip_mod_wtfm_env 64u
-#define IPX_ip_mod_fm_depth 65u
-#define IPX_ip_mod_balance 66u
-#define IPX_ip_mod_feedback 67u
-#define IPX_ip_mod_fm_env 68u
-#define IPX_ip_mod_fm_attack 69u
-#define IPX_ip_mod_fm_release 70u
+#define IPX_ip_src_draw 53u
+#define IPX_ip_mod_color 54u
+#define IPX_ip_mod_drift 55u
+#define IPX_ip_mod_mix 56u
+#define IPX_ip_mod_strum 57u
+#define IPX_ip_mod_gate 58u
+#define IPX_ip_mod_swing 59u
+#define IPX_ip_mod_position 60u
+#define IPX_ip_mod_scan_depth 61u
+#define IPX_ip_mod_scan_rate 62u
+#define IPX_ip_mod_timbre_env 63u
+#define IPX_ip_mod_wtfm_depth 64u
+#define IPX_ip_mod_wtfm_env 65u
+#define IPX_ip_mod_fm_depth 66u
+#define IPX_ip_mod_balance 67u
+#define IPX_ip_mod_feedback 68u
+#define IPX_ip_mod_fm_env 69u
+#define IPX_ip_mod_fm_attack 70u
+#define IPX_ip_mod_fm_release 71u
 #ifdef DK_SERVICE
 extern volatile uint32_t ip_img[IP_SEAM_WORDS];
 #define IP_HAVE(f) (ip_img[IPX_##f] != 0)

@@ -6,7 +6,8 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
@@ -32,7 +33,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -50,7 +51,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
       session.options,
       session.runDir,
       artifacts,
-      ['DKRT_BOOT', 'ip_control', 'DK_LOAD', 'DK_LOAD_N'],
+      ['DKRT_BOOT', 'DK_LOAD', 'DK_LOAD_N'],
       { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -69,12 +70,13 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
     await dk.restart();
     await dk.waitForBoot();
+    const sym = await instrumentSymbols(session, plan);
     const word = async (address: number) => {
       const value = await session.client.memPeek(address);
       if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
       return value >>> 0;
     };
-    await waitInstrumentReady((name, i = 0) => word(planSymbol(plan, name) + 4 * i));
+    await waitInstrumentReady((name, i = 0) => word(sym(name) + 4 * i));
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
 
     // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the machines service, the DSP area its image,
@@ -106,9 +108,9 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await openDigikitMenu({ ...sessionRt(session), dk });
     for (let i = 0; i < 8; i++) await key('DOWN');
     await key('YES');
-    await expect.poll(() => word(planSymbol(plan, 'DK_LOAD_N')), { timeout: 60_000 }).toBe(1);
+    await expect.poll(() => word(sym('DK_LOAD_N')), { timeout: 60_000 }).toBe(1);
     const row = Buffer.alloc(24);
-    for (let k = 0; k < 24; k += 4) row.writeUInt32BE(await word(planSymbol(plan, 'DK_LOAD') + k), k);
+    for (let k = 0; k < 24; k += 4) row.writeUInt32BE(await word(sym('DK_LOAD') + k), k);
     // `module_text` of the menu: the name (12 columns and a space), the kind, the memory right aligned to 23 columns
     const memory = `${Math.ceil((needs.ARENA! + needs.DSP_AREA!) / 1024)}K`;
     expect(row.toString('latin1').split('\0')[0], 'the MODULES row of CANOPY').toBe(

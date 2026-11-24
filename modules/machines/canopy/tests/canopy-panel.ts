@@ -15,10 +15,11 @@ export const PRESET_LOAD = 0;
 export const PRESET_SAVE = 1;
 export const PRESET_POOL = 3;
 
-/** The panel steps and readers of one emulator session. */
-export function canopyPanel(session: Session, plan: RuntimePlan) {
+/** The panel steps and readers of one emulator session. `sym` resolves a name: pass `instrumentSymbols` of the session for the state of
+ * services/instrument.dks (the plan has only the image's names). */
+export function canopyPanel(session: Session, plan: RuntimePlan, sym: (name: string) => number = (name) => planSymbol(plan, name)) {
   const cf = async (name: string, index = 0) => {
-    const value = await session.client.memPeek(planSymbol(plan, name) + 4 * index);
+    const value = await session.client.memPeek(sym(name) + 4 * index);
     if (value === null) throw new Error(`Unreadable ${name}[${index}]`);
     return value >>> 0;
   };

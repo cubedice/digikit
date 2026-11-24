@@ -245,4 +245,4 @@ dl_reset_quiesce:
     .bss
     .balign 4
     .globl ip_img
-ip_img: .space 284
+ip_img: .space 288

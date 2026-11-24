@@ -7,7 +7,8 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol, prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { canopyControls } from '@digi/regression/runtime/canopy-controls.ts';
@@ -32,7 +33,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -58,7 +59,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
           session.options,
           session.runDir,
           artifacts,
-          ['DKRT_BOOT', 'ip_control', 'src_state', '_ir_rows', '_iv_input'],
+          ['DKRT_BOOT', '_ir_rows', '_iv_input'],
           { modules: ['core/instrument-play', 'core/digikit-menu', 'core/health'] },
         );
     const image = prepared?.syx ?? path.resolve(root, process.env.CANOPY_ARP_IMAGE!);
@@ -83,12 +84,13 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     if (typeof beforeRestart !== 'number') throw new Error('Missing pre-restart epoch');
     await dk.restart();
     await dk.waitForBoot();
+    const sym = await instrumentSymbols(session, plan);
     const word = async (address: number) => {
       const value = await session.client.memPeek(address);
       if (value === null) throw new Error(`Unreadable firmware word at ${address.toString(16)}`);
       return value >>> 0;
     };
-    const cf = (name: string, i = 0) => word(planSymbol(plan, name) + 4 * i);
+    const cf = (name: string, i = 0) => word(sym(name) + 4 * i);
     const peek = async (addr: number, len: number) => {
       const r = await session.client.call<{ hex: string; unknown: number }>('dsp.peek', { addr, len });
       expect(r.unknown).toBe(0);
@@ -119,11 +121,11 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     await key('YES');
     await expect.poll(() => cf('ip_track'), { timeout: 60_000 }).toBe(0);
     await expect.poll(() => cf('ip_control'), { timeout: 60_000 }).toBe(3);
-    const row = await peek(planSymbol(plan, '_ir_rows'), 64);
+    const row = await peek(sym('_ir_rows'), 64);
     expect(row.readUInt32LE(0)).toBe(3);
     const state = row.readUInt32LE(16); // admitted registry instance 0
     const bank = async () => {
-      const b = await peek(planSymbol(plan, '_iv_controls'), 128);
+      const b = await peek(sym('_iv_controls'), 128);
       return Array.from({ length: 32 }, (_, i) => b.readUInt32LE(i * 4));
     };
     const { settled } = canopyControls(cf, bank);
@@ -152,7 +154,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     await key('TRIG 1');
     await edge('TRIG 1', true);
     try {
-      const display = planSymbol(plan, 'display');
+      const display = sym('display');
       await turn(2, 20); // CHRD
       await expect.poll(() => byteAt(display + 201), { timeout: 30_000 }).toBe(2);
       await expect
@@ -283,7 +285,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
         })).filter((owner) => owner.token !== 0),
       };
     };
-    const inputFlags = async () => (await peek(planSymbol(plan, '_iv_input') + 48, 4)).readUInt32LE();
+    const inputFlags = async () => (await peek(sym('_iv_input') + 48, 4)).readUInt32LE();
     type ArpState = Awaited<ReturnType<typeof arp>>;
     const cadenceObservations: unknown[] = [];
     log.cadenceObservations = cadenceObservations;

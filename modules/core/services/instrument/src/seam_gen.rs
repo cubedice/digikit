@@ -4,6 +4,6 @@ pub const INFO: &str = "instrument_image";
 pub const MAGIC: u32 = 0x49505331;
 pub const VERSION: u32 = 1;
 /// Words of the table: magic, version, count, then one per name.
-pub const WORDS: usize = 71;
+pub const WORDS: usize = 72;
 /// The words that must not be 0 (functions and data of the adapter itself).
-pub const REQUIRED: [usize; 30] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 51, 52];
+pub const REQUIRED: [usize; 31] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 51, 52, 53];
