@@ -79,13 +79,17 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await waitInstrumentReady((name, i = 0) => word(sym(name) + 4 * i));
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
 
-    // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the machines service, the DSP area its image,
-    // bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
-    // The machines service the runtime loads with it takes arena too: its image block (`patchkit needs` of the bound file) and the block of
-    // its keys table (as `inferred-needs.device.test.ts` of the runtime counts a provider).
-    const service = boundPath('dt2', 'machines');
-    const [needs, serviceNeeds] = (await needsOf([moduleFile, service])) as [Record<string, number>, Record<string, number>];
-    const provided = serviceNeeds.ARENA! + block(fs.readFileSync(service).readUInt32BE(0x94));
+    // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the two services it needs, the DSP area its
+    // image, bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
+    // The services the runtime loads with it (machines, and instrument, which runs the host code of core/instrument-play: docs/plans/fork-image-diet.md)
+    // take arena too: each its image block (`patchkit needs` of the bound file) and the block of its keys table (as `inferred-needs.device.test.ts`
+    // of the runtime counts a provider).
+    const services = ['machines', 'instrument'].map((name) => boundPath('dt2', name));
+    const [needs, ...serviceNeeds] = (await needsOf([moduleFile, ...services])) as [Record<string, number>, ...Record<string, number>[]];
+    const provided = services.reduce(
+      (sum, file, i) => sum + serviceNeeds[i]!.ARENA! + block(fs.readFileSync(file).readUInt32BE(0x94)),
+      0,
+    );
     const capacity = await dk.capacity();
     fs.writeFileSync(path.join(artifacts, 'needs.json'), JSON.stringify({ needs, provided, capacity }, null, 2));
     const used = (kind: string) => capacity[kind]!.used;
