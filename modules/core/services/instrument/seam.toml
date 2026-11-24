@@ -79,7 +79,7 @@ entries = [
 ]
 
 # The image table `instrument_image` of core/instrument-play (its [[info]]): what the service takes from the image. The service
-# copies it at setup (refused without it: E_NO_REGISTRY) and reaches each function through a thunk of its own (a0 is clobbered,
+# copies it at setup (refused without it: E_NO_REGISTRY) and reaches each function through a thunk of its own (a1 is clobbered,
 # as a C call may), a data word through IP_DATA(name), a registry code through IP_VALUE(name).
 [image]
 info = "instrument_image"
