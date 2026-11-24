@@ -10,8 +10,8 @@ upstream merge.
 
 | Commit | What |
 | --- | --- |
-| COMMIT1 | The seam generator writes every `seam.toml`; forwarders and thunks jump through `a1` (the boot fault below). |
-| COMMIT2 | `services/track-keyboard.dks`: the player of `core/track-keyboard` in a service file, the image keeps the pattern storage and the hook sites. |
+| 11a28f901 | The seam generator writes every `seam.toml`; forwarders and thunks jump through `a1` (the boot fault below). |
+| 36d597e6e | `services/track-keyboard.dks`: the player of `core/track-keyboard` in a service file, the image keeps the pattern storage and the hook sites. |
 
 ## Numbers [D]
 
