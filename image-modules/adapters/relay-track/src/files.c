@@ -506,8 +506,7 @@ __attribute__((optimize("no-jump-tables"))) static int step(void *arg)
         if (cursor == frames)
             stage = LOAD_COMMIT;
         return MORE;
-    case LOAD_COMMIT:
-    {
+    case LOAD_COMMIT: {
         extern int rtm_load_current(unsigned);
         if (!pending && !rtm_load_current(relay_files.slot))
             return cancel();
@@ -566,8 +565,8 @@ const struct RelayOverview *rtm_wave(unsigned slot, unsigned revision, unsigned 
         return 0;
     for (unsigned i = 0; i < RELAY_WAVE_CACHED; ++i) {
         struct WaveCache *c = wave_cache + i;
-        if (c->overview.frames == length && c->overview.slot == slot &&
-            c->revision == revision && (!need_hits || c->sensitivity == sens)) {
+        if (c->overview.frames == length && c->overview.slot == slot && c->revision == revision &&
+            (!need_hits || c->sensitivity == sens)) {
             c->used = ++wave_clock;
             return &c->overview;
         }

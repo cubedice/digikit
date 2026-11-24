@@ -689,4 +689,3 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
     }
     return 1;
 }
-

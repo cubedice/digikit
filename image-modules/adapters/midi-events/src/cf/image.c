@@ -10,7 +10,8 @@ int mi_dsp_reset_release(void)
 
 /* The channel router (core/platform's USB path and din.s call it): the track keyboard first, then CANOPY's channel ledger while
  * services/instrument.dks is loaded (the forwarder answers 0 otherwise), then the track keyboard's own routes. */
-extern int tk_midi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source, int first) __attribute__((weak));
+extern int tk_midi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source, int first)
+    __attribute__((weak));
 extern int mi_legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source);
 int mi_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {

@@ -231,8 +231,8 @@ static int group_has(uint32_t pitch)
 extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     __attribute__((weak));
 extern int tk_panel_off(uint32_t key) __attribute__((weak));
-extern int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
-    __attribute__((weak));
+extern int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch,
+                                     uint32_t velocity) __attribute__((weak));
 extern void tk_panel_record_audition(uint32_t track, uint32_t pitch) __attribute__((weak));
 extern int tk_panel_retrig(uint32_t key, uint32_t track) __attribute__((weak));
 extern void tk_panel_cancel(void) __attribute__((weak));
@@ -344,8 +344,8 @@ void ip_panel_off(uint8_t *view, uint32_t key)
         tk_capture_panel_release(key);
     uint32_t mask = key < 16 ? 1u << key : 0;
     uint16_t recorded_live = mask ? shared_live_record[key] : 0;
-    int shared =
-        !(IP_HAVE(tk_panel_retrig) && tk_panel_retrig(key, IP_NONE)) && IP_HAVE(tk_panel_off) && tk_panel_off(key);
+    int shared = !(IP_HAVE(tk_panel_retrig) && tk_panel_retrig(key, IP_NONE)) &&
+                 IP_HAVE(tk_panel_off) && tk_panel_off(key);
     if (shared && !recorded_live && !(shared_step_keys & mask))
         return;
     shared_step_keys &= ~mask;

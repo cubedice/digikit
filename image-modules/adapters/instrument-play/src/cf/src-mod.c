@@ -47,12 +47,12 @@ static const uint32_t rows[3][6] = {
 void ip_seam_rows(void)
 {
     const uint32_t codes[18] = {
-        IP_VALUE(ip_mod_color), IP_VALUE(ip_mod_drift), IP_VALUE(ip_mod_mix),
-        IP_VALUE(ip_mod_strum), IP_VALUE(ip_mod_gate), IP_VALUE(ip_mod_swing),
-        IP_VALUE(ip_mod_position), IP_VALUE(ip_mod_scan_depth), IP_VALUE(ip_mod_scan_rate),
+        IP_VALUE(ip_mod_color),      IP_VALUE(ip_mod_drift),      IP_VALUE(ip_mod_mix),
+        IP_VALUE(ip_mod_strum),      IP_VALUE(ip_mod_gate),       IP_VALUE(ip_mod_swing),
+        IP_VALUE(ip_mod_position),   IP_VALUE(ip_mod_scan_depth), IP_VALUE(ip_mod_scan_rate),
         IP_VALUE(ip_mod_timbre_env), IP_VALUE(ip_mod_wtfm_depth), IP_VALUE(ip_mod_wtfm_env),
-        IP_VALUE(ip_mod_fm_depth), IP_VALUE(ip_mod_balance), IP_VALUE(ip_mod_feedback),
-        IP_VALUE(ip_mod_fm_env), IP_VALUE(ip_mod_fm_attack), IP_VALUE(ip_mod_fm_release)};
+        IP_VALUE(ip_mod_fm_depth),   IP_VALUE(ip_mod_balance),    IP_VALUE(ip_mod_feedback),
+        IP_VALUE(ip_mod_fm_env),     IP_VALUE(ip_mod_fm_attack),  IP_VALUE(ip_mod_fm_release)};
     for (uint32_t i = 0; i < 18; ++i)
         rows[i / 6][i % 6] = codes[i];
 }

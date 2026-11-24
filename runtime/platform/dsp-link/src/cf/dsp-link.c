@@ -531,9 +531,8 @@ void dl_tick(int len, const u16 *src, int reclen, const volatile u16 *rec)
                                rec);
         }
         if (relay_write_frame) {
-            const u32 reserved =
-                DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS + DL_PHRASE_WORDS +
-                DL_RELAY_WORDS;
+            const u32 reserved = DL_POSITION_WORDS + DL_INSTRUMENT_WORDS + DL_LOCK_WORDS +
+                                 DL_PHRASE_WORDS + DL_RELAY_WORDS;
             words = 174u - reserved;
             relay_write_frame(tx, total - 2u * reserved);
         }

@@ -179,7 +179,6 @@ uint32_t instrument_sound_tune(uint32_t instance)
     return instrument_sound_raw_tune(source);
 }
 
-
 int instrument_sound_admitted(uint32_t track)
 {
     uint32_t type = dkrt_instrument_type();

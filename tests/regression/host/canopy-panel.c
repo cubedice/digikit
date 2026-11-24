@@ -755,7 +755,8 @@ int main(void)
     uint32_t native_release[8] = {[3] = 0x19 + 10, [4] = 0x10};
     assert(ip_panel_key_event(view, (uint8_t *)native_release) == 17);
     assert(filtered_off == 2 && original_off == stock_off + 2 && shared_ups == up + 2);
-    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] && guarded_track == 16);
+    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] &&
+           guarded_track == 16);
     puts("ok");
     return 0;
 }

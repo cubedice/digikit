@@ -55,7 +55,7 @@ the old location). Upstream's own lines were left as upstream wrote them.
 
 ## To port (in this order)
 
-Items 1 to 9 are done on `integrate/upstream-1124` (2026-11-24); item 10 is under way.
+Items 1 to 10 are done on `integrate/upstream-1124` (2026-11-24); nothing is pushed or installed on hardware.
 
 1. Regenerate: `patchkit gen` (bindings, `dkrt.h`, `gen_*`), the port files (`tools/patchkit/port_resolve.py`), the objects. Done (4a75dd24a).
 2. **Firmware anchors.** `devices/fw/project.toml` (fork: 88 lines: the pattern save, load, reset and track clear hooks of the track
@@ -88,4 +88,20 @@ Items 1 to 9 are done on `integrate/upstream-1124` (2026-11-24); item 10 is unde
    `card-seed.ts` and the service address maps of upstream. Remove `core/digikit-menu` and `core/lfo` from the fork's test records and
    module lists. `tools/nx` rig inputs of a coupled rig test (`importedModules`, Overloop with PRISM) if the rig tests need them. Done (333234376, 9e2d6698c).
 10. Builds and gates: the host suites, patchkit, the runtime, the Python suites, then the device tests of the track keyboard, CANOPY,
-    PRISM, Overloop and RELAY; the hardware set's fit (`canopy-overloop-prism`).
+    PRISM, Overloop and RELAY; the hardware set's fit (`canopy-overloop-prism`). Done: every DT2 set applies (fits above); the static checks,
+    the Rust, host, assembly and Python suites pass (not `digiemu-desktop:rust-tests`: the WSL machine has no dbus, GTK or WebKit
+    development packages); all 25 fork DT2 device test files pass in the emulator (track keyboard 11, CANOPY 7, PRISM 4, Overloop 2,
+    RELAY 1). DN2 device tests and upstream's own device tests were not run here. What the gates found, beyond the port list:
+    - **The key walker.** Upstream's shortcuts service hooks its entry (`cf.input.site.key_event_walk`) through the port file, which refuses
+      a site an image module patched; core/fxview patched the same 8 bytes, so no card service loaded on a DT2 set with fxview. fxview takes
+      the two instructions after the prologue now (`cf.page.site.phrase_key_walk`, `walk.s`); shortcuts run first.
+    - **Boot needs.** Upstream's package manager brings up only the providers its roots need: the service of an image boot need
+      (`boot_need_track_keyboard`) is a root of its own (`Loader::provider_is_boot_need`).
+    - **Port file users.** The card's port file lists the declarations with a `core/services/` user: the two fork services are users of
+      every name their packed files import (107), and two lockfile anchors got their missing declarations (`instrument_panel_trig_*`).
+    - **The DSP link lease.** Upstream's blocking `link_run` (machines placeholders) spun in the UI task while the instrument host held the
+      lease: `package::link::run` fails at once while the legacy side is held.
+    - **Image file calls.** `dkrt_image_file_*` (RELAY's tape writes) are resident (`storage/sdk_files.rs`), not package exports.
+    - **Tests.** Upstream boots live sessions from card images with the system package (`seededCard` of `live-card.ts` for the fork's seed
+      folders), lists test image roots in `image-roots.json`, and starts a stock MAIN from its ready snapshot, made without a card (the
+      track keyboard panel proof compares two cold boots of the card now).

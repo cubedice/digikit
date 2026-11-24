@@ -6,10 +6,13 @@
 /* Set by a client that wants every long copy and fill (sound-persist.c once its association store exists). */
 volatile uint32_t cw_long_watch;
 
-extern void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length) __attribute__((weak));
-extern void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length) __attribute__((weak));
+extern void ip_sa_copy_before(uint32_t destination, uint32_t source, uint32_t length)
+    __attribute__((weak));
+extern void ip_sa_copy_after(uint32_t destination, uint32_t source, uint32_t length)
+    __attribute__((weak));
 extern void ip_sa_cleared(uint32_t destination, uint32_t length) __attribute__((weak));
-extern void tk_pattern_copied(uint32_t destination, uint32_t source, uint32_t length) __attribute__((weak));
+extern void tk_pattern_copied(uint32_t destination, uint32_t source, uint32_t length)
+    __attribute__((weak));
 extern void tk_pattern_cleared(uint32_t destination, uint32_t length) __attribute__((weak));
 
 void cw_copy_before(uint32_t destination, uint32_t source, uint32_t length)

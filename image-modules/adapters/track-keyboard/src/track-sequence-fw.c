@@ -421,7 +421,8 @@ void tk_sequence_set_relay(uint8_t track, bool relay)
 }
 
 /* optional: CANOPY's host (core/instrument-play) is not in every image */
-extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out, uint16_t *tune) __attribute__((weak));
+extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out,
+                                   uint16_t *tune) __attribute__((weak));
 
 bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track)
 {

@@ -18,23 +18,28 @@ extern void dkrt_irq_restore(uint32_t);
 /* CANOPY's host (core/instrument-play) is optional: in an image without it these are 0, every track is a track CANOPY does not own,
  * and the bridge below is not used (docs/plans/fork-image-diet.md section 9). */
 extern int cp_valid(const CpPreset *p) __attribute__((weak));
-extern int ilp_event_pair(uint16_t parameter, int16_t packed, uint32_t *id, uint32_t *value) __attribute__((weak));
-extern int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out) __attribute__((weak));
-extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out, uint16_t *tune) __attribute__((weak));
+extern int ilp_event_pair(uint16_t parameter, int16_t packed, uint32_t *id, uint32_t *value)
+    __attribute__((weak));
+extern int instrument_lock_source(uint32_t track, uint32_t wave, uint16_t *out)
+    __attribute__((weak));
+extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out,
+                                   uint16_t *tune) __attribute__((weak));
 extern void instrument_src_track_keyboard(uint32_t track, int active) __attribute__((weak));
 extern int instrument_track_keyboard_lanes(uint32_t track, uint32_t lanes) __attribute__((weak));
 extern int instrument_track_keyboard_legacy(uint32_t track, CpPreset *out) __attribute__((weak));
-extern int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch, uint32_t velocity, uint32_t on,
-                                                 uint32_t lane, const struct IsnSnapshot *snapshot) __attribute__((weak));
+extern int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32_t pitch,
+                                                 uint32_t velocity, uint32_t on, uint32_t lane,
+                                                 const struct IsnSnapshot *snapshot)
+    __attribute__((weak));
 extern int instrument_track_owned(uint32_t track) __attribute__((weak));
 
 /* All of CANOPY's host is in the image (in the service build: in the image table tk_image). */
 static bool canopy_linked(void)
 {
-    return TK_HAVE(cp_valid) && TK_HAVE(ilp_event_pair) && TK_HAVE(instrument_lock_source) && TK_HAVE(instrument_locked_sound) &&
-           TK_HAVE(instrument_src_track_keyboard) && TK_HAVE(instrument_track_keyboard_lanes) &&
-           TK_HAVE(instrument_track_keyboard_legacy) && TK_HAVE(instrument_track_keyboard_locked_note) &&
-           TK_HAVE(instrument_track_owned);
+    return TK_HAVE(cp_valid) && TK_HAVE(ilp_event_pair) && TK_HAVE(instrument_lock_source) &&
+           TK_HAVE(instrument_locked_sound) && TK_HAVE(instrument_src_track_keyboard) &&
+           TK_HAVE(instrument_track_keyboard_lanes) && TK_HAVE(instrument_track_keyboard_legacy) &&
+           TK_HAVE(instrument_track_keyboard_locked_note) && TK_HAVE(instrument_track_owned);
 }
 
 static const uint8_t order[] = {TK_ORDER_UP, TK_ORDER_DOWN, TK_ORDER_UPDN, TK_ORDER_PLAY,
@@ -57,7 +62,8 @@ static void set_user_recipe(TkRecipe *recipe, const CpPreset *saved)
 
 bool tk_canopy_is_owner(uint8_t track, int type)
 {
-    return canopy_linked() && type > 0 && (uint32_t)type == dkrt_instrument_type() && instrument_track_owned(track);
+    return canopy_linked() && type > 0 && (uint32_t)type == dkrt_instrument_type() &&
+           instrument_track_owned(track);
 }
 
 static bool legacy(uint8_t track, TkTrackConfig *out)
