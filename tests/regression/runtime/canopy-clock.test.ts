@@ -4,7 +4,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions } from './devices.ts';
+import { liveOptions } from './live-options.ts';
 import { captureRemoteOled } from './remote.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { waitEmulated } from './port-compat.ts';

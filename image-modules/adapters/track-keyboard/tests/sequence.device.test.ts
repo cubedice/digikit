@@ -1,4 +1,5 @@
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
@@ -272,8 +273,8 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     };
     const noteOn = (bytes: number[]) => {
       const offset = bytes.findIndex((status, i) =>
-        (status & 0xf0) === 0x90 && bytes[i + 1] < 128 && bytes[i + 2] > 0 && bytes[i + 2] < 128);
-      return offset < 0 ? undefined : { channel: bytes[offset] & 15, pitch: bytes[offset + 1] };
+        (status & 0xf0) === 0x90 && bytes[i + 1]! < 128 && bytes[i + 2]! > 0 && bytes[i + 2]! < 128);
+      return offset < 0 ? undefined : { channel: bytes[offset]! & 15, pitch: bytes[offset + 1]! };
     };
     const noteOff = (bytes: number[], note: { channel: number; pitch: number }) =>
       bytes.some((status, i) => (status & 15) === note.channel && bytes[i + 1] === note.pitch &&

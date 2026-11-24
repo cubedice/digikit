@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
@@ -32,7 +34,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
     : moduleArtifact('dt2', 'digikit/canopy');
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
-      fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+      fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
     await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
@@ -41,7 +43,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
       throw new Error('Refusing to remove an unowned card fixture');
     fs.rmSync(owned, { recursive: true });
   });
-  const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+  const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
 
   test('CANOPY arp follows BPM across stopped and playing transport', { timeout: 900_000 }, async () => {
     const root = repoRoot();

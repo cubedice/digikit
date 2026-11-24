@@ -4,7 +4,9 @@ import { createHash } from 'node:crypto';
 import { repoRoot, Session } from '@digi/test-support';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
@@ -33,7 +35,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
-      fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+      fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
     await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
@@ -42,7 +44,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       throw new Error('Refusing to remove an unowned card fixture');
     fs.rmSync(owned, { recursive: true });
   });
-  const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+  const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
 
   test(checkWorkingBoot ? 'working-state restart restores each CANOPY track SRC sound' :
     'native project save and reboot restore each CANOPY track SRC sound', { timeout: 900_000 }, async () => {
@@ -191,7 +193,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     // A saved DTII project no longer performs the fresh-card filesystem check.
     // Match the separate relaxed daemon used for later boots in card-rig while
     // retaining the normal, unrelaxed first boot and panel setup.
-    coldSession = await Session.start({ ...options, card: undefined, dsp: 'sharc', env: { DIGI_COLD_RELAX_FS: '1' } });
+    coldSession = await Session.start({ ...options, card: undefined, cardImage: undefined, dsp: 'sharc', env: { DIGI_COLD_RELAX_FS: '1' } });
     session = coldSession;
     const savedEpoch = Number((await session.status()).epoch);
     await session.client.firmwareLoad({

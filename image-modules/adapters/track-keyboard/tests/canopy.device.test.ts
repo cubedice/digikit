@@ -3,7 +3,9 @@ import path from 'node:path';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { repoRoot } from '@digi/test-support';
 import { withSession } from '@digi/regression/support.ts';
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
@@ -23,7 +25,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
   const card = fs.mkdtempSync(path.join(fixtureRoot, 'track-keyboard-canopy-'));
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
-      fs.copyFileSync(path.join(options.card!, name), path.join(card, name));
+      fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(card, name));
     await seedModules(card, 'dt2', [{ file: moduleArtifact('dt2', 'digikit/canopy'), needs: ['machines', 'instrument'] }]);
     await seedServices(card, 'dt2', ['track-keyboard']);
   });
@@ -33,7 +35,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       throw new Error('Refusing to remove an unowned card fixture');
     fs.rmSync(owned, { recursive: true });
   });
-  const handle = withSession({ ...options, card, dsp: 'sharc', restart: false });
+  const handle = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, card!), dsp: 'sharc', restart: false });
 
   test('inherits legacy performance until a TRIG edit and then owns keyboard input', { timeout: 420_000 }, async () => {
     const { session } = handle;
@@ -339,7 +341,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       const pixels: number[] = [];
       // Left side of the stock envelope, above the control names.
       for (let y = 14; y < 30; y++)
-        for (let x = 24; x < 60; x++) pixels.push((oled[8 * x + 7 - (y >> 3)] >> (y & 7)) & 1);
+        for (let x = 24; x < 60; x++) pixels.push((oled[8 * x + 7 - (y >> 3)]! >> (y & 7)) & 1);
       return Buffer.from(pixels);
     };
     const beforeAttack = await attackPixels();

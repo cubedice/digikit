@@ -242,8 +242,8 @@ export class FxRig {
     return this.rows[i]!.state || `_fx_auto_state${i}`;
   }
 
-  /** Write a DM word (normal-word address) for the following calls. */
-  poke(address: number, word: number): void {
+  /** Write a DM word (normal-word address) for the following calls. `poke` takes a byte address. */
+  pokeWord(address: number, word: number): void {
     this.q.poke(address, word);
   }
 

@@ -6,7 +6,8 @@ import { CMD } from '@digi/dk-session/gen_proto';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
 import { timePhase, timingContext } from '@digi/regression/timing.ts';
-import { liveOptions } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
@@ -43,7 +44,7 @@ beforeAll(async () => {
   // Start with the same sample card and factory project, adding only the exact
   // prepared module. No selection, saved sound, preset or prior overlay is reused.
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
-    fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+    fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
   }
   await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
 });
@@ -54,7 +55,7 @@ afterAll(() => {
   }
   fs.rmSync(owned, { recursive: true });
 });
-const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
 test(
   'CANOPY native SOUND, ARP, TONE and FM ENV pages route controls to the audible bank',
   async () => {

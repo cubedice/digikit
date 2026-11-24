@@ -5,7 +5,8 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { repoRoot } from '@digi/test-support';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions } from './devices.ts';
+import { liveOptions } from './live-options.ts';
+import { liveSampleFolder, seededCard } from './live-card.ts';
 import { liveProtocol } from './protocol.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
@@ -28,7 +29,7 @@ const cardSeed = fs.mkdtempSync(path.join(fixtureRoot, 'canopy-plock-card-'));
 const moduleFile = path.resolve(repoRoot(), process.env.CANOPY_PLOCK_PACKAGE ?? 'out/patch/canopy-fm-release.dkm');
 beforeAll(async () => {
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
-    fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+    fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
   }
   await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines'] }]);
 });
@@ -39,7 +40,7 @@ afterAll(() => {
   }
   fs.rmSync(owned, { recursive: true });
 });
-const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
 test('CANOPY track trig locks: stock lock storage and playback', { timeout: 900_000 }, async () => {
   const root = repoRoot(),
     image = path.resolve(root, process.env.CANOPY_PLOCK_IMAGE ?? 'out/patch/canopy-multi-release.syx');

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
-import { liveOptions } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';

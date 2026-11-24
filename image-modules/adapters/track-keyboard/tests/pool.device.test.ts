@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { dspWords, peak, readFloatWav } from '@digi/regression/runtime/fx-live.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';

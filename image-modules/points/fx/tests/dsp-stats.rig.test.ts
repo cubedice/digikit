@@ -21,8 +21,8 @@ const ADD1 = { pc: '_te_add1', state: '_te_state_a' };
 async function play(device: 'dt2' | 'dn2', stats: boolean, withoutSpans = false): Promise<FxBlock[]> {
   const rig = await FxRig.open([ADD1], { sources: EFFECTS, device, built: buildFx(EFFECTS, device, withoutSpans) });
   try {
-    rig.poke(nw(rig.built.data._fx_diag!) + PTR_WORD, stats ? WINDOW : 0);
-    for (let k = 0; k < WINDOW_WORDS; k++) rig.poke(nw(WINDOW) + k, 0); // what a clear generation does
+    rig.pokeWord(nw(rig.built.data._fx_diag!) + PTR_WORD, stats ? WINDOW : 0);
+    for (let k = 0; k < WINDOW_WORDS; k++) rig.pokeWord(nw(WINDOW) + k, 0); // what a clear generation does
     const out: FxBlock[] = [];
     for (let b = 0; b < BLOCKS; b++) out.push(await rig.block(RAMP, 'friendly', {}, [[WINDOW, WINDOW_WORDS]]));
     return out;

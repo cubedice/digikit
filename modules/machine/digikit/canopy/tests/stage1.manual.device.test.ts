@@ -5,7 +5,7 @@ import { button, repoRoot } from '@digi/test-support';
 import { CMD } from '@digi/dk-session/gen_proto';
 import { expect, onTestFinished, test } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
-import { liveOptions } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { chordWindow, voiceChange } from '@digi/regression/runtime/chord-continuity.ts';

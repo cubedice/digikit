@@ -1,5 +1,6 @@
 // device-literals: allow (pins to the native pattern clock and track records)
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';

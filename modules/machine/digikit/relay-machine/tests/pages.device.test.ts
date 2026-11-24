@@ -86,7 +86,7 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     const still=await stoppedPixels();
     for(let i=0;i<3;++i) {
       await rt.ui.wait({ms:90,why:'sample the stationary waveform and status row'});
-      expect((await stoppedPixels()).equals(still)).toBe(true);
+      expect(await stoppedPixels()).toEqual(still);
     }
     const readFrame=(s:number[])=> (s[6]! + (s[2]! >>> 16) + ((s[4]! & 0xff00) << 8)) % s[5]!;
     const turn=(enc:string,n:number)=>rt.ui.turn(enc,n,{until:{ms:120,why:REDRAW}});

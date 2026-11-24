@@ -3,7 +3,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { repoRoot } from '@digi/test-support';
 import { withSession } from '@digi/regression/support.ts';
-import { liveOptions } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
@@ -21,7 +22,7 @@ if (process.env.DIGI_CANOPY_WORKER_REFILL === '1') {
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
-      fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+      fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
     await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
@@ -30,7 +31,7 @@ if (process.env.DIGI_CANOPY_WORKER_REFILL === '1') {
       throw new Error('Refusing to remove an unowned card fixture');
     fs.rmSync(owned, { recursive: true });
   });
-  const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+  const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
   test('real worker retries failed refill with interrupts enabled', { timeout: 600_000 }, async () => {
     const session = h.session;
     const artifacts = path.join(repoRoot(), 'out/canopy-worker-refill', path.basename(session.runDir));

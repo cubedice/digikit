@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import { LOG_KIND } from '@digi/dk-session/gen_proto';
 import { expect, test } from 'vitest';
 import { withSession } from '../support.ts';
-import { liveOptions } from './devices.ts';
+import { liveOptions } from './live-options.ts';
 import { liveProtocol } from './protocol.ts';
 import { moduleArtifact } from './install.ts';
 import { waitEmulated } from './port-compat.ts';

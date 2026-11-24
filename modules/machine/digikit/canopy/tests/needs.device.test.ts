@@ -3,7 +3,9 @@ import path from 'node:path';
 import { repoRoot } from '@digi/test-support';
 import { afterAll, beforeAll, expect, test, vi } from 'vitest';
 import { withSession } from '@digi/regression/support.ts';
-import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtime-plan.ts';
@@ -15,7 +17,6 @@ import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { openDigikitMenu } from '@digi/regression/runtime/flows/menu.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 import { needsOf } from '@digi/regression/runtime/dkm.ts';
-import { boundPath } from '@digi/regression/runtime/service-files.ts';
 import { block } from '@digi/regression/runtime/synth.ts';
 
 /**
@@ -32,7 +33,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
   const moduleFile = moduleArtifact('dt2', 'digikit/canopy');
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
-      fs.copyFileSync(path.join(options.card!, name), path.join(cardSeed, name));
+      fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
     await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
   });
   afterAll(() => {
@@ -41,7 +42,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
       throw new Error('Refusing to remove an unowned card fixture');
     fs.rmSync(owned, { recursive: true });
   });
-  const h = withSession({ ...options, card: cardSeed, dsp: 'sharc', restart: false });
+  const h = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, cardSeed!), dsp: 'sharc', restart: false });
 
   test('the load takes what the needs say, and the MODULES page shows them', { timeout: 600_000 }, async () => {
     const { session } = h;
@@ -82,9 +83,9 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the two services it needs, the DSP area its
     // image, bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
     // The services the runtime loads with it (machines, and instrument, which runs the host code of core/instrument-play: docs/plans/fork-image-diet.md)
-    // take arena too: each its image block (`patchkit needs` of the bound file) and the block of its keys table (as `inferred-needs.device.test.ts`
-    // of the runtime counts a provider).
-    const services = ['machines', 'instrument'].map((name) => boundPath('dt2', name));
+    // take arena too: each its image block (`patchkit needs` of the packed file the card holds) and the block of its keys table (as
+    // `inferred-needs.device.test.ts` of the runtime counts a provider).
+    const services = ['machines', 'instrument'].map((name) => moduleArtifact('dt2', `core/services/${name}`));
     const [needs, ...serviceNeeds] = (await needsOf([moduleFile, ...services])) as [Record<string, number>, ...Record<string, number>[]];
     const provided = services.reduce(
       (sum, file, i) => sum + serviceNeeds[i]!.ARENA! + block(fs.readFileSync(file).readUInt32BE(0x94)),

@@ -15,7 +15,7 @@ import { resolveInputs, repoRoot, type Device } from '@digi/test-support';
 export const LIVE_STABLE_BLOCKS = 1500;
 
 /** The sample folder that live sessions mount on a device with a path filesystem (made by pk_harness), or undefined for another device. */
-function liveSampleFolder(device: Device): string | undefined {
+export function liveSampleFolder(device: Device): string | undefined {
   if (deviceProfile(device).capabilities.card !== 'path-fs') return undefined;
   const dir = path.join(repoRoot(), 'out/runs/patchkit/samples');
   if (!fs.existsSync(dir)) {
@@ -40,5 +40,18 @@ export async function liveCard(device: Device, firmware: string, stableBlocks = 
     folder: folder ? folderSha(folder) : undefined,
     syx: syx ? fileSha(syx) : undefined,
   });
+  return cachedCard(key, (work) => buildCard(device, { ...spec, dir: work, name: 'card' }));
+}
+
+/**
+ * The card of a live session from a seed folder the test filled itself (samples copied from `liveSampleFolder`, packed modules, service
+ * files and the port file: `card-seed.ts`): built as `liveCard` builds its folder (the system package and, on a device with a path
+ * filesystem, the boot project of the firmware; a selection record with `stableBlocks`), content-named in the card cache. The fork's proofs
+ * (CANOPY, the track keyboard) pass `cardImage: () => seededCard(...)` where they passed the seed as `card` before the upstream merge.
+ */
+export async function seededCard(device: Device, firmware: string, seed: string, stableBlocks = LIVE_STABLE_BLOCKS): Promise<string> {
+  const syx = deviceProfile(device).capabilities.card === 'path-fs' ? resolveInputs(device, firmware).syx : undefined;
+  const spec = { selection: [] as string[], stableBlocks, folder: seed, syx };
+  const key = cardKey(device, { ...spec, folder: folderSha(seed), syx: syx ? fileSha(syx) : undefined });
   return cachedCard(key, (work) => buildCard(device, { ...spec, dir: work, name: 'card' }));
 }
