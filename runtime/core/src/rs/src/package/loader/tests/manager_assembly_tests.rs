@@ -284,14 +284,16 @@ fn a_service_the_image_asks_for_comes_up_with_an_empty_selection() {
             l.p.info_entries.borrow_mut().push((h, vec![0]));
             l.reset_plan();
             l.find_providers(0);
-            assert_eq!(l.found.n, 1, "{}: the image asked for the service: the search finds its file", dev.name);
-            assert!(l.provider_is_boot_need(0), "{}", dev.name);
+            // the service and the port file it needs (`port`); only the service is the image's own need
+            assert!(l.found.n >= 1, "{}: the image asked for the service: the search finds its file", dev.name);
+            let own: Vec<usize> = (0..l.found.n).filter(|&j| l.provider_is_boot_need(j)).collect();
+            assert_eq!(own.len(), 1, "{}: one provider serves the boot need", dev.name);
             let rec = boot_record(&[]);
             let mut rt = Rt::new(&mut l as *mut _);
             rt.boot_with(&rec, &capacity(&l.p));
-            assert_eq!(records::module(MAX_MODULES).used, 1, "{}: the provider is loaded", dev.name);
+            assert_eq!(records::module(MAX_MODULES + own[0]).used, 1, "{}: the provider is loaded", dev.name);
             let m = rt.manager().unwrap();
-            assert!(m.live().contains(id(MAX_MODULES)), "{}: the manager holds it", dev.name);
+            assert!(m.live().contains(id(MAX_MODULES + own[0])), "{}: the manager holds it", dev.name);
             assert_eq!(crate::boot::info().loaded, 0, "{}: no module is counted", dev.name);
         }
         clean_state();
