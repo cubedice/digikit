@@ -17,6 +17,7 @@ import { inspectFxBoot, withPreparedFxSession } from '@digi/regression/runtime/f
 import { selectTrack } from '@digi/regression/runtime/fx-track-ui.ts';
 import { record } from '@digi/regression/runtime/artifacts.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { PH, advance, chooseTracks, openPrismPage, setPrism, tap } from './ui-helpers.ts';
@@ -54,7 +55,6 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
         'DKRT_BOOT',
         'DKRT_INSTRUMENT_FILE',
         'fx.rows',
-        'ip_control',
         '_ir_rows',
         '_iv_result',
         '_loop_buffer_info',
@@ -177,7 +177,9 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
     // its final entry, matching the existing CANOPY native acceptance setup.
     await selectTrack(sessionRt(session), 1);
     await pickSine(sessionRt(session), 20);
-    expect(await cf('ip_control'), 'native chooser selected the admitted instrument').toBe(3);
+    // CANOPY's host state is in services/instrument.dks (docs/plans/fork-image-diet.md)
+    const sym = await instrumentSymbols(session, plan);
+    expect(await word(session, sym('ip_control')), 'native chooser selected the admitted instrument').toBe(3);
 
     // PRISM is a send effect: it hears CANOPY's track 1, chosen on its page with G held and TRIG 1.
     const chainAtStart = await rows(session, plan, context.slots);
