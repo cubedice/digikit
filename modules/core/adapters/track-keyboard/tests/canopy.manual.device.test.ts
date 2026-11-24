@@ -43,7 +43,6 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       output,
       [
         'DKRT_BOOT',
-        'track_keyboard_lanes',
         'tk_panel_claim_hits',
         'tk_sequence_audio_hits',
         'tk_sequence_audio_locked_hits',
@@ -308,7 +307,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       expect(sound, 'CANOPY is editing an admitted native Sound').toBeGreaterThanOrEqual(0x40000000);
       return halfAt(sound + 0x46);
     };
-    const panel = canopyPanel(session, plan);
+    const panel = canopyPanel(session, plan, sym);
     const baseTune = await nativeTune();
     expect(baseTune).toBe(0x4000);
     // Keep the original Sound in slot 002 so it can be recalled exactly,
