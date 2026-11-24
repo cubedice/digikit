@@ -1826,7 +1826,12 @@ fn the_builder_calls_of_a_module_resolve_to_the_exports_of_the_service_that_owns
     }
 }
 
-/// The SDK exports of a service file are its `provided` imports of sdk/sdk.toml, including the internal calls from `handlers::exports`.
+/// The `internal = true` imports of sdk/sdk.toml: exports of a service file that only the runtime calls by name (in the file's export list, in no
+/// module's import table, so not in `PROVIDED`). The fork's machines file has the V2 instrument loader's two queries.
+const INTERNAL: [(&str, &str); 2] = [("machines", "dk_machines_planned_ids"), ("machines", "dk_machines_id_taken")];
+
+/// The SDK exports of a service file are its `provided` imports of sdk/sdk.toml, including the internal calls from `handlers::exports`
+/// (`INTERNAL`).
 #[test]
 fn the_header_exports_of_a_service_file_are_its_provided_imports() {
     let _g = clean();
@@ -1839,7 +1844,11 @@ fn the_header_exports_of_a_service_file_are_its_provided_imports() {
                 .filter(|entry| entry.b & dkneeds::keys::EXPORT_QUERY == 0)
                 .map(|entry| entry.a)
                 .collect();
-            let want: std::collections::BTreeSet<u32> = builders_of(service).into_iter().map(name_hash).collect();
+            let want: std::collections::BTreeSet<u32> = builders_of(service)
+                .into_iter()
+                .chain(INTERNAL.iter().filter(|(s, _)| *s == service).map(|(_, n)| *n))
+                .map(name_hash)
+                .collect();
             assert!(!want.is_empty(), "{service} provides nothing in sdk/sdk.toml");
             assert_eq!(listed, want, "{} {service}.dks: header EXPORTS differ from the provided imports", dev.name);
         }

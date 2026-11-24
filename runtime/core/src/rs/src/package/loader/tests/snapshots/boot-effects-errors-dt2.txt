@@ -29,8 +29,8 @@ installer calls
   flush 0x401394d0 32
   flush 0x400e1b60 16
   restore
-  flush blk7+0 1760
-  flush blk7+0 1760
+  flush blk7+0 1772
+  flush blk7+0 1772
   mask
   write 0x4013954a 6
   flush 0x40139540 16
@@ -73,7 +73,7 @@ events
 installed sites 0
 service rows
 arena blocks
-  0x00700000 1760 bytes
+  0x00700000 1776 bytes
 contexts and ticks
   2 magic 0x444b4358 rec 2 tick blk7+266
 live set 2
@@ -82,7 +82,7 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 1 local-ping-user.dkm result -73 state 2 detail [ee7f2383, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 2 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1760 fini 0x0070020a
+  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1772 fini 0x0070020a
 card sectors
   5094 6ccdcc2a6b11
   5095 7709000d04e7
@@ -96,7 +96,7 @@ events
 installed sites 0
 service rows
 arena blocks
-  0x00700000 1760 bytes
+  0x00700000 1776 bytes
 contexts and ticks
   2 magic 0x444b4358 rec 2 tick blk7+266
 live set 2
@@ -105,7 +105,7 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 1 local-ping-user.dkm result -73 state 2 detail [ee7f2383, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 2 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1760 fini 0x0070020a
+  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1772 fini 0x0070020a
 card sectors
   5094 6ccdcc2a6b11
   5095 7709000d04e7
@@ -119,7 +119,7 @@ events
 installed sites 0
 service rows
 arena blocks
-  0x00700000 1760 bytes
+  0x00700000 1776 bytes
 contexts and ticks
   2 magic 0x444b4358 rec 2 tick blk7+266
 live set 2
@@ -128,7 +128,7 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 1 local-ping-user.dkm result -73 state 2 detail [ee7f2383, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 2 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1760 fini 0x0070020a
+  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1772 fini 0x0070020a
 card sectors
   5094 6ccdcc2a6b11
   5095 7709000d04e7
@@ -142,7 +142,7 @@ events
 installed sites 0
 service rows
 arena blocks
-  0x00700000 1760 bytes
+  0x00700000 1776 bytes
 contexts and ticks
   2 magic 0x444b4358 rec 2 tick blk7+266
 live set 2
@@ -151,7 +151,7 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 1 local-ping-user.dkm result -73 state 2 detail [ee7f2383, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 2 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1760 fini 0x0070020a
+  2 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x00700000 size 1772 fini 0x0070020a
 card sectors
   5094 6ccdcc2a6b11
   5095 7709000d04e7
