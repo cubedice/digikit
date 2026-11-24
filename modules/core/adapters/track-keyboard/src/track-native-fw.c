@@ -1,3 +1,4 @@
+#include "tk-seam.h"
 #include "track-native.h"
 #include "track-canopy.h"
 #include "track-pool.h"
@@ -49,7 +50,7 @@ int tk_native_kind(uint8_t track)
         return type == 5 ? TK_NATIVE_MIDI : TK_NATIVE_UNSUPPORTED;
     if (tk_canopy_is_owner(track, type))
         return TK_NATIVE_CANOPY;
-    if (type >= 7 && rtm_is_type && rtm_is_type((unsigned)type) && tk_pool_fw_relay_ready())
+    if (type >= 7 && TK_HAVE(rtm_is_type) && rtm_is_type((unsigned)type) && tk_pool_fw_relay_ready())
         return TK_NATIVE_RELAY;
     return type >= 0 && type <= 6 && type != 5 ? TK_NATIVE_AUDIO : TK_NATIVE_UNSUPPORTED;
 }
@@ -57,7 +58,7 @@ int tk_native_kind(uint8_t track)
 bool tk_native_relay_sound(uintptr_t sound)
 {
     /* A pool Sound is only halfword-aligned. The type is one byte. */
-    return sound >= 0x42000000u && sound < 0x48000000u - 0xa2u && !(sound & 1u) && rtm_is_type &&
+    return sound >= 0x42000000u && sound < 0x48000000u - 0xa2u && !(sound & 1u) && TK_HAVE(rtm_is_type) &&
            rtm_is_type(*(const uint8_t *)(sound + 0xa2u));
 }
 

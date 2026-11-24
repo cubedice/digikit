@@ -1893,6 +1893,10 @@ name = "lfo"
 [[service]]
 name = "instrument"
 
+# The player of the track keyboard and arpeggiator (core/services/track-keyboard, docs/plans/fork-image-diet.md section 9.2).
+[[service]]
+name = "track-keyboard"
+
 # A `[[service]]` without `rust` is provided by a `.dks` provider (a module with `role = "service"`), not by a runtime row: it is in no generated table.
 # `test = true`: a test-only service; it and its `[[import]]` rows (also `test = true`) are left out of the public SDK headers, docs and templates.
 [[service]]

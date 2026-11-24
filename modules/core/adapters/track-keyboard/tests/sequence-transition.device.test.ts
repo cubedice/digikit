@@ -2,22 +2,22 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { REDRAW } from '@digi/regression/runtime/fx-live.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared keyboard pattern change', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('intercepts the first trig of queued and direct-start patterns', { timeout: 300_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options,
       session.runDir,
       session.runDir,
-      ['DKRT_BOOT', 'pp_position', 'tk_sequence_audio_hits', 'pattern_slots'],
+      ['DKRT_BOOT', 'pp_position', 'pattern_slots'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -30,6 +30,7 @@ describeOn('dt2', 'shared keyboard pattern change', () => {
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
+    const sym = await trackKeyboardSymbols(session, image.plan);
     const { edge, tap, turn } = acknowledgedPanel(session);
     const modified = async (modifier: string, key: string) => {
       await edge(modifier, true);
@@ -46,9 +47,9 @@ describeOn('dt2', 'shared keyboard pattern change', () => {
         emulatedMs: 5000,
         message: 'stock selected pattern changed',
       });
-    const position = planSymbol(image.plan, 'pp_position');
+    const position = sym('pp_position');
     const read = (word: number) => session.client.memPeek(position + 4 * word);
-    const hits = () => session.client.memPeek(planSymbol(image.plan, 'tk_sequence_audio_hits'));
+    const hits = () => session.client.memPeek(sym('tk_sequence_audio_hits'));
     const { ui } = sessionRt(session);
     const selectPattern = (step: number) =>
       ui.tap(`TRIG ${step}`, { held: 'PTN', until: { ms: 80, why: REDRAW } });
@@ -84,7 +85,7 @@ describeOn('dt2', 'shared keyboard pattern change', () => {
     await tap('PAGE TRIG');
     await turn(1, 12); // ARP on A02 only.
     await turn(3, 30);
-    const pendingPattern = await session.client.memPeek(planSymbol(image.plan, 'pattern_slots') + 4);
+    const pendingPattern = await session.client.memPeek(sym('pattern_slots') + 4);
     expect(pendingPattern, 'shared settings for A02').toBeGreaterThan(0);
     expect((await session.client.memPeek(pendingPattern!))! >>> 24, 'A02 ARP enabled').toBe(1);
     // Set different native lengths in the disposable fixture. The cold

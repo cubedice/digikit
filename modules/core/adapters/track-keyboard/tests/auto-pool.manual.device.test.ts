@@ -9,6 +9,7 @@ import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { freeClock, waitClock } from '@digi/test-support';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 const OWNER = 1;
 const TRIG_9 = 33;
@@ -20,23 +21,25 @@ function trackBits(mask: number): number[] {
 }
 
 describeOn('dt2', 'automatic stock audio helper pool', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
 
   test('borrows only for the notes being played and returns empty tracks after release', { timeout: 180_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
-      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_capture_committed', 'tk_panel_claim_hits'],
+      ['DKRT_BOOT', 'pp_position'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
-    const word = async (symbol: string, offset = 0) => (await session.client.memPeek(planSymbol(image.plan, symbol) + offset)) ?? 0;
-    const mask = async (name: string, offset = 0) => (await word('.sec..bss.' + name, offset)) >>> 16;
+    let sym = (name: string) => planSymbol(image.plan, name);
+    const word = async (symbol: string, offset = 0) => (await session.client.memPeek(sym(symbol) + offset)) ?? 0;
+    const mask = async (name: string, offset = 0) => (await word(name, offset)) >>> 16;
     await session.client.firmwareLoad({
       syx: image.syx, base_sha256: image.plan.base.syx_sha256, start: 'auto',
       force: true, auto_no: true, card: session.cardPath,
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
+    sym = await trackKeyboardSymbols(session, image.plan);
     const { edge, tap, turn } = acknowledgedPanel(session);
     const selectTrack = async (track: number) => {
       await edge('TRK', true);

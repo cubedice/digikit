@@ -53,6 +53,17 @@ export async function seedModules(
 }
 
 /**
+ * Bound service files in a card seed folder (`<seed>/digikit/services/<name>.dks`) with no module that needs them: for an image that asks the
+ * boot for a service itself (an adapter's info entry `boot_need_<name>`, docs/plans/fork-image-diet.md section 9.2: the track keyboard).
+ */
+export async function seedServices(seed: string, device: Device, names: string[]): Promise<void> {
+  const serviceDir = path.join(seed, 'digikit', 'services');
+  fs.mkdirSync(serviceDir, { recursive: true });
+  for (const service of names.map(serviceOf))
+    fs.copyFileSync(await bound(device, service), path.join(serviceDir, `${service.service}.dks`));
+}
+
+/**
  * The same for a card written over the protocol: upload the bound services `needs` (`services/<name>.dks`) and read each back. Call it
  * before the selection is written.
  */

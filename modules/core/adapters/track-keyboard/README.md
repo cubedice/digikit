@@ -2,11 +2,14 @@
 
 The DTII OS 1.17 adapter adds ARP and KEYS after the original TRIG pages of
 every audio and MIDI track. It is part of the fork's hardware image
-(`canopy-overloop-prism`) and of any image built with `core/track-keyboard`;
-it needs no module or service: it starts itself (its image tick) and plays
-through `core/keyboard-panel`, the KEYBOARD view handler. It uses the stock
-pattern keyboard and track routing for panel, USB and DIN input. The
-arpeggiator follows the selected pattern tempo when the sequencer is stopped
+(`canopy-overloop-prism`) and of any image built with `core/track-keyboard`.
+The image keeps the pattern storage and the hook sites; the player runs from
+`services/track-keyboard.dks`, which the image asks the boot for itself, so
+it needs no module: it starts through its image tick once the file is
+loaded and plays through `core/keyboard-panel`, the KEYBOARD view handler.
+Without the file on the card the DT2 keeps its stock TRIG pages. It uses
+the stock pattern keyboard and track routing for panel, USB and DIN input.
+The arpeggiator follows the selected pattern tempo when the sequencer is stopped
 or playing. MIDI tracks use the configured output channel.
 
 Turn A on ARP to enable the arpeggiator. Its controls set traversal order,

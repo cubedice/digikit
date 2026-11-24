@@ -8,15 +8,15 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { selectDt2, trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared track keyboard panel proof', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'preserves stock audio and MIDI TRIG pages and plays ARP while stopped',
     {
@@ -172,7 +172,7 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
         session.options,
         session.runDir,
         session.runDir,
-        ['DKRT_BOOT', 'tk_panel_claim_hits', 'tk_native_audio_active'],
+        ['DKRT_BOOT'],
         {
           modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'],
           timeoutMs: 90_000,
@@ -188,6 +188,7 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       });
       await session.client.call('run.mode', { mode: 'free' });
       await expectRuntimeUi(session, image.plan, session.runDir);
+      const sym = await trackKeyboardSymbols(session, image.plan);
       // The runtime hook can report ready while the stock FILE SYSTEM OK
       // acknowledgement still covers the page after the firmware reload.
       await tap('NO');
@@ -257,8 +258,8 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       // The generated route skips the stock audition counter. Track bit 0
       // reports an accepted onset still awaiting its backend release.
       const held = async () =>
-        ((await session.client.memPeek(planSymbol(image.plan, 'tk_native_audio_active'))) ?? 0) & 1;
-      const claims = () => session.client.memPeek(planSymbol(image.plan, 'tk_panel_claim_hits'));
+        ((await session.client.memPeek(sym('tk_native_audio_active'))) ?? 0) & 1;
+      const claims = () => session.client.memPeek(sym('tk_panel_claim_hits'));
       await edge('TRIG 9', true);
       try {
         await pollEmulated(session, claims, (n) => n === 1, {

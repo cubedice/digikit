@@ -5,16 +5,16 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared track keyboard project storage', () => {
-  const options = liveOptions('dt2', { fresh: true });
+  const options = trackKeyboardCard(liveOptions('dt2', { fresh: true }));
   const handle = withSession({ ...options, dsp: 'sharc', restart: false });
   test(
     'preserves independent pattern settings through paste, undo, and a saved-project cold boot',
@@ -25,7 +25,7 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
         session.options,
         session.runDir,
         session.runDir,
-        ['DKRT_BOOT', 'tk_panel_claim_hits', 'tk_storage_info', 'pattern_slots'],
+        ['DKRT_BOOT', 'tk_storage_info', 'pattern_slots'],
         { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
       );
       const boot = async (target: Session, card: string | undefined) => {
@@ -40,8 +40,9 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
         });
         await target.client.call('run.mode', { mode: 'free' });
         await expectRuntimeUi(target, image.plan, target.runDir, { afterEpoch: epoch });
+        return trackKeyboardSymbols(target, image.plan);
       };
-      const panel = (target: Session) => {
+      const panel = (target: Session, sym: (name: string) => number) => {
         const { tap, turn, edge } = acknowledgedPanel(target);
         const wait = (ms: number, why: string = SETTLE) => sessionRt(target).ui.wait({ ms, why });
         const modified = async (modifier: string, key: string) => {
@@ -53,15 +54,15 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
           }
         };
         const storage = (word: number) =>
-          target.client.memPeek(planSymbol(image.plan, 'tk_storage_info') + word * 4);
+          target.client.memPeek(sym('tk_storage_info') + word * 4);
         const arp = async (step: number) => {
-          const record = await target.client.memPeek(planSymbol(image.plan, 'pattern_slots') + (step - 1) * 4);
+          const record = await target.client.memPeek(sym('pattern_slots') + (step - 1) * 4);
           if (!record) return 0;
           const word = await target.client.memPeek(record);
           if (word === null) throw new Error('Unreadable keyboard pattern record');
           return word >>> 24; // TkTrackConfig.params.arp at the start of track 1.
         };
-        const claims = () => target.client.memPeek(planSymbol(image.plan, 'tk_panel_claim_hits'));
+        const claims = () => target.client.memPeek(sym('tk_panel_claim_hits'));
         const pattern = () => target.client.memPeek(0x4316501c);
         const select = async (step: number, expected: (p: number | null) => boolean) => {
           await modified('PTN', `TRIG ${step}`);
@@ -83,8 +84,7 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
         return { tap, turn, wait, modified, storage, arp, pattern, select, checkClaim };
       };
 
-      await boot(session, session.cardPath);
-      const ui = panel(session);
+      const ui = panel(session, await boot(session, session.cardPath));
       await ui.modified('TRK', 'TRIG 1');
       const a = await ui.pattern();
       expect(a).toBeGreaterThan(0);
@@ -136,8 +136,7 @@ describeOn('dt2', 'shared track keyboard project storage', () => {
       await session.client.call('run.mode', { mode: 'paused' });
       const cold = await Session.start({ ...options, card: undefined, dsp: 'sharc', env: { DIGI_COLD_RELAX_FS: '1' } });
       try {
-        await boot(cold, savedCard);
-        const restored = panel(cold);
+        const restored = panel(cold, await boot(cold, savedCard));
         await restored.tap('SETTINGS');
         await restored.wait(300, REDRAW);
         for (let i = 0; i < 3; i++) {

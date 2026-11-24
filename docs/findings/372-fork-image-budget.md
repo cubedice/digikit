@@ -58,6 +58,10 @@ determine the tables exactly. The package was 147,768 bytes in the install recor
 - With the split of plan section 9 (`feat/instrument-service`, `4b0a1e411`), the set uses 1,214,192 (182,544 free): the image
   parts of the two adapters keep about 11 KB of the 137 KB.
 
+The track keyboard's player in its own service file (plan section 9.2, 2026-11-24): the set with `core/track-keyboard` uses
+1,216,624 (180,112 free; 117,396 with the player in the image). `services/track-keyboard.dks` is 81,416 bytes packed with an
+arena need of 65,360; the files of the hardware set's card need 469,904 of the 524,288-byte arena.
+
 Two facts that decided what stays in the image (read in the runtime's sources at `5936100a1`, not run):
 
 - The runtime calls `crate::instrument::bind_once()` at the top of its first `dkrt_tick`, which reads

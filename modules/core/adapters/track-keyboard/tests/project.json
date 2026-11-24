@@ -26,7 +26,7 @@
           "dt2"
         ],
         "dsp": "sharc",
-        "modules": [],
+        "modules": ["core/services/track-keyboard"],
         "patchModules": [
           "core/track-keyboard",
           "core/digikit-menu",
@@ -51,7 +51,8 @@
         "modules": [
           "digikit/canopy",
           "core/services/machines",
-          "core/services/instrument"
+          "core/services/instrument",
+          "core/services/track-keyboard"
         ],
         "patchModules": [
           "core/track-keyboard",

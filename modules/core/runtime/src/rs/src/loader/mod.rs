@@ -1176,10 +1176,11 @@ fn unmet_needs(mods: &[Option<Keys>], out: &mut [u32; WANT_MAX]) -> usize {
     n
 }
 
-/// The prefix of the image's info entry that asks the boot for a service: `boot_need_<service>` (an `[[info]]` of an image adapter; its address is not read).
+/// The prefix of the image's info entry that asks the boot for a service: `boot_need_<service>` (an `[[info]]` of an image adapter; its address is not read),
+/// with each `-` of the service's name written `_` (an info name is `[a-z][a-z0-9_]*`: `boot_need_track_keyboard`).
 pub const BOOT_NEED_PREFIX: &[u8] = b"boot_need_";
 
-/// The name hash of `boot_need_<name>`, as the image's info table keys it (FNV-1a over the whole name).
+/// The name hash of `boot_need_<name>` with `-` as `_`, as the image's info table keys it (FNV-1a over the whole name).
 fn boot_need_hash(name: &[u8]) -> Option<u32> {
     let mut b = [0u8; 48];
     let len = BOOT_NEED_PREFIX.len() + name.len();
@@ -1187,7 +1188,11 @@ fn boot_need_hash(name: &[u8]) -> Option<u32> {
         return None;
     }
     b[..BOOT_NEED_PREFIX.len()].copy_from_slice(BOOT_NEED_PREFIX);
-    b[BOOT_NEED_PREFIX.len()..len].copy_from_slice(name);
+    let mut i = 0;
+    while i < name.len() {
+        b[BOOT_NEED_PREFIX.len() + i] = if name[i] == b'-' { b'_' } else { name[i] };
+        i += 1;
+    }
     Some(dkneeds::keys::name_hash_bytes(&b[..len]))
 }
 

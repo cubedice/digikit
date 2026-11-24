@@ -1,5 +1,6 @@
 #include "track-service.h"
 #include "track-memory.h"
+#include "tk-seam.h"
 
 #ifdef __m68k__
 #pragma GCC optimize("no-jump-tables")
@@ -525,7 +526,7 @@ void tk_trig_refresh_keys(void)
             if (!view || view[0x30])
                 continue;
             const uint8_t *vtable = (const uint8_t *)(uintptr_t)word(view, 0);
-            if (vtable && word(vtable, 16) == (uint32_t)(uintptr_t)tk_trig_draw &&
+            if (vtable && word(vtable, 16) == (uint32_t)TK_DATA(tk_trig_draw) &&
                 word(view, PAGE_INDEX) == KEYS_PAGE && current_track(view) == keys_track) {
                 dk_fw_view_invalidate(view);
                 return;
@@ -689,7 +690,3 @@ uint8_t tk_trig_turn(uint8_t *view, uint8_t *event)
     return 1;
 }
 
-uint8_t tk_trig_turn_interface(uint8_t *receiver, uint8_t *event)
-{
-    return tk_trig_turn(receiver - 4, event);
-}

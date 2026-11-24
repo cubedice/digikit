@@ -1455,9 +1455,10 @@ fn an_image_that_asks_for_a_service_has_it_found_planned_and_loaded_with_no_modu
         let allocs = l.m.allocs;
         let plan = l.plan_with_caps(0, &wide_caps());
         assert_eq!((plan.np, l.m.allocs), (0, allocs), "nothing was searched");
-        // an adapter's `[[info]] name = "boot_need_svc-test"`: the boot looks for the file, plans it and loads it as a provider
+        // an adapter's `[[info]] name = "boot_need_svc_test"` (`-` written `_`): the boot looks for the file, plans it and loads it
+        // as a provider
         let h = super::boot_need_hash(SVC.as_bytes()).unwrap();
-        assert_eq!(h, dkneeds::keys::name_hash("boot_need_svc-test"));
+        assert_eq!(h, dkneeds::keys::name_hash("boot_need_svc_test"));
         l.p.info_entries.borrow_mut().push((h, vec![0]));
         let plan = l.plan_with_caps(0, &wide_caps());
         assert_eq!(plan.np, 1, "the image asked for the service");

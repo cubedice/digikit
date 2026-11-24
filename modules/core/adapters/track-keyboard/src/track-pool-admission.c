@@ -1,3 +1,4 @@
+#include "tk-seam.h"
 #include "track-pool.h"
 
 #include "track-capture.h"
@@ -36,7 +37,7 @@ static bool relay_head_module(void)
 {
     static const char module_id[] = "digikit/relay-machine";
     DkrtModule module;
-    if (!rtm_is_type)
+    if (!TK_HAVE(rtm_is_type))
         return false;
     for (unsigned i = 0; dkrt_module(i, &module) == DKRT_OK; ++i) {
         unsigned n = 0;
@@ -337,7 +338,7 @@ void tk_pool_fw_update(uint32_t pattern, uint32_t selected, const TkTrackConfig 
                 continue;
             if (type <= 6 && type != 5)
                 sample_tracks |= (uint16_t)(1u << track);
-            else if (relay_head_package && rtm_is_type && rtm_is_type((unsigned)type))
+            else if (relay_head_package && TK_HAVE(rtm_is_type) && rtm_is_type((unsigned)type))
                 relay_owners |= (uint16_t)(1u << track);
         }
         owners = sample_tracks | relay_owners;

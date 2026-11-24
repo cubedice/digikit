@@ -2,13 +2,13 @@ import { expect, test } from 'vitest';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'individual shared keyboard trigs', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'moves, clears, and undoes an individual trig attachment',
     { timeout: 180_000 },
@@ -18,7 +18,7 @@ describeOn('dt2', 'individual shared keyboard trigs', () => {
         session.options,
         session.runDir,
         session.runDir,
-        ['DKRT_BOOT', 'tk_step_clip_info', 'pattern_slots'],
+        ['DKRT_BOOT', 'pattern_slots'],
         { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
       );
       await session.client.firmwareLoad({
@@ -31,6 +31,7 @@ describeOn('dt2', 'individual shared keyboard trigs', () => {
       });
       await session.client.call('run.mode', { mode: 'free' });
       await expectRuntimeUi(session, plan, session.runDir);
+      const sym = await trackKeyboardSymbols(session, plan);
       const { edge, tap, turn } = acknowledgedPanel(session);
       const a01 = await session.client.memPeek(0x4316501c);
       if (!a01) throw new Error('A01 is not selected');
@@ -47,7 +48,7 @@ describeOn('dt2', 'individual shared keyboard trigs', () => {
           await edge(key, false);
         }
       };
-      const info = (word: number) => session.client.memPeek(planSymbol(plan, 'tk_step_clip_info') + word * 4);
+      const info = (word: number) => session.client.memPeek(sym('tk_step_clip_info') + word * 4);
       const waitCount = (word: number, count: number, message: string) =>
         pollEmulated(session, () => info(word), (actual) => actual === count, { emulatedMs: 4000, message });
       const nativeTrig = async (step: number) => {
@@ -56,7 +57,7 @@ describeOn('dt2', 'individual shared keyboard trigs', () => {
         return (flags >>> 16) & 1;
       };
       const masks = async () => {
-        const pattern = await session.client.memPeek(planSymbol(plan, 'pattern_slots'));
+        const pattern = await session.client.memPeek(sym('pattern_slots'));
         if (!pattern) throw new Error('A01 did not attach shared keyboard data');
         const rows = await Promise.all(
           Array.from({ length: 4 }, (_, i) => session.client.memPeek(pattern + 0x380 + 62 * i)),

@@ -181,6 +181,9 @@ the hardware image after the merge, plan the track keyboard's own service file w
 - patchkit's C sources in a service object.
 - The `tail = true` declarations in `devices/fw` (upstream: `ports/fw`).
 - The CANOPY half tables need nothing: they live in the module.
+- From sections 9.1 and 9.2: `core/keyboard-panel`, `core/copy-watch`, the image tick (`[[info]] tick = true`, INFO kind 3), the
+  image-declared boot need (`boot_need_<service>`, `-` written `_`), `served_by` and its NEED rule, the seam generator with its two
+  `seam.toml` files (forwarders and thunks through `a1`), and `core/services/track-keyboard`.
 
 ## 9. As built (option 1, from 2026-11-23)
 
@@ -259,4 +262,73 @@ image cost 7,160 of the move's saving.
 
 After the upstream merge (estimate, not measured) the hardware set with the track keyboard would be short by a few KB to nothing: the
 track keyboard (77.5 KB) then becomes its own service file, loaded through its image boot need, with its hook sites kept in the image
-as core/instrument-play's are.
+as core/instrument-play's are. Built: section 9.2.
+
+### 9.2 The track keyboard as its own service file (owner's request, 2026-11-24)
+
+The owner asked for the track keyboard's code to move to its own service file, so that the hardware set keeps room after the
+upstream merge. It follows the instrument service (section 9): every hook site, vtable write and the pattern storage stay image
+code, and the player is C of `core/track-keyboard` compiled into `services/track-keyboard.dks` (`core/services/track-keyboard`).
+
+- **What stays in the image** (`core/track-keyboard`, 13 of its 27 ColdFire sources, `image.c` and the seam): the pattern storage
+  and its hook entries (`track-pattern.c`, `track-pattern-fw.c`, `track-record.c`, `track-config.c`, `track-pattern-hooks.s`),
+  because the boot's project load runs them before a card service is bound; the defaults and validators they use
+  (`track-valid.c`, split out of `track-keyboard.c` and `track-service.c`); the pool frame writer (`track-pool.c`,
+  `track-pool-fw.c`), which writes the DSP's idle map while the service is not loaded; the hook entries of the sequencer, MIDI,
+  pool and step paths (`.s`); the TRIG title (`trig-title.s`); the TRIG page's second interface slot (`image.c`). Its DSP object
+  is unchanged.
+- **What moves** (14 files): `track-keyboard.c`, `track-service.c`, `track-runtime.c`, `track-canopy.c`, `track-native.c`,
+  `track-native-fw.c`, `trig-view.c`, `track-step-fw.c`, `track-midi.c`, `track-midi-fw.c`, `track-capture.c`, `track-sequence.c`,
+  `track-sequence-fw.c`, `track-pool-admission.c`.
+- **One slot, `tk_vec`, 32 forwarders**: the image tick `tk_runtime_init`, ten calls of the hook entries (0 or `rts`: the stock
+  path), the four step hooks (`jmp` to the displaced stock prologue of `track-step-hooks.s`), the four TRIG vtable entries (`jmp` to
+  the stock handler), and the thirteen entries that `core/keyboard-panel`, `core/midi-events` and `core/fxview` call ("not the
+  track keyboard's", -1 for the picker LED). Without the file the DT2 runs stock: TRIG has its stock pages, no track keyboard.
+- **The image table `tk_image`** (63 words: 48 functions, 10 optional, 2 data): the kept functions, the runtime and UI functions,
+  CANOPY's host and RELAY's type check as optional words (`TK_HAVE` in `tk-seam.h`), `pp_position` and the image forwarder
+  `tk_trig_draw` (the KEYS refresh finds the TRIG view by its vtable draw entry: the lesson of section 9) as data (`TK_DATA`).
+- **The generator** writes every `modules/core/services/*/seam.toml`; `[output]` names a seam's files and its C prefix (the
+  instrument's defaults keep its files as they were).
+- **The boot**: the image's `[[info]] boot_need_track_keyboard` loads the file with no module to need it. An info name is
+  `[a-z][a-z0-9_]*`, so the runtime now writes each `-` of a service's name as `_` in `boot_need_<service>`. The image tick is the
+  forwarder, which returns at once without the file. `sdk/sdk.toml` has the row `track-keyboard`: six provider services, which is
+  `PROVIDER_MAX`.
+- **`served_by`**: `core/track-keyboard` is `served_by = "track-keyboard"`. `core/midi-events` is no longer `served_by =
+  "instrument"`: its moved code is CANOPY's MIDI ownership, which only the users of `core/instrument-play` reach, and they need the
+  file through that adapter. With the rule on `core/midi-events` the track keyboard's file needed `instrument.dks`. CANOPY and RELAY
+  keep the need.
+- **Found on the way: the register of the forwarders and thunks.** Both jumped through `a0`. With this GCC (m68k-elf) a function
+  that returns a struct takes the address of the result in `a0` (`tk_defaults`, `tk_track_defaults`): the first call through the
+  thunk wrote the struct over the image function itself, and the next one executed it (a boot fault, vector 4, found with the
+  emulator's kept `boot-fault.json`). They use `a1` now, which this ABI uses for no argument or result, in both seams; `a0` reaches
+  the target. No function of the instrument seam returns a struct, so its flaw was latent.
+- **Copies in the service** use the object's own `memcpy` and `memset` (compiler_builtins), not the firmware's, which
+  `core/copy-watch` hooks; the filter only ever looked for the firmware's own pattern copies.
+
+Measured [D]:
+
+| | `cf.expansion` used of 1,396,736 | free |
+| --- | ---: | ---: |
+| `canopy-overloop-prism` with the track keyboard in the image (section 9.1) | 1,279,340 | 117,396 |
+| the same with the track keyboard's player in its service file | 1,216,624 | 180,112 |
+
+- `services/track-keyboard.dks` (dt2): 81,416 bytes packed (image 60,296, bss 5,036), 78,616 bound; arena need 65,360; it needs
+  the runtime and, optionally, the UI service, and no service of CANOPY's.
+- The arena needs of a card with all files of the hardware set (CANOPY 189,008, `instrument.dks` 122,208, `track-keyboard.dks`
+  65,360, `machines.dks` 50,576, `fx.dks` 39,600, remote 1,680, Overloop 864, PRISM 608): 469,904 of 524,288 (54,384 left).
+
+Proofs (emulator, DT2 1.17) [D]:
+
+- The eleven registered device tests of the track keyboard pass in the emulator: ten on an image without `core/instrument-play`
+  with `services/track-keyboard.dks` on the card, the CANOPY one with both service files. Two passed on a second run: `midi` first
+  failed in its Nx dependency `core/runtime:test-assembly`, which read `dist/bytes/images` while a second list of targets running at
+  the same time rebuilt it; `pool` first read a static by the section name the image's map had given it (the test is fixed).
+- With the forwarders on `a1`: CANOPY's seven device tests, PRISM coexistence and RELAY's two pass.
+- A probe, not kept as a test: the image of `canopy-overloop-prism` with all eight files on its card (CANOPY, Overloop, PRISM,
+  remote, `machines.dks`, `instrument.dks`, `fx.dks`, `track-keyboard.dks`) loads every one of them. The same image without
+  `track-keyboard.dks` boots, with stock TRIG pages.
+- Host: the four test files that compile the track keyboard's C (5 tests); the runtime crate's 381 (with `-` written `_`); the seam
+  checks of both service crates; `test_track_keyboard_image.py` (the image's tick and boot need, the forwarders, the file's needs,
+  the hardware set's room), the instrument seam test and CANOPY's need test.
+- Static: `patchkit gen --check`, `patchkit build --check`, the seam `--check`, `patchkit service-check` of both crates, the layer
+  check (no finding in the changed sources), ruff, prettier; `tsc` gives the same eight errors as before the change.

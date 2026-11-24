@@ -3,11 +3,11 @@ import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 const TRACK = 9;
 const QUARTER_TICKS = 21_600_000;
@@ -19,14 +19,14 @@ const NATIVE_TRACK_BYTES = 0x6a5;
 const NATIVE_DEFAULT_LENGTH = 0x481;
 
 describeOn('dt2', 'track 10 arpeggio phase', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('keeps short-gate generated notes on the running native sequence grid', { timeout: 240_000 }, async () => {
     const { session } = handle;
     const { plan, syx } = await prepareRuntimePlanModulesOffline(
       session.options,
       session.runDir,
       session.runDir,
-      ['DKRT_BOOT', 'pp_position', 'tk_native_try_seed_send', 'tk_sequence_audio_hits'],
+      ['DKRT_BOOT', 'pp_position'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -39,6 +39,7 @@ describeOn('dt2', 'track 10 arpeggio phase', () => {
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, plan, session.runDir);
+    const sym = await trackKeyboardSymbols(session, plan);
 
     const { edge, tap, turn } = acknowledgedPanel(session);
     await tap('NO'); // Acknowledge the stock filesystem modal.
@@ -75,8 +76,8 @@ describeOn('dt2', 'track 10 arpeggio phase', () => {
     expect(tempo).toBeLessThanOrEqual(36000);
     const ticksPerMs = tempo * 3;
 
-    const position = planSymbol(plan, 'pp_position');
-    const hits = planSymbol(plan, 'tk_sequence_audio_hits');
+    const position = sym('pp_position');
+    const hits = sym('tk_sequence_audio_hits');
     const readPosition = (index: number) => word(position + 4 * index);
     const sequenceBefore = await word(hits);
     const boundariesBefore = await readPosition(3);
@@ -84,7 +85,7 @@ describeOn('dt2', 'track 10 arpeggio phase', () => {
       keep: 128,
       probes: [
         {
-          pc: planSymbol(plan, 'tk_native_try_seed_send'),
+          pc: sym('tk_native_try_seed_send'),
           label: 'arp-native-send',
           words: [NATIVE_PHASE, position + 12, position + 20, position + 28, position + 44],
           stack: 4,

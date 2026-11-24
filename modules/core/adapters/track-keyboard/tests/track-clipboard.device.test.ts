@@ -1,14 +1,14 @@
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared keyboard track clipboard', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'copies, clears, and restores one track through the native clipboard',
     { timeout: 180_000 },
@@ -31,6 +31,7 @@ describeOn('dt2', 'shared keyboard track clipboard', () => {
       });
       await session.client.call('run.mode', { mode: 'free' });
       await expectRuntimeUi(session, plan, session.runDir);
+      const sym = await trackKeyboardSymbols(session, plan);
 
       const { tap, turn, edge } = acknowledgedPanel(session);
       const modified = async (modifier: string, key: string) => {
@@ -42,7 +43,7 @@ describeOn('dt2', 'shared keyboard track clipboard', () => {
         }
       };
       const arp = async (track: number) => {
-        const pattern = await session.client.memPeek(planSymbol(plan, 'pattern_slots'));
+        const pattern = await session.client.memPeek(sym('pattern_slots'));
         if (!pattern) return 0;
         const word = await session.client.memPeek(pattern + 56 * (track - 1));
         if (word === null) throw new Error('Unreadable A01 keyboard data');
@@ -50,7 +51,7 @@ describeOn('dt2', 'shared keyboard track clipboard', () => {
       };
       const expectArp = (track: number, enabled: boolean, message: string) =>
         pollEmulated(session, () => arp(track), (n) => n === Number(enabled), { emulatedMs: 5000, message });
-      const copies = () => session.client.memPeek(planSymbol(plan, 'tk_storage_info') + 8);
+      const copies = () => session.client.memPeek(sym('tk_storage_info') + 8);
 
       await modified('TRK', 'TRIG 2');
       for (let page = 0; page < 3; ++page) await tap(1);

@@ -462,9 +462,10 @@ The manifest has `[module]`, `[targets]`, `[[object]]`, `[[op]]`, `[[claim]]`, `
   (`Platform::info_slot`); a fill that names a data entry refuses the file (`E_FORMAT`) before anything is installed. An image without entries has no
   table (the optional link of the runtime resolves to 0).
 - **Image ticks and boot needs.** `[[info]] tick = true` makes the entry kind 3: `symbol` is a `void f(void)` of the adapter that the runtime calls once per
-  UI-loop pass, for an image feature that runs without a module or service to start it (`core/track-keyboard`: `tick_track_keyboard`). An entry named
-  `boot_need_<service>` makes the boot search the card for `services/<service>.dks` and load it as for a module's hard need, whether or not a selected
-  module needs it (its address is not read).
+  UI-loop pass, for an image feature that runs without a module to start it (`core/track-keyboard`: `tick_track_keyboard`, a forwarder into its
+  service file). An entry named `boot_need_<service>`, with each `-` of the service's name written `_` (`boot_need_track_keyboard`), makes the boot
+  search the card for `services/<service>.dks` and load it as for a module's hard need, whether or not a selected module needs it (its address
+  is not read).
 - **Capacity limits in the info table.** An image adapter that reserves a capacity exports its limit as an `[[info]]` entry named
   `cap_<kind>` (the kind name of `[capacity.kinds]` in `sdk/sdk.toml` in lower case, e.g. `cap_machine_rows`, `cap_param_rows`,
   `cap_page_rows`, `cap_voice_rows`, `cap_fx_slots`, `cap_send_slots`). `symbol` is the address of a u32 word that holds the limit

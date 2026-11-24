@@ -3,31 +3,21 @@ import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { emulatedClockMs, pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared arpeggiator stock sequence', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('replays audio and MIDI trigs and captures a step-recorded chord', { timeout: 360_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options,
       session.runDir,
       session.runDir,
-      [
-        'DKRT_BOOT',
-        'tk_sequence_audio_hits',
-        'tk_sequence_audio_locked_hits',
-        'tk_sequence_midi_hits',
-        'tk_sequence_midi_info',
-        'tk_native_audio_active',
-        'retrig_keys',
-        'tk_capture_committed',
-        'tk_capture_last_count',
-      ],
+      ['DKRT_BOOT'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -40,6 +30,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
+    const sym = await trackKeyboardSymbols(session, image.plan);
     const { edge, tap, turn } = acknowledgedPanel(session);
     const modified = async (modifier: string, key: string | number) => {
       await edge(modifier, true);
@@ -81,7 +72,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     await turn(3, 30);
     await modified('TRK', 'TRIG 1');
 
-    const symbol = (name: string) => session.client.memPeek(planSymbol(image.plan, name));
+    const symbol = (name: string) => session.client.memPeek(sym(name));
     const audioArps = async () => ((await symbol('tk_native_audio_active')) ?? 0) & 5;
     const held = async () => (await audioArps()) & 1;
     const hits = () => symbol('tk_sequence_audio_hits');
@@ -132,7 +123,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
     });
     await edge('TRIG 9', true);
     try {
-      const keysAddress = planSymbol(image.plan, 'retrig_keys');
+      const keysAddress = sym('retrig_keys');
       const retrigKeys = async () => {
         const word = await session.client.memPeek(keysAddress & ~3);
         return word === null ? -1 : (word >>> (16 - (keysAddress & 2) * 8)) & 0xffff;
@@ -237,7 +228,7 @@ describeOn('dt2', 'shared arpeggiator stock sequence', () => {
         message: 'the due stock MIDI note reached the shared scheduler',
       });
     } catch (error) {
-      const base = planSymbol(image.plan, 'tk_sequence_midi_info');
+      const base = sym('tk_sequence_midi_info');
       const counters = await Promise.all([0, 4, 8, 12, 16].map((offset) => session.client.memPeek(base + offset)));
       throw new Error('Native MIDI scheduled/due/matched/enabled/decoded ' + JSON.stringify(counters), { cause: error });
     }

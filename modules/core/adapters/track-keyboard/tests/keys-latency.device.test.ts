@@ -1,21 +1,21 @@
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { emulatedClockMs, pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 const DISPLAY_BUDGET_MS = 150;
 
 describeOn('dt2', 'track keyboard display', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('shows playing and released notes without another UI action', { timeout: 180_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
-      ['DKRT_BOOT', 'tk_native_audio_active'],
+      ['DKRT_BOOT'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
     await session.client.firmwareLoad({
@@ -24,6 +24,7 @@ describeOn('dt2', 'track keyboard display', () => {
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
+    const sym = await trackKeyboardSymbols(session, image.plan);
     const { edge, tap, turn } = acknowledgedPanel(session);
     await tap('NO'); // Dismiss the stock filesystem acknowledgement.
     await edge('TRK', true);
@@ -62,7 +63,7 @@ describeOn('dt2', 'track keyboard display', () => {
     const idle = await keys();
     expect(idle.reduce((sum, pixel) => sum + pixel, 0)).toBeGreaterThan(250);
     const clock = async () => emulatedClockMs(await session.status());
-    const activeMask = planSymbol(image.plan, 'tk_native_audio_active');
+    const activeMask = sym('tk_native_audio_active');
     const active = async () => ((await session.client.memPeek(activeMask)) ?? 0) & 1;
     const inputs = [
       { name: 'panel', send: (on: boolean) => session.client.inputButton(33, on) },

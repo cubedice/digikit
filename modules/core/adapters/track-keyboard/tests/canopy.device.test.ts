@@ -6,15 +6,15 @@ import { withSession } from '@digi/regression/support.ts';
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
-import { seedModules } from '@digi/regression/runtime/card-seed.ts';
+import { seedModules, seedServices } from '@digi/regression/runtime/card-seed.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { canopyPanel } from '../../../../machines/canopy/tests/canopy-panel.ts';
+import { trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'CANOPY shared track keyboard', () => {
   vi.setConfig({ hookTimeout: 600_000 });
@@ -25,6 +25,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(options.card!, name), path.join(card, name));
     await seedModules(card, 'dt2', [{ file: moduleArtifact('dt2', 'digikit/canopy'), needs: ['machines', 'instrument'] }]);
+    await seedServices(card, 'dt2', ['track-keyboard']);
   });
   afterAll(() => {
     const owned = fs.realpathSync(card);
@@ -43,10 +44,6 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       output,
       [
         'DKRT_BOOT',
-        'tk_panel_claim_hits',
-        'tk_sequence_audio_hits',
-        'tk_sequence_audio_locked_hits',
-        'tk_canopy_fallback',
         '_iv_lock_slots',
         '_iv_shared_controls',
       ],
@@ -66,7 +63,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     const epoch = Number((await session.status()).epoch);
     await dk.restart();
     await dk.waitForBoot();
-    const sym = await instrumentSymbols(session, plan);
+    const sym = await trackKeyboardSymbols(session, plan, ['instrument']);
     const cf = async (name: string, index = 0) => {
       const value = await session.client.memPeek(sym(name) + 4 * index);
       if (value === null) throw new Error(`Missing ${name}[${index}]`);

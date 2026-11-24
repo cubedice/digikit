@@ -60,24 +60,6 @@ static bool send_sequence(void *context, const TkNoteEvent *event)
     return send_live(t, &sequenced);
 }
 
-void tk_pattern_init(TkPattern *p)
-{
-    memset(p, 0, sizeof *p);
-    for (uint8_t track = 0; track < TK_TRACKS; ++track)
-        p->tracks[track] = tk_track_defaults();
-}
-
-const TkSeed *tk_pattern_seed(const TkPattern *p, uint8_t track, uint8_t step)
-{
-    if (!p || track >= TK_TRACKS || step >= TK_STEPS)
-        return NULL;
-    uint16_t index = (uint16_t)(track * TK_STEPS + step + 1);
-    for (unsigned i = 0; i < TK_RECORDED_STEPS; ++i)
-        if (p->seeds[i].index == index)
-            return &p->seeds[i].seed;
-    return NULL;
-}
-
 bool tk_pattern_set_seed(TkPattern *p, uint8_t track, uint8_t step, const TkSeed *seed)
 {
     if (!p || track >= TK_TRACKS || step >= TK_STEPS ||

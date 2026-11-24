@@ -11,6 +11,7 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 const AUDIO_RATE = 48_000;
 const WINDOW = 4096;
@@ -47,22 +48,24 @@ function fundamental(pcm: Float32Array): number {
 }
 
 describeOn('dt2', 'stock audio helper group', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test('leases an empty helper, follows the owner controls, and re-admits after switching to WERP', { timeout: 240_000 }, async () => {
     const { session } = handle;
     const image = await prepareRuntimePlanModulesOffline(
       session.options, session.runDir, session.runDir,
-      ['DKRT_BOOT', 'tk_native_audio_active', 'pp_position', 'tk_sequence_audio_hits'],
+      ['DKRT_BOOT', 'pp_position'],
       { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
     );
-    const word = (name: string, offset = 0) => session.client.memPeek(planSymbol(image.plan, name) + offset);
-    const mask = async (name: string) => ((await word(`.sec..bss.${name}`)) ?? 0) >>> 16;
+    let sym = (name: string) => planSymbol(image.plan, name);
+    const word = (name: string, offset = 0) => session.client.memPeek(sym(name) + offset);
+    const mask = async (name: string) => ((await word(name)) ?? 0) >>> 16;
     await session.client.firmwareLoad({
       syx: image.syx, base_sha256: image.plan.base.syx_sha256, start: 'auto',
       force: true, auto_no: true, card: session.cardPath,
     });
     await session.client.call('run.mode', { mode: 'free' });
     await expectRuntimeUi(session, image.plan, session.runDir);
+    sym = await trackKeyboardSymbols(session, image.plan);
     const { edge, tap, turn } = acknowledgedPanel(session);
     await tap('NO'); // Close the stock FILE SYSTEM OK acknowledgement before sending panel gestures.
     await edge('TRK', true);
@@ -249,7 +252,7 @@ describeOn('dt2', 'stock audio helper group', () => {
     await tap('YES');
     // The pool sees the kit assignment before an audition updates the DSP
     // frame's active Sound. Observe each at the appropriate point.
-    await pollEmulated(session, async () => ((await word('.sec..bss.machine')) ?? 0) >>> 24,
+    await pollEmulated(session, async () => ((await word('machine')) ?? 0) >>> 24,
       (type) => type === 1, {
         emulatedMs: 4000, message: 'owner kit assigns native WERP',
       });

@@ -9,8 +9,9 @@ author = "digikit"
 status = "experimental"
 summary = "Bounded USB/DIN ownership for persistent track instruments; routes require a ready V2 consumer."
 requires = ["core/runtime", "core/pattern-position"]
-# Its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): a module that requires it needs the file.
-served_by = "instrument"
+# Part of its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): CANOPY's MIDI ownership, which only the users of
+# core/instrument-play reach, and they need the file through it. The channel router is image code (image.c), so a module that
+# requires this adapter alone (core/track-keyboard and its service) does not need the file: no `served_by`.
 conflicts = []
 ports = ["dt2-1.17"]
 

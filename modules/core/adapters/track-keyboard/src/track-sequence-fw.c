@@ -5,6 +5,7 @@
 #include "track-native.h"
 #include "track-pattern-fw.h"
 #include "track-pool.h"
+#include "tk-seam.h"
 #include "../../instrument-play/src/cf/src-control.h"
 
 extern const uint32_t tk_seq_length_table[128];
@@ -13,7 +14,11 @@ extern const uint8_t tk_seq_midi_mute_lit[], tk_seq_midi_solo_lit[];
 extern const uint8_t tk_seq_record_ui_lit[];
 extern const uint8_t tk_seq_queued_lit[], tk_seq_direct_target_lit[];
 extern const uint8_t tk_seq_direct_request_lit[], tk_seq_direct_countdown_lit[];
+#ifdef DK_SERVICE
+#define pp_position ((volatile uint32_t *)TK_DATA(pp_position))
+#else
 extern volatile uint32_t pp_position[16];
+#endif
 extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_transport_running(void);
 extern uint32_t dkrt_irq_mask(void);
@@ -420,7 +425,7 @@ extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset 
 
 bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track)
 {
-    if (!instrument_locked_sound || !pattern || track >= TK_TRACKS)
+    if (!TK_HAVE(instrument_locked_sound) || !pattern || track >= TK_TRACKS)
         return false;
     const uint8_t *native = (const uint8_t *)(uintptr_t)pattern;
     const uint8_t *trig = native + TRACK_BYTES * track;

@@ -6,6 +6,7 @@
 #include "track-pattern-fw.h"
 #include "track-pool.h"
 #include "track-sequence.h"
+#include "tk-seam.h"
 
 #include "dkrt.h"
 #include "dk_fw_input.h"
@@ -14,7 +15,11 @@
 extern uint32_t pp_current_pattern(void);
 extern uint32_t pp_transport_running(void);
 extern uint32_t pp_selected_tempo(void);
+#ifdef DK_SERVICE
+#define pp_position ((volatile uint32_t *)TK_DATA(pp_position))
+#else
 extern volatile uint32_t pp_position[16];
+#endif
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern uintptr_t tk_fw_project(void);

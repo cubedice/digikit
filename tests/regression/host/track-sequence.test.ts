@@ -19,8 +19,8 @@ test('native due trigs feed bounded phrases and recorder commits retain input ti
         '-Wextra',
         '-Werror',
         '-fsanitize=undefined',
-        ...['track-keyboard', 'track-config', 'track-service', 'track-sequence', 'track-capture'].map((file) =>
-          join(module, 'src', file + '.c'),
+        ...['track-keyboard', 'track-valid', 'track-config', 'track-service', 'track-sequence', 'track-capture'].map(
+          (file) => join(module, 'src', file + '.c'),
         ),
         join(module, 'tests/track-sequence.c'),
         '-o',

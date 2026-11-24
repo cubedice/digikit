@@ -1,14 +1,14 @@
 import { describeOn, liveOptions } from '@digi/regression/runtime/devices.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
-import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { withSession } from '@digi/regression/support.ts';
 import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
-  const handle = withSession({ ...liveOptions('dt2', { fresh: true }), dsp: 'sharc', restart: false });
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
   test(
     'keeps USB, DIN and stock fan-out ownership separate',
     { timeout: 180_000 },
@@ -18,7 +18,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
         session.options,
         session.runDir,
         session.runDir,
-        ['DKRT_BOOT', 'tk_native_audio_active', 'tk_capture_committed'],
+        ['DKRT_BOOT'],
         { modules: ['core/track-keyboard', 'core/digikit-menu', 'core/health'] },
       );
       await session.client.firmwareLoad({
@@ -31,6 +31,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
       });
       await session.client.call('run.mode', { mode: 'free' });
       await expectRuntimeUi(session, image.plan, session.runDir);
+      const sym = await trackKeyboardSymbols(session, image.plan);
       const { edge, tap, turn } = acknowledgedPanel(session);
       const selectTrack = async (track: number) => {
         await edge('TRK', true);
@@ -49,7 +50,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
         session.client.call(port === 'usb' ? 'midi.usb.in' : 'midi.in', { bytes });
       const held = (track: number) => session.client.memPeek(0x44e086ec + (track - 1) * 4);
       const generated = async (track: number) => {
-        const mask = await session.client.memPeek(planSymbol(image.plan, 'tk_native_audio_active'));
+        const mask = await session.client.memPeek(sym('tk_native_audio_active'));
         return ((mask ?? 0) >> (track - 1)) & 1;
       };
       const expectHeld = (count: () => Promise<number | null>, n: number, message: string) =>
@@ -117,7 +118,7 @@ describeOn('dt2', 'shared track keyboard MIDI ingress proof', () => {
       await control('usb', [0x80, 64, 0]);
       await expectHeld(() => generated(1), 0, 'restored key has a matching release');
 
-      const commits = () => session.client.memPeek(planSymbol(image.plan, 'tk_capture_committed'));
+      const commits = () => session.client.memPeek(sym('tk_capture_committed'));
       const before = (await commits()) ?? 0;
       await edge('RECORD', true);
       try {

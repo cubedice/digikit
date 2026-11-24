@@ -1292,6 +1292,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dkrt-svc-track-keyboard"
+version = "0.1.0"
+dependencies = [
+ "dkrt-abi",
+ "dkrt-sdk",
+]
+
+[[package]]
 name = "dkrt-test-support"
 version = "0.1.0"
 dependencies = [

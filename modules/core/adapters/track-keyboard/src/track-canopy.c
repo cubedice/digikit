@@ -6,6 +6,7 @@
 
 #include "track-midi.h"
 #include "track-sequence.h"
+#include "tk-seam.h"
 
 #include "../../instrument-play/src/cf/src-control.h"
 #include "../../instrument-play/src/cf/shared-notes.h"
@@ -27,12 +28,13 @@ extern int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token,
                                                  uint32_t lane, const struct IsnSnapshot *snapshot) __attribute__((weak));
 extern int instrument_track_owned(uint32_t track) __attribute__((weak));
 
-/* All of CANOPY's host is in the image. */
+/* All of CANOPY's host is in the image (in the service build: in the image table tk_image). */
 static bool canopy_linked(void)
 {
-    return cp_valid && ilp_event_pair && instrument_lock_source && instrument_locked_sound && instrument_src_track_keyboard &&
-           instrument_track_keyboard_lanes && instrument_track_keyboard_legacy && instrument_track_keyboard_locked_note &&
-           instrument_track_owned;
+    return TK_HAVE(cp_valid) && TK_HAVE(ilp_event_pair) && TK_HAVE(instrument_lock_source) && TK_HAVE(instrument_locked_sound) &&
+           TK_HAVE(instrument_src_track_keyboard) && TK_HAVE(instrument_track_keyboard_lanes) &&
+           TK_HAVE(instrument_track_keyboard_legacy) && TK_HAVE(instrument_track_keyboard_locked_note) &&
+           TK_HAVE(instrument_track_owned);
 }
 
 static const uint8_t order[] = {TK_ORDER_UP, TK_ORDER_DOWN, TK_ORDER_UPDN, TK_ORDER_PLAY,
