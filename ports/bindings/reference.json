@@ -3749,40 +3749,6 @@
     },
     {
       "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x40060f50",
-            "len": 8
-          }
-        ]
-      },
-      "bindings": {
-        "c": "dk_fw_machine_selection_build",
-        "rust": "dkfw::machine::selection_build"
-      },
-      "cpu": "cf",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "DT2 1.17 persistent machine-selection view item builder. C ABI build(view), clears then refills the cached list. Archived registry proof, finding 30.",
-      "file": "devices/fw/machine.toml",
-      "kind": "fn",
-      "mark": "D",
-      "name": "cf.machine.fn.selection_build",
-      "rule": {
-        "dt2": {
-          "kind": "cf_window_hash",
-          "len": 8
-        }
-      },
-      "subsystem": "machine",
-      "users": [
-        "core/instrument-play"
-      ],
-      "was": []
-    },
-    {
-      "at": {
         "dn2-1.11": [
           {
             "addr": "0x40031880",
@@ -4465,37 +4431,6 @@
       "subsystem": "machine",
       "users": [
         "core/services/machines"
-      ],
-      "was": []
-    },
-    {
-      "at": {
-        "dt2-1.17": [
-          {
-            "addr": "0x40060f50"
-          }
-        ]
-      },
-      "cpu": "cf",
-      "devices": [
-        "dt2"
-      ],
-      "doc": "Remember the persistent selection view so delayed boot-only V2 publication can refresh its item list on the UI task.",
-      "file": "devices/fw/machine.toml",
-      "kind": "hook",
-      "mark": "D",
-      "mode": "before",
-      "name": "cf.machine.hook.selection_build",
-      "regs": {
-        "clobbers": [
-          "ccr"
-        ],
-        "in": []
-      },
-      "site": "cf.machine.fn.selection_build",
-      "subsystem": "machine",
-      "users": [
-        "core/instrument-play"
       ],
       "was": []
     },
@@ -33221,7 +33156,7 @@
       "name": "link"
     },
     {
-      "count": 83,
+      "count": 81,
       "cpu": "cf",
       "file": "devices/fw/machine.toml",
       "meaning": "the machine framework: dispatch, names, per-type tables, the run-time registry",

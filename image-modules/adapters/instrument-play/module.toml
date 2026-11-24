@@ -45,13 +45,12 @@ to = "_mi_velocity_entry"
 path = "build/play-cf.dko.json"
 optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig", "tk_pattern_cleared", "tk_pattern_copied", "tk_runtime_init", "tk_midi_channel_message", "rtm_can_save", "rtm_mod_carrier", "rtm_mod_param", "rtm_src", "dl_reset_begin", "dl_reset_quiesce"]
 # The image part (docs/plans/fork-image-diet.md): the Sound persistence path, the hook entries that stay, the pure codecs, and the generated forwarders (seam.s) and image table (seam-table.s). Everything else runs from services/instrument.dks.
-sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/view.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/seam.s", "src/cf/seam-table.s"]
+sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/seam.s", "src/cf/seam-table.s"]
 include_dirs = ["build/gen", "src", "../keyboard-panel/src/cf"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]
 memcpy = "cf.util.site.memcpy"
-ip_view_next = "hook.cf.machine.fn.selection_build.tail"
 ip_mod_color = "params.ip_mod_color.index"
 ip_mod_drift = "params.ip_mod_drift.index"
 ip_mod_mix = "params.ip_mod_mix.index"
@@ -75,7 +74,7 @@ ip_mod_split_next = "hook.cf.machine.site.instrument_mod_split.return"
 ip_mod_split_skip = "cf.machine.site.instrument_mod_split_skip"
 ip_mod_recombine_next = "hook.cf.machine.site.instrument_mod_recombine.return"
 ip_mod_recombine_skip = "cf.machine.site.instrument_mod_recombine_skip"
-ip_view_build = "cf.machine.fn.selection_build"
+ip_view_build = "cf.machine.fn.view.build"
 ip_project = "cf.project.fn.singleton"
 ip_kit = "cf.project.fn.active_kit"
 ip_refresh = "cf.machine.fn.refresh_track"
@@ -174,11 +173,6 @@ to = "ip_init_site"
 op = "hook"
 hook = "cf.machine.hook.sound_type_write"
 to = "ip_type_site"
-
-[[op]]
-op = "hook"
-hook = "cf.machine.hook.selection_build"
-to = "ip_view_entry"
 
 # Replace only the relevant primary/interface entries, preserving RTTI and all
 # other SourcePageView virtual methods. Stock handlers remain callable.

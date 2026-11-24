@@ -56,7 +56,7 @@
 #define IPX_dl_reset_begin 48u
 #define IPX_dl_reset_quiesce 49u
 #define IPX_pp_position 50u
-#define IPX_ip_view 51u
+#define IPX_dynreg_view 51u
 #define IPX_ip_src_draw 52u
 #define IPX_ip_mod_color 53u
 #define IPX_ip_mod_drift 54u

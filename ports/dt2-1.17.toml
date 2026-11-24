@@ -4707,11 +4707,6 @@ kind = "tail"
 check = "619ff3d560aa3491"
 
 [[hook]]
-name = "cf.machine.hook.selection_build"
-site = "cf.machine.fn.selection_build"
-mode = "before"
-
-[[hook]]
 name = "cf.machine.hook.sound_deserialize"
 site = "cf.machine.site.sound_deserialize"
 mode = "replace"
@@ -6941,16 +6936,6 @@ kind = "code"
 addr = 0x4002d438
 len = 172
 sha256 = "73fa55909e763ea88f19b800ea655cb0e36fd5bae161120e37e9ea4228eba9a9"
-mark = "D"
-rule = "fw/machine:cf_window_hash"
-
-[[anchor]]
-name = "cf.machine.fn.selection_build"
-cpu = "cf"
-kind = "code"
-addr = 0x40060f50
-len = 8
-sha256 = "d38e64037d171546ea46d9f5ff950af69f4742dd92f87e4f56faf9fe101bb64e"
 mark = "D"
 rule = "fw/machine:cf_window_hash"
 

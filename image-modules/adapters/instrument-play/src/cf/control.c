@@ -54,10 +54,12 @@ int instrument_play_faulted(uint32_t generation)
  * applied revision, type ([0..7] is instance 0). */
 volatile uint32_t ip_control[IP_INSTANCES * 8];
 static dk_ui_menu *menu;
+/* The machine selection view, as core/dynreg's hook of its builder remembers it (`dynreg_view`, 0 until the view exists). */
 #ifdef DK_SERVICE
-#define ip_view (*(volatile uint32_t *)IP_DATA(ip_view))
+#define ip_view (*(volatile uint32_t *)IP_DATA(dynreg_view))
 #else
-extern volatile uint32_t ip_view;
+extern volatile uint32_t dynreg_view;
+#define ip_view dynreg_view
 #endif
 extern void ip_view_build(uint32_t view);
 static uint32_t listed_type;

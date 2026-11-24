@@ -12,7 +12,6 @@
 /* cf.machine.fn.name.long: no sig yet */
 /* cf.machine.fn.permit: no sig yet */
 /* cf.machine.fn.refresh_track: no sig yet */
-/* cf.machine.fn.selection_build: no sig yet */
 /* The KitActive set-machine wrapper the machine chooser commits through: `(KitActive *, track, type, 1, 1)`. It clamps the track to 0..15, calls the machine setter on the track object (k + 0x6c + track * 0x3c0; the setter checks the permit and sends the change), and updates the mask of tracks that hold the special type. DT2 0x40036798, DN2 0x40031880. Finding 150. The debug module's SETUP command calls it from the UI task. */
 int32_t dk_fw_machine_set_kit(uint32_t kit, int32_t track, int32_t ty, int32_t flag4, int32_t flag5) __asm__("cf.machine.fn.set_kit");
 /* cf.machine.fn.type_page.count: no sig yet */

@@ -102,100 +102,100 @@
   },
   {
    "addend": 0,
-   "offset": 308,
-   "section": ".text",
-   "symbol": ".sec..bss",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 316,
-   "section": ".text",
-   "symbol": "ip_view_next",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 336,
    "section": ".text",
    "symbol": "ip_lock_capture",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 358,
+   "offset": 338,
    "section": ".text",
    "symbol": "ip_lock_due_1_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 364,
+   "offset": 344,
    "section": ".text",
    "symbol": "ip_lock_due_1_skip",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 384,
+   "offset": 364,
    "section": ".text",
    "symbol": "ip_lock_capture",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 406,
+   "offset": 386,
    "section": ".text",
    "symbol": "ip_lock_due_2_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 412,
+   "offset": 392,
    "section": ".text",
    "symbol": "ip_lock_due_2_skip",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 428,
+   "offset": 408,
    "section": ".text",
    "symbol": "instrument_mod_carrier",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 448,
+   "offset": 428,
    "section": ".text",
    "symbol": "ip_mod_split_skip",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 468,
+   "offset": 448,
    "section": ".text",
    "symbol": "ip_mod_split_next",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 484,
+   "offset": 464,
    "section": ".text",
    "symbol": "instrument_mod_carrier",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 504,
+   "offset": 484,
    "section": ".text",
    "symbol": "ip_mod_recombine_skip",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 528,
+   "offset": 508,
    "section": ".text",
    "symbol": "ip_mod_recombine_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 514,
+   "section": ".text",
+   "symbol": "slot.instrument_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 528,
+   "section": ".text",
+   "symbol": "ip_mod_carrier_absent",
    "type": "cf.32"
   },
   {
@@ -207,21 +207,14 @@
   },
   {
    "addend": 0,
-   "offset": 548,
-   "section": ".text",
-   "symbol": "ip_mod_carrier_absent",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 554,
+   "offset": 552,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 572,
+   "offset": 570,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -235,14 +228,14 @@
   },
   {
    "addend": 0,
-   "offset": 610,
+   "offset": 608,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 628,
+   "offset": 626,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -263,28 +256,28 @@
   },
   {
    "addend": 0,
-   "offset": 686,
+   "offset": 684,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 704,
-   "section": ".text",
-   "symbol": "slot.instrument_vec",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 720,
+   "offset": 700,
    "section": ".text",
    "symbol": "ip_mod_param_absent",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 726,
+   "offset": 706,
+   "section": ".text",
+   "symbol": "slot.instrument_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 724,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -305,7 +298,7 @@
   },
   {
    "addend": 0,
-   "offset": 784,
+   "offset": 782,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -354,119 +347,112 @@
   },
   {
    "addend": 0,
-   "offset": 922,
+   "offset": 920,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 940,
-   "section": ".text",
-   "symbol": "slot.instrument_vec",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 956,
+   "offset": 936,
    "section": ".text",
    "symbol": "ip_src_stock_attach",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 962,
+   "offset": 942,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 978,
+   "offset": 958,
    "section": ".text",
    "symbol": "ip_src_stock_detach",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 984,
+   "offset": 964,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1000,
+   "offset": 980,
    "section": ".text",
    "symbol": "ip_src_stock_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1006,
+   "offset": 986,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1022,
+   "offset": 1002,
    "section": ".text",
    "symbol": "ip_src_stock_event",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1028,
+   "offset": 1008,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1044,
+   "offset": 1024,
    "section": ".text",
    "symbol": "ip_src_stock_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1050,
+   "offset": 1030,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1066,
+   "offset": 1046,
    "section": ".text",
    "symbol": "ip_src_stock_parameter",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1072,
+   "offset": 1052,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1088,
+   "offset": 1068,
    "section": ".text",
    "symbol": "ip_src_stock_turn",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1094,
+   "offset": 1074,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1110,
+   "offset": 1090,
    "section": ".text",
    "symbol": "ip_src_stock_update",
    "type": "cf.32"
@@ -811,7 +797,7 @@
    "addend": 0,
    "offset": 204,
    "section": ".rodata",
-   "symbol": "ip_view",
+   "symbol": "dynreg_view",
    "type": "cf.32"
   },
   {
@@ -2029,10 +2015,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "4feffff048d70c0c246f0014266f00182f2f001c2f0b2f0a6100002e4fef000c26004ab90000000067122f032f0b2f0a4eb90000000026004fef000c20034cd70c0c4fef00104e754fefffdc48d77c3c4ef9000000004ab900000000671a4feffff048d703032f0a4eb900000000588f4cd703034fef001042aa013c45ea01404ef900000000b48667224ab900000000671a4feffff048d703032f084eb900000000588f4cd703034fef0010114200a2b4864ef9000000004fefffc848d70c0c246f003c266f0040486f00102f0b2f0a4eb9000000004fef000c2f0b2f0a4eb900000000508f24002f0b2f0a6100002e508f2600486f00102f032f0a4eb9000000004fef000c2f024eb900000000588f20034cd70c0c4fef00384e754fefffe048d77c1c4ef9000000004e712f00202f000823c000000000201f4ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f074eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010302c005a22004ef9000000004feffff048d703032f064eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010716c005a0c80000004004ef9000000002039000000006706224022514ed14ef90000000020390000000067082240226900044ed14e7520390000000067082240226900084ed14e75203900000000670822402269000c4ed170004e7520390000000067082240226900104ed14e7520390000000067082240226900144ed14e7520390000000067082240226900184ed170004e75203900000000670822402269001c4ed170004e7520390000000067082240226900204ed14e7520390000000067082240226900244ed14ef90000000020390000000067082240226900284ed14e75203900000000670822402269002c4ed170004e7520390000000067082240226900304ed170004e7520390000000067082240226900344ed14e7520390000000067082240226900384ed170004e75203900000000670822402269003c4ed170004e7520390000000067082240226900404ed170004e7520390000000067082240226900444ed170004e7520390000000067082240226900484ed170004e75203900000000670822402269004c4ed170004e7520390000000067082240226900504ed14e7520390000000067082240226900544ed14ef90000000020390000000067082240226900584ed14ef900000000203900000000670822402269005c4ed14ef90000000020390000000067082240226900604ed14ef90000000020390000000067082240226900644ed14ef90000000020390000000067082240226900684ed14ef900000000203900000000670822402269006c4ed14ef90000000020390000000067082240226900704ed14ef9000000004e71",
+   "hex": "4feffff048d70c0c246f0014266f00182f2f001c2f0b2f0a6100002e4fef000c26004ab90000000067122f032f0b2f0a4eb90000000026004fef000c20034cd70c0c4fef00104e754fefffdc48d77c3c4ef9000000004ab900000000671a4feffff048d703032f0a4eb900000000588f4cd703034fef001042aa013c45ea01404ef900000000b48667224ab900000000671a4feffff048d703032f084eb900000000588f4cd703034fef0010114200a2b4864ef9000000004fefffc848d70c0c246f003c266f0040486f00102f0b2f0a4eb9000000004fef000c2f0b2f0a4eb900000000508f24002f0b2f0a6100002e508f2600486f00102f032f0a4eb9000000004fef000c2f024eb900000000588f20034cd70c0c4fef00384e754fefffe048d77c1c4ef9000000004e714feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f074eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010302c005a22004ef9000000004feffff048d703032f064eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010716c005a0c80000004004ef9000000002039000000006706224022514ed14ef90000000020390000000067082240226900044ed14e7520390000000067082240226900084ed14e75203900000000670822402269000c4ed170004e7520390000000067082240226900104ed14e7520390000000067082240226900144ed14e7520390000000067082240226900184ed170004e75203900000000670822402269001c4ed170004e7520390000000067082240226900204ed14e7520390000000067082240226900244ed14ef90000000020390000000067082240226900284ed14e75203900000000670822402269002c4ed170004e7520390000000067082240226900304ed170004e7520390000000067082240226900344ed14e7520390000000067082240226900384ed170004e75203900000000670822402269003c4ed170004e7520390000000067082240226900404ed170004e7520390000000067082240226900444ed170004e7520390000000067082240226900484ed170004e75203900000000670822402269004c4ed170004e7520390000000067082240226900504ed14e7520390000000067082240226900544ed14ef90000000020390000000067082240226900584ed14ef900000000203900000000670822402269005c4ed14ef90000000020390000000067082240226900604ed14ef90000000020390000000067082240226900644ed14ef90000000020390000000067082240226900684ed14ef900000000203900000000670822402269006c4ed14ef90000000020390000000067082240226900704ed14ef9000000004e71",
    "kind": "text",
    "name": ".text",
-   "size": 1116
+   "size": 1096
   },
   {
    "align": 4,
@@ -2040,13 +2026,6 @@
    "kind": "data",
    "name": ".rodata",
    "size": 284
-  },
-  {
-   "align": 16,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss",
-   "size": 16
   },
   {
    "align": 2,
@@ -2511,14 +2490,8 @@
    "size": 332
   }
  ],
- "source_sha256": "69684535b989ae39750254e281c1dd1457c62bf4c87df1d5b56ce0b34998570b",
+ "source_sha256": "b4257d03ea348dd1f4b919ef56e40ad9722c81ea377a8ca31737e30c186f9133",
  "symbols": [
-  {
-   "global": false,
-   "name": ".sec..bss",
-   "section": ".bss",
-   "value": 0
-  },
   {
    "global": false,
    "name": ".sec..bss.ip_sa_info",
@@ -2859,13 +2832,13 @@
    "global": true,
    "name": "dk_app_instrument_module_settings",
    "section": ".text",
-   "value": 664
+   "value": 644
   },
   {
    "global": true,
    "name": "dk_app_instrument_settings_rows",
    "section": ".text",
-   "value": 684
+   "value": 664
   },
   {
    "global": true,
@@ -2928,6 +2901,12 @@
    "value": 0
   },
   {
+   "global": true,
+   "name": "dynreg_view",
+   "section": null,
+   "value": 0
+  },
+  {
    "global": false,
    "name": "each_slot",
    "section": ".text.each_slot",
@@ -2967,7 +2946,7 @@
    "global": true,
    "name": "ilp_event_pair",
    "section": ".text",
-   "value": 742
+   "value": 722
   },
   {
    "global": true,
@@ -2979,7 +2958,7 @@
    "global": true,
    "name": "instrument_lock_source",
    "section": ".text",
-   "value": 762
+   "value": 742
   },
   {
    "global": true,
@@ -2991,25 +2970,25 @@
    "global": true,
    "name": "instrument_mod_carrier",
    "section": ".text",
-   "value": 532
+   "value": 512
   },
   {
    "global": true,
    "name": "instrument_mod_param",
    "section": ".text",
-   "value": 702
+   "value": 682
   },
   {
    "global": true,
    "name": "instrument_play_faulted",
    "section": ".text",
-   "value": 644
+   "value": 624
   },
   {
    "global": true,
    "name": "instrument_play_tick",
    "section": ".text",
-   "value": 626
+   "value": 606
   },
   {
    "global": true,
@@ -3021,49 +3000,49 @@
    "global": true,
    "name": "instrument_sound_flush",
    "section": ".text",
-   "value": 552
+   "value": 532
   },
   {
    "global": true,
    "name": "instrument_src_track_keyboard",
    "section": ".text",
-   "value": 782
+   "value": 762
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_lanes",
    "section": ".text",
-   "value": 800
+   "value": 780
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_legacy",
    "section": ".text",
-   "value": 820
+   "value": 800
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_locked_note",
    "section": ".text",
-   "value": 840
+   "value": 820
   },
   {
    "global": true,
    "name": "instrument_track_owned",
    "section": ".text",
-   "value": 860
+   "value": 840
   },
   {
    "global": true,
    "name": "instrument_write_lock_frame",
    "section": ".text",
-   "value": 724
+   "value": 704
   },
   {
    "global": true,
    "name": "ip_current_machine_sound",
    "section": ".text",
-   "value": 880
+   "value": 860
   },
   {
    "global": true,
@@ -3087,13 +3066,13 @@
    "global": true,
    "name": "ip_lock_capture",
    "section": ".text",
-   "value": 570
+   "value": 550
   },
   {
    "global": true,
    "name": "ip_lock_due_1",
    "section": ".text",
-   "value": 320
+   "value": 300
   },
   {
    "global": true,
@@ -3111,7 +3090,7 @@
    "global": true,
    "name": "ip_lock_due_2",
    "section": ".text",
-   "value": 368
+   "value": 348
   },
   {
    "global": true,
@@ -3207,7 +3186,7 @@
    "global": true,
    "name": "ip_mod_recombine",
    "section": ".text",
-   "value": 472
+   "value": 452
   },
   {
    "global": true,
@@ -3237,7 +3216,7 @@
    "global": true,
    "name": "ip_mod_split",
    "section": ".text",
-   "value": 416
+   "value": 396
   },
   {
    "global": true,
@@ -3303,7 +3282,7 @@
    "global": true,
    "name": "ip_refresh_machine_track",
    "section": ".text",
-   "value": 900
+   "value": 880
   },
   {
    "global": true,
@@ -3411,13 +3390,13 @@
    "global": true,
    "name": "ip_sound_begin",
    "section": ".text",
-   "value": 588
+   "value": 568
   },
   {
    "global": true,
    "name": "ip_sound_end",
    "section": ".text",
-   "value": 608
+   "value": 588
   },
   {
    "global": true,
@@ -3447,25 +3426,25 @@
    "global": true,
    "name": "ip_src_attach",
    "section": ".text",
-   "value": 938
+   "value": 918
   },
   {
    "global": true,
    "name": "ip_src_detach",
    "section": ".text",
-   "value": 960
+   "value": 940
   },
   {
    "global": true,
    "name": "ip_src_draw",
    "section": ".text",
-   "value": 982
+   "value": 962
   },
   {
    "global": true,
    "name": "ip_src_draw_rotary",
    "section": ".text",
-   "value": 920
+   "value": 900
   },
   {
    "global": true,
@@ -3477,19 +3456,19 @@
    "global": true,
    "name": "ip_src_event",
    "section": ".text",
-   "value": 1004
+   "value": 984
   },
   {
    "global": true,
    "name": "ip_src_key",
    "section": ".text",
-   "value": 1026
+   "value": 1006
   },
   {
    "global": true,
    "name": "ip_src_parameter",
    "section": ".text",
-   "value": 1048
+   "value": 1028
   },
   {
    "global": true,
@@ -3543,13 +3522,13 @@
    "global": true,
    "name": "ip_src_turn",
    "section": ".text",
-   "value": 1070
+   "value": 1050
   },
   {
    "global": true,
    "name": "ip_src_update",
    "section": ".text",
-   "value": 1092
+   "value": 1072
   },
   {
    "global": true,
@@ -3562,24 +3541,6 @@
    "name": "ip_type_site",
    "section": ".text",
    "value": 134
-  },
-  {
-   "global": true,
-   "name": "ip_view",
-   "section": ".bss",
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "ip_view_entry",
-   "section": ".text",
-   "value": 300
-  },
-  {
-   "global": true,
-   "name": "ip_view_next",
-   "section": null,
-   "value": 0
   },
   {
    "global": false,
@@ -3892,8 +3853,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2762",
-  "isa_check": "2a82c212e272e20ae9c283d099cd0b5e33bce07c4d175cd08f78d80c550ead8c",
+  "instructions_redecoded": "2757",
+  "isa_check": "11421b48fba3d038ad54986593629151de5bc36c974929c3b10832eb9ccbebdb",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

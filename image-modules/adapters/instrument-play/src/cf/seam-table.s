@@ -56,7 +56,7 @@ instrument_image:
     .long dl_reset_begin
     .long dl_reset_quiesce
     .long pp_position
-    .long ip_view
+    .long dynreg_view
     .long ip_src_draw
     .long ip_mod_color
     .long ip_mod_drift

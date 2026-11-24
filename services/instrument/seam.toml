@@ -111,7 +111,7 @@ optional = [
 ]
 # addresses the moved code reads or compares with: image data, and a forwarder that a firmware table holds
 # (instrument_src_tick finds the SRC page by its vtable draw entry, which is the image forwarder ip_src_draw)
-data = ["pp_position", "ip_view", "ip_src_draw"]
+data = ["pp_position", "dynreg_view", "ip_src_draw"]
 # registry codes (the index of a params entry of the adapter)
 values = [
     "ip_mod_color", "ip_mod_drift", "ip_mod_mix", "ip_mod_strum", "ip_mod_gate", "ip_mod_swing",
