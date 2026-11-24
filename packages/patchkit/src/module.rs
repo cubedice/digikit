@@ -685,6 +685,11 @@ pub struct ModuleInfo {
     /// are not lowered into registry rows; the packer lowers them into the `.dkm` `register` records.
     #[serde(default)]
     pub dynamic: bool,
+    /// An image adapter whose code runs from a service file (docs/plans/fork-image-diet.md): the service (a `[[service]]` of sdk/sdk.toml
+    /// without `rust`). The adapter forwards into it through a slot the file fills, so a module that requires the adapter, directly or
+    /// through another module, needs the file: the packer gives it a hard `NEEDS` entry for the service (`served_needs`).
+    #[serde(default)]
+    pub served_by: Option<String>,
 }
 
 impl ModuleInfo {
@@ -931,6 +936,30 @@ impl Library {
     /// The selection plus everything it requires, transitively. Returns the full list (the selection first, in the
     /// order given, then the added modules in the order found) and the added ones. Refuses a module that is not in
     /// the library, a requirement that is missing, and a `requires` cycle.
+    /// The services that serve the adapters in the requires closure of `id` (`served_by`), sorted, without repeats; the service the
+    /// module provides itself does not count.
+    pub fn served_needs(&self, id: &str) -> Result<Vec<String>> {
+        let (all, _) = self.with_requires(&[id.to_string()])?;
+        let own = self.get(id).and_then(|m| m.manifest.module.service.clone());
+        let mut out: Vec<String> = all
+            .iter()
+            .filter(|m| m.as_str() != id)
+            .filter_map(|m| self.get(m))
+            .filter_map(|m| m.manifest.module.served_by.clone())
+            .filter(|s| own.as_ref() != Some(s))
+            .collect();
+        out.sort();
+        out.dedup();
+        for s in &out {
+            if !crate::sdkgen::provider_services().contains(s.as_str()) {
+                return Err(err!(
+                    "served_by = {s:?}: not a [[service]] of sdk/sdk.toml without `rust` (a service provided by a .dks)"
+                ));
+            }
+        }
+        Ok(out)
+    }
+
     pub fn with_requires(&self, ids: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         fn visit(
             lib: &Library,

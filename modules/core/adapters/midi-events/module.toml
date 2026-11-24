@@ -9,6 +9,8 @@ author = "digikit"
 status = "experimental"
 summary = "Bounded USB/DIN ownership for persistent track instruments; routes require a ready V2 consumer."
 requires = ["core/runtime", "core/pattern-position"]
+# Its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): a module that requires it needs the file.
+served_by = "instrument"
 conflicts = []
 ports = ["dt2-1.17"]
 

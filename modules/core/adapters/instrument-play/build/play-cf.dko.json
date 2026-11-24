@@ -361,28 +361,28 @@
   },
   {
    "addend": 0,
-   "offset": 1058,
+   "offset": 1056,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1076,
-   "section": ".text",
-   "symbol": "slot.instrument_vec",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1092,
+   "offset": 1072,
    "section": ".text",
    "symbol": "ip_mod_param_absent",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1098,
+   "offset": 1078,
+   "section": ".text",
+   "symbol": "slot.instrument_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1096,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -403,7 +403,7 @@
   },
   {
    "addend": 0,
-   "offset": 1156,
+   "offset": 1154,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
@@ -452,210 +452,203 @@
   },
   {
    "addend": 0,
-   "offset": 1294,
+   "offset": 1292,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1312,
-   "section": ".text",
-   "symbol": "slot.instrument_vec",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1328,
+   "offset": 1308,
    "section": ".text",
    "symbol": "ip_note_list_original",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1334,
+   "offset": 1314,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1350,
+   "offset": 1330,
    "section": ".text",
    "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1356,
+   "offset": 1336,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1372,
+   "offset": 1352,
    "section": ".text",
    "symbol": "ip_panel_original_off",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1378,
+   "offset": 1358,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1394,
+   "offset": 1374,
    "section": ".text",
    "symbol": "ip_panel_stock_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1400,
+   "offset": 1380,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1416,
+   "offset": 1396,
    "section": ".text",
    "symbol": "ip_panel_stock_detach",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1422,
+   "offset": 1402,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1438,
+   "offset": 1418,
    "section": ".text",
    "symbol": "ip_panel_stock_toggle",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1444,
+   "offset": 1424,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1462,
+   "offset": 1442,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1478,
+   "offset": 1458,
    "section": ".text",
    "symbol": "ip_src_stock_attach",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1484,
+   "offset": 1464,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1500,
+   "offset": 1480,
    "section": ".text",
    "symbol": "ip_src_stock_detach",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1506,
+   "offset": 1486,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1522,
+   "offset": 1502,
    "section": ".text",
    "symbol": "ip_src_stock_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1528,
+   "offset": 1508,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1544,
+   "offset": 1524,
    "section": ".text",
    "symbol": "ip_src_stock_event",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1550,
+   "offset": 1530,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1566,
+   "offset": 1546,
    "section": ".text",
    "symbol": "ip_src_stock_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1572,
+   "offset": 1552,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1588,
+   "offset": 1568,
    "section": ".text",
    "symbol": "ip_src_stock_parameter",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1594,
+   "offset": 1574,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1610,
+   "offset": 1590,
    "section": ".text",
    "symbol": "ip_src_stock_turn",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1616,
+   "offset": 1596,
    "section": ".text",
    "symbol": "slot.instrument_vec",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1632,
+   "offset": 1612,
    "section": ".text",
    "symbol": "ip_src_stock_update",
    "type": "cf.32"
@@ -1169,6 +1162,13 @@
    "offset": 6,
    "section": ".text.ip_src_encoder_interface",
    "symbol": "ip_src_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.instrument_runtime_policy",
+   "symbol": ".sec..rodata.limits",
    "type": "cf.32"
   },
   {
@@ -2239,10 +2239,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "202f000c0c800000045065644ab90000000066100c800001db8c67080c80000006a5664c4feffff448d7001c242f0010262f0014282f00182f042f032f024eb9000000004fef000c2f042f032f0261204fef000c2f042f032f024eb9000000004fef000c20024cd7001c4fef000c4e75226f0004206f00084ef900000000202f000c0c800000045065484ab90000000066080c800001db8c66384feffff448d7001c242f0010262f0014282f00182f042f032f02611c4fef000c2f042f024eb900000000508f20024cd7001c4fef000c4e75206f000871af000b4ef900000000202f00080c8000000450653e4ab90000000066080c800001db8c662e4feffff848d7000c242f000c262f00102f032f026118508f2f032f024eb900000000508f4cd7000c4fef00084e75206f0004202f00084ef9000000004feffff048d70c0c246f0014266f00182f2f001c2f0b2f0a6100002e4fef000c26004ab90000000067122f032f0b2f0a4eb90000000026004fef000c20034cd70c0c4fef00104e754fefffdc48d77c3c4ef9000000004ab900000000671a4feffff048d703032f0a4eb900000000588f4cd703034fef001042aa013c45ea01404ef900000000b48667224ab900000000671a4feffff048d703032f084eb900000000588f4cd703034fef0010114200a2b4864ef9000000004fefffc848d70c0c246f003c266f0040486f00102f0b2f0a4eb9000000004fef000c2f0b2f0a4eb900000000508f24002f0b2f0a6100002e508f2600486f00102f032f0a4eb9000000004fef000c2f024eb900000000588f20034cd70c0c4fef00384e754fefffe048d77c1c4ef9000000004e712f00202f000823c000000000201f4ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f074eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010302c005a22004ef9000000004feffff048d703032f064eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010716c005a0c80000004004ef9000000004e56ffbc707f4ef9000000004fefffe848d77c044ef9000000004e56ffc848d73cfc4ef9000000002039000000006706204020504ed04ef90000000020390000000067082040206800044ed04e7520390000000067082040206800084ed04e75203900000000670820402068000c4ed070004e7520390000000067082040206800104ed04e7520390000000067082040206800144ed04e7520390000000067082040206800184ed070004e75203900000000670820402068001c4ed070004e7520390000000067082040206800204ed070004e7520390000000067082040206800244ed04e7520390000000067082040206800284ed04ef900000000203900000000670820402068002c4ed04e7520390000000067082040206800304ed070004e7520390000000067082040206800344ed070004e7520390000000067082040206800384ed04e75203900000000670820402068003c4ed070004e7520390000000067082040206800404ed070004e7520390000000067082040206800444ed070004e7520390000000067082040206800484ed070004e75203900000000670820402068004c4ed070004e7520390000000067082040206800504ed070004e7520390000000067082040206800544ed04e7520390000000067082040206800584ed04ef900000000203900000000670820402068005c4ed04ef90000000020390000000067082040206800604ed04ef90000000020390000000067082040206800644ed04ef90000000020390000000067082040206800684ed04ef900000000203900000000670820402068006c4ed04ef90000000020390000000067082040206800704ed04e7520390000000067082040206800744ed04ef90000000020390000000067082040206800784ed04ef900000000203900000000670820402068007c4ed04ef90000000020390000000067082040206800804ed04ef90000000020390000000067082040206800844ed04ef90000000020390000000067082040206800884ed04ef900000000203900000000670820402068008c4ed04ef90000000020390000000067082040206800904ed04ef900000000",
+   "hex": "202f000c0c800000045065644ab90000000066100c800001db8c67080c80000006a5664c4feffff448d7001c242f0010262f0014282f00182f042f032f024eb9000000004fef000c2f042f032f0261204fef000c2f042f032f024eb9000000004fef000c20024cd7001c4fef000c4e75226f0004206f00084ef900000000202f000c0c800000045065484ab90000000066080c800001db8c66384feffff448d7001c242f0010262f0014282f00182f042f032f02611c4fef000c2f042f024eb900000000508f20024cd7001c4fef000c4e75206f000871af000b4ef900000000202f00080c8000000450653e4ab90000000066080c800001db8c662e4feffff848d7000c242f000c262f00102f032f026118508f2f032f024eb900000000508f4cd7000c4fef00084e75206f0004202f00084ef9000000004feffff048d70c0c246f0014266f00182f2f001c2f0b2f0a6100002e4fef000c26004ab90000000067122f032f0b2f0a4eb90000000026004fef000c20034cd70c0c4fef00104e754fefffdc48d77c3c4ef9000000004ab900000000671a4feffff048d703032f0a4eb900000000588f4cd703034fef001042aa013c45ea01404ef900000000b48667224ab900000000671a4feffff048d703032f084eb900000000588f4cd703034fef0010114200a2b4864ef9000000004fefffc848d70c0c246f003c266f0040486f00102f0b2f0a4eb9000000004fef000c2f0b2f0a4eb900000000508f24002f0b2f0a6100002e508f2600486f00102f032f0a4eb9000000004fef000c2f024eb900000000588f20034cd70c0c4fef00384e754fefffe048d77c1c4ef9000000004e712f00202f000823c000000000201f4ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f2800542f024eb900000000508f4cd703034fef00102028005467064ef9000000004ef9000000004feffff048d703032f074eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010302c005a22004ef9000000004feffff048d703032f064eb900000000588f4a80670e4cd703034fef00104ef9000000004cd703034fef0010716c005a0c80000004004ef9000000004e56ffbc707f4ef9000000004fefffe848d77c044ef9000000004e56ffc848d73cfc4ef9000000002039000000006706204020504ed04ef90000000020390000000067082040206800044ed04e7520390000000067082040206800084ed04e75203900000000670820402068000c4ed070004e7520390000000067082040206800104ed04e7520390000000067082040206800144ed04e7520390000000067082040206800184ed070004e75203900000000670820402068001c4ed070004e7520390000000067082040206800204ed04e7520390000000067082040206800244ed04ef90000000020390000000067082040206800284ed04e75203900000000670820402068002c4ed070004e7520390000000067082040206800304ed070004e7520390000000067082040206800344ed04e7520390000000067082040206800384ed070004e75203900000000670820402068003c4ed070004e7520390000000067082040206800404ed070004e7520390000000067082040206800444ed070004e7520390000000067082040206800484ed070004e75203900000000670820402068004c4ed070004e7520390000000067082040206800504ed04e7520390000000067082040206800544ed04ef90000000020390000000067082040206800584ed04ef900000000203900000000670820402068005c4ed04ef90000000020390000000067082040206800604ed04ef90000000020390000000067082040206800644ed04ef90000000020390000000067082040206800684ed04ef900000000203900000000670820402068006c4ed04e7520390000000067082040206800704ed04ef90000000020390000000067082040206800744ed04ef90000000020390000000067082040206800784ed04ef900000000203900000000670820402068007c4ed04ef90000000020390000000067082040206800804ed04ef90000000020390000000067082040206800844ed04ef90000000020390000000067082040206800884ed04ef900000000203900000000670820402068008c4ed04ef900000000",
    "kind": "text",
    "name": ".text",
-   "size": 1636
+   "size": 1616
   },
   {
    "align": 4,
@@ -2278,6 +2278,20 @@
    "kind": "text",
    "name": ".text.ip_src_encoder_interface",
    "size": 10
+  },
+  {
+   "align": 2,
+   "hex": "203c000000004e75",
+   "kind": "text",
+   "name": ".text.instrument_runtime_policy",
+   "size": 8
+  },
+  {
+   "align": 2,
+   "hex": "495250310000000100000004000186a000000640000000080000008000000ba0",
+   "kind": "data",
+   "name": ".rodata.limits",
+   "size": 32
   },
   {
    "align": 2,
@@ -2721,7 +2735,7 @@
    "size": 332
   }
  ],
- "source_sha256": "42a82d2c7418d5ceef6ac6c95c4cd4c48959f331526a582990f031c90f4625db",
+ "source_sha256": "a8920583a257c172110f6a4881c7b3254a1511e435163a12f4d50ff810044330",
  "symbols": [
   {
    "global": false,
@@ -2793,6 +2807,12 @@
    "global": false,
    "name": ".sec..rodata.fm_max.0",
    "section": ".rodata.fm_max.0",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.limits",
+   "section": ".rodata.limits",
    "value": 0
   },
   {
@@ -3069,13 +3089,13 @@
    "global": true,
    "name": "dk_app_instrument_module_settings",
    "section": ".text",
-   "value": 1036
+   "value": 1016
   },
   {
    "global": true,
    "name": "dk_app_instrument_settings_rows",
    "section": ".text",
-   "value": 1056
+   "value": 1036
   },
   {
    "global": true,
@@ -3177,7 +3197,7 @@
    "global": true,
    "name": "ilp_event_pair",
    "section": ".text",
-   "value": 1114
+   "value": 1094
   },
   {
    "global": true,
@@ -3189,7 +3209,7 @@
    "global": true,
    "name": "instrument_lock_source",
    "section": ".text",
-   "value": 1134
+   "value": 1114
   },
   {
    "global": true,
@@ -3207,7 +3227,7 @@
    "global": true,
    "name": "instrument_mod_param",
    "section": ".text",
-   "value": 1074
+   "value": 1054
   },
   {
    "global": true,
@@ -3224,8 +3244,8 @@
   {
    "global": true,
    "name": "instrument_runtime_policy",
-   "section": ".text",
-   "value": 1016
+   "section": ".text.instrument_runtime_policy",
+   "value": 0
   },
   {
    "global": true,
@@ -3243,37 +3263,37 @@
    "global": true,
    "name": "instrument_src_track_keyboard",
    "section": ".text",
-   "value": 1154
+   "value": 1134
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_lanes",
    "section": ".text",
-   "value": 1172
+   "value": 1152
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_legacy",
    "section": ".text",
-   "value": 1192
+   "value": 1172
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_locked_note",
    "section": ".text",
-   "value": 1212
+   "value": 1192
   },
   {
    "global": true,
    "name": "instrument_track_owned",
    "section": ".text",
-   "value": 1232
+   "value": 1212
   },
   {
    "global": true,
    "name": "instrument_write_lock_frame",
    "section": ".text",
-   "value": 1096
+   "value": 1076
   },
   {
    "global": true,
@@ -3291,7 +3311,7 @@
    "global": true,
    "name": "ip_current_machine_sound",
    "section": ".text",
-   "value": 1252
+   "value": 1232
   },
   {
    "global": true,
@@ -3555,25 +3575,25 @@
    "global": true,
    "name": "ip_note_list_write",
    "section": ".text",
-   "value": 1310
+   "value": 1290
   },
   {
    "global": true,
    "name": "ip_panel_detach",
    "section": ".text",
-   "value": 1398
+   "value": 1378
   },
   {
    "global": true,
    "name": "ip_panel_key_event",
    "section": ".text",
-   "value": 1376
+   "value": 1356
   },
   {
    "global": true,
    "name": "ip_panel_off",
    "section": ".text",
-   "value": 1354
+   "value": 1334
   },
   {
    "global": true,
@@ -3585,7 +3605,7 @@
    "global": true,
    "name": "ip_panel_on",
    "section": ".text",
-   "value": 1332
+   "value": 1312
   },
   {
    "global": true,
@@ -3627,19 +3647,19 @@
    "global": true,
    "name": "ip_panel_toggle",
    "section": ".text",
-   "value": 1420
+   "value": 1400
   },
   {
    "global": true,
    "name": "ip_panel_update",
    "section": ".text",
-   "value": 1442
+   "value": 1422
   },
   {
    "global": true,
    "name": "ip_refresh_machine_track",
    "section": ".text",
-   "value": 1272
+   "value": 1252
   },
   {
    "global": true,
@@ -3783,25 +3803,25 @@
    "global": true,
    "name": "ip_src_attach",
    "section": ".text",
-   "value": 1460
+   "value": 1440
   },
   {
    "global": true,
    "name": "ip_src_detach",
    "section": ".text",
-   "value": 1482
+   "value": 1462
   },
   {
    "global": true,
    "name": "ip_src_draw",
    "section": ".text",
-   "value": 1504
+   "value": 1484
   },
   {
    "global": true,
    "name": "ip_src_draw_rotary",
    "section": ".text",
-   "value": 1292
+   "value": 1272
   },
   {
    "global": true,
@@ -3813,19 +3833,19 @@
    "global": true,
    "name": "ip_src_event",
    "section": ".text",
-   "value": 1526
+   "value": 1506
   },
   {
    "global": true,
    "name": "ip_src_key",
    "section": ".text",
-   "value": 1548
+   "value": 1528
   },
   {
    "global": true,
    "name": "ip_src_parameter",
    "section": ".text",
-   "value": 1570
+   "value": 1550
   },
   {
    "global": true,
@@ -3879,13 +3899,13 @@
    "global": true,
    "name": "ip_src_turn",
    "section": ".text",
-   "value": 1592
+   "value": 1572
   },
   {
    "global": true,
    "name": "ip_src_update",
    "section": ".text",
-   "value": 1614
+   "value": 1594
   },
   {
    "global": true,
@@ -3915,6 +3935,12 @@
    "global": true,
    "name": "ip_view_next",
    "section": null,
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "limits",
+   "section": ".rodata.limits",
    "value": 0
   },
   {
@@ -4222,8 +4248,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2997",
-  "isa_check": "d8371145fc6357e12528af2e3bc32be4071ebe19ad7bb3a23aa59ed75ec195f5",
+  "instructions_redecoded": "2992",
+  "isa_check": "e827157f3004f49056916ec9b537f6850df40c0adc683a94cb75186b66fdb3cc",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

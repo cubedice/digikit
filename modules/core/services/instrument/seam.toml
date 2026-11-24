@@ -22,7 +22,6 @@ entries = [
     # called by the runtime, the menu, core/machines, core/relay-track and core/track-keyboard
     ["instrument_play_tick", "rts"],
     ["instrument_play_faulted", "zero"],
-    ["instrument_runtime_policy", "zero"],
     ["dk_app_instrument_module_settings", "zero"],
     ["dk_app_instrument_settings_rows", "rts"],
     ["instrument_mod_param", "jmp:ip_mod_param_absent"],

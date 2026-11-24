@@ -39,13 +39,7 @@ extern uint32_t dkrt_instrument_type(void);
 extern uint32_t dkrt_instrument_generation(void);
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
-/* Up to IP_INSTANCES admitted CANOPY instances; process and state are per
- * instance. The runtime multiplies them for the total budget and allocation. */
-static const uint32_t limits[8] = {0x49525031, 1, IP_INSTANCES, 100000, 1600, 8, 128, 2976};
-const uint32_t *instrument_runtime_policy(void)
-{
-    return limits;
-}
+/* instrument_runtime_policy is in the image (image.c): the runtime reads it at boot, before services load. */
 /* Device routing, shared by every instance. CHANNEL is the default for a track
  * without its own channel (track_channel 0). */
 static int32_t enabled, usb = 1, din = 1, channel = 1, selector_octave = 1, selector_channel;

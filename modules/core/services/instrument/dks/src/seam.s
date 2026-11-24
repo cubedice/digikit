@@ -12,7 +12,6 @@ instrument_vec_table:
     .long ip_sound_end
     .long instrument_play_tick
     .long instrument_play_faulted
-    .long instrument_runtime_policy
     .long dk_app_instrument_module_settings
     .long dk_app_instrument_settings_rows
     .long instrument_mod_param

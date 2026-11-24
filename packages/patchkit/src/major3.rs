@@ -509,6 +509,7 @@ mod tests {
             stereo: s.stereo,
             gate: false,
             service: None,
+            served: vec![],
         };
         let f = crate::dkm::pack_keys(None, &s.keys, &s.dsp, &o).unwrap();
         // the bytes of the old contract pairs are reserved zero; the packer links no import here, so the file needs the version of the header table

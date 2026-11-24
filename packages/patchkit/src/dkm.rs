@@ -222,6 +222,22 @@ fn record_kind_needs(needs: &mut Vec<dkneeds::keys::Need>, kinds: &[u32]) {
     needs.sort_by_key(|n| n.service);
 }
 
+/// A hard NEED on each service in `served` (the services that serve an adapter the module requires); the needs stay sorted by name hash.
+fn served_needs(needs: &mut Vec<dkneeds::keys::Need>, served: &[String]) {
+    for service in served {
+        let h = dkneeds::keys::name_hash(service);
+        match needs.iter_mut().find(|n| n.service == h) {
+            Some(n) => n.hard = true,
+            None => needs.push(dkneeds::keys::Need {
+                service: h,
+                min_version: 0,
+                hard: true,
+            }),
+        }
+    }
+    needs.sort_by_key(|n| n.service);
+}
+
 /// The `KINDS` of a service file: each record kind `service` owns (`[records.kinds]`) with `init` as the handler entry. The `service!` macro of `dkrt-svc-rt`
 /// declares every kind with the address of `init`, and the loader compares the declarations with this table.
 fn service_kinds(service: &str, init: u32) -> Vec<dkneeds::keys::KindDecl> {
@@ -244,6 +260,7 @@ fn service_kinds(service: &str, init: u32) -> Vec<dkneeds::keys::KindDecl> {
 fn table_with_needs(
     reg: &[u8],
     imports: &[&str],
+    served: &[String],
     uses_add: &[dkneeds::keys::Use],
     provides: &[dkneeds::keys::Pair],
     exports_add: &[dkneeds::keys::Pair],
@@ -262,6 +279,7 @@ fn table_with_needs(
         let kinds: Vec<u32> = k.key_groups().map(|g| g.0).collect();
         record_kind_needs(&mut needs, &kinds);
     }
+    served_needs(&mut needs, served);
     let (mut uses, mut kinds, mut slots, mut hooks, mut exports, mut resources) =
         (vec![], vec![], vec![], vec![], vec![], vec![]);
     let mut groups: Vec<(u32, Vec<u32>)> = vec![];
@@ -343,6 +361,8 @@ pub struct Options {
     pub gate: bool,
     /// A service provider (`role = "service"`): the file gets [`ROLE_SERVICE`] and a table with its `PROVIDES` and `EXPORTS`. `None`: a content module.
     pub service: Option<Provided>,
+    /// Services the module needs because an adapter it requires runs from them (`served_by`, `Library::served_needs`): hard `NEEDS`.
+    pub served: Vec<String>,
 }
 
 /// The low 24 bits of a `HOOKS` entry of a service file: the handler's image offset. The top byte is the device mask of the hook.
@@ -769,6 +789,7 @@ fn pack_inner(
     let table = table_with_needs(
         reg,
         &imports,
+        &o.served,
         &instrument_uses,
         &provides,
         &svc_exports,
@@ -1117,6 +1138,7 @@ mod tests {
             stereo: false,
             gate: false,
             service: None,
+            served: vec![],
         }
     }
 

@@ -89,6 +89,7 @@ mod tests {
             stereo: false,
             gate: false,
             service: None,
+            served: vec![],
         };
         crate::dkm::pack_keys(None, reg, dsp, &o).unwrap()
     }

@@ -9,6 +9,8 @@ author = "digikit"
 status = "experimental"
 summary = "Single-instance V2 transport, development admission policy and shared carrier."
 requires = ["core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
+# Its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): a module that requires it needs the file.
+served_by = "instrument"
 conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
 ports = ["dt2-1.17"]
 [targets]

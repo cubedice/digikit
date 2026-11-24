@@ -170,6 +170,7 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
         stereo: false,
         gate: false,
         service: crate::module::service_of(m)?,
+        served: lib.served_needs(id)?,
     };
     // a fill for a slot that only some devices have is left out of the file of the others
     if let Some(dev) = &o.device {

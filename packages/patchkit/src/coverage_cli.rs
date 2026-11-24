@@ -327,6 +327,7 @@ mod tests {
                 stereo: false,
                 gate: false,
                 service: None,
+                served: vec![],
             },
         )
         .unwrap()
