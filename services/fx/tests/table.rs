@@ -200,6 +200,40 @@ fn the_firmware_words_of_the_file_are_put_into_the_table() {
     }
 }
 
+/// The owner's start finds the optional functions of the image by their names (the info entries `loop_ui_paint`, `phrase_bind`, `phrase_ui_tick`, `phrase_sends`):
+/// the page painter goes to the word the hook `fxp_graph` calls (`DKRT_FXP_PAINT`), and a phrase effect is accepted only in an image with the phrase adapters.
+/// An image without them starts too, with none of them.
+#[test]
+fn the_owner_finds_the_optional_functions_of_the_image_at_its_start() {
+    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
+    let _rows = dkrt_test_support::contract::locked();
+    let paint = || unsafe { std::ptr::read_volatile(std::ptr::addr_of!(fxpage::DKRT_FXP_PAINT)) };
+    unsafe { fxpage::unbind() };
+    let mut core = core_with(table(4, DEVICE, 2));
+    for name in [
+        "loop_ui_paint",
+        "phrase_bind",
+        "phrase_ui_tick",
+        "phrase_sends",
+    ] {
+        core.info_tables
+            .push((dkneeds::keys::name_hash(name), std::vec![0]));
+    }
+    assert!(<Fx as Provider<FakeCore>>::start(&core).is_ok());
+    assert_ne!(paint(), 0, "the painter is the hook's to call");
+    assert!(unsafe { dkrt_svc_fx::phrase::available() });
+    // nothing here calls them (the entries of a fake image are words, not code): forget them
+    dkrt_svc_fx::rows::reset();
+    unsafe { fxpage::unbind() };
+    assert!(<Fx as Provider<FakeCore>>::start(&core_with(table(4, DEVICE, 2))).is_ok());
+    assert_eq!(paint(), 0, "no painter: the stock paint");
+    assert!(
+        !unsafe { dkrt_svc_fx::phrase::available() },
+        "no phrase effect"
+    );
+    unsafe { fxpage::unbind() };
+}
+
 #[test]
 fn a_second_start_keeps_the_live_table() {
     let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());

@@ -25,33 +25,53 @@ unsafe fn put_amounts<C: CoreApi>(core: &C, k: usize) {
     s.puts += 1;
 }
 
+/// The phrase effect's row while it runs on a send bus without a cell: its amounts are the phrase adapters' (`phrase::sends`).
+fn adapter_row() -> Option<usize> {
+    let k = crate::phrase::row()?;
+    let s = ss();
+    if k < dsp::MAX_FX && s.route[k] != 0 && s.cell[k] == 0 {
+        Some(k)
+    } else {
+        None
+    }
+}
+
 /// Once per UI-loop pass (after the effect pages' own tick).
 pub unsafe fn tick<C: CoreApi>(core: &C) {
     let s = ss();
-    if s.used == 0 {
+    let adapter = adapter_row();
+    if s.used == 0 && adapter.is_none() {
         return;
     }
     let inf = info(core);
     if inf.is_null() {
         return;
     }
-    // a kit, a pattern's kit or a project was loaded: wait until the loads are over, then write the amounts back
-    let ns = core.rd(iw(inf, w::NSOUND));
-    if ns != s.nsound {
-        s.nsound = ns;
-        s.settle = SETTLE;
-    }
-    let mut quiet = true;
-    if s.settle != 0 {
-        s.settle -= 1;
-        if s.settle == 0 {
-            s.restore = 0xffff;
-        } else {
-            quiet = false;
+    if s.used != 0 {
+        // a kit, a pattern's kit or a project was loaded: wait until the loads are over, then write the amounts back
+        let ns = core.rd(iw(inf, w::NSOUND));
+        if ns != s.nsound {
+            s.nsound = ns;
+            s.settle = SETTLE;
+        }
+        let mut quiet = true;
+        if s.settle != 0 {
+            s.settle -= 1;
+            if s.settle == 0 {
+                s.restore = 0xffff;
+            } else {
+                quiet = false;
+            }
+        }
+        if quiet {
+            tracks(core, inf);
         }
     }
-    if quiet {
-        tracks(core, inf);
+    // the phrase effect: the amounts its adapters give now (a selection on its page), not a knob's
+    if let Some(k) = adapter {
+        if let Some(a) = crate::phrase::sends() {
+            s.amt[k] = a;
+        }
     }
     // the amounts go to the link as live values; the DSP's own copy follows the link's confirmation
     let mut k = 0;

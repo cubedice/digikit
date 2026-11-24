@@ -1,5 +1,6 @@
 //! The owner object of the `fx` service. It holds the collection of one module's builder calls (`Builder`) and what the effect guard has logged (`FxGuard`); the effect pages, the
-//! send cells and the effect rows are tables the service keeps by name (`fxpage::DKRT_FXP*`, `fxsend::DKRT_FXS`, `rows::DKRT_FROWS`: see README.md for the reader of each).
+//! send cells and the effect rows are tables the service keeps by name (`fxpage::DKRT_FXP*`, `fxsend::DKRT_FXS`, `rows::DKRT_FROWS`: see README.md for the reader of each), and
+//! the claim of the phrase effect and the image functions the service calls are statics of their concept files (`phrase`, `fxpage::image`), which that code reads with no owner.
 //! `Provider` (`start`, `detach`), `Ticker`, `Reentry` and `Describe` are here, in one block each; `records.rs`, `dsp/part.rs` and `queries.rs` hold the other parts.
 use crate::builder::Builder;
 use crate::dsp::FxGuard;
@@ -55,12 +56,19 @@ impl Default for Fx {
 
 impl<C: CoreApi> Provider<C> for Fx {
     /// The file's `init`, before its hooks are installed: the table of the effect pages is bound (with the firmware words of the hooks), or the file is refused (`E_NO_REGISTRY`:
-    /// no usable `core/fxpages` in the image).
+    /// no usable `core/fxpages` in the image). Then the optional functions of the image are found by name (`[[info]]` entries; 0 for each the image lacks): the page painter
+    /// that the hook `fxp_graph` calls (`DKRT_FXP_PAINT`), the holder of an effect's values (`fxpage::held_setup`) and the functions of the phrase adapters (`phrase::setup`).
     fn start(core: &C) -> Result<Fx, Status> {
         // SAFETY: the table is this crate's static; the words are the file's own data (none on a host)
         let r = unsafe { fxpage::bind(core, fxpage::firmware()) };
         if r != dkrt_sdk::OK {
             return Err(r);
+        }
+        // SAFETY: the addresses are written to this crate's statics before the hooks that read them are installed
+        unsafe {
+            fxpage::painter_setup(core);
+            fxpage::held_setup(core);
+            crate::phrase::setup(core);
         }
         let mut fx = Fx::new();
         fx.ui = routing::attach();
@@ -82,8 +90,11 @@ impl<C: CoreApi> Provider<C> for Fx {
 impl<C: CoreApi> Ticker<C> for Fx {
     fn tick(&mut self, core: &C, phase: u32) {
         if phase == tick_phase::LATE {
-            // SAFETY: the UI task runs the tick; the pages and the send cells are this crate's tables
-            unsafe { fxpage::tick(core) };
+            // SAFETY: the UI task runs the tick; the pages and the send cells are this crate's tables; the phrase page's tick is the image's (`phrase_ui_tick`, when it has one)
+            unsafe {
+                fxpage::tick(core);
+                crate::phrase::tick();
+            }
             // the end of the reload a pick queued
             routing::poll(&mut self.routing, core, self.ui);
         }

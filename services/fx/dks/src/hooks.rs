@@ -15,8 +15,9 @@
 //!   replaced and the list is `DKRT_FXP_LIST_BUF`.
 //! - `fxp_keylist`: the same for the track FX key's list (`DKRT_FXP_SEND_COUNT`, `DKRT_FXP_KEY_LIST`): the second page is the send page.
 //! - `fxp_label`: the tab label of the FX view's page: an effect page pushes the name of its row and runs the tail of the label code.
-//! - `fxp_graph`: the FX view skips the filter graph over the knobs 5 and 6 on page 15; the effect pages skip it too. Before that, an image with core/loop-display
-//!   (`DKRT_FXP_PAINT`, Digitakt II) is asked to paint the page: a page it painted leaves through the draw function's epilogue (`fx_graph_site + 0x4c4`).
+//! - `fxp_graph`: the FX view skips the filter graph over the knobs 5 and 6 on page 15; the effect pages skip it too. Before that, an image with a page painter
+//!   (`DKRT_FXP_PAINT`: `loop_ui_paint`, an `[[info]]` entry, which `Fx::start` finds; 0 without one, so the stock path) is asked to paint the page: a page it painted
+//!   leaves through the draw function's epilogue (`fx_graph_site + 0x4c4`, Digitakt II).
 //! - `fxp_sound`: the end of the sound loader counts the loads (`DKRT_FXP_NSOUND`).
 //! - `fxp_load`, `fxp_save`, `fxp_init`: the kit's effect values (finding 61): the loader gives each row with an effect the stored values (or the defaults when the stored
 //!   effect ID differs, or a value is out of range), the saver writes the values and the IDs into the spare halfwords of the storage record, the initialiser gives
@@ -30,28 +31,6 @@ use core::arch::global_asm;
 extern "C" {
     /// Two words of the asm below: the stock page list of the FX view and the instruction of its builder that holds the stock count (`dk_fw_` words, resolved by the port file).
     static DKRT_FXP_FW: [u32; 2];
-}
-
-/// `loop_ui_paint(view, bitmap, page) -> handled` of core/loop-display (its `[[info]]` entry `loop_ui_paint`, the function itself), or 0: `fxp_graph` calls it
-/// before the stock paint of an FX page, and a page it painted skips the stock paint. `setup` finds it.
-#[no_mangle]
-pub static mut DKRT_FXP_PAINT: u32 = 0;
-
-/// The service's `setup`: give the table the two firmware words, then bind it (`fxpage::setup`), and find the optional functions of the image
-/// (the page painter, the phrase adapters, the holder of an effect's values). A host build has no firmware: both words are 0.
-pub unsafe fn setup(core: &ImportCore) -> i32 {
-    #[cfg(target_arch = "m68k")]
-    dkrt_svc_fx::fxpage::set_firmware(DKRT_FXP_FW[0], DKRT_FXP_FW[1]);
-    let r = dkrt_svc_fx::fxpage::setup(core);
-    if r == dkrt_sdk::OK {
-        core::ptr::write_volatile(
-            core::ptr::addr_of_mut!(DKRT_FXP_PAINT),
-            dkrt_svc_fx::fxpage::page_painter(core),
-        );
-        dkrt_svc_fx::phrase::setup(core);
-        dkrt_svc_fx::fxpage::held_setup(core);
-    }
-    r
 }
 
 macro_rules! entries {

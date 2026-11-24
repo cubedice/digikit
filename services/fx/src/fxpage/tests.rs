@@ -3,6 +3,76 @@ use crate::dsp as fxdsp;
 use dkrt_abi::core_api::CoreApi;
 use dkrt_test_support::{Call, FakeCore};
 
+/// An effect whose values an image adapter holds: its knobs are the adapter's values and its MIX the record's default, whatever the kit holds (a kit
+/// saved with other values for it changes nothing); every other effect is read from the kit, and so is every effect in an image without the adapter.
+#[test]
+fn held_values_come_from_the_adapter_and_never_from_the_kit() {
+    unsafe extern "C" fn adapter(id: u32, page: u32, raw: *mut u16) -> i32 {
+        if id != 0xca1b {
+            return 0;
+        }
+        *raw = 0x7f00;
+        *raw.add(1) = 0x0300;
+        // the page of the effect's row comes with the question
+        *raw.add(2) = page as u16;
+        1
+    }
+    let _g = crate::test_lock::hold();
+    // the names the image's info table has for the functions (the assembly test of the runtime reads the table)
+    assert_eq!(HELD_HASH, dkneeds::keys::name_hash("fx_held_values"));
+    assert_eq!(PAINT_HASH, dkneeds::keys::name_hash("loop_ui_paint"));
+    unsafe {
+        set_held(adapter as *const () as usize);
+        let held = held_values(0xca1b, 15).expect("the adapter holds this effect");
+        assert_eq!(&held[..4], &[0x7f00, 0x0300, 15, 0]);
+        assert!(
+            held_values(0x1234, 15).is_none(),
+            "another effect is the kit's"
+        );
+        assert!(held_values(0, 15).is_none(), "a row without an effect");
+        assert_eq!(
+            source_raw(Some(&held), 0, 0x100, || panic!("the kit was read")),
+            0x7f00
+        );
+        assert_eq!(
+            source_raw(Some(&held), 1, 0, || panic!("the kit was read")),
+            0x0300
+        );
+        assert_eq!(
+            source_raw(Some(&held), WORDS - 1, 0x7f00, || panic!(
+                "the kit was read"
+            )),
+            0x7f00,
+            "MIX is the record's default"
+        );
+        assert_eq!(source_raw(None, 0, 0x100, || 0x2a00), 0x2a00);
+        set_held(0);
+        assert!(
+            held_values(0xca1b, 15).is_none(),
+            "no adapter in the image: the kit's values"
+        );
+    }
+}
+
+/// The file's start finds the optional functions of the image by name: an image without them leaves the painter word 0 (the hook paints the stock page) and
+/// no holder (every effect is the kit's).
+#[test]
+fn an_image_without_the_functions_leaves_no_painter_and_no_holder() {
+    let _g = crate::test_lock::hold();
+    let core = FakeCore::new();
+    unsafe {
+        core::ptr::write_volatile(core::ptr::addr_of_mut!(DKRT_FXP_PAINT), 0x1234);
+        set_held(0x5678);
+        painter_setup(&core);
+        held_setup(&core);
+        assert_eq!(
+            core::ptr::read_volatile(core::ptr::addr_of!(DKRT_FXP_PAINT)),
+            0
+        );
+        assert!(held_values(0xca1b, 15).is_none());
+    }
+}
+
 /// A knob of effect row 2 is declared with a default, then its value changes: the parameter row is written first, then the new value is the word's live value.
 #[test]
 fn a_knob_gets_its_row_then_a_change_is_set_on_the_link() {

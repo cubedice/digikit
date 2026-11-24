@@ -112,11 +112,21 @@ pub unsafe fn apply<C: CoreApi>(core: &C, owner: u8, b: *const u8) -> i32 {
     s.owner[k] = owner;
     rebuild_list(core, inf);
     fxsend::apply(core, k, owner, s.tab[k].as_ptr());
+    // the phrase effect's row (`crate::phrase`, nothing for any other row): the phrase adapters get its physical row, its native FX page, its module and its title
+    crate::phrase::bind(
+        core,
+        k,
+        fxdsp::fx_first_row(core) + k as u32,
+        iw(inf, w::FIRST) + k as u32,
+        s.title[k].as_ptr(),
+    );
     OK
 }
 
-/// Give back the pages of module `owner`: out of the list first, then the rows back to the reserved state.
+/// Give back the pages of module `owner`: out of the list first, then the rows back to the reserved state. The phrase adapters revoke their page first when the module
+/// is the phrase effect's.
 pub unsafe fn remove<C: CoreApi>(core: &C, owner: u8) {
+    crate::phrase::remove(owner);
     let inf = info(core);
     if inf.is_null() {
         return;

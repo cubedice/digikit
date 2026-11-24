@@ -20,10 +20,15 @@
 //! defaults the first time `tick` finds it live, before any value is read from it.
 //! The array is the live kit's (`[fx] kit_ptr` of the device file): the kit accessor of the firmware (`fw_kit_of`) answers another object, the project's.
 //!
+//! Two kinds of effect are not read from the kit (`tick`): the phrase effect (`crate::phrase`: its controls and its page are the phrase adapters', so its row's MIX stays
+//! at unity and `apply` binds the adapters' page to its row), and an effect whose values an image function holds (`image`: `fx_held_values` of core/loop-control; its
+//! knobs are the function's values and its MIX the record's default). An image page painter (`image`: `loop_ui_paint`) may paint a page before the stock paint (`fxp_graph`).
+//!
 //! Everything runs in the UI task. No float arithmetic runs in an interrupt; the arithmetic is the compiler's soft float.
 pub use dkrt_sdk::records::{KIND_EFFECT, LEN_EFFECT};
 mod aligned16;
 mod apply;
+mod image;
 mod kit;
 mod layout;
 mod list;
@@ -36,6 +41,7 @@ mod tests;
 mod tick;
 pub use aligned16::*;
 pub use apply::*;
+pub use image::*;
 pub(crate) use kit::*;
 use layout::*;
 pub use list::*;

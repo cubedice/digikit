@@ -27,6 +27,19 @@ pub(super) fn routes_of(flags: u32) -> (u8, u8) {
     )
 }
 
+/// The route word of a DSP row: 1 on a send bus (it has a cell of the send page, or it is the phrase effect, whose amounts the phrase adapters give), 0
+/// on the master, and 2 (run by neither route) for an effect without a cell that may not run on the master (a send-only effect: on the master its wet
+/// signal would replace the mix).
+pub(super) fn route_word(allow: u8, send: bool) -> u32 {
+    if send {
+        1
+    } else if allow & ROUTE_MASTER != 0 {
+        0
+    } else {
+        2
+    }
+}
+
 /// The route effect row `k` has in the settings, as `ROUTE_*`: the stored one when the effect allows it, else its default. UI task.
 pub(super) unsafe fn saved_route<C: CoreApi>(core: &C, k: usize) -> u8 {
     let s = ss();

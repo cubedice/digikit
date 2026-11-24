@@ -66,11 +66,19 @@ pub(super) unsafe fn values<C: CoreApi>(core: &C, inf: *const u32) {
     s.polls = s.polls.wrapping_add(1);
     k = 0;
     while k < MAX_FX {
-        if s.owner[k] != 0 {
+        // the phrase effect's values are its adapters' controls: the kit is not read for it
+        if s.owner[k] != 0 && !crate::phrase::is_row(k) {
+            // an effect whose values an image adapter holds (`image::held_values`): the kit is not read for it either
+            let held = held_values(
+                core.rd16(iw(inf, w::IDS) + 2 * k as u32) as u32 & 0xffff,
+                iw(inf, w::FIRST) + k as u32,
+            );
             let mut j = 0;
             while j < WORDS {
                 if has_word(s, k, j) {
-                    let raw = core.rd16(arr + 2 * value_index(inf, k, j));
+                    let raw = source_raw(held.as_ref(), j, s.def[k][j], || {
+                        core.rd16(arr + 2 * value_index(inf, k, j))
+                    });
                     let n = if raw < 0 {
                         0
                     } else if raw > RAW_MAX {

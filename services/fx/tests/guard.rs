@@ -1,5 +1,5 @@
 //! Host tests of what the fx service owns of the DSP diagnostics and the table checks: the effect guard's words (`DspPart::diag`), the check of the effect table
-//! against the module records (`Describe::table_check`), the fault sites (`DspPart::attribute`) and the state bytes of a DSP section (`dsp_check_sections`).
+//! against the module records (`Describe::table_check`), the fault sites (`DspPart::attribute`), the state bytes of a DSP section and its phrase import (`dsp_check_sections`).
 use dkrt_abi::core_api::CoreApi;
 use dkrt_abi::dsp::{DspSec, Job, FX_DESC_BYTES, FX_DESC_MAGIC, FX_REC, FX_ROW_WORDS};
 use dkrt_abi::provider::{Describe, DspPart};
@@ -312,6 +312,69 @@ fn the_section_check_adds_the_states_of_the_effects_rounded_to_eight() {
     let mut job = Job::empty();
     assert_eq!(check_sections(&mut fx, &core, &none, &mut job), Ok(()));
     assert_eq!(job.state_bytes, 0);
+}
+
+/// `section` with an import table of one entry, `name`, after its image.
+fn section_importing(n: u32, name: &[u8]) -> (Vec<u8>, DspSec) {
+    let (mut s, mut sec) = section(n, 8);
+    let at = s.len() as u32;
+    let mut entry = vec![0u8; dkrt_abi::dsp::DSP_IMPORT_LEN as usize];
+    entry[..name.len()].copy_from_slice(name);
+    s.extend_from_slice(&entry);
+    sec.s = s.as_ptr();
+    sec.size = s.len() as u32;
+    sec.import_off = at;
+    sec.nimport = 1;
+    (s, sec)
+}
+
+unsafe extern "C" fn no_bind(
+    _owner: u32,
+    _row: u32,
+    _page: u32,
+    _module: *const u8,
+    _title: *const u8,
+) {
+}
+
+/// A module that imports the phrase control (`_phrase_control_info`) is the phrase effect: the section check takes it only as one effect and no voice, in an image
+/// with the phrase adapters (`phrase_bind`); a module with another import is any effect.
+#[test]
+fn the_section_check_takes_a_phrase_effect_alone_and_with_its_adapters() {
+    let (_rows, mut core, mut fx) = core();
+    core.set_dyndsp(0x10000, 0, 0);
+    let (_k1, one) = section_importing(1, b"_phrase_control_info");
+    let (_k2, two) = section_importing(2, b"_phrase_control_info");
+    let (_k3, other) = section_importing(1, b"_dl_frows");
+    unsafe {
+        assert_eq!(
+            check_sections(&mut fx, &core, &one, &mut Job::empty()),
+            Err(dkrt_sdk::E_DSP_IMPORT),
+            "no phrase adapters in the image"
+        );
+        assert_eq!(
+            check_sections(&mut fx, &core, &other, &mut Job::empty()),
+            Ok(())
+        );
+        dkrt_svc_fx::phrase::set_bind(no_bind as *const () as usize);
+        assert_eq!(
+            check_sections(&mut fx, &core, &one, &mut Job::empty()),
+            Ok(())
+        );
+        assert_eq!(
+            check_sections(&mut fx, &core, &two, &mut Job::empty()),
+            Err(dkrt_sdk::E_DSP_IMPORT),
+            "the phrase effect is one effect"
+        );
+        let mut voiced = one;
+        voiced.nvoice = 1;
+        assert_eq!(
+            check_sections(&mut fx, &core, &voiced, &mut Job::empty()),
+            Err(dkrt_sdk::E_DSP_IMPORT),
+            "and no voice"
+        );
+        dkrt_svc_fx::phrase::set_bind(0);
+    }
 }
 
 #[test]
