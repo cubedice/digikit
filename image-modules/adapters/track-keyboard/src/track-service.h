@@ -101,6 +101,8 @@ uint16_t tk_service_helpers(uint8_t track);
 bool tk_service_assign_helpers(uint8_t track, uint16_t request, uint16_t selectable);
 bool tk_service_set_backend(uint8_t track, const TkTrackBackend *backend);
 const TkTrackConfig *tk_service_active_config(uint8_t track);
+/* The settings the active pattern's track plays (its override, or what an inheriting backend's Sound carries); false when it has neither. */
+bool tk_service_active_settings(uint8_t track, TkTrackConfig *out);
 bool tk_service_enabled(uint8_t track);
 bool tk_service_press(uint8_t track, uint8_t source, uint8_t channel, uint32_t id, uint8_t pitch,
                       uint8_t velocity);

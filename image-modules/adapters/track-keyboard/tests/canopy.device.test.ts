@@ -37,7 +37,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
   });
   const handle = withSession({ ...options, cardImage: () => seededCard('dt2', options.firmware, card!), dsp: 'sharc', restart: false });
 
-  test('inherits legacy performance until a TRIG edit and then owns keyboard input', { timeout: 420_000 }, async () => {
+  test('owns an unedited CANOPY track with its Sound performance settings, and a TRIG edit makes them the track own', { timeout: 420_000 }, async () => {
     const { session } = handle;
     const output = fs.mkdtempSync(path.join(fixtureRoot, 'tk-canopy-ui-'));
     const { syx, plan } = await prepareRuntimePlanModulesOffline(
@@ -99,7 +99,12 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
         message: 'CANOPY compact SRC view is registered',
       },
     );
-    expect(await byte('track_keyboard_lanes')).toBe(0);
+    // The track keyboard is CANOPY's note engine from the start: before any TRIG edit it plays the track with the performance settings
+    // its Sound carries. This Sound is a pure pad, so the direct lane alone.
+    await pollEmulated(session, () => byte('track_keyboard_lanes'), (n) => n === 1, {
+      emulatedMs: 5000,
+      message: 'the shared keyboard owns the unedited CANOPY track with its Sound pad lane',
+    });
     const srcPage = () => cf('ip_src_debug', 1);
     const nextSrcPage = async (page: number) => {
       await tap('SRC');
@@ -119,7 +124,20 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     await nextSrcPage(2);
     await captureSrc('velvet-detail');
     await nextSrcPage(0);
-    expect(await byte('track_keyboard_lanes')).toBe(0);
+    expect(await byte('track_keyboard_lanes')).toBe(1);
+    const unedited = await cf('tk_panel_claim_hits');
+    await tap('KEYBOARD');
+    await tap('TRIG 9');
+    await pollEmulated(
+      session,
+      () => cf('tk_panel_claim_hits'),
+      (n) => n === unedited + 1,
+      {
+        emulatedMs: 4000,
+        message: 'the shared owner takes the panel note of the unedited CANOPY track',
+      },
+    );
+    await tap('KEYBOARD');
     await tap(1);
     await tap(1);
     await tap(1);
@@ -130,7 +148,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       (n) => n === 3,
       {
         emulatedMs: 5000,
-        message: 'first performance edit hands both lanes to shared keyboard',
+        message: 'the first performance edit adds the arp lane to the track own settings',
       },
     );
     const before = await cf('tk_panel_claim_hits');
