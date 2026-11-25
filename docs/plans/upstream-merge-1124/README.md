@@ -137,3 +137,28 @@ in the tag vocabulary (`tools/nx/acceptance-tags.mjs`), the fork's records carry
 the CANOPY needs test has `C:loading` (the loader's V2 path). An edit of each of those paths now selects the fork tests that load it
 (simulated with `areaSelection` of `tools/nx/test-subset.mjs`). Upstream has the same hole for its own unowned package modules
 (`dkrt::package::menu`, `menu_link`, `image`, `host_dir`): an edit there selects no device test either.
+
+## RELAY on the hardware image (branch `feat/hw-relay-fit`)
+
+The owner runs CANOPY, Overloop, PRISM, the track keyboard and RELAY together on the Digitakt II. After the merge, `core/relay-track` (35,184
+bytes of cf.expansion with relay-input, relay-storage and plusdrive-write) did not fit beside `canopy-overloop-prism`: the image was about
+23 KB over. The patch set `canopy-overloop-prism-relay` now holds all five. What made the room:
+
+- **A V2 file keeps its DSP section on the card.** The loader copied CANOPY's whole DSP section into its arena block and kept it for as long as
+  CANOPY was loaded, beside the relocated output. The owner of the instruments now stages the same store file again when its transaction
+  starts (the load checks the file against the hash of its store entry, so a file replaced since the boot is refused) and admits the section
+  from the staging buffer. `canopy.dkm` needs 87,056 bytes of arena (189,008 before); `dkneeds::needs_of_v2` counts the same block.
+- **Runtime buffers** (`runtime/core/abi.toml`, the device files' `[limits]`):
+
+  | Buffer | Upstream | The fork |
+  | --- | ---: | ---: |
+  | `ARENA_BYTES` | 524,288 | 491,520 |
+  | `PACKAGE_BYTES` | 327,680 | 352,768 (349,088 used) |
+  | `STAGE_BYTES` | 131,072 | 106,496 (the largest staged file is `canopy.dkm`, 102,344 bytes) |
+
+  `max_chunk` (32 KiB) and `TBL_CAP` (8 KiB) are upstream's: uploads keep their speed.
+
+Free cf.expansion on DT2: `canopy-overloop-prism-relay` 18,548, `relay-track` 54,684, `device` 55,724. With all five modules, the services
+and the track keyboard service loaded, the arena has 403,280 of 491,520 bytes in use (75,408 free in one piece). Tried and dropped on the
+way: a smaller upload chunk and table buffers (slower uploads), and an arena allocator that placed DSP transfer copies at the top (it broke
+the full-set capacity test and is not needed once CANOPY's section stays on the card).
