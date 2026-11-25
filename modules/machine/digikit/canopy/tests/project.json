@@ -20,16 +20,19 @@
         "modules": [
           "digikit/canopy",
           "core/services/machines",
-          "core/services/instrument"
+          "core/services/instrument",
+          "core/services/track-keyboard"
         ],
         "patchModules": [
           "core/instrument-play",
+          "core/track-keyboard",
           "core/health"
         ],
         "tags": [
           "S:machines",
           "A:core/instrument-play",
-          "S:instrument"
+          "S:instrument",
+          "S:track-keyboard"
         ]
       },
       {
@@ -43,17 +46,20 @@
         "modules": [
           "digikit/canopy",
           "core/services/machines",
-          "core/services/instrument"
+          "core/services/instrument",
+          "core/services/track-keyboard"
         ],
         "patchModules": [
           "core/instrument-play",
+          "core/track-keyboard",
           "core/health"
         ],
         "tags": [
           "S:machines",
           "A:core/instrument-play",
           "S:instrument",
-          "C:loading"
+          "C:loading",
+          "S:track-keyboard"
         ]
       },
       {
@@ -71,17 +77,20 @@
         "modules": [
           "digikit/canopy",
           "core/services/machines",
-          "core/services/instrument"
+          "core/services/instrument",
+          "core/services/track-keyboard"
         ],
         "patchModules": [
           "core/instrument-play",
+          "core/track-keyboard",
           "core/health"
         ],
         "tags": [
           "S:machines",
           "A:core/instrument-play",
           "C:state",
-          "S:instrument"
+          "S:instrument",
+          "S:track-keyboard"
         ]
       }
     ]

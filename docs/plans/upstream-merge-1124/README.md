@@ -234,3 +234,39 @@ Measured [D] (DT2 1.17):
 The move frees image space only while RELAY is not selected: with all five modules the pool holds the same code, plus about 2.9 KB of
 service glue. `ARENA_BYTES` is 450,560 (440 KiB) so that the hardware set keeps the arena headroom it had: with the five modules 359,408 of 450,560 bytes in use and 78,320 free in one piece (75,088 at 400 KiB with RELAY in the image), and the ten settings entries read back unchanged. Free cf.expansion
 of the DT2 sets with it: `canopy-overloop-prism-relay` 94,172, `relay-track` 130,320, `device` 96,668.
+
+## CANOPY as a voice host (branch `feat/canopy-voice-host`, owner's choice)
+
+The track keyboard is the note engine of every track. CANOPY's host kept its own: a keyboard mapper (PLAY, ROOT + TYPE, LEARN, a
+physical key ledger), CHORD LEARN with a shape library, its own MIDI route (`canopy/routes/v1`, `canopy/channels/v1`) and its own KEYS
+and ARP pages for firmware without the track keyboard. The owner chose to keep CANOPY's voices (four in one track, the arp lane and the
+release tails, mixed into the track's chain) and to make the track keyboard CANOPY's only note engine.
+
+Decisions (owner, 2026-11-25):
+
+- Switch every CANOPY track to the track keyboard, measure on the owner's own Sounds, and report before anything is removed.
+- CANOPY's MIDI comes from the Digitakt's own MIDI config (the track keyboard's routes). CANOPY's route table is retired; its records
+  stay on the card, untouched. The owner's route is channel 2: a controller on channel 2 needs track 1 on channel 2 in the Digitakt's
+  MIDI config.
+
+The track keyboard now takes an unedited CANOPY track too, with the performance settings its Sound carries (8d81b38f5); a pattern
+that locks a step to a Sound that is not CANOPY's still gives the track back.
+
+**Parity on the owner's Sound** [D] (`modules/machine/digikit/canopy/tests/engine-parity.manual.device.test.ts`, DT2 1.17 emulator
+with the SHARC core, the owner's settings record from the device backup, two runs; track 1 held by the track keyboard in every capture
+of the shared image: claim 1, lanes 3):
+
+| input | CANOPY's own engine | track keyboard |
+| --- | --- | --- |
+| sequencer, four trigs for two bars | peak -17.2 dB, release 2.08 s | -16.6 dB, 2.12 s; the same pitches, envelope within about 1 dB |
+| panel chord, three keys for 2 s | -29.1 dB, 2.28 s | the same notes, 2.2-2.5 dB quieter, release 0.1-0.36 s longer |
+| USB MIDI chord, C-E-G | silent 0.85 s after the first note while the keys are held | holds to the note-off, release 2.35 s |
+
+The owner accepted the panel difference. CANOPY's own MIDI cut-off does not happen on the device (owner, 2026-11-25): it is the
+emulator's, and the track keyboard's MIDI behaviour is the one kept.
+
+The harness writes the owner's record into a copy of the seeded card. The daemon restores a booted state when the image and the card's
+identity match, and the identity is the card's content id (`card.key`), its length and its overlay, not its bytes: the copy gets an id
+of its own (the base id and the record's hash, as `linkCard` in `tests/regression/runtime/write-safety.ts` does). With the base id
+copied, a boot of the base card (no record) was restored, and the first change of a key wrote a fresh record over the owner's in the
+copy; that was the harness, not the runtime.

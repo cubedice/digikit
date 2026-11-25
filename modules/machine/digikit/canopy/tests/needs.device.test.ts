@@ -36,7 +36,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument', 'track-keyboard'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -55,7 +55,7 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
       session.runDir,
       artifacts,
       ['DKRT_BOOT', HOST_DIR_SYMBOL],
-      { modules: ['core/instrument-play', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/track-keyboard', 'core/health'] },
     );
     await session.client.firmwareLoad({
       syx,
@@ -82,13 +82,14 @@ describeOn('dt2', 'CANOPY needs on the DT2', () => {
     await waitInstrumentReady((name, i = 0) => word(sym(name) + 4 * i));
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: beforeRestart, emulatedMs: 180_000 });
 
-    // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the two services it needs, the DSP area its
+    // CANOPY is the only module of this boot: the arena holds its one V2 block, its record block and the three services it needs, the DSP area its
     // image, bss and track states. Its instruments take instrument rows and tracks (CAPACITY has them as kinds), and no voice row.
-    // The services the runtime loads with it (machines, and instrument, which runs the host code of core/instrument-play: docs/plans/fork-image-diet.md)
+    // The services the runtime loads with it (machines; instrument, which runs the host code of core/instrument-play: docs/plans/fork-image-diet.md;
+    // and track-keyboard, CANOPY's note engine)
     // take arena too: each its image block (`patchkit needs` of the packed file the card holds) and the block of its keys table (as
     // `inferred-needs.device.test.ts` of the runtime counts a provider).
     // and the port file the services resolve their firmware names from (upstream since the merge): a provider of the arena as well, counted the same way
-    const services = [...['machines', 'instrument'].map((name) => moduleArtifact('dt2', `core/services/${name}`)), portFile('dt2').file];
+    const services = [...['machines', 'instrument', 'track-keyboard'].map((name) => moduleArtifact('dt2', `core/services/${name}`)), portFile('dt2').file];
     const [needs, ...serviceNeeds] = (await needsOf([moduleFile, ...services])) as [Record<string, number>, ...Record<string, number>[]];
     const provided = services.reduce(
       (sum, file, i) => sum + serviceNeeds[i]!.ARENA! + block(fs.readFileSync(file).readUInt32BE(0x94)),
