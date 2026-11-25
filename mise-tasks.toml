@@ -35,6 +35,10 @@ description = "Control a running emulator: mise run emu:ctl status | inject PATC
 run = "uv run python -m tools.emulator.ready"
 description = "Build a device's ready snapshot from the .syx alone: mise run emu:ready -- dn2|dt2 [--card-image IMG] (cold DSP start; about 2 min)"
 
+["emu:setup"]
+run = "uv run python -m tools.devtools.emu_setup"
+description = "Prepare this worktree for emulator device tests (firmware in firmware/): refs, toolchains, the SHARC cores, ready snapshots, audio cores and their index, the sample folder, the core libraries and daemons; reuses what another worktree has when it is the same. mise run emu:setup [-- --device dt2,dn2] [--check]"
+
 # --- web panel ---
 
 ["wb:preview-assets"]
