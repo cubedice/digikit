@@ -10,27 +10,39 @@ status = "experimental"
 summary = "Track-owned stereo tapes with compact and expanded waveform views."
 ports = ["dt2-1.17"]
 requires = ["core/relay-input", "core/relay-storage", "core/instrument-play", "core/loop-control", "core/fxview", "core/plusdrive-write"]
+# RELAY's ColdFire code is services/relay.dks: a module that requires this adapter (RELAY's machine) needs the file
+served_by = "relay"
 conflicts = []
 
 [targets]
 "dt2-1.17" = "experimental"
 
+# services/relay.dks fills the slot word with its vector table (`relay_vec_table`); the forwarders of seam.s read it and run without
+# RELAY while it is 0. The service reads the image table `relay_image` (seam-table.s) at setup. Both are generated from
+# services/relay/seam.toml.
+[[slot]]
+name = "relay_vec"
+
+[[info]]
+name = "relay_image"
+
+# The image keeps RELAY's DSP objects (below), its parameter entries, the seam and the two block-interrupt paths of image.c (an idle
+# frame and the stock frame unchanged), because core/dsp-link reserves RELAY's frame words whenever this adapter is in the image.
+# The recorder, the SRC pages, the tape files and the Sound association of tapes (control.c, files.c) are C of this directory
+# compiled into the service file.
 [[object]]
 path = "build/track-cf.dko.json"
-sources = ["src/control.c", "src/files.c"]
+sources = ["src/image.c", "src/seam.s", "src/seam-table.s"]
 place = "cf.expansion"
 devices = ["dt2"]
+# the registry codes of the MOD destinations, which the image table hands to the service (`RT_VALUE`)
 [object.externs]
-ip_src_focus_active = "cf.page.site.instrument_focus_active"
-ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
 rtm_mod_rate = "params.rtm_mod_rate.index"
 rtm_mod_spacing = "params.rtm_mod_spacing.index"
 rtm_mod_feedback = "params.rtm_mod_feedback.index"
 rtm_mod_mix = "params.rtm_mod_mix.index"
 rtm_mod_gain = "params.rtm_mod_gain.index"
 rtm_mod_position = "params.rtm_mod_position.index"
-rtm_type = "cf.machine.fn.current_track_type"
-rtm_track = "cf.page.site.instrument_src_track"
 
 [[object]]
 path = "build/track-dsp.dko.json"

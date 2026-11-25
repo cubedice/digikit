@@ -88,8 +88,8 @@ doc = "Room for the entries a caller of dkrt_capacity gives (the runtime has 16 
 [[const]]
 name = "ARENA_BYTES"
 type = "usize"
-value = 409600
-doc = "The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 400 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), so the hardware set peaks near 345 KB, and the rest is image space (docs/plans/upstream-merge-1124)."
+value = 450560
+doc = "The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 440 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), and RELAY runs from the service file relay.dks (37.6 KB of arena while it is loaded), so the hardware set peaks near 383 KB, and the rest is image space (docs/plans/upstream-merge-1124)."
 
 [[const]]
 name = "PACKAGE_BYTES"

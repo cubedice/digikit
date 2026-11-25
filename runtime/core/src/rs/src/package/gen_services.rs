@@ -3,7 +3,7 @@
 use dkrt_abi::provider::ProviderHandle;
 
 /// The name of every `[[service]]`, in file order (the image-declared boot need, `boot_need_<service>`, is searched for each).
-pub const ORDER: [&str; 9] = ["samples", "machines", "fx", "lfo", "shortcuts", "project", "instrument", "track-keyboard", "svc-test"];
+pub const ORDER: [&str; 10] = ["samples", "machines", "fx", "lfo", "shortcuts", "project", "instrument", "track-keyboard", "relay", "svc-test"];
 
 /// The length of the row table: room for `PROVIDER_MAX` rows of loaded service files.
 pub const ROWS_LEN: usize = dkrt_sdk::PROVIDER_MAX;

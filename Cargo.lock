@@ -1338,6 +1338,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "dkrt-svc-relay"
+version = "0.1.0"
+dependencies = [
+ "dkrt-abi",
+ "dkrt-sdk",
+]
+
+[[package]]
 name = "dkrt-svc-rows"
 version = "0.1.0"
 dependencies = [

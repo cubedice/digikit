@@ -185,7 +185,7 @@ sig = "i32 (const u8 *path, const u8 *mode, u32 *handle)"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "f642319babf0cc8f26a18a17356a25df", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/runtime", "core/sample-pool", "core/plusdrive-write"]
+users = ["core/runtime", "core/sample-pool", "core/plusdrive-write", "core/services/relay"]
 doc = "Path open; 0 succeeds. Handle is four words (entry id, position, write mode, open). The sample adapter passes only mode r; task context, internal filesystem locking (finding 105)."
 
 [[fn]]
@@ -195,7 +195,7 @@ sig = "i32 (u8 *buf, u32 bytes, u32 *handle)"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "c791af18f208eb18539a112ba7339fa3", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/runtime"]
+users = ["core/runtime", "core/services/relay"]
 doc = "Read at the handle position and advance it; byte count, zero at EOF, negative on failure. Task context; takes the filesystem mutex internally (finding 105)."
 
 [[fn]]
@@ -205,7 +205,7 @@ sig = "i32 (u32 *handle)"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "ad3982007ea053f7f633f28b1f0e5f59", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/runtime", "core/sample-pool", "core/plusdrive-write"]
+users = ["core/runtime", "core/sample-pool", "core/plusdrive-write", "core/services/relay"]
 doc = "Close a successfully opened four-word handle; 0 succeeds. Takes the filesystem mutex internally (finding 105)."
 
 [[fn]]
@@ -215,7 +215,7 @@ sig = "u32 (u32 entry_id)"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "b37e8567dc53892b5fe3ddba277e1a9c", offset = 0x0, len = 4 }
 mark = "D"
-users = ["core/runtime"]
+users = ["core/runtime", "core/services/relay"]
 doc = "File byte length by internal entry id (handle word 0), NOT by handle pointer; 0xffffffff on error (finding 105)."
 
 # DT2 1.17 file writes for core/plusdrive-write (finding 120). Same convention as the read functions above.
@@ -348,7 +348,7 @@ sig = "i32 (const u8 *path, u32 *state)"
 devices = ["dt2"]
 rule = { kind = "cf_func", hash = "570eb9f42d27913a3ea63d6043d901bd", offset = 0, len = 4 }
 mark = "D"
-users = ["core/file-catalog-proof", "core/runtime", "core/plusdrive-write"]
+users = ["core/file-catalog-proof", "core/runtime", "core/plusdrive-write", "core/services/relay"]
 doc = "DT2 1.17 read-only path directory open, 0 success/-1 failure; caller-owned four-word state. Task context; may block under filesystem locking (finding 93)."
 
 [[fn]]

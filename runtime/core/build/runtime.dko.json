@@ -4511,7 +4511,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 409600,
+   "addend": 450560,
    "offset": 38,
    "section": ".text._RNvNtCsckz4Hnf5ZD7_4dkrt5state9init_once",
    "symbol": ".sec..bss.DKRT_ARENA",
@@ -29070,7 +29070,7 @@
   },
   {
    "align": 2,
-   "hex": "598f2f0a2f02222f00104a8167380c810006400062302079000000004a88672606810000000f70f0c28006810000001095ca60022040225020280004b3c1641024484a8066ee4280241f245f588f4e75240994812f420008741fb4af0008641043f0180022af000823400004200922414a8a671a254000042089203ca110c8ed21400004200806800000001060ba23c00000000060e2",
+   "hex": "598f2f0a2f02222f00104a8167380c810006e00062302079000000004a88672606810000000f70f0c28006810000001095ca60022040225020280004b3c1641024484a8066ee4280241f245f588f4e75240994812f420008741fb4af0008641043f0180022af000823400004200922414a8a671a254000042089203ca110c8ed21400004200806800000001060ba23c00000000060e2",
    "kind": "text",
    "name": ".text._RNvNtCsckz4Hnf5ZD7_4dkrt5arena10alloc_walk",
    "size": 150
@@ -32258,7 +32258,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.DKRT_ARENA",
-   "size": 409600
+   "size": 450560
   },
   {
    "align": 2,
@@ -33801,7 +33801,7 @@
    "size": 24
   }
  ],
- "source_sha256": "270dbbf3b40c2b23faf9f6ad0697a9d625eed039695065d66c71d10d0c0c9ec6",
+ "source_sha256": "4469763e42c84ecea97c31ffcef8b55474ca700cc3afe858b81505296468dd85",
  "symbols": [
   {
    "global": false,
@@ -39981,7 +39981,7 @@
  "toolchain": {
   "exports": "DKRT_ARENA DKRT_AUX_TASK DKRT_BOOT DKRT_CARD DKRT_CRASH DKRT_DSP_STOPPED DKRT_HEALTH DKRT_HOST_DIR DKRT_INSTRUMENT_BINDING DKRT_INSTRUMENT_FILE DKRT_INSTRUMENT_LOAD DKRT_INSTRUMENT_SESSION DKRT_INSTRUMENT_WORDS DKRT_IO_TASK DKRT_LOG DKRT_LOG_COUNT DKRT_MAILBOX DKRT_MENUS DKRT_MENU_OBJS DKRT_MODULE_RUNTIME DKRT_PATHS DKRT_PD_CUT DKRT_PKG DKRT_POLLS DKRT_POLL_OWNER DKRT_SAVE_MODE DKRT_SDK_BUF DKRT_SECBUF DKRT_SESSION_IDLE DKRT_SET DKRT_SETTINGS DKRT_SETTINGS_HDR DKRT_STABLE_BLOCKS DKRT_STAGE DKRT_STATE DKRT_STORE_CAP DKRT_STORE_FP DKRT_STORE_PEEK DKRT_UI_START DKRT_UNLOAD_OBSERVERS DKRT_UPLOAD_BUF DKRT_UPLOAD_COUNT DKRT_UPLOAD_CUT DKRT_UPLOAD_DROPPED DKRT_UPLOAD_FLIP DKRT_UPLOAD_LAST DKRT_UPLOAD_TEAR DKRT_UPLOAD_WRITES dk_debug_log_sink_set dk_log_event dk_sink_set dk_span_sink_set dkrt_aux_run dkrt_aux_wait dkrt_blocks dkrt_boot dkrt_boot_info dkrt_boot_name dkrt_capacity dkrt_ctx_owner dkrt_diag dkrt_exc dkrt_fit dkrt_fx dkrt_health dkrt_image_file_abort dkrt_image_file_close dkrt_image_file_create dkrt_image_file_write dkrt_instrument_generation dkrt_instrument_type dkrt_io_post_image dkrt_io_wake dkrt_job_cancel dkrt_job_post dkrt_live dkrt_live_state dkrt_load dkrt_menu_built dkrt_menu_release dkrt_midi_rx dkrt_module dkrt_module_header dkrt_phase dkrt_poll_add dkrt_poll_remove dkrt_record_name dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_service_query dkrt_settings_flush dkrt_settings_get dkrt_settings_put dkrt_speed_flags dkrt_status dkrt_store_lease dkrt_store_read dkrt_store_stat dkrt_store_unlease dkrt_tick dkrt_ui_settings_rows dkrt_unload_observer_add dkrt_unload_observer_remove",
   "instructions_redecoded": "38035",
-  "isa_check": "3a181d3ed3915fb255234a55e51aa26748fede5ae3a13c1bcf6511c44e622065",
+  "isa_check": "efb69b83a4ef122ce5760f3280469672e485a35ffd660f6b71a201a7795cb1f5",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
   "rustc_codegen_gcc": "a7d8a5227b520187e3d93c1f7fc01dd1ba8659cf",

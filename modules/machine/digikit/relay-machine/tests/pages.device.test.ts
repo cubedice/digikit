@@ -3,13 +3,14 @@ import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
 import { dspWords, pickSine, REDRAW, word } from '@digi/regression/runtime/fx-live.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { loadedServiceSymbols } from '@digi/regression/runtime/loaded-service-symbols.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 
 describeOn('dt2','RELAY track SRC pages',()=>{
   const id='digikit/relay-machine';
   const ctx=withPreparedFxSession('dt2','RELAY track SRC controls',{
     image:{name:'relay-track', modules:['core/relay-track','core/health','core/input'],
-      inventory:[id],symbols:['DKRT_BOOT','fx.rows','_relay_status','relay_files'],policy:'settings'},
+      inventory:[id],symbols:['DKRT_BOOT','fx.rows','_relay_status'],policy:'settings'},
     usedCard:true,initial:'empty',presets:{empty:{seedProject:true,selection:['modules/m0.dkm']}}
   });
   async function selectRelay() {
@@ -30,7 +31,9 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     const status=()=>dspWords(session,planSymbol(plan,'_relay_status'),14);
     await tap('AMP');
     await tap('SRC');
-    const fileState=()=>word(session,planSymbol(plan,'relay_files'));
+    // RELAY's ColdFire state is services/relay.dks's: its names resolve through the file's load address
+    const relaySymbol=await loadedServiceSymbols(session,plan,['relay']);
+    const fileState=()=>word(session,relaySymbol('relay_files'));
     const initialFileState=await fileState();
     await tap('PUSH F',320);
     const empty=await status();
@@ -63,7 +66,7 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     for(let i=0;i<24 && await fileState()!==5;++i) await rt.ui.wait({ms:150,why:REDRAW});
     if (await fileState()!==5) await shot(session,artifacts,'waveform-pending');
     expect(await fileState(),'LIVE waveform finished: '+JSON.stringify(await status())).toBe(5);
-    const peakBase=planSymbol(plan,'relay_files')+(7+67)*4;
+    const peakBase=relaySymbol('relay_files')+(7+67)*4;
     const pairs=await Promise.all(Array.from({length:60},(_,i)=>word(session,peakBase+4*i)));
     const audible=(envelope:number)=>envelope!==0x8080 && envelope!==0x00ff;
     expect(pairs.some(x=>audible(x>>>16) || audible(x&0xffff)),

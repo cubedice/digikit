@@ -1,0 +1,46 @@
+[module]
+id = "core/services/relay"
+version = "0.1.0"
+name = "RELAY service"
+category = "core"
+role = "service"
+service = "relay"
+type = "raw"
+author = "digikit"
+status = "experimental"
+summary = "RELAY's track recorder on the ColdFire (tape transport and commands, SRC pages and waveforms, tape files, the Sound association of tapes), moved out of the image of core/relay-track; it fills its forwarding slot"
+requires = ["core/relay-track"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# The slot word of the image adapter (docs/plans/upstream-merge-1124/README.md): each forwarder of its seam.s reads the slot and jumps
+# through word i of the table, so the image runs this code only while the file is loaded. The table and the forwarders are generated
+# together from ../seam.toml (services/instrument/tools/seam.py).
+[[fill]]
+slot = "relay_vec"
+entry = "relay_vec_table"
+devices = ["dt2"]
+
+# Rust glue (src/lib.rs, src/seam.rs) with the C of the adapter that left the image, and the generated seam (src/seam.s: the vector
+# table, the thunks into the image, the copy of the image table). The C stays where it was, so its host tests do not move; it is
+# compiled with -DDK_SERVICE (src/relay-seam.h of core/relay-track reads the image table then). memcpy and memset are the object's
+# own (compiler_builtins), not the firmware's.
+[[object]]
+path = "build/relay.dko.json"
+sources = [
+    "Cargo.toml",
+    "../../../image-modules/adapters/relay-track/src/control.c",
+    "../../../image-modules/adapters/relay-track/src/files.c",
+    "src/seam.s",
+]
+include_dirs = ["../../../image-modules/adapters/relay-track/src"]
+place = "cf.expansion"
+
+# The firmware names of the moved C (the aliases core/relay-track used), as imports `patchkit bind` resolves for the user's firmware.
+[object.externs]
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
+rtm_type = "cf.machine.fn.current_track_type"
+rtm_track = "cf.page.site.instrument_src_track"
