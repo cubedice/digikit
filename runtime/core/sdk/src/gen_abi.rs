@@ -30,8 +30,8 @@ pub const CAP_MAX: usize = 20;
 pub const ARENA_BYTES: usize = 524288;
 /// The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 348,672, for the instrument host in the package (348,512 used on 2026-11-24), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load).
 pub const PACKAGE_BYTES: usize = 348672;
-/// The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml).
-pub const STAGE_BYTES: usize = 131072;
+/// The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the DT2 hardware image; the largest staged file is CANOPY (102,344 bytes).
+pub const STAGE_BYTES: usize = 106496;
 /// Machine and voice rows the runtime's tables have: the most run-time machine types a device can have (DkrtDevice.dyn_types; the runtime checks it at start).
 pub const MACHINE_ROWS: usize = 8;
 /// The logical keys of a device: DkrtDevice.key_codes has this many entries, indexed by the key's number (dk_key of sdk/include/dk/gen/keys.h; entry 0 is DK_KEY_NONE). `patchkit gen` refuses more key names.

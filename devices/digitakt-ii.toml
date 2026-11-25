@@ -199,7 +199,7 @@ span_clock_hz = 132000000
 modules = 8
 machine_rows = 8
 arena_bytes = 524288
-stage_bytes = 131072 # the largest file of the fork's hardware set is CANOPY with its half tables (102,344 bytes); services/instrument.dks is 96,508 (docs/plans/fork-image-diet.md section 9)
+stage_bytes = 106496 # 104 KiB, so that RELAY fits on the hardware image; the largest file of the fork's hardware set is CANOPY with its half tables (102,344 bytes); services/instrument.dks is 96,508 (docs/plans/fork-image-diet.md section 9)
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 2 # of them effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)
 param_rows = 16
@@ -346,6 +346,9 @@ canopy-overloop = ["core/health", "core/input", "core/instrument-play", "core/lo
 # The hardware image of the fork: `canopy-overloop` with the phrase adapters of PRISM (core/phrase-ui; it brings core/phrase-control) and the track keyboard
 # (core/track-keyboard: ARP and KEYS on every audio and MIDI track; it brings core/keyboard-panel). The DIGIKIT menu is part of the system package on the card.
 canopy-overloop-prism = ["core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display", "core/phrase-ui", "core/track-keyboard"]
+# The hardware image with RELAY (core/relay-track: the tape machine and its pages; it brings core/relay-input, core/relay-storage and core/plusdrive-write).
+# It fits since the fork shrank three runtime buffers (stage 104 KiB, upload chunk 24 KiB, store table streams 4 KiB): docs/plans/upstream-merge-1124.
+canopy-overloop-prism-relay = ["core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display", "core/phrase-ui", "core/track-keyboard", "core/relay-track"]
 
 # The input backend core/input uses to press keys and turn encoders from software (docs/plans/remote-control.md). The profile chooses; `panel-uart`: the panel
 # MCU's UART packets are decoded by the firmware's own key and encoder decoders, which core/input calls (anchors by hash in the port files).

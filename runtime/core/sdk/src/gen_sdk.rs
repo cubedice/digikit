@@ -88,7 +88,7 @@ pub mod limits {
     pub const MACHINE_ROWS: usize = 8;
     pub const PARAM_ROWS: usize = 16;
     pub const PAGE_ROWS: usize = 8;
-    pub const STAGE_BYTES: usize = 131072;
+    pub const STAGE_BYTES: usize = 106496;
     pub const PAGE_KNOBS: usize = 8;
 }
 
@@ -278,7 +278,7 @@ pub mod settings {
 
 pub mod proto {
     pub const VERSION: u8 = 1;
-    pub const MAX_CHUNK: usize = 32768;
+    pub const MAX_CHUNK: usize = 24576;
     pub const READ_MAX: usize = 768;
     pub const PEEK_MAX: usize = 512;
     pub const MAX_REQUEST_WIRE: usize = 40960;
