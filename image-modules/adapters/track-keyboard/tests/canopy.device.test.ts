@@ -90,19 +90,10 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     for (let i = 0; i < 20; ++i) await tap('DOWN');
     await tap('YES');
     await tap('YES');
-    await pollEmulated(
-      session,
-      () => byte('track_keyboard_src'),
-      (n) => n === 1,
-      {
-        emulatedMs: 15000,
-        message: 'CANOPY compact SRC view is registered',
-      },
-    );
     // The track keyboard is CANOPY's note engine from the start: before any TRIG edit it plays the track with the performance settings
     // its Sound carries. This Sound is a pure pad, so the direct lane alone.
     await pollEmulated(session, () => byte('track_keyboard_lanes'), (n) => n === 1, {
-      emulatedMs: 5000,
+      emulatedMs: 20000,
       message: 'the shared keyboard owns the unedited CANOPY track with its Sound pad lane',
     });
     const srcPage = () => cf('ip_src_debug', 1);

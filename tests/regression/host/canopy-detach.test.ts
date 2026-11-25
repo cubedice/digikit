@@ -22,7 +22,6 @@ test('in-place Sound overwrite captures, quarantines, restores, and readmits', (
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-detach.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         path.join(root, 'tests/regression/fixtures/canopy-detach/detach.c'),
         ...[
           'preset.c',

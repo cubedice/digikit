@@ -22,7 +22,6 @@ test('boundary capture accepts real edits with pre-reservation and snapshots ove
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-boundary-capture.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         ...[
           'preset.c',
           'src-state.c',

@@ -5,7 +5,7 @@
 # word i of the table the service filled it with, or does `absent` while the slot is 0 (no service loaded): `rts`, `zero`
 # (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (the stock handler or an image function, with the caller's arguments).
 # Changing the order or the count changes the layout: bump `version`.
-version = 2
+version = 3
 
 [[vector]]
 slot = "instrument_vec"
@@ -61,24 +61,6 @@ entries = [
     ["instrument_write_frame", "rts"],
 ]
 
-[[vector]]
-slot = "kbp_vec"
-table = "kbp_vec_table"
-adapter = "core/keyboard-panel"
-image_file = "image-modules/adapters/keyboard-panel/src/cf/seam.s"
-# The KEYBOARD view handler's calls into CANOPY's host: [image name, absent, service function]. Without the service a track is not
-# CANOPY's, so the handler takes the path of any other track (the track keyboard's, or stock).
-entries = [
-    ["kbp_track_owned", "zero", "instrument_track_owned"],
-    ["kbp_track_keyboard_routed", "zero", "instrument_track_keyboard_routed"],
-    ["kbp_track_plays_keys", "zero", "instrument_track_plays_keys"],
-    ["kbp_record_chord", "zero", "instrument_record_chord"],
-    ["kbp_select_track", "rts", "instrument_select_track"],
-    ["kbp_panel_key", "zero", "mi_panel_key"],
-    ["kbp_panel_release", "rts", "mi_panel_release"],
-    ["kbp_seq_mute", "rts", "mi_seq_mute"],
-]
-
 # The image table `instrument_image` of core/instrument-play (its [[info]]): what the service takes from the image. The service
 # copies it at setup (refused without it: E_NO_REGISTRY) and reaches each function through a thunk of its own (a1 is clobbered,
 # as a C call may), a data word through IP_DATA(name), a registry code through IP_VALUE(name).
@@ -91,8 +73,6 @@ functions = [
     "cp_decode", "cp_encode", "cp_fm_defaults", "cp_valid", "cp_wavetable_defaults",
     "sr_decode", "sr_encode",
     "sa_get", "sa_put", "sa_seq", "sa_slot",
-    # core/keyboard-panel (the KEYBOARD view handler): the recorded-chord tick and the step note reader
-    "ip_panel_tick", "ip_panel_step_note",
     "ip_sa_ensure", "ip_sa_store", "ip_sa_tick",
     
     "dk_ui_core_handle",

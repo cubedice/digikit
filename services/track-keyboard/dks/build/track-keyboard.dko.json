@@ -7802,14 +7802,14 @@
   },
   {
    "addend": 0,
-   "offset": 18,
+   "offset": 20,
    "section": ".text.tk_panel_native_record_on",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 50,
    "section": ".text.tk_panel_native_record_on",
    "symbol": ".sec..text.tk_panel_on",
    "type": "cf.32"
@@ -17478,10 +17478,10 @@
   },
   {
    "align": 2,
-   "hex": "2f02740f202f000c222f0008b480651c43f9000000004a31080066102f40000c2f410008241f4ef900000000241f42804e75",
+   "hex": "2f0a720f2f02202f0010206f000cb280652445f90000000074fd12320800c2824a0166122f4000102f48000c241f245f4ef900000000241f4280245f4e75",
    "kind": "text",
    "name": ".text.tk_panel_native_record_on",
-   "size": 50
+   "size": 62
   },
   {
    "align": 2,
@@ -19864,7 +19864,7 @@
    "size": 24
   }
  ],
- "source_sha256": "01087837d8b9c8c307eb9f2c310d4471028097ba54de507ebb2d6557372b82f3",
+ "source_sha256": "8a9d04eb9bee56a668df1196d8bc6bd2eebf438a2420aa009aa7f4ea2e7fb4b9",
  "symbols": [
   {
    "global": false,
@@ -25602,8 +25602,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18686",
-  "isa_check": "fed6584fc33a624a9f9cd80200bb49eb09acb0ab780874515a233014b8c69bf0",
+  "instructions_redecoded": "18692",
+  "isa_check": "8afa8f6e1b1832654a1fd72128f33f501876e9c6507df481165c280bfc6deddd",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

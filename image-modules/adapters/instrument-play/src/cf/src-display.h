@@ -28,7 +28,4 @@ void cv_note(char out[6], uint32_t note, int valid);
 void cv_feedback(char out[32], const CsState *, uint32_t encoder);
 /* Visible custom controls with a lock in the held step's effective bank. */
 uint8_t cv_lock_mask(const CsState *, const IlpSnapshot *);
-/* Caller supplies a locked mapper snapshot. Match full token and pitch, never
- * just a pitch or a slot reused by another performance generation. */
-void cv_ownership(CvDisplay *, const IsStatus *, const KbState *, uint32_t now_ms);
 #endif

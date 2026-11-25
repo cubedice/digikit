@@ -78,11 +78,8 @@ int main(int argc, char **argv)
              {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
               CP_FM_VELOCITY, CS_NONE},
              {CS_TUNE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL}}};
-        uint32_t old = token;
-        uint32_t revision = ui.revision;
-        cs_track_keyboard(&ui, 1);
-        assert(cs_pages(&ui) == 3 && ui.revision == revision && ui.value[CP_CHORD] == 0);
-        assert(cs_edit(&ui, old, 1, 4, 0, &id) == CS_STALE);
+        /* the track keyboard's layout is the only one */
+        assert(cs_shared_keyboard(&ui) && cs_pages(&ui) == 3 && ui.value[CP_CHORD] == 0);
         for (unsigned family = 0; family < 4; ++family) {
             unsigned map = family < 2 ? 0 : family - 1;
             cs_metadata(&ui, family << 4);
@@ -134,8 +131,6 @@ int main(int argc, char **argv)
         assert(cv_lock_mask(&ui, &locks) == 0x11); /* ATK and DEP on FM ENV A and E. */
         cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
         assert(cv_lock_mask(&ui, &locks) == 0x06); /* ALG and BAL on VOICE B and C. */
-        cs_track_keyboard(&ui, 0);
-        assert(cs_pages(&ui) == 4 && cs_mapped_control(&ui, 1) == CP_CHORD);
         assert(ui.wavetable[CP_WT_RATE - 16] == 11);
     } else if (!strcmp(scenario, "lock-indicators")) {
         IlpSnapshot locks = {0};
@@ -143,18 +138,18 @@ int main(int argc, char **argv)
         locks.pair[0].id = 2;
         locks.pair[1].id = ILP_FM_DEPTH;
         locks.pair[2].id = ILP_NOTE_FIRST;
-        cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
-        assert(cv_lock_mask(&ui, &locks) == (1u << 1));
+        cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cv_lock_mask(&ui, &locks) == (1u << 1)); /* COLOR on VOICE B. */
         cs_metadata(&ui, 3u << 4);
+        assert(cv_lock_mask(&ui, &locks) == 0); /* FM depth is on FM ENV. */
+        locks.pair[1].id = ILP_FM_FIRST;        /* FM algorithm is encoder B. */
         assert(cv_lock_mask(&ui, &locks) == (1u << 1));
-        locks.pair[1].id = ILP_FM_FIRST; /* FM algorithm is encoder C. */
-        assert(cv_lock_mask(&ui, &locks) == (1u << 2));
-        cs_context(&ui, 0, 12, 1, 3, KB_ROOT, 0, 0, 0);
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_ROOT, 0, 0, 0);
         locks.pair[0].id = ILP_FM_FIRST + 5; /* FM attack on encoder A. */
         assert(cv_lock_mask(&ui, &locks) == 1);
         assert(!cv_lock_mask(&ui, 0));
     } else if (!strcmp(scenario, "trig-lock-edit")) {
-        token = cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
         uint32_t next = 0, revision = ui.revision, pending = ui.pending;
         /* Lock editing has its own current value and must not change the
          * underlying sound bank, its revision, or pending telemetry. */
@@ -172,7 +167,7 @@ int main(int argc, char **argv)
         char feedback[32];
         start();
         cs_metadata(&ui, (120u << 8) | (2u << 4));
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 1, 350, 0, &id) == CS_EDIT && id == CP_WT_POS &&
                ui.value[id] == 350);
         assert(cs_edit(&ui, token, 2, INT32_MAX, 0, &id) == CS_EDIT &&
@@ -180,8 +175,8 @@ int main(int argc, char **argv)
         assert(cs_edit(&ui, token, 3, INT32_MAX, 0, &id) == CS_EDIT &&
                ui.value[CP_WT_RATE] == 1000);
         cv_build(&d, &ui, &status, now, "-60.00", "127", 0);
-        const char *labels[] = {"WAVE", "POS", "DEP", "HZ", "SHAP", "DRFT", "CLK", "RST"};
-        const char *values[] = {"ANLG", "4.50", "100%", "10.00", "SINE", "0", "FREE", "FREE"};
+        const char *labels[] = {"WAVE", "POS", "DEP", "HZ", "SHAP", "CLK", "RST", "DRFT"};
+        const char *values[] = {"ANLG", "4.50", "100%", "10.00", "SINE", "FREE", "FREE", "0"};
         for (unsigned i = 0; i < 8; ++i) {
             assert(!strcmp(d.label[i], labels[i]));
             assert(!strcmp(d.value[i], values[i]));
@@ -197,20 +192,20 @@ int main(int argc, char **argv)
                 assert(strlen(d.value[i]) <= 5 && strlen(d.label[i]) <= 5);
         }
         assert(cs_edit(&ui, token, 3, INT32_MIN, 0, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 1);
-        assert(cs_edit(&ui, token, 6, 4, 0, &id) == CS_EDIT && ui.value[CP_WT_CLOCK] == 1 &&
+        assert(cs_edit(&ui, token, 5, 4, 0, &id) == CS_EDIT && ui.value[CP_WT_CLOCK] == 1 &&
                ui.value[CP_WT_RATE] == 3);
         assert(cs_edit(&ui, token, 3, INT32_MAX, 0, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 7);
         cv_build(&d, &ui, &status, now, "0.00", "127", 0);
         assert(!strcmp(d.value[3], "1/16"));
-        assert(cs_edit(&ui, token, 6, -4, 0, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 10);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
-        assert(cs_mapped_control(&ui, 3) == CP_STRUM && ui.value[CP_WT_POS] == 350 &&
+        assert(cs_edit(&ui, token, 5, -4, 0, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 10);
+        token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_PLAY, 0, 0, 0);
+        assert(cs_mapped_control(&ui, 3) == CS_NONE && ui.value[CP_WT_POS] == 350 &&
                ui.value[CP_COLOR] == 64);
         assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_NATIVE &&
                cs_edit(&ui, token, 7, 1, 0, &id) == CS_NATIVE);
     } else if (!strcmp(scenario, "list-small-turns")) {
         cs_metadata(&ui, 2u << 4);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         ui.pending = 0;
         uint32_t revision = ui.revision;
         for (unsigned i = 0; i < 3; ++i) {
@@ -230,31 +225,31 @@ int main(int argc, char **argv)
             assert(cs_edit(&ui, token, 0, 99, 1006 + i, &id) == CS_READONLY);
         assert(cs_edit(&ui, token, 0, -3, 1010, &id) == CS_READONLY);
         assert(cs_edit(&ui, token, 0, -1, 1011, &id) == CS_EDIT && ui.value[CP_WT_TABLE] == 4);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, INT32_MIN, 1014, &id) == CS_NATIVE &&
                ui.native_tune == 0x4000);
         assert(cs_edit(&ui, token, 7, INT32_MAX, 1015, &id) == CS_NATIVE);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 1, 1, 1012, &id) == CS_EDIT && ui.value[CP_WT_POS] == 1);
         assert(cs_edit(&ui, token, 3, 1, 1013, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 11);
     } else if (!strcmp(scenario, "list-isolation")) {
-        token = cs_context(&ui, 0, 12, 1, 1, KB_PLAY, 0, 0, 0);
-        assert(cs_edit(&ui, token, 0, 3, 0, &id) == CS_READONLY);
-        assert(cs_edit(&ui, token, 1, 3, 0, &id) == CS_READONLY);
-        assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_EDIT && ui.value[CP_RATE] == 5);
-        assert(ui.value[CP_ORDER] == 0);
-        assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_EDIT && ui.value[CP_ORDER] == 1);
-        assert(cs_edit(&ui, token, 0, 3, 0, &id) == CS_READONLY);
+        cs_metadata(&ui, 2u << 4);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
+        /* SHAPE (E) and RESET (G) keep their partial list steps apart. */
+        assert(cs_edit(&ui, token, 4, 3, 0, &id) == CS_READONLY);
+        assert(cs_edit(&ui, token, 6, 3, 0, &id) == CS_READONLY);
+        assert(cs_edit(&ui, token, 4, 1, 0, &id) == CS_EDIT && ui.value[CP_WT_SHAPE] == 1);
+        assert(ui.value[CP_WT_RESET] == 0);
+        assert(cs_edit(&ui, token, 6, 1, 0, &id) == CS_EDIT && ui.value[CP_WT_RESET] == 1);
+        assert(cs_edit(&ui, token, 4, 3, 0, &id) == CS_READONLY);
         uint16_t values[CP_CONTROLS];
         memcpy(values, ui.value, sizeof(values));
-        cs_sync(&ui, values);
-        assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_EDIT && ui.value[CP_RATE] == 6);
-        assert(cs_edit(&ui, token, 1, 3, 0, &id) == CS_READONLY);
-        values[CP_RATE] = 3;
-        cs_sync(&ui, values);
-        assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_READONLY && ui.value[CP_ORDER] == 1);
-        cs_metadata(&ui, 2u << 4);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        cs_sync(&ui, values); /* An unchanged import keeps the partial step... */
+        assert(cs_edit(&ui, token, 4, 1, 0, &id) == CS_EDIT && ui.value[CP_WT_SHAPE] == 2);
+        assert(cs_edit(&ui, token, 6, -3, 0, &id) == CS_READONLY);
+        values[CP_WT_SHAPE] = 0;
+        cs_sync(&ui, values); /* ...a changed one clears it. */
+        assert(cs_edit(&ui, token, 6, -1, 0, &id) == CS_READONLY && ui.value[CP_WT_RESET] == 1);
         assert(cs_edit(&ui, token, 3, 3, 0, &id) == CS_EDIT);
         memcpy(values, ui.value, sizeof(values));
         values[CP_WT_CLOCK] = 1;
@@ -264,62 +259,32 @@ int main(int argc, char **argv)
         assert(cs_edit(&ui, token, 3, 1, 0, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 4);
     } else if (!strcmp(scenario, "list-context")) {
         cs_metadata(&ui, 2u << 4);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 3, 0, &id) == CS_READONLY);
-        cs_context(&ui, 0, 12, 1, 1, KB_PLAY, 0, 0, 0);
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_PLAY, 0, 0, 0);
         uint32_t old = token;
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, old, 0, INT32_MAX, 0, &id) == CS_STALE);
         assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_READONLY && ui.value[CP_WT_TABLE] == 0);
-        cs_context(&ui, 0, 12, 0, 2, KB_PLAY, 0, 0, 0);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        cs_context(&ui, 0, 12, 0, CS_VOICE, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 3, 0, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 13, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 13, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 13, 1, 2, KB_PLAY, 0, 0, 1);
+        token = cs_context(&ui, 0, 13, 1, CS_VOICE, KB_PLAY, 0, 0, 1);
         assert(cs_edit(&ui, token, 0, 99, 0, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 13, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 13, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 3, 0, &id) == CS_READONLY);
         assert(cs_edit(&ui, token, 0, 1, 0, &id) == CS_EDIT && ui.value[CP_WT_TABLE] == 1);
-    } else if (!strcmp(scenario, "choice-chord")) {
-        token = cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
-        assert(cs_choice_value(&ui, CP_CHORD) == 0 && cs_choice_max(&ui, CP_CHORD) == 12);
-        assert(cs_edit(&ui, token, 1, 3, 0, &id) == CS_READONLY && ui.mode == KB_PLAY);
-        assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_EDIT && ui.mode == KB_ROOT &&
-               ui.value[CP_CHORD] == 0);
-        assert((ui.metadata & 3) == KB_ROOT && ui.pending == UINT32_MAX);
-        assert(cs_edit(&ui, token, 1, 4, 0, &id) == CS_STALE);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, -4, 0, &id) == CS_EDIT && ui.mode == KB_PLAY &&
-               ui.value[CP_CHORD] == 0);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, 44, 0, &id) == CS_EDIT && ui.mode == KB_ROOT &&
-               ui.value[CP_CHORD] == 10 && ui.learned);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, 4, 0, &id) == CS_EDIT && ui.value[CP_CHORD] == 11 &&
-               !ui.learned);
-        assert(cs_edit(&ui, token, 2, 4, 0, &id) == CS_STALE);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, -4, 0, &id) == CS_EDIT && ui.value[CP_CHORD] == 10 &&
-               ui.learned);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, -4, 0, &id) == CS_EDIT && ui.value[CP_CHORD] == 9 &&
-               !ui.learned);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, INT32_MIN, 0, &id) == CS_EDIT && ui.mode == KB_PLAY &&
-               ui.value[CP_CHORD] == 9);
-        token = ui.token;
-        assert(cs_edit(&ui, token, 1, INT32_MAX, 0, &id) == CS_EDIT && ui.mode == KB_ROOT &&
-               ui.value[CP_CHORD] == 11);
     } else if (!strcmp(scenario, "choice-wave")) {
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         ui.value[CP_WT_TABLE] = ui.wavetable[0] = 3;
         assert(cs_choice_value(&ui, CS_WAVE) == 0 && cs_choice_max(&ui, CS_WAVE) == 7);
         assert(cs_edit(&ui, token, 0, 4, 0, &id) == CS_EDIT && ((ui.metadata >> 4) & 3) == 1 &&
                ui.value[CP_WT_TABLE] == 3);
         assert(cs_edit(&ui, token, 0, 4, 0, &id) == CS_STALE);
         token = ui.token;
-        assert(cs_edit(&ui, token, 7, 4, 0, &id) == CS_READONLY);
+        assert(cs_edit(&ui, token, 6, 4, 0, &id) == CS_READONLY); /* Reed has no G */
         assert(cs_edit(&ui, token, 0, 4, 0, &id) == CS_EDIT && ((ui.metadata >> 4) & 3) == 2 &&
                ui.value[CP_WT_TABLE] == 0);
         token = ui.token;
@@ -338,21 +303,21 @@ int main(int argc, char **argv)
         char feedback[32];
         start();
         cs_metadata(&ui, 2u << 4);
-        token = cs_context(&ui, 0, 12, 1, 3, KB_PLAY, 0, 0, 0);
-        assert(cs_pages(&ui) == 4);
-        assert(cs_edit(&ui, token, 2, INT32_MAX, now, &id) == CS_EDIT && id == CP_WTFM_DEPTH &&
+        token = cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_PLAY, 0, 0, 0);
+        assert(cs_pages(&ui) == 3);
+        assert(cs_edit(&ui, token, 4, INT32_MAX, now, &id) == CS_EDIT && id == CP_WTFM_DEPTH &&
                ui.value[id] == 100);
-        assert(cs_edit(&ui, token, 3, 3, now, &id) == CS_READONLY && ui.value[CP_WTFM_RATIO] == 3);
-        assert(cs_edit(&ui, token, 3, 1, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 4);
-        assert(cs_edit(&ui, token, 3, 4, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 5);
-        cv_feedback(feedback, &ui, 3);
+        assert(cs_edit(&ui, token, 5, 3, now, &id) == CS_READONLY && ui.value[CP_WTFM_RATIO] == 3);
+        assert(cs_edit(&ui, token, 5, 1, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 4);
+        assert(cs_edit(&ui, token, 5, 4, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 5);
+        cv_feedback(feedback, &ui, 5);
         assert(!strcmp(feedback, "WT FM Ratio=SQRT2*"));
-        assert(cs_edit(&ui, token, 5, INT32_MIN, now, &id) == CS_EDIT && id == CP_WTFM_ENV &&
+        assert(cs_edit(&ui, token, 7, INT32_MIN, now, &id) == CS_EDIT && id == CP_WTFM_ENV &&
                ui.value[id] == 0);
-        assert(cs_edit(&ui, token, 7, INT32_MAX, now, &id) == CS_READONLY);
+        assert(cs_edit(&ui, token, 2, INT32_MAX, now, &id) == CS_READONLY);
         cv_build(&d, &ui, &status, now, "-60.00", "127", 0);
-        const char *labels[] = {"ATK", "REL", "FM", "RAT", "PENV", "FENV", "VEL", ""};
-        const char *values[] = {"5", "15", "100%", "1.41", "0%", "-100%", "0%", ""};
+        const char *labels[] = {"ATK", "REL", "", "PENV", "FM", "RAT", "VEL", "FENV"};
+        const char *values[] = {"5", "15", "", "0%", "100%", "1.41", "0%", "-100%"};
         for (unsigned i = 0; i < 8; ++i) {
             assert(!strcmp(d.label[i], labels[i]));
             assert(!strcmp(d.value[i], values[i]));
@@ -366,10 +331,10 @@ int main(int argc, char **argv)
         assert(ui.value[CP_FM_ATTACK] == 5 && ui.value[CP_WTFM_DEPTH] == 100);
         cs_metadata(&ui, 2u << 4);
         assert(ui.value[CP_WT_ATTACK] == 105 && ui.value[CP_WTFM_RATIO] == 5);
-        token = cs_context(&ui, 0, 12, 1, 3, KB_PLAY, 0, 0, 0);
-        assert(cs_edit(&ui, token, 3, INT32_MIN, now, &id) == CS_EDIT &&
+        token = cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_PLAY, 0, 0, 0);
+        assert(cs_edit(&ui, token, 5, INT32_MIN, now, &id) == CS_EDIT &&
                ui.value[CP_WTFM_RATIO] == 0);
-        assert(cs_edit(&ui, token, 3, INT32_MAX, now, &id) == CS_EDIT &&
+        assert(cs_edit(&ui, token, 5, INT32_MAX, now, &id) == CS_EDIT &&
                ui.value[CP_WTFM_RATIO] == 15);
     } else if (!strcmp(scenario, "wavetable-fm-status")) {
         start();
@@ -406,26 +371,27 @@ int main(int argc, char **argv)
         char feedback[32];
         start();
         cs_metadata(&ui, 3u << 4);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
-        assert(cs_pages(&ui) == 4 && cs_mapped_control(&ui, 2) == CP_FM_ALG);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
+        assert(cs_pages(&ui) == 3 && cs_mapped_control(&ui, 1) == CP_FM_ALG);
         assert(cs_choice_value(&ui, CS_WAVE) == 7 && ui.value[CP_COLOR] == 32);
-        assert(cs_edit(&ui, token, 2, 3, now, &id) == CS_READONLY && id == CP_FM_ALG);
-        assert(cs_edit(&ui, token, 2, 1, now, &id) == CS_EDIT && ui.value[CP_FM_ALG] == 1);
+        assert(cs_edit(&ui, token, 1, 3, now, &id) == CS_READONLY && id == CP_FM_ALG);
+        assert(cs_edit(&ui, token, 1, 1, now, &id) == CS_EDIT && ui.value[CP_FM_ALG] == 1);
         assert(cs_choice_value(&ui, CS_WAVE) == 7 && ui.token == token);
-        assert(cs_edit(&ui, token, 4, 8, now, &id) == CS_EDIT && ui.value[CP_FM_RTA] == 5);
-        cv_feedback(feedback, &ui, 4);
+        assert(cs_edit(&ui, token, 3, 8, now, &id) == CS_EDIT && ui.value[CP_FM_RTA] == 5);
+        cv_feedback(feedback, &ui, 3);
         assert(!strcmp(feedback, "PAIR A RATIO=SQRT2*"));
-        assert(cs_edit(&ui, token, 1, 5, now, &id) == CS_EDIT && id == CP_COLOR && ui.fm[0] == 37);
         cv_build(&d, &ui, &status, now, "0.00", "127", 0);
-        assert(!strcmp(d.label[1], "DEP") && !strcmp(d.label[2], "ALG") &&
-               !strcmp(d.value[2], "STACK"));
-        assert(!strcmp(d.value[4], "1.41") && !strcmp(d.label[6], "FDBK"));
-        token = cs_context(&ui, 0, 12, 1, 3, KB_PLAY, 0, 0, 0);
+        assert(!strcmp(d.label[1], "ALG") && !strcmp(d.value[1], "STACK") &&
+               !strcmp(d.label[2], "BAL"));
+        assert(!strcmp(d.value[3], "1.41") && !strcmp(d.label[5], "FDBK"));
+        token = cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 122, now, &id) == CS_EDIT && id == CP_FM_ATTACK &&
                ui.value[id] == 127);
-        assert(cs_edit(&ui, token, 4, INT32_MIN, now, &id) == CS_EDIT && ui.value[id] == 0);
+        assert(cs_edit(&ui, token, 4, 5, now, &id) == CS_EDIT && id == CP_COLOR && ui.fm[0] == 37);
+        assert(cs_edit(&ui, token, 5, INT32_MIN, now, &id) == CS_EDIT && ui.value[id] == 0);
         cv_build(&d, &ui, &status, now, "0.00", "127", 0);
-        assert(!strcmp(d.label[0], "ATK") && !strcmp(d.value[4], "-100%"));
+        assert(!strcmp(d.label[0], "ATK") && !strcmp(d.label[4], "DEP") &&
+               !strcmp(d.value[5], "-100%"));
         for (unsigned i = 0; i < 8; ++i)
             assert(strlen(d.label[i]) <= 5 && strlen(d.value[i]) <= 5);
         assert(cs_edit(&ui, token, 7, 1, now, &id) == CS_READONLY && !d.label[7][0]);
@@ -441,7 +407,7 @@ int main(int argc, char **argv)
         p.control[CP_WT_POS] = 650;
         p.control[CP_WT_RATE] = 999;
         cs_import(&ui, &p);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 3, now, &id) == CS_READONLY);
         p.family = 3;
         p.fm[0] = 99;
@@ -452,7 +418,7 @@ int main(int argc, char **argv)
         assert(cs_edit(&ui, token, 2, 4, now, &id) == CS_STALE);
         assert(ui.value[CP_COLOR] == 99 && ui.value[CP_FM_ALG] == 3 && ui.value[CP_FM_RTB] == 15 &&
                ui.value[CP_FM_SUSTAIN] == 88);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_PLAY, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, -4, now, &id) == CS_EDIT && ui.value[CP_WT_POS] == 650 &&
                ui.value[CP_WT_RATE] == 999);
         assert(ui.value[CP_COLOR] == 73 && ui.fm[0] == 99 && ui.fm[4] == 15);
@@ -496,36 +462,6 @@ int main(int argc, char **argv)
         for (unsigned i = 0; i < 10; ++i)
             assert(fragment(i) == 0);
         assert(fragment(10) == -1 && status.detail[39] == 0);
-    } else if (!strcmp(scenario, "token-ownership")) {
-        CvDisplay display;
-        KbState keyboard = {0};
-        start();
-        fast[0]++;
-        fast[1] = (3u << 16) | (2u << 20);
-        fast[5] = 60 | (60u << 8);
-        fast[6] = 8u << 8;
-        assert(is_receive(&status, fast, now) == 1);
-        detail_schema = 2;
-        detail[38] = 11;
-        detail[39] = 12;
-        complete();
-        keyboard.generation = 12;
-        keyboard.mode = KB_PLAY;
-        keyboard.voices[0] = (KbVoice){.token = 11, .source = 100, .note = 60};
-        keyboard.voices[1] = (KbVoice){.token = 12, .source = 101, .note = 60};
-        keyboard.keys[0] = (KbKey){.token = 100, .held = 1};
-        keyboard.keys[1] = (KbKey){.token = 101, .pedal = 1};
-        cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
-        cv_build(&display, &ui, &status, now, "0", "100", 0);
-        cv_ownership(&display, &status, &keyboard, now);
-        assert(display.membership[0] == 1 && display.membership[1] == 2);
-        keyboard.voices[0].token = 13;
-        cv_ownership(&display, &status, &keyboard, now);
-        assert(display.membership[0] == 0 && display.membership[1] == 2);
-        keyboard.generation = 13;
-        display.membership[0] = 0;
-        cv_ownership(&display, &status, &keyboard, now);
-        assert(!display.membership[0]);
     } else if (!strcmp(scenario, "poll-freshness")) {
         start();
         queued = 2;
@@ -608,18 +544,12 @@ int main(int argc, char **argv)
         cs_metadata(&ui, 124);
         assert(ui.metadata == 123);
     } else if (!strcmp(scenario, "controls")) {
+        token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_ROOT, 0, 0, 0);
         assert(cs_edit(&ui, token, 0, 1, 20, &id) == CS_NATIVE && id == CS_TUNE);
         assert(cs_edit(&ui, token, 7, -1, 20, &id) == CS_NATIVE && id == CS_LEVEL);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
-        assert(cs_edit(&ui, token, 1, 12, 10, &id) == CS_EDIT && id == CP_COLOR &&
-               ui.value[id] == 76);
-        assert(cs_edit(&ui, token, 2, 12, 10, &id) == CS_EDIT && id == CP_DRIFT);
-        for (unsigned i = 3; i < 8; ++i)
-            assert(cs_edit(&ui, token, i, 12, 10, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
-        assert(cs_edit(&ui, token, 0, 4, 30, &id) == CS_EDIT && id == CP_RATE && ui.value[id] == 5);
+        /* DETAIL's empty cells change nothing. */
         uint32_t revision = ui.revision, metadata = ui.metadata, pending = ui.pending;
-        for (unsigned encoder = 6; encoder < 8; ++encoder) {
+        for (unsigned encoder = 1; encoder < 6; ++encoder) {
             assert(cs_edit(&ui, token, encoder, INT32_MAX, 30, &id) == CS_READONLY &&
                    id == CS_NONE);
             assert(cs_edit(&ui, token, encoder, INT32_MIN, 30, &id) == CS_READONLY &&
@@ -630,46 +560,22 @@ int main(int argc, char **argv)
         }
         assert(ui.revision == revision && ui.metadata == metadata && ui.pending == pending &&
                ui.token == token);
-        assert(ui.value[CP_RATE] == 5 && ui.clock == 2);
-    } else if (!strcmp(scenario, "four-page-layout")) {
-        static const uint8_t maps[4][4][8] = {
-            {{CS_TUNE, CP_CHORD, CP_VOICING, CP_STRUM, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-             {CP_RATE, CP_ORDER, CP_OCTAVES, CP_GATE, CP_SWING, CP_RESTART, CS_NONE, CS_NONE},
-             {CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE},
-             {CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE}},
-            {{CS_TUNE, CP_CHORD, CP_VOICING, CP_STRUM, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-             {CP_RATE, CP_ORDER, CP_OCTAVES, CP_GATE, CP_SWING, CP_RESTART, CS_NONE, CS_NONE},
-             {CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE},
-             {CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE}},
-            {{CS_TUNE, CP_CHORD, CP_VOICING, CP_STRUM, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-             {CP_RATE, CP_ORDER, CP_OCTAVES, CP_GATE, CP_SWING, CP_RESTART, CS_NONE, CS_NONE},
-             {CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_DRIFT, CP_WT_CLOCK,
-              CP_WT_RESET},
-             {CP_WT_ATTACK, CP_WT_RELEASE, CP_WTFM_DEPTH, CP_WTFM_RATIO, CP_WT_ENV, CP_WTFM_ENV,
-              CP_WT_VELOCITY, CS_NONE}},
-            {{CS_TUNE, CP_CHORD, CP_VOICING, CP_STRUM, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-             {CP_RATE, CP_ORDER, CP_OCTAVES, CP_GATE, CP_SWING, CP_RESTART, CS_NONE, CS_NONE},
-             {CS_WAVE, CP_COLOR, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CP_DRIFT},
-             {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_FM_ENV, CP_FM_VELOCITY,
-              CS_NONE, CS_NONE}}};
-        for (unsigned family = 0; family < 4; ++family) {
-            cs_metadata(&ui, family << 4);
-            assert(cs_pages(&ui) == 4);
-            for (unsigned page = 0; page < 4; ++page) {
-                token = cs_context(&ui, 0, 12, 1, page, KB_ROOT, 0, 0, 0);
-                assert(token);
-                for (unsigned encoder = 0; encoder < 8; ++encoder)
-                    assert(cs_mapped_control(&ui, encoder) == maps[family][page][encoder]);
-            }
-        }
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cs_edit(&ui, token, 1, 12, 10, &id) == CS_EDIT && id == CP_COLOR &&
+               ui.value[id] == 76);
+        assert(cs_edit(&ui, token, 7, 12, 10, &id) == CS_EDIT && id == CP_DRIFT);
+        for (unsigned i = 2; i < 7; ++i)
+            assert(cs_edit(&ui, token, i, 12, 10, &id) == CS_READONLY);
+        assert(ui.clock == 2);
+    } else if (!strcmp(scenario, "wavetable-clock")) {
         cs_metadata(&ui, 2u << 4);
-        token = cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
-        assert(cs_edit(&ui, token, 6, 3, now, &id) == CS_READONLY);
-        assert(cs_edit(&ui, token, 6, 1, now, &id) == CS_EDIT && id == CP_WT_CLOCK);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cs_edit(&ui, token, 5, 3, now, &id) == CS_READONLY);
+        assert(cs_edit(&ui, token, 5, 1, now, &id) == CS_EDIT && id == CP_WT_CLOCK);
         assert(ui.value[CP_WT_CLOCK] == 1 && ui.value[CP_WT_RATE] == 3);
         assert(cs_edit(&ui, token, 3, 3, now, &id) == CS_READONLY);
-        assert(cs_edit(&ui, token, 6, -4, now, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 10);
-        assert(cs_edit(&ui, token, 6, 4, now, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 3);
+        assert(cs_edit(&ui, token, 5, -4, now, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 10);
+        assert(cs_edit(&ui, token, 5, 4, now, &id) == CS_EDIT && ui.value[CP_WT_RATE] == 3);
         assert(cs_edit(&ui, token, 3, 1, now, &id) ==
                CS_READONLY); /* old partial movement was cleared */
     } else if (!strcmp(scenario, "pattern-tempo-import")) {
@@ -684,14 +590,13 @@ int main(int argc, char **argv)
             p.clock = (uint8_t)old_clock;
             p.bpm = old_clock ? 300 : 30;
             cs_import(&ui, &p);
-            token = cs_context(&ui, 0, 12, 1, 1, KB_PLAY, old_clock, 0, 0);
+            token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_PLAY, old_clock, 0, 0);
             assert(ui.clock == 2 && ((ui.metadata >> 2) & 3) == 2 &&
                    ((ui.metadata >> 8) & 0xffff) == 120);
             assert(ui.value[CP_RATE] == 6);
-            assert(cs_edit(&ui, token, 4, 1, 30, &id) == CS_EDIT && id == CP_SWING);
+            /* No page has a clock or tempo cell. */
             cv_build(&d, &ui, &status, now, "0", "100", 0);
-            assert(!strcmp(d.value[0], "1/16T"));
-            for (unsigned encoder = 6; encoder < 8; ++encoder) {
+            for (unsigned encoder = 1; encoder < 6; ++encoder) {
                 assert(!d.label[encoder][0] && !d.value[encoder][0]);
                 cv_feedback(feedback, &ui, encoder);
                 assert(!feedback[0]);
@@ -699,20 +604,6 @@ int main(int argc, char **argv)
             }
         }
         assert(ui.value[CP_ARP_MIX] == 0 && ui.value[CP_RESERVED12] == 0);
-    } else if (!strcmp(scenario, "signed-spread")) {
-        token = cs_context(&ui, 0, 12, 1, 1, KB_PLAY, 0, 0, 0);
-        char feedback[32];
-        assert(ui.value[CP_OCTAVES] == 3);
-        assert(cs_edit(&ui, token, 2, -99, 0, &id) == CS_EDIT && ui.value[id] == 0);
-        cv_feedback(feedback, &ui, 2);
-        assert(!strcmp(feedback, "Octaves=-3*"));
-        assert(cs_edit(&ui, token, 2, 12, 0, &id) == CS_EDIT && ui.value[id] == 3);
-        cv_feedback(feedback, &ui, 2);
-        assert(!strcmp(feedback, "Octaves=0*"));
-        assert(cs_edit(&ui, token, 2, 99, 0, &id) == CS_EDIT && ui.value[id] == 6);
-        cv_feedback(feedback, &ui, 2);
-        assert(!strcmp(feedback, "Octaves=+3*"));
-        assert(ui.native_tune == 0x4000 && ui.value[CP_ARP_MIX] == 0);
     } else if (!strcmp(scenario, "stale")) {
         uint32_t old = token;
         token = cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
@@ -727,62 +618,33 @@ int main(int argc, char **argv)
         cs_context(&ui, 1, 13, 0, 0, KB_ROOT, 0, 0, 0);
         assert(cs_edit(&ui, old, 3, 1, 0, &id) == CS_STALE && !cs_focused(&ui, 0));
     } else if (!strcmp(scenario, "readonly")) {
-        token = cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
-        for (unsigned i = 0; i < 2; ++i) {
-            unsigned knob = i ? 5 : 2;
+        /* Empty cells, and every cell under a modal, are read-only. */
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_PLAY, 0, 0, 0);
+        for (unsigned knob = 2; knob < 7; ++knob)
             assert(cs_edit(&ui, token, knob, 4, 0, &id) == CS_READONLY);
-        }
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 1, 0);
-        assert(cs_edit(&ui, token, 2, 1, 0, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 1, 0, 0);
-        assert(cs_edit(&ui, token, 4, 1, 0, &id) == CS_EDIT);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 1);
+        assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_EDIT && id == CP_COLOR);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 1);
         for (unsigned i = 0; i < 8; ++i)
             assert(cs_edit(&ui, token, i, 1, 0, &id) == CS_READONLY);
         assert(!cs_focused(&ui, 0));
-    } else if (!strcmp(scenario, "user-chord-exit")) {
-        char feedback[32];
-        CvDisplay display;
-        assert(cs_edit(&ui, token, 1, 40, 100, &id) == CS_EDIT);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 1, 0);
-        cv_build(&display, &ui, &status, now, "0", "100", 0);
-        assert(!strcmp(display.value[1], "USER") && !strcmp(display.value[2], "LRND"));
-        assert(cs_edit(&ui, token, 2, 1, 100, &id) == CS_READONLY);
-        assert(cs_edit(&ui, token, 1, -4, 100, &id) == CS_EDIT && ui.value[CP_CHORD] == 9);
-        /* Turn feedback is requested before the next paint updates context. */
-        cv_feedback(feedback, &ui, 1);
-        assert(!strcmp(feedback, "Chord=MIN7*"));
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0);
-        assert(cs_edit(&ui, token, 2, 4, 100, &id) == CS_EDIT);
-        assert(cs_edit(&ui, token, 1, 4, 100, &id) == CS_EDIT && ui.value[CP_CHORD] == 10);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 1, 0);
-        assert(cs_edit(&ui, token, 1, 4, 100, &id) == CS_EDIT && ui.value[CP_CHORD] == 11);
-        cv_feedback(feedback, &ui, 1);
-        assert(!strcmp(feedback, "Chord=MAJ7*"));
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0);
-        cv_build(&display, &ui, &status, now, "0", "100", 0);
-        assert(!strcmp(display.value[1], "MAJ7") && !strcmp(display.value[2], "OPEN"));
     } else if (!strcmp(scenario, "clamp")) {
-        assert(cs_edit(&ui, token, 1, INT32_MAX, 0, &id) == CS_EDIT && ui.value[CP_CHORD] == 11);
-        assert(cs_edit(&ui, token, 1, INT32_MIN, 0, &id) == CS_EDIT && ui.mode == KB_PLAY &&
-               ui.value[CP_CHORD] == 11);
-        token = ui.token;
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
+        assert(cs_edit(&ui, token, 1, INT32_MAX, 0, &id) == CS_EDIT && ui.value[CP_COLOR] == 127);
+        assert(cs_edit(&ui, token, 1, INT32_MIN, 0, &id) == CS_EDIT && ui.value[CP_COLOR] == 0);
         assert(cs_edit(&ui, token, 1, -1, 0, &id) == CS_READONLY);
-        token = cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0);
-        assert(cs_edit(&ui, token, 2, 4, 0, &id) == CS_EDIT && ui.value[CP_VOICING] == 1);
-        assert(cs_edit(&ui, token, 2, INT32_MAX, 0, &id) == CS_EDIT && ui.value[CP_VOICING] == 3);
+        uint16_t drift = ui.value[CP_DRIFT];
         ui.revision = UINT32_MAX;
-        assert(cs_edit(&ui, token, 3, 1, 0, &id) == CS_READONLY && ui.value[CP_COLOR] == 64);
+        assert(cs_edit(&ui, token, 7, 1, 0, &id) == CS_READONLY && ui.value[CP_DRIFT] == drift);
     } else if (!strcmp(scenario, "focus")) {
-        token = cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
         assert(cs_edit(&ui, token, 1, 1, UINT32_MAX - 100, &id) == CS_EDIT);
         assert(cs_focused(&ui, 648) && !cs_focused(&ui, 649));
         assert(ui.pending == (1u << CP_COLOR));
         assert(cs_edit(&ui, token, 1, 1, 700, &id) == CS_EDIT && cs_focused(&ui, 1400));
-        cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_ROOT, 0, 0, 0);
         assert(!cs_focused(&ui, 1400));
     } else if (!strcmp(scenario, "applied")) {
-        token = cs_context(&ui, 0, 12, 1, 2, KB_ROOT, 0, 0, 0);
+        token = cs_context(&ui, 0, 12, 1, CS_VOICE, KB_ROOT, 0, 0, 0);
         uint32_t bank[32] = {0};
         assert(cs_edit(&ui, token, 1, 1, 0, &id) == CS_EDIT);
         bank[CP_COLOR] = 65;
@@ -933,34 +795,20 @@ int main(int argc, char **argv)
     } else if (!strcmp(scenario, "display-units")) {
         CvDisplay display;
         start();
-        cs_context(&ui, 0, 12, 1, 0, KB_ROOT, 0, 0, 0);
-        ui.value[CP_STRUM] = 500;
+        cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_ROOT, 0, 0, 0);
         ui.value[CP_ARP_MIX] = 64;
         cv_build(&display, &ui, &status, now, "-12", "100", 0);
-        assert(!strcmp(display.value[3], "500") && !strcmp(display.value[6], "50%"));
+        assert(!strcmp(display.value[0], "-12") && !strcmp(display.value[6], "50%") &&
+               !strcmp(display.value[7], "100"));
         char feedback[32];
-        cv_feedback(feedback, &ui, 3);
-        assert(!strcmp(feedback, "Strum=500 ms"));
-        cv_feedback(feedback, &ui, 2);
-        assert(!strcmp(feedback, "Voicing=Closed"));
-        assert(!strcmp(display.label[2], "VOIC"));
-        cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
-        ui.value[CP_ORDER] = 3;
-        cv_feedback(feedback, &ui, 1);
-        assert(!strcmp(feedback, "Order=As Played"));
-        ui.value[CP_RESTART] = 1;
-        cv_feedback(feedback, &ui, 5);
-        assert(!strcmp(feedback, "Restart=Pattern"));
+        cv_feedback(feedback, &ui, 6);
+        assert(!strcmp(feedback, "Arp Mix=50%"));
+        ui.value[CP_ARP_MIX] = 0;
+        cv_feedback(feedback, &ui, 6);
+        assert(!strcmp(feedback, "Arp Mix=PAD"));
+        ui.value[CP_ARP_MIX] = 127;
         cv_build(&display, &ui, &status, now, "-12", "100", 0);
-        assert(!strcmp(display.value[0], "1/16") && !strcmp(display.value[2], "0"));
-        assert(!strcmp(display.value[3], "50%") && !strcmp(display.value[4], "50%"));
-        ui.value[CP_RATE] = 6;
-        ui.value[CP_SWING] = 75;
-        cv_build(&display, &ui, &status, now, "-12", "100", 0);
-        assert(!strcmp(display.value[0], "1/16T") && !strcmp(display.value[4], "88%"));
-        cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 1, 0, 0);
-        cv_build(&display, &ui, &status, now, "-12", "100", 0);
-        assert(!strcmp(display.value[0], "1/16T") && !strcmp(display.value[4], "88%"));
+        assert(!strcmp(display.value[6], "ARP"));
     } else if (!strcmp(scenario, "display-capacity")) {
         CvDisplay display;
         start();
@@ -988,7 +836,7 @@ int main(int argc, char **argv)
         assert(!strcmp(display.heading, "C") && !strcmp(display.notes[0], "C4") &&
                !strcmp(display.notes[2], "G4"));
         assert(display.highlight == 2 && display.membership[1] == 2);
-        assert(!strcmp(display.value[1], "PLAY") && !strcmp(display.value[2], "--"));
+        /* page 1's heading is the arp line of the STATUS page */
         cs_context(&ui, 0, 12, 1, 1, KB_PLAY, 0, 0, 0);
         cv_build(&display, &ui, &status, now, "0", "100", 0);
         assert(!strcmp(display.heading, "ARP E5"));
@@ -1061,32 +909,33 @@ int main(int argc, char **argv)
     } else if (!strcmp(scenario, "display-focus")) {
         CvDisplay display;
         start();
-        token = cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
-        assert(cs_edit(&ui, token, 1, 1, 100, &id) == CS_READONLY);
-        cv_build(&display, &ui, &status, now, "-12", "100", 0);
-        assert(!strcmp(display.heading, "PLAY YOUR NOTES"));
+        token = cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_PLAY, 0, 0, 0);
         assert(cs_edit(&ui, token, 6, 32, 100, &id) == CS_EDIT);
         cv_build(&display, &ui, &status, now, "-12", "100", 0);
+        assert(display.focused && !strncmp(display.heading, "ARP MIX ", 8));
         assert(display.mix_bar && display.mix_requested == 32 && display.mix_applied == 0);
         cv_build(&display, &ui, &status, now, "-12", "100", 1);
         assert(!strcmp(display.heading, "NOT SAVED") && !display.mix_bar);
     } else if (!strcmp(scenario, "native-presentation")) {
         CvDisplay display;
         start();
-        cs_context(&ui, 0, 12, 1, 0, KB_PLAY, 0, 0, 0);
+        cs_context(&ui, 0, 12, 1, CS_DETAIL, KB_PLAY, 0, 0, 0);
         cv_build(&display, &ui, &status, now, "-12", "100", 0);
         assert(!strcmp(display.label[0], "TUNE") && !strcmp(display.label[7], "LEV"));
         assert(!(display.pending & 0x81));
-        assert(!strcmp(display.label[2], "VOIC") && !strcmp(display.label[6], "MIX"));
-        assert(!strcmp(display.label[3], "STRM") && !display.label[4][0] && !display.label[5][0]);
+        assert(!strcmp(display.label[6], "MIX"));
+        for (unsigned i = 1; i < 6; ++i)
+            assert(!display.label[i][0] && !display.value[i][0]);
         char feedback[32];
         cv_feedback(feedback, &ui, 0);
         assert(!feedback[0]);
         cv_feedback(feedback, &ui, 1);
-        assert(!strcmp(feedback, "Chord=PLAY (YOUR NOTES)"));
-        cs_context(&ui, 0, 12, 1, 1, KB_ROOT, 0, 0, 0);
+        assert(!feedback[0]);
+        /* Velvet has no FM ENV cells. */
+        cs_context(&ui, 0, 12, 1, CS_FM_ENV, KB_ROOT, 0, 0, 0);
         cv_build(&display, &ui, &status, now, "0", "100", 0);
-        assert(!display.label[7][0] && !display.label[6][0]);
+        for (unsigned i = 0; i < 8; ++i)
+            assert(!display.label[i][0]);
     } else if (!strcmp(scenario, "status-wait")) {
         CvDisplay display;
         /* A selection without a status yet is a wait, not a lost link: no fault and no text. */

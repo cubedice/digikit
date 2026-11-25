@@ -28,10 +28,6 @@ slot = "midi_vec"
 entry = "midi_vec_table"
 devices = ["dt2"]
 
-[[fill]]
-slot = "kbp_vec"
-entry = "kbp_vec_table"
-devices = ["dt2"]
 
 # Rust glue (src/lib.rs, src/seam.rs) with the C of the two adapters that left the image, and the generated seam (src/seam.s: the
 # vector tables, the thunks into the image, the copy of the image table). The C stays where it was, so its host tests do not move;
@@ -42,7 +38,6 @@ path = "build/instrument.dko.json"
 sources = [
     "Cargo.toml",
     "../../../image-modules/adapters/instrument-play/src/cf/control.c",
-    "../../../image-modules/adapters/instrument-play/src/cf/keyboard.c",
     "../../../image-modules/adapters/instrument-play/src/cf/src-state.c",
     "../../../image-modules/adapters/instrument-play/src/cf/src-lock-packed.c",
     "../../../image-modules/adapters/instrument-play/src/cf/src-lock-event.c",

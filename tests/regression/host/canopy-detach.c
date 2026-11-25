@@ -83,7 +83,7 @@ int main(void)
     ip_admission[1] = 0x123400;
     ip_admission[4] = 7;
     ip_admission[5] = admitted;
-    cur->mode = keyboard.mode = KB_ROOT;
+    cur->mode = KB_ROOT;
     instrument_select_track(0);
     SpPool pool;
     sp_init(&pool, allocate, 0);
@@ -119,7 +119,7 @@ int main(void)
     memset(sound, 0x55, sizeof(sound));
     assert(!dt_finish(&t, 1) && !masked && t.phase == DT_DONE);
     assert(ip_admission[0] && !ip_admission[6] && ip_admission[4] == 8);
-    assert(get_handle(sound) == incoming && cur->pad_strum == 7 && keyboard.type == 3);
+    assert(get_handle(sound) == incoming && cur->pad_strum == 7 && cur->type == 3);
 
     /* An interrupted partial write restores the whole saved Sound and its
      * old settings before modeled readmission. */
@@ -131,7 +131,7 @@ int main(void)
     assert(!dt_finish(&p, 0));
     before[DT_HANDLE] = (uint8_t)(credit >> 8);
     before[DT_HANDLE + 1] = (uint8_t)credit;
-    assert(!memcmp(sound, before, sizeof(sound)) && cur->pad_strum == 7 && keyboard.type == 3);
+    assert(!memcmp(sound, before, sizeof(sound)) && cur->pad_strum == 7 && cur->type == 3);
     assert(ip_admission[0] && !ip_admission[6] && ip_admission[4] == 9);
 
     /* If the destination identity/generation changes during an overwrite,

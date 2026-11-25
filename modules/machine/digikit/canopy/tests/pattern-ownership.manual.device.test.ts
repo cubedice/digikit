@@ -89,10 +89,8 @@ if (enabled) {
       const instance = tracks.indexOf(0);
       if (instance < 0) throw new Error(`Track 1 is not admitted: ${tracks}`);
       const base = instance * 48;
-      const [metadata, first, strum] = await Promise.all([
-        cf('src_state', base + 6), cf('src_state', base + 7), cf('src_state', base + 9),
-      ]);
-      return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+      const tone = await cf('src_state', base + 8);
+      return { color: tone >>> 16, drift: tone & 0xffff };
     };
     const kit = () => word(0x80004704); // DTII 1.17 active kit pointer (devices/digitakt-ii.toml).
     const selectPattern = async (trig: 1 | 2) => {
@@ -110,10 +108,11 @@ if (enabled) {
 
     const kit1 = await kit();
     await selectCanopy();
+    const before = await values();
     await turn(2, 20);
-    await turn(3, 12);
-    await turn(4, 16);
-    await expect.poll(values, { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 3 });
+    await turn(8, 12);
+    await expect.poll(values, { timeout: 30_000 }).toSatisfy((v: { color: number; drift: number }) =>
+      v.color > before.color && v.drift > before.drift);
     evidence.first = await values();
     evidence.kit1 = kit1;
 
@@ -123,8 +122,7 @@ if (enabled) {
     evidence.kit2 = kit2;
     await selectCanopy();
     await turn(2, 12);
-    await turn(3, 8);
-    await turn(4, 8);
+    await turn(8, 8);
     evidence.second = await values();
     expect(evidence.second).not.toEqual(evidence.first);
 

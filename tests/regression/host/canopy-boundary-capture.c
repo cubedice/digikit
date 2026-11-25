@@ -68,7 +68,7 @@ static int edit(Active *a, int detents)
     instrument_select_track(a->instance);
     uint32_t v = instrument_src_context(a->instance, 0, 1);
     assert(v);
-    return instrument_sound_proof_edit(a->instance, a->id, a->generation, v, 3, detents, 100,
+    return instrument_sound_proof_edit(a->instance, a->id, a->generation, v, 7, detents, 100,
                                        prepare, attach, a);
 }
 
@@ -135,7 +135,7 @@ static void verify_strum(Harness *h, uint16_t handle, uint16_t expected)
     uint8_t b[SC_BYTES];
     CpPreset p;
     assert(!sp_read(&h->pool, handle, b) && !sc_decode(&p, b));
-    assert(p.control[CP_STRUM] == expected);
+    assert(p.control[CP_DRIFT] == expected);
 }
 static void reserve(Harness *h, Active *a)
 {
@@ -165,7 +165,7 @@ int main(void)
         adm[1] = a->id;
         adm[4] = a->generation;
         adm[5] = admitted;
-        inst[i].mode = inst[i].keyboard.mode = KB_ROOT;
+        inst[i].mode = KB_ROOT;
         reserve(&h, a);
         CpPreset p;
         uint8_t b[SC_BYTES];
@@ -195,7 +195,7 @@ int main(void)
     assert(first == a->handle && first != original && !a->dirty && !a->reserved);
     verify_strum(&h, first, 2);
     verify_strum(&h, original, 0);
-    assert(edit(a, 1) < 0 && !a->dirty && inst[0].pad_strum == 2);
+    assert(edit(a, 1) < 0 && !a->dirty && inst[0].pad_drift == 2);
     /* Both Sounds dirty: an aggregate captures both before copying. */
     reserve(&h, a);
     reserve(&h, b);
@@ -207,9 +207,9 @@ int main(void)
     verify_strum(&h, copied_a, 3);
     verify_strum(&h, copied_b, 1);
     /* Interrupt delivery after copy cannot edit without the next reservation. */
-    assert(edit(a, 1) < 0 && inst[0].pad_strum == 3);
+    assert(edit(a, 1) < 0 && inst[0].pad_drift == 3);
     reserve(&h, a);
-    assert(edit(a, 1) == CS_EDIT && inst[0].pad_strum == 4);
+    assert(edit(a, 1) == CS_EDIT && inst[0].pad_drift == 4);
     verify_strum(&h, copied_a, 3);
     verify_strum(&h, copied_b, 1);
     /* A failed ownership recheck is transactional across all candidates. */
@@ -232,7 +232,7 @@ int main(void)
     h.pool.allocate = 0;
     spare = 0;
     assert(sp_reserve_task(&h.pool, &spare) < 0 && !spare);
-    assert(edit(a, 1) < 0 && !a->dirty && a->handle == last && inst[0].pad_strum == 4);
+    assert(edit(a, 1) < 0 && !a->dirty && a->handle == last && inst[0].pad_drift == 4);
     verify_strum(&h, last, 4);
     verify_strum(&h, copied_a, 3);
     for (unsigned i = 0; i < SP_SLABS; ++i)

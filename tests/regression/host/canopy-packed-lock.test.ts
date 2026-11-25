@@ -22,7 +22,6 @@ test('packed locks round-trip every supported parameter and value without collid
         path.join(root, 'image-modules/adapters/instrument-play/src/cf/src-lock-event.c'),
         path.join(root, 'image-modules/adapters/instrument-play/src/cf/src-lock-apply.c'),
         path.join(root, 'image-modules/adapters/instrument-play/src/cf/src-lock-capture.c'),
-        path.join(root, 'image-modules/adapters/instrument-play/src/cf/keyboard.c'),
         path.join(root, 'image-modules/adapters/midi-events/src/cf/ownership.c'),
         path.join(root, 'image-modules/adapters/midi-events/src/cf/transport.c'),
         path.join(root, 'image-modules/adapters/midi-events/src/cf/lock-wire.c'),

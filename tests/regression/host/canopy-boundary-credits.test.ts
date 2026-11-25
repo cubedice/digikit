@@ -22,7 +22,6 @@ test('task credits reserve atomically and real SRC edits fail closed', () => {
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-boundary-credits.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         path.join(root, 'tests/regression/fixtures/canopy-credits/boundary-credits.c'),
         ...[
           'preset.c',

@@ -20,13 +20,6 @@ def main() -> None:
         + '"\n',
         encoding="utf-8",
     )
-    keyboard_wrapper = target / "keyboard-proof.c"
-    keyboard_wrapper.write_text(
-        '#define DK_CANOPY_SOUND_PROOF 1\n#include "'
-        + (root / "tests/regression/fixtures/canopy_keyboard_proof.c").as_posix()
-        + '"\n',
-        encoding="utf-8",
-    )
     sound_wrapper = target / "sound-proof.c"
     sound_wrapper.write_text(
         '#define DK_CANOPY_SOUND_PROOF 1\n#include "'
@@ -46,8 +39,6 @@ def main() -> None:
         path = (
             wrapper
             if relative == "src/cf/control.c"
-            else keyboard_wrapper
-            if relative == "src/cf/keyboard.c"
             else sound_wrapper
             if relative == "src/cf/sound.c"
             else adapter / relative

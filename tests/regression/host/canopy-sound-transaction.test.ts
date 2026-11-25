@@ -22,7 +22,6 @@ test('reserved SRC edits publish matching Sound snapshots or leave the edit unch
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-sound-transaction.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         ...[
           'preset.c',
           'src-state.c',

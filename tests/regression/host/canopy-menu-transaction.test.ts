@@ -23,7 +23,6 @@ beforeAll(() => {
       path.join(root, 'sdk/include'),
       path.join(import.meta.dirname, 'canopy-menu-transaction.c'),
       ...[
-        'keyboard.c',
         'preset.c',
         'src-state.c',
         'src-lock-packed.c',
