@@ -126,3 +126,14 @@ boot. The CANOPY needs test (`needs.json` of its run) has the arena at 382,464 o
 port file; `patchkit needs` gives track-keyboard 66,208 and fx 52,784 more: about 449 KB with the track keyboard, 502 KB with fx too. With
 the host in `services/instrument.dks` (about 55 KB more), CANOPY with the track keyboard and fx would need about 557 KB: it would not load.
 The host stays in the package unless the owner gives up that combination or the arena grows (which costs cf.expansion again).
+
+**The area gate (item 6).** The merge left the fork's paths outside the merge gate's areas (`tools/nx/area-paths.mjs`). The two fork
+services became users of 107 port declarations, and no record carried their tags: an edit of 13 port files, of which 7 have only fork users
+otherwise (`draw`, `instrument-src`, `text`, `track-keys`, `track-sequence`, `track-steps`, `track-trig`), ran every affected device test. And
+the instrument host had no owner in `runtime/core/owners.toml`: the record of `core/runtime` covers its own tree and lists no test file, so an
+edit of `package/instrument.rs` or the instrument SDK modules selected no device test at all. Now `S:instrument` and `S:track-keyboard` are
+in the tag vocabulary (`tools/nx/acceptance-tags.mjs`), the fork's records carry them and the adapters they prove (`A:core/fxview`,
+`A:core/relay-input`), `S:instrument` owns the host (`dkrt::instrument`, `dkrt::package::instrument`, the `dkrt_sdk::instrument_*` modules), and
+the CANOPY needs test has `C:loading` (the loader's V2 path). An edit of each of those paths now selects the fork tests that load it
+(simulated with `areaSelection` of `tools/nx/test-subset.mjs`). Upstream has the same hole for its own unowned package modules
+(`dkrt::package::menu`, `menu_link`, `image`, `host_dir`): an edit there selects no device test either.

@@ -23,7 +23,8 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui"
+          "A:core/phrase-ui",
+          "A:core/fxview"
         ]
       },
       {
@@ -48,7 +49,8 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui"
+          "A:core/phrase-ui",
+          "A:core/fxview"
         ]
       },
       {
@@ -80,7 +82,9 @@
         "tags": [
           "A:core/dynfx",
           "A:core/fxpages",
-          "A:core/phrase-ui"
+          "A:core/phrase-ui",
+          "A:core/fxview",
+          "S:instrument"
         ]
       },
       {
@@ -110,7 +114,8 @@
           "A:core/dynfx",
           "A:core/fxpages",
           "A:core/phrase-ui",
-          "A:core/loop-display"
+          "A:core/loop-display",
+          "A:core/fxview"
         ]
       }
     ]

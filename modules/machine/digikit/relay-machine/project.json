@@ -24,7 +24,10 @@
         "plusdrive": true,
         "tags": [
           "A:core/relay-track",
-          "A:core/pattern-position"
+          "A:core/pattern-position",
+          "S:instrument",
+          "A:core/relay-input",
+          "A:core/fxview"
         ]
       }
     ]

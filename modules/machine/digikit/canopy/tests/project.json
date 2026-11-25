@@ -11,7 +11,29 @@
     "runtimeAcceptance": [
       {
         "files": [
-          "arp.device.test.ts",
+          "arp.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "core/services/machines",
+          "core/services/instrument"
+        ],
+        "patchModules": [
+          "core/instrument-play",
+          "core/health"
+        ],
+        "tags": [
+          "S:machines",
+          "A:core/instrument-play",
+          "S:instrument"
+        ]
+      },
+      {
+        "files": [
           "needs.device.test.ts"
         ],
         "devices": [
@@ -29,7 +51,9 @@
         ],
         "tags": [
           "S:machines",
-          "A:core/instrument-play"
+          "A:core/instrument-play",
+          "S:instrument",
+          "C:loading"
         ]
       },
       {
@@ -56,7 +80,8 @@
         "tags": [
           "S:machines",
           "A:core/instrument-play",
-          "C:state"
+          "C:state",
+          "S:instrument"
         ]
       }
     ]

@@ -36,7 +36,10 @@
           "A:core/keyboard-panel",
           "A:core/copy-watch",
           "C:transport",
-          "C:state"
+          "C:state",
+          "S:track-keyboard",
+          "A:core/fxview",
+          "A:core/relay-input"
         ]
       },
       {
@@ -61,7 +64,9 @@
         "tags": [
           "S:machines",
           "A:core/track-keyboard",
-          "A:core/instrument-play"
+          "A:core/instrument-play",
+          "S:instrument",
+          "S:track-keyboard"
         ]
       }
     ]
