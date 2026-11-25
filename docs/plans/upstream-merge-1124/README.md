@@ -286,6 +286,19 @@ INPUT setup, CHORD LEARN with the shape library and its save retry, the KEYS and
 (`instrument_record_chord`). A Sound keeps its performance settings (mode, type, voicing, shape), which the track keyboard plays;
 without `core/track-keyboard` CANOPY plays nothing. The route, channel and shape records stay on the card unread. Its SRC pages are
 VOICE, FM ENV and DETAIL. The parity file now records the track keyboard's side only; the table above was measured at 28ea6d093.
-Measured [D] (1.17 emulator): `instrument.dks` 72,052 bytes (its object 123,268 → 91,537 section bytes); CANOPY's needs test with
-its services uses 265,856 → 234,128 of the 450,560-byte arena, largest free block 180,464 → 212,192; free cf.expansion of
-`canopy-overloop-prism-relay` 94,156 → 98,888.
+What it frees, main (57cf663c7) against this branch, DT2 1.17 [D]. The arena is the sum of what `patchkit needs` says each packed file
+takes (a service also takes a block for its keys table; the needs test holds a boot to that sum), with the port file; the five-module
+total on main, 359,408, is what the install rehearsal's boot measured. Free cf.expansion is from `patchkit apply --set`.
+
+| | main | this branch |
+| --- | ---: | ---: |
+| `instrument.dks`: file / arena | 97,708 / 123,056 | 72,052 / 91,584 |
+| `track-keyboard.dks`: file / arena (the forward, CANOPY recording) | 82,612 / 66,208 | 82,980 / 66,528 |
+| arena free, the owner's five modules and their five services (450,560) | 91,152 | 122,304 |
+| arena free, CANOPY with machines, instrument and track-keyboard | 185,280 | 216,432 |
+| free cf.expansion: `canopy-overloop-prism-relay` / `canopy-overloop-prism` / `relay-track` | 94,172 / 103,936 / 130,320 | 98,888 / 108,652 / 135,036 |
+| DSP area of the five modules | 227,648 | 227,648 |
+
+CANOPY loaded alone takes 234,128 bytes of arena: its own file 5,456, `instrument.dks` 91,712, `machines.dks` 66,704,
+`track-keyboard.dks` 66,640 and the port file 3,616 (each service with its keys block). With RELAY selected too, `instrument.dks` and
+`machines.dks` serve both, and an image with the track keyboard loads it for every track, so CANOPY itself adds 5,456.
