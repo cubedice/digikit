@@ -66,6 +66,7 @@ shared = [
   "dkrt_sdk::instrument_provider",
   "dkrt_sdk::instrument_registry",
   "dkrt_sdk::instrument_section",
+  "dkrt_sdk::instrument_stream",
   "dkrt_sdk::instrument_transport",
   "dkrt_sdk::instrument_types",
   "dkrt_sdk::instrument_upload",
