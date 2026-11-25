@@ -53,6 +53,7 @@ members = [
     "services/project",
     "services/instrument",
     "services/track-keyboard",
+    "services/relay",
     # host test harness for <dk/platform/ui.h> (fake dk_ui_* calls, driver, C sample)
     "runtime/platform/ui/host",
     "image-modules/adapters/midi-events/host",

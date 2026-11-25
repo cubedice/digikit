@@ -1015,7 +1015,8 @@
         "core/services/machines",
         "core/ui",
         "core/services/instrument",
-        "core/services/track-keyboard"
+        "core/services/track-keyboard",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -3505,7 +3506,8 @@
       "users": [
         "core/machines",
         "core/services/machines",
-        "core/services/instrument"
+        "core/services/instrument",
+        "core/services/relay"
       ],
       "was": [
         "cf.machine.fn.srcpage_type",
@@ -11048,7 +11050,8 @@
       "users": [
         "core/instrument-play",
         "core/services/track-keyboard",
-        "core/services/instrument"
+        "core/services/instrument",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -11081,7 +11084,8 @@
       "users": [
         "core/instrument-play",
         "core/services/track-keyboard",
-        "core/services/instrument"
+        "core/services/instrument",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -12443,7 +12447,8 @@
       "users": [
         "core/instrument-play",
         "core/services/track-keyboard",
-        "core/services/instrument"
+        "core/services/instrument",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -18912,7 +18917,8 @@
       "users": [
         "core/file-catalog-proof",
         "core/runtime",
-        "core/plusdrive-write"
+        "core/plusdrive-write",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -19598,7 +19604,8 @@
       "users": [
         "core/runtime",
         "core/sample-pool",
-        "core/plusdrive-write"
+        "core/plusdrive-write",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -19636,7 +19643,8 @@
       "users": [
         "core/runtime",
         "core/sample-pool",
-        "core/plusdrive-write"
+        "core/plusdrive-write",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -19672,7 +19680,8 @@
       "sig": "i32 (u8 *buf, u32 bytes, u32 *handle)",
       "subsystem": "storage",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -19708,7 +19717,8 @@
       "sig": "u32 (u32 entry_id)",
       "subsystem": "storage",
       "users": [
-        "core/runtime"
+        "core/runtime",
+        "core/services/relay"
       ],
       "was": []
     },
@@ -25755,7 +25765,8 @@
         "core/digikit-menu",
         "core/ui",
         "core/services/track-keyboard",
-        "core/services/instrument"
+        "core/services/instrument",
+        "core/services/relay"
       ],
       "was": [
         "cf.menu.fn.invalidate"

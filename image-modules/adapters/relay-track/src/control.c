@@ -10,10 +10,17 @@
 #include "files.h"
 #include "../../../points/machines/src/cf/dt2/src-pages.h"
 #include "../../../../sdk/dsp/contract/dk_relay_track.inc"
+#include "relay-seam.h"
 
 typedef uint32_t u32;
 typedef uint8_t u8;
 extern const u32 machines_info[];
+extern volatile u32 pp_position[16];
+#ifdef DK_SERVICE
+/* services/relay.dks: the image's data through the image table (relay-seam.h) */
+#define machines_info ((const u32 *)RT_DATA(machines_info))
+#define pp_position ((volatile u32 *)RT_DATA(pp_position))
+#endif
 extern u32 rtm_type(u8 *), rtm_track(u32), pp_record_frames(u32), pp_record_steps(void);
 extern u32 dkrt_irq_mask(void);
 extern void dkrt_irq_restore(u32);
@@ -337,13 +344,15 @@ extern const u8 rtm_mod_rate, rtm_mod_spacing, rtm_mod_feedback, rtm_mod_mix, rt
 static const u8 mod_mirrors[] = {26, 27, 28, 31, 32, 33};
 u32 rtm_mod_param(u32 type, u32 mirror)
 {
-    static const u8 *const descriptors[] = {&rtm_mod_rate, &rtm_mod_spacing, &rtm_mod_feedback,
-                                            &rtm_mod_mix,  &rtm_mod_gain,    &rtm_mod_position};
+    // the registry codes of the params entries (RT_VALUE: the symbol's address in the image, the image table's word in the service)
+    const u32 descriptors[] = {RT_VALUE(rtm_mod_rate),     RT_VALUE(rtm_mod_spacing),
+                               RT_VALUE(rtm_mod_feedback), RT_VALUE(rtm_mod_mix),
+                               RT_VALUE(rtm_mod_gain),     RT_VALUE(rtm_mod_position)};
     if (!rtm_is_type(type))
         return UINT32_MAX;
     for (unsigned i = 0; i < 6; ++i)
         if (mirror == mod_mirrors[i])
-            return (u32)(uintptr_t)descriptors[i];
+            return descriptors[i];
     return mirror == 29 || mirror == 30 ? 0 : UINT32_MAX;
 }
 int rtm_mod_carrier(u32 type)
@@ -848,7 +857,6 @@ int rtm_src(u8 *view, unsigned action, u8 *data)
 // button as well so it silences a manually launched motor on any SRC page.
 void rtm_stop_key(u32 flags)
 {
-    extern volatile u32 pp_position[16];
     if (configured && (fxv_key_flags(flags) & FXV_PRESS) && !dk_fw_input_key_down(FXV_FUNC) &&
         !dk_fw_input_key_down(16)) {
         play_click_track = 16;

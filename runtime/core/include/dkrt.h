@@ -31,8 +31,8 @@
 #define DKRT_LIVE_RELOAD 3
 /* Room for the entries a caller of dkrt_capacity gives (the runtime has 16 kinds; new kinds are appended). */
 #define DKRT_CAP_MAX 20
-/* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 400 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), so the hardware set peaks near 345 KB, and the rest is image space (docs/plans/upstream-merge-1124). */
-#define DKRT_ARENA_BYTES 409600
+/* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 440 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), and RELAY runs from the service file relay.dks (37.6 KB of arena while it is loaded), so the hardware set peaks near 383 KB, and the rest is image space (docs/plans/upstream-merge-1124). */
+#define DKRT_ARENA_BYTES 450560
 /* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
 #define DKRT_PACKAGE_BYTES 352768
 /* The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes). */

@@ -1,0 +1,70 @@
+# The seam between the image adapter core/relay-track and the service file services/relay.dks
+# (docs/plans/upstream-merge-1124/README.md, "RELAY as a service file"). `services/instrument/tools/seam.py` generates every file
+# that depends on it; `--check` fails when one is stale.
+#
+# The vector is the [[slot]] word relay_vec of core/relay-track. The adapter keeps one forwarder per entry: it reads the slot and
+# jumps through word i of the table the service filled it with, or does `absent` while the slot is 0 (no service loaded): `rts`,
+# `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (an image function, with the caller's arguments). Without the service the
+# DT2 has no RELAY: no machine type answers to it, its frame words stay idle and the SRC page, the MOD routes, the TRIG picker and
+# the Sound save take their paths without RELAY. Changing the order or the count changes the layout: bump `version`.
+version = 1
+
+[output]
+service_file = "services/relay.dks"
+adapter = "core/relay-track"
+image_table = "image-modules/adapters/relay-track/src/seam-table.s"
+header = "image-modules/adapters/relay-track/src/relay-seam.h"
+guard = "DK_RELAY_SEAM_H"
+prefix = "RT"
+copy = "rt_img"
+service_asm = "dks/src/seam.s"
+service_rs = "src/seam_gen.rs"
+
+[[vector]]
+slot = "relay_vec"
+table = "relay_vec_table"
+adapter = "core/relay-track"
+image_file = "image-modules/adapters/relay-track/src/seam.s"
+entries = [
+    # core/loop-control's UI pass
+    ["relay_ui_pass", "rts"],
+    # core/dsp-link, in the block interrupt: the reply, the frame words dsp-link reserves for RELAY (an idle frame without the
+    # service: the timing words and no command), and the stock frame (unchanged without the service)
+    ["relay_reply_frame", "rts"],
+    ["relay_write_frame", "jmp:relay_idle_frame"],
+    ["rtm_gate_frame", "jmp:rtm_gate_pass"],
+    # core/track-keyboard and core/instrument-play: "not RELAY's" (0), "no RELAY parameter" (-1, what their callers took for a
+    # missing function), and the Sound save allowed (-1 is true) as without RELAY
+    ["rtm_is_type", "zero"],
+    ["rtm_mod_param", "minus1"],
+    ["rtm_mod_carrier", "zero"],
+    ["rtm_src", "zero"],
+    ["rtm_can_save", "minus1"],
+    # core/fxview: the TRIG page's stop key and picker
+    ["rtm_stop_key", "rts"],
+    ["relay_trig", "zero"],
+]
+
+# The image table `relay_image` of core/relay-track (its [[info]]): what the service takes from the image. The service copies it
+# at setup (refused without it: E_NO_REGISTRY) and reaches each function through a thunk of its own, a data word through
+# RT_DATA(name), a registry code through RT_VALUE(name).
+[image]
+info = "relay_image"
+symbol = "relay_image"
+magic = 0x524c5331 # "RLS1"
+# the runtime's file, I/O and interrupt calls, the UI and TRIG-page drawing of core/ui and core/fxview, the Sound association and
+# SRC page of core/instrument-play (its image part and its forwarders into services/instrument.dks), the SRC clock of
+# core/keyboard-panel, the machine page registration of core/machines and the recording clock of core/pattern-position
+functions = [
+    "dkrt_image_file_abort", "dkrt_image_file_close", "dkrt_image_file_create", "dkrt_image_file_write", "dkrt_io_post_image",
+    "dkrt_io_wake", "dkrt_irq_mask", "dkrt_irq_restore",
+    "dk_ui_core_handle", "dk_ui_toast", "fxv_box", "fxv_key_flags", "fxv_text",
+    "instrument_src_now", "ip_current_machine_sound", "ip_refresh_machine_track", "ip_sa_store", "ip_src_draw_rotary",
+    "sa_get", "sa_put", "sa_seq", "sa_slot",
+    "mf_src_register", "pp_record_frames", "pp_record_steps", "pp_record_timing",
+]
+optional = []
+# the machine table of core/machines (RELAY finds its type by name) and the transport words of core/pattern-position
+data = ["machines_info", "pp_position"]
+# registry codes: the params entries of this adapter (the MOD destinations of a RELAY track)
+values = ["rtm_mod_rate", "rtm_mod_spacing", "rtm_mod_feedback", "rtm_mod_mix", "rtm_mod_gain", "rtm_mod_position"]

@@ -2137,6 +2137,10 @@ name = "instrument"
 [[service]]
 name = "track-keyboard"
 
+# RELAY's track recorder on the ColdFire (services/relay, docs/plans/upstream-merge-1124/README.md, "RELAY as a service file").
+[[service]]
+name = "relay"
+
 # Every `[[service]]` is provided by a `.dks` provider (a module with `role = "service"`); the runtime has no service row of its own.
 # `test = true`: a test-only service; it and its `[[import]]` rows (also `test = true`) are left out of the public SDK headers, docs and templates.
 [[service]]

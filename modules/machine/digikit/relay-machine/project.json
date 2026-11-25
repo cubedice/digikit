@@ -14,7 +14,8 @@
         "modules": [
           "digikit/relay-machine",
           "core/services/machines",
-          "core/services/instrument"
+          "core/services/instrument",
+          "core/services/relay"
         ],
         "patchModules": [
           "core/relay-track",
@@ -26,6 +27,7 @@
           "A:core/relay-track",
           "A:core/pattern-position",
           "S:instrument",
+          "S:relay",
           "A:core/relay-input",
           "A:core/fxview"
         ]

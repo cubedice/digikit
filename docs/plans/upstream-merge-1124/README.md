@@ -200,3 +200,37 @@ snapshots and CANOPY's own channel routes (the owner's `canopy/routes/v1`), and 
 not loaded. The per-instance key state is CANOPY's chord and voice layer, which notes from either path go through. Making the track
 keyboard CANOPY's only external MIDI input would save at most the 33 routes and part of the 128-key pool (under 2.6 KB), and would
 need the saved routes moved to the track keyboard's.
+
+## RELAY as a service file (branch `feat/relay-service`, owner's request)
+
+RELAY's ColdFire code (`control.c` and `files.c` of `core/relay-track`: the tape transport and its commands, the SRC pages and
+waveforms, the tape files, the Sound association of tapes) moved out of the image into `services/relay.dks`
+(`core/services/relay`), the way the instrument and track keyboard services did (docs/plans/fork-image-diet.md sections 9 and 9.2).
+
+- **What stays in the image** (`core/relay-track`): its DSP objects (SHARC hook sites cannot move), its six parameter entries, the
+  seam, and `image.c`, the two block-interrupt paths that run without the service: `core/dsp-link` reserves RELAY's frame words whenever
+  the adapter is in the image, so `relay_idle_frame` writes the timing words and no command, and `rtm_gate_pass` leaves the stock frame
+  as it is. `core/plusdrive-write` stays an image module: it is the runtime's +Drive write plug-in, not RELAY's.
+- **One slot, `relay_vec`, 11 forwarders** (`services/relay/seam.toml`): the UI pass of `core/loop-control`; the reply, the frame and
+  the stock-frame gate of `core/dsp-link`; RELAY's type check, MOD routes, SRC page and Sound save check, which `core/track-keyboard` and
+  `core/instrument-play` call; the stop key and the picker of `core/fxview`. Without the file each answers what its caller took for a
+  missing function, so the DT2 runs without RELAY.
+- **The image table `relay_image`** (37 words): 26 image functions (the runtime's file, I/O and interrupt calls, `core/ui`,
+  `core/fxview`, the Sound association and SRC page of `core/instrument-play`, the SRC clock, `core/machines`, `core/pattern-position`),
+  2 data words (`machines_info`, `pp_position`) and the 6 registry codes of the MOD destinations. The C reads them through
+  `relay-seam.h` under `DK_SERVICE`; the host tests that compile it are unchanged.
+- **The need**: `core/relay-track` is `served_by = "relay"`, so RELAY's machine module needs `relay.dks` (with `machines.dks` and
+  `instrument.dks`) and the planner refuses it without the file. The firmware names the file binds list `core/services/relay` as a user
+  in `ports/fw`, so the card's port file declares them.
+
+Measured [D] (DT2 1.17):
+
+| | Before | With `relay.dks` |
+| --- | ---: | ---: |
+| `core/relay-track` in cf.expansion | 34,632 | about 460 (forwarders, table, idle paths) |
+| free cf.expansion of `canopy-overloop-prism-relay` (400 KiB arena) | 100,452 | 135,132 |
+| arena with the five modules (rehearsal) | 321,680 | 359,408 (`relay.dks` needs 37,568; file 29,664 bytes) |
+
+The move frees image space only while RELAY is not selected: with all five modules the pool holds the same code, plus about 2.9 KB of
+service glue. `ARENA_BYTES` is 450,560 (440 KiB) so that the hardware set keeps the arena headroom it had: with the five modules 359,408 of 450,560 bytes in use and 78,320 free in one piece (75,088 at 400 KiB with RELAY in the image), and the ten settings entries read back unchanged. Free cf.expansion
+of the DT2 sets with it: `canopy-overloop-prism-relay` 94,172, `relay-track` 130,320, `device` 96,668.
