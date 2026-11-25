@@ -48,7 +48,7 @@ name = "tk_image"
 # into the service file (services/track-keyboard/dks).
 [[object]]
 path = "build/track-keyboard.dko.json"
-optional = ["rtm_is_type", "cp_valid", "ilp_event_pair", "instrument_lock_source", "instrument_locked_sound", "instrument_src_track_keyboard", "instrument_track_keyboard_lanes", "instrument_track_keyboard_legacy", "instrument_track_keyboard_locked_note", "instrument_track_owned"]
+optional = ["rtm_is_type", "cp_valid", "ilp_event_pair", "instrument_lock_source", "instrument_locked_sound", "instrument_src_track_keyboard", "instrument_track_keyboard_lanes", "instrument_track_keyboard_legacy", "instrument_track_keyboard_locked_note", "instrument_track_keyboard_controller", "instrument_track_owned"]
 sources = ["src/track-valid.c", "src/track-config.c", "src/track-pattern.c", "src/track-pattern-fw.c", "src/track-record.c", "src/track-pattern-hooks.s",
   "src/track-step-hooks.s", "src/track-midi-hooks.s", "src/track-sequence-hooks.s",
   "src/track-pool.c", "src/track-pool-fw.c", "src/track-pool-hooks.s", "src/trig-title.s", "src/image.c", "src/seam.s", "src/seam-table.s"]

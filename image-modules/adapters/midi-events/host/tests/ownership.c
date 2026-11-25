@@ -157,6 +157,36 @@ uint32_t mi_test_messages(void)
     return 0;
 }
 
+/* A controller the track keyboard forwards: on USB channel 1 of the track, in its generation, with no route. */
+uint32_t mi_test_track_control(void)
+{
+    MiLedger m;
+    MiEvent e;
+    mi_init(&m);
+    m.generations[5] = 9;
+    CHECK(mi_track_control(&m, 5, MI_BEND, 127, 127));
+    e = take(&m);
+    CHECK(e.kind == MI_BEND && !e.token && e.track == 5 && e.generation == 9);
+    CHECK(!e.port && !e.channel && ((e.value << 7) | e.note) == 16383);
+    CHECK(mi_track_control(&m, 5, MI_CC, 1, 64));
+    e = take(&m);
+    CHECK(e.kind == MI_CC && e.note == 1 && e.value == 64 && e.track == 5);
+    CHECK(mi_track_control(&m, 5, MI_CC, 121, 0));
+    e = take(&m);
+    CHECK(e.kind == MI_CC && e.note == 121 && !e.value);
+    /* only CC1, CC121 and pitch bend, of a track, with 7-bit data */
+    CHECK(!mi_track_control(&m, 5, MI_CC, 64, 127));
+    CHECK(!mi_track_control(&m, 5, MI_NOTE_ON, 60, 100));
+    CHECK(!mi_track_control(&m, MI_TRACKS, MI_BEND, 0, 64));
+    CHECK(!mi_track_control(&m, 5, MI_BEND, 128, 0));
+    CHECK(!mi_peek(&m, &e));
+    /* an event of an older generation is not delivered */
+    CHECK(mi_track_control(&m, 5, MI_CC, 1, 10));
+    m.generations[5] = 10;
+    CHECK(!mi_peek(&m, &e));
+    return 0;
+}
+
 uint32_t mi_test_mod_wheel(void)
 {
     MiLedger m;

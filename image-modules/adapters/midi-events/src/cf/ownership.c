@@ -189,6 +189,15 @@ static int emit(MiLedger *m, uint32_t token, uint32_t gen, uint8_t track, uint8_
     return 1;
 }
 
+int mi_track_control(MiLedger *m, uint32_t track, uint32_t kind, uint32_t note, uint32_t value)
+{
+    if (track >= MI_TRACKS || note > 127 || value > 127 ||
+        !(kind == MI_BEND || (kind == MI_CC && (note == 1 || note == 121))))
+        return 0;
+    return emit(m, 0, m->generations[track], (uint8_t)track, (uint8_t)kind, 0, 0, (uint8_t)note,
+                (uint8_t)value);
+}
+
 static MiKey *oldest(MiLedger *m, uint8_t port, uint8_t channel, uint8_t note)
 {
     uint32_t i;

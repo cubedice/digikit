@@ -454,173 +454,180 @@
    "addend": 0,
    "offset": 68,
    "section": ".rodata",
-   "symbol": "instrument_track_owned",
+   "symbol": "instrument_track_keyboard_controller",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 72,
    "section": ".rodata",
-   "symbol": "ip_current_machine_sound",
+   "symbol": "instrument_track_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 76,
    "section": ".rodata",
-   "symbol": "ip_refresh_machine_track",
+   "symbol": "ip_current_machine_sound",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 80,
    "section": ".rodata",
-   "symbol": "ip_src_draw_rotary",
+   "symbol": "ip_refresh_machine_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 84,
    "section": ".rodata",
-   "symbol": "ip_src_attach",
+   "symbol": "ip_src_draw_rotary",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 88,
    "section": ".rodata",
-   "symbol": "ip_src_detach",
+   "symbol": "ip_src_attach",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 92,
    "section": ".rodata",
-   "symbol": "ip_src_draw",
+   "symbol": "ip_src_detach",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 96,
    "section": ".rodata",
-   "symbol": "ip_src_event",
+   "symbol": "ip_src_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 100,
    "section": ".rodata",
-   "symbol": "ip_src_key",
+   "symbol": "ip_src_event",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 104,
    "section": ".rodata",
-   "symbol": "ip_src_parameter",
+   "symbol": "ip_src_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 108,
    "section": ".rodata",
-   "symbol": "ip_src_turn",
+   "symbol": "ip_src_parameter",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 112,
    "section": ".rodata",
-   "symbol": "ip_src_update",
+   "symbol": "ip_src_turn",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 116,
    "section": ".rodata",
-   "symbol": "mi_legacy_channel_message",
+   "symbol": "ip_src_update",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 120,
    "section": ".rodata",
-   "symbol": "mi_dsp_reset_begin",
+   "symbol": "mi_legacy_channel_message",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 124,
    "section": ".rodata",
-   "symbol": "mi_registry_expect_session",
+   "symbol": "mi_dsp_reset_begin",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 128,
    "section": ".rodata",
-   "symbol": "mi_registry_reply",
+   "symbol": "mi_registry_expect_session",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 132,
    "section": ".rodata",
-   "symbol": "instrument_write_frame",
+   "symbol": "mi_registry_reply",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 136,
    "section": ".rodata",
-   "symbol": "instrument_track_owned",
+   "symbol": "instrument_write_frame",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 140,
    "section": ".rodata",
-   "symbol": "instrument_track_keyboard_routed",
+   "symbol": "instrument_track_owned",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 144,
    "section": ".rodata",
-   "symbol": "instrument_track_plays_keys",
+   "symbol": "instrument_track_keyboard_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 148,
    "section": ".rodata",
-   "symbol": "instrument_record_chord",
+   "symbol": "instrument_track_plays_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 152,
    "section": ".rodata",
-   "symbol": "instrument_select_track",
+   "symbol": "instrument_record_chord",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 156,
    "section": ".rodata",
-   "symbol": "mi_panel_key",
+   "symbol": "instrument_select_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 160,
    "section": ".rodata",
-   "symbol": "mi_panel_release",
+   "symbol": "mi_panel_key",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 164,
+   "section": ".rodata",
+   "symbol": "mi_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 168,
    "section": ".rodata",
    "symbol": "mi_seq_mute",
    "type": "cf.32"
@@ -3798,6 +3805,41 @@
   },
   {
    "addend": 0,
+   "offset": 16,
+   "section": ".text.instrument_track_keyboard_controller",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.instrument_track_keyboard_controller",
+   "symbol": ".sec..bss.track_keyboard_claim",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.instrument_track_keyboard_controller",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
+   "section": ".text.instrument_track_keyboard_controller",
+   "symbol": ".sec..bss.track_keyboard_lanes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 86,
+   "section": ".text.instrument_track_keyboard_controller",
+   "symbol": "mi_track_controller",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 42,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.track_keyboard_claim",
@@ -3812,84 +3854,84 @@
   },
   {
    "addend": 0,
-   "offset": 134,
+   "offset": 146,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 148,
+   "offset": 160,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.inst",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 162,
+   "offset": 174,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 232,
+   "offset": 244,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 84,
-   "offset": 420,
+   "offset": 432,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 94,
-   "offset": 448,
+   "offset": 460,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 84,
-   "offset": 650,
+   "offset": 658,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 94,
-   "offset": 670,
+   "offset": 678,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.shared_notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 770,
+   "offset": 778,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..text.for_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 832,
+   "offset": 840,
    "section": ".text.instrument_keyboard_events",
    "symbol": ".sec..bss.keyboard_initialized",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 868,
+   "offset": 876,
    "section": ".text.instrument_keyboard_events",
    "symbol": "kb_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 886,
+   "offset": 894,
    "section": ".text.instrument_keyboard_events",
    "symbol": "kb_process_locked",
    "type": "cf.32"
@@ -15194,8 +15236,8 @@
   },
   {
    "addend": 0,
-   "offset": 94,
-   "section": ".text.emit.isra.0",
+   "offset": 32,
+   "section": ".text.emit",
    "symbol": ".sec..text.overflow",
    "type": "cf.32"
   },
@@ -15236,9 +15278,16 @@
   },
   {
    "addend": 0,
+   "offset": 112,
+   "section": ".text.mi_track_control",
+   "symbol": ".sec..text.emit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 140,
    "section": ".text.mi_release_known",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
@@ -15259,14 +15308,14 @@
    "addend": 0,
    "offset": 408,
    "section": ".text.mi_message",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 614,
    "section": ".text.mi_message",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
@@ -15280,35 +15329,35 @@
    "addend": 0,
    "offset": 294,
    "section": ".text.mi_panel_down",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 28,
+   "offset": 92,
    "section": ".text.mi_panel_up",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 184,
    "section": ".text.mi_panel_cancel",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 214,
+   "offset": 262,
    "section": ".text.mi_panel_cancel",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 38,
+   "offset": 108,
    "section": ".text.mi_seq_release",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
@@ -15322,7 +15371,7 @@
    "addend": 0,
    "offset": 256,
    "section": ".text.mi_seq_trig",
-   "symbol": ".sec..text.emit.isra.0",
+   "symbol": ".sec..text.emit",
    "type": "cf.32"
   },
   {
@@ -17174,6 +17223,48 @@
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.mi_track_controller",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 14,
+   "section": ".text.mi_track_controller",
+   "symbol": ".sec..bss.initialized",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.mi_track_controller",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.mi_track_controller",
+   "symbol": ".sec..bss.reset_seen",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.mi_track_controller",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.mi_track_controller",
+   "symbol": "mi_track_control",
+   "type": "cf.32"
+  },
+  {
    "addend": 4,
    "offset": 18,
    "section": ".text.mi_legacy_channel_message",
@@ -17189,79 +17280,79 @@
   },
   {
    "addend": 0,
-   "offset": 70,
+   "offset": 72,
    "section": ".text.mi_legacy_channel_message",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 112,
+   "offset": 114,
    "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 130,
+   "offset": 132,
    "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..text.revalidate_track",
    "type": "cf.32"
   },
   {
    "addend": 172,
-   "offset": 138,
+   "offset": 140,
    "section": ".text.mi_legacy_channel_message",
    "symbol": "ip_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 154,
-   "section": ".text.mi_legacy_channel_message",
-   "symbol": ".sec..bss.mi_ledger",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 160,
-   "section": ".text.mi_legacy_channel_message",
-   "symbol": "mi_message",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 176,
-   "section": ".text.mi_legacy_channel_message",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 226,
+   "offset": 150,
    "section": ".text.mi_legacy_channel_message",
    "symbol": "instrument_track_keyboard_routed",
    "type": "cf.32"
   },
   {
    "addend": 4,
-   "offset": 242,
+   "offset": 168,
    "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 318,
+   "offset": 244,
    "section": ".text.mi_legacy_channel_message",
    "symbol": ".sec..bss.mi_ledger",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 324,
+   "offset": 250,
    "section": ".text.mi_legacy_channel_message",
    "symbol": "mi_release_known",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 266,
+   "section": ".text.mi_legacy_channel_message",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 338,
+   "section": ".text.mi_legacy_channel_message",
+   "symbol": ".sec..bss.mi_ledger",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 344,
+   "section": ".text.mi_legacy_channel_message",
+   "symbol": "mi_message",
    "type": "cf.32"
   },
   {
@@ -17912,10 +18003,10 @@
   },
   {
    "align": 4,
-   "hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 168
+   "size": 172
   },
   {
    "align": 4,
@@ -18458,10 +18549,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffc0700f48d77cfc262f0044282f00482a2f004c266f0050242f0054246f0058b083650002d841f9000000004a303800670002ca4a82674841f9000000004a303800670653824a82670c42804cd77cfc4fef00404e7571ab001057804a8066ea71ab001453804a8066e0428041f30800724c159008005280b28066f0700160cc2f034eb900000000588f4a8067bc2200048100000000e281243c2c0cc4a243f9000000004c02180041f11800b6a80008660cb8b118006606baa80004671c238318082384180042432385180442b1180c42043383181013841812d3c11029001041ea004647f9000000004bf3180075801f40003142802f420032ed8a2442d5c1d5cb162900111f4300396700ff401629001075831f43003a162a00502802ed8c7b832844d9c1d9cb182c00501f44003b7984b8856600ff164a03670000a87faa005177ac0051b6876600ff021c2a005277ac00527986b6846600fef279aa005377ac0053b6846600fee4286c0082b9ea00826600fed8282f0032260254845483ed8ced8bd881d68179f3480077f33800b6846600feb879af003126022841ed8bd9fc00000000ed8c4285d9c32f44002cbe85620001204a06672a2841d9fc00000000d9c34285282f002c2c4c9dc37dd47ff64800bc876600fe74548c52857811b88566e22602ed8b49f318002154ffba42a8ffbe2843d9c1d9cb216c004affc221690004ffc6182c004f56c354831143ffca76021143ffcb42031143ffcc1169000bffcd116c004effce1144ffcf1143ffdc1143ffd11143ffd0425042a800024a8066684a2f003b6762780126025483ed8b4de8ffd21144ffd04284d6811a2c00511145ffd17b851c2c00521146ffdc116c0053ffdd30b3380077af003a216c008200022841d9fc00000000ed8bd9c3ba8462624a0667142841d9fc00000000d9c34de8ffde3cdcb1ce66fa5282781452804c442803142f003941e8004c1b43001053821b4200117408b4806600fe346000fd7a282f002c2c4c9dc379f648002f44003c79d4b8af003c6600fd60548c52856000febc3cdc528460942f034eb900000000588f4a80663242804281602291c849f3080043f208004bf48800764c139588005288b68866f0528106800000004cb28266da20026000fd124ab90000000067542c0020400686000000d8b8a800d86606baa800dc67102f052f042f064eb9000000004fef000c2f0a2f022f0b2f064eb9000000004fef00104a806f00fccc45ea001342811483528145ea004cb08166f46000fcb670ff6000fcb0",
+   "hex": "598f2f02700f242f000cb082655a4eb90000000041f9000000002f4000044a302800661642822f2f00044eb900000000588f2002241f588f4e7541f9000000004a30280067de2f2f00182f2f00182f2f00182f024eb9000000004fef00104a8056c07500448260be428260c6",
+   "kind": "text",
+   "name": ".text.instrument_track_keyboard_controller",
+   "size": 108
+  },
+  {
+   "align": 2,
+   "hex": "4fefffc0700f48d77cfc262f0044282f00482a2f004c266f0050242f0054246f0058b083650002e041f9000000004a303800670002d24a82675441f9000000004a303800670653824a82670c42804cd77cfc4fef00404e7571ab00107404b480671657804a8066e471ab00147801b88067067279b28066d4428041f30800724c159008005280b28066f0700160c02f034eb900000000588f4a8067b02200048100000000e281243c2c0cc4a243f9000000004c02180041f11800b6a80008660cb8b118006606baa80004671c238318082384180042432385180442b1180c42043383181013841812d3c11029001041ea004647f9000000004bf3180075801f40003142802f420032ed8a2442d5c1d5cb162900111f4300396700ff341629001075831f43003a162a00502802ed8c7b832844d9c1d9cb182c00501f44003b7984b8856600ff0a4a03670000a67faa005177ac0051b6876600fef61c2a005277ac00527986b6846600fee679aa005377ac0053b6846600fed8286c0082b9ea00826600fecc282f0032260254845483ed8ced8bd881d68179f3480077f33800b6846600feac79af003126022841ed8bd9fc00000000ed8c4285d9c32f44002cbe856200011c4a0667282841d9fc00000000d9c37a11282f002c2c4c9dc37dd47ff64800bc876600fe68548c53854a8566e42602ed8b49f318002154ffba42a8ffbe2843d9c1d9cb216c004affc221690004ffc6182c004f56c354831143ffca42031143ffcb1143ffcc1169000bffcd116c004effce1144ffcf1143ffdc1143ffd11143ffd0425042a800024a8066684a2f003b6762780126025483ed8b4de8ffd21144ffd04284d6811a2c00511145ffd17b851c2c00521146ffdc116c0053ffdd30b3380077af003a216c008200022841d9fc00000000ed8bd9c3ba8462624a0667142841d9fc00000000d9c34de8ffde3cdcb1ce66fa5282781452804c442803142f003941e8004c1b43001053821b4200117408b4806600fe386000fd72282f002c2c4c9dc379f648002f44003c79d4b8af003c6600fd58548c52856000fec03cdc528460942f034eb900000000588f4a80663242804281602291c849f3080043f208004bf48800764c139588005288b68866f0528106800000004cb28266da20026000fd0a4ab90000000067542c0020400686000000d8b8a800d86606baa800dc67102f052f042f064eb9000000004fef000c2f0a2f022f0b2f064eb9000000004fef00104a806f00fcc445ea001342811483528145ea004cb28066f46000fcae70ff6000fca8",
    "kind": "text",
    "name": ".text.instrument_keyboard_events",
-   "size": 928
+   "size": 936
   },
   {
    "align": 2,
@@ -20782,10 +20880,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff02f032f02226f001c1f6f002b00122429300c1f6f002f00131f6f003300141f6f003700151f6f003b00161f6f003f00172f6f0020000a2f6f0024000e0c82000000806708262930144a8366122f49001c241f261f4fef00104ef9000000002202707fd2a93008c280704c4c010800c2fc004c41f10800216930200a082003528023403014424021430a0c116f00120a1b42a80a1e116f00130a1842a80a22116f00140a1942a80a26116f00150a1a42a80a5031400a2a31400a4e4280116f00160a1c116f00170a1d216f000a0a10216f000e0a1441e90a2cd1c1528072114258b28066f652822342300c241f261f4fef00104e75",
+   "hex": "2f032f02226f000c2429300c0c82000000806708262930144a8366122f094eb900000000588f4280241f261f4e752202707fd2a93008c280704c4c010800c2fc004c41f10800216930200a082003528023403014424021430a0c116f001b0a1b42a80a1e116f001f0a1842a80a22116f00230a1942a80a26116f00270a1a42a80a5031400a2a31400a4e4280116f002b0a1c116f002f0a1d216f00100a10216f00140a1441e90a2cd1c1528072114258b28066f652822342300c70016000ff6a",
    "kind": "text",
-   "name": ".text.emit.isra.0",
-   "size": 248
+   "name": ".text.emit",
+   "size": 192
   },
   {
    "align": 2,
@@ -20817,6 +20915,13 @@
   },
   {
    "align": 2,
+   "hex": "2f032f02740f202f0010226f000c206f0014222f0018b48064084280241f261f4e75242f001c8481ee8a66ee7404b48867127603b68866e27401b48167067679b68166d6242f001c26087381778375822f022f012200068000000c09738142a742a72f032f012f310c0042a72f094eb9000000004fef002460a2",
+   "kind": "text",
+   "name": ".text.mi_track_control",
+   "size": 122
+  },
+  {
+   "align": 2,
    "hex": "4fefffe8102f0023122f002748d7047c226f001c95ca7baf002b2409068200000a0841e90108778079814a28000c67227da8000dbc83661a7da8000ebc8466127da8000fbc85660a4a8a675a2c12bc90625441e80012b48866d04a8a674c4a2a0011663075af002f738171802f0275af002f2f022f012f004878000271aa00102f002f2a00042f122f094eb9000000004fef002442001540000c70014cd7047c4fef00184e75244860a8428060ee",
    "kind": "text",
    "name": ".text.mi_release_known",
@@ -20838,24 +20943,24 @@
   },
   {
    "align": 2,
-   "hex": "4feffff048d70c0c242f001424422602068300000a0845ea010847f9000000004a2a000c674671aa000d55804a80663c202f0018b0aa000866324a2a0011662642a771aa000f2f0042a7487800024878000271aa00102f002f2a00042f122f024e934fef002442011541000c45ea0012b68a66ac4cd70c0c4fef00104e75",
+   "hex": "4feffff048d70c0c242f001424422602068300000a0845ea01084a2a000c674a71aa000d55804a806640222f0018b2aa000866364a2a0011662a42a771aa000f2f0042a7487800024878000271aa00102f002f2a00042f122f024eb9000000004fef002442001540000c45ea0012b68a66a84cd70c0c4fef00104e75",
    "kind": "text",
    "name": ".text.mi_panel_up",
-   "size": 126
+   "size": 124
   },
   {
    "align": 2,
-   "hex": "4fefffe048d73c3c266f00244282220b068100000a10262b306441eb01104a280004672a71a8000555804a806620203c000000ffb09064164a280009661071a800087a0fba8065067a01e1ad848541e80012b28866c8280b068400000a0845eb01084a2a000c675e71aa000d55804a8066542a3c000000ffbaaa000865484a2a0011663c73aa0010700fb08165327001e3a88680c0824a80672642a771aa000f2f0042a748780002487800022f012f2a00042f122f0b4eb9000000004fef002472011541001145ea0012b88a669495ca49eb30244bf90000000070012a0aeba82200c2834a816728c0824a8066227b8542a74878007842a748780002487800032f052f34ac0042a72f0b4e954fef0024528a7010b08a66c24cd73c3c4fef00204e75",
+   "hex": "4fefffe048d73c3c266f00244282220b068100000a10262b306441eb01104a280004672a71a8000555804a806620203c000000ffb09064164a280009661071a800087a0fba8065067a01e1ad848541e80012b28866c8280b068400000a0845eb01084a2a000c675e71aa000d55804a8066542a3c000000ffbaaa000865484a2a0011663c73aa0010700fb08165327001e3a88680c0824a80672642a771aa000f2f0042a748780002487800022f012f2a00042f122f0b4eb9000000004fef002472011541001145ea0012b88a669495ca49eb302470012a0aeba82200c2834a81672cc0824a8066267b8542a74878007842a748780002487800032f052f34ac0042a72f0b4eb9000000004fef0024528a7010b08a66be4cd73c3c4fef00204e75",
    "kind": "text",
    "name": ".text.mi_panel_cancel",
-   "size": 290
+   "size": 288
   },
   {
    "align": 2,
-   "hex": "4fefffec48d70c1c242f00182442282f001c260245ea0108068300000a0806840000010047f9000000004a2a000c674c71aa000d55804a806642202a00080c80000000ff6336b08466324a2a0011662642a771aa000f2f0042a7487800024878000271aa00102f002f2a00042f122f024e934fef002442001540000c45ea0012b68a66a64cd70c1c4fef00144e75",
+   "hex": "4fefffec48d70c1c242f00182442282f001c260245ea0108068300000a080684000001004a2a000c675071aa000d55804a806646202a00080c80000000ff633ab08466364a2a0011662a42a771aa000f2f0042a7487800024878000271aa00102f002f2a00042f122f024eb9000000004fef002442001540000c45ea0012b68a66a24cd70c1c4fef00144e75",
    "kind": "text",
    "name": ".text.mi_seq_release",
-   "size": 142
+   "size": 140
   },
   {
    "align": 2,
@@ -21167,10 +21272,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec48d7041c246f0018202f00204ab900000000670a2639000000004a83670e428220024cd7041c4fef00144e757203b2af001c66ea4a8a67e67208b280667876014eb90000000075c3780f726f2f4000101012e98ac8800680ffffff807180d484b28065202002e7882040d1fc000000004a280005670e71a800042f004eb900000000588f4ab9000000006650487800032f0a2f034879000000004eb9000000004fef001024002f2f00104eb900000000588f6000ff6c7208b28065147202b2806700ff7e59804a806700ff766000ff507210b2806700ff686000ff4443f9000000004a8967a6e78a720f2042d1fc000000007190b280659414122f004e91588f4a8067887382e8897008b08167107009b081663a4a2a0002670442826088102a00016bf6122a00026bf07783738171802f012f002f042f034879000000004eb9000000004fef001424006000ff5a700bb0816600ff3871aa000153804a8066ba6000ff2a",
+   "hex": "518f4eb9000000002f4000044ab900000000661a42802f2f00042f4000044eb900000000202f00044fef000c4e754ab90000000066de2f2f00182f2f00182f2f00182f2f00184879000000004eb9000000004fef00144a8056c07100448060b6",
+   "kind": "text",
+   "name": ".text.mi_track_controller",
+   "size": 96
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec48d7041c246f0018202f00204ab900000000670a2639000000004a83670e428220024cd7041c4fef00144e757203b2af001c66ea4a8a67e67208b280660000d276014eb90000000075c3780f726f2f4000101012e98ac8800680ffffff807180d484b28065202002e7882040d1fc000000004a280005670e71a800042f004eb900000000588f4ab900000000670000b643f9000000004a89670000aae78a720f2042d1fc000000007190b2806500009614122f004e91588f4a80670000887382e8897008b081670c7009b08166684a2a0002666c102a00016b66122a00026b607783738171802f012f002f042f034879000000004eb9000000004fef001424002f2f00104eb900000000588f6000ff127208b28065147202b2806700ff2659804a806700ff1e6000fef67210b2806700ff106000feea203cffffb7ff03006604428260bc487800032f0a2f034879000000004eb9000000004fef0010240060a0",
    "kind": "text",
    "name": ".text.mi_legacy_channel_message",
-   "size": 360
+   "size": 356
   },
   {
    "align": 2,
@@ -21531,7 +21643,7 @@
   },
   {
    "align": 2,
-   "hex": "206f00044a88670a203c49505331b090670442004e757001b0a8000466f47047b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
+   "hex": "206f00044a88670a203c49505331b090670442004e757002b0a8000466f47047b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
    "kind": "text",
    "name": ".text._RNvNtCsatX6XrcK1S0_19dkrt_svc_instrument4seam6usable",
    "size": 66
@@ -21558,7 +21670,7 @@
    "size": 28
   }
  ],
- "source_sha256": "fe2048829d7abe262caf79516fe5c79810965401ea84077e44805d45bd8380f2",
+ "source_sha256": "11f7a470cb4f046be0de287662b09bbb144f99f1533791d6e5c1202a2965c458",
  "symbols": [
   {
    "global": false,
@@ -23230,8 +23342,8 @@
   },
   {
    "global": false,
-   "name": ".sec..text.emit.isra.0",
-   "section": ".text.emit.isra.0",
+   "name": ".sec..text.emit",
+   "section": ".text.emit",
    "value": 0
   },
   {
@@ -24664,8 +24776,8 @@
   },
   {
    "global": false,
-   "name": "emit.isra.0",
-   "section": ".text.emit.isra.0",
+   "name": "emit",
+   "section": ".text.emit",
    "value": 0
   },
   {
@@ -25110,6 +25222,12 @@
    "global": true,
    "name": "instrument_track_keyboard_claim",
    "section": ".text.instrument_track_keyboard_claim",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_track_keyboard_controller",
+   "section": ".text.instrument_track_keyboard_controller",
    "value": 0
   },
   {
@@ -25680,7 +25798,7 @@
    "global": true,
    "name": "kbp_vec_table",
    "section": ".rodata",
-   "value": 136
+   "value": 140
   },
   {
    "global": false,
@@ -26098,6 +26216,18 @@
   },
   {
    "global": true,
+   "name": "mi_track_control",
+   "section": ".text.mi_track_control",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_track_controller",
+   "section": ".text.mi_track_controller",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "mi_transport",
    "section": ".bss.mi_transport",
    "value": 0
@@ -26106,7 +26236,7 @@
    "global": true,
    "name": "midi_vec_table",
    "section": ".rodata",
-   "value": 116
+   "value": 120
   },
   {
    "global": false,
@@ -27314,8 +27444,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "21023",
-  "isa_check": "2bb097eddabf52a1e640ae3ba2ee2b8497a90716748ead200d14194cb997c678",
+  "instructions_redecoded": "21120",
+  "isa_check": "c4776730a6da72fc4b07548fd9ac699ced21a2bddd8fb44ba0d185fc31be0d36",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

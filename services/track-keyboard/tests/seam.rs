@@ -35,7 +35,7 @@ fn a_missing_function_of_the_adapter_is_refused_and_a_missing_optional_one_is_no
     }
     // CANOPY's host and RELAY's type check may be missing from the image
     let optional: Vec<usize> = (3..WORDS).filter(|i| !REQUIRED.contains(i)).collect();
-    assert_eq!(optional.len(), 10);
+    assert_eq!(optional.len(), 11);
     let mut t = table();
     for &i in &optional {
         t[i] = 0;

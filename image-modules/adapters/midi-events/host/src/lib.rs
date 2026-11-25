@@ -21,6 +21,7 @@ mod tests {
         fn mi_test_transport_wire() -> u32;
         fn mi_test_config_transaction() -> u32;
         fn mi_test_config_maximum() -> u32;
+        fn mi_test_track_control() -> u32;
         fn mi_test_reply_ack() -> u32;
         fn mi_test_reply_watchdog() -> u32;
         fn mi_test_session_guard() -> u32;
@@ -95,6 +96,7 @@ mod tests {
     case!(panel_routes_to_the_instrument_track, mi_test_panel_track);
     case!(sequencer_trigs_play_local_notes_monophonically, mi_test_sequencer_notes);
     case!(ring_reuse_does_not_accept_stale_acks, mi_test_ring_wrap);
+    case!(a_forwarded_controller_takes_the_track_generation, mi_test_track_control);
     case!(
         usb_and_din_share_ownership_without_consuming_upload_or_clock,
         mi_test_dispatch

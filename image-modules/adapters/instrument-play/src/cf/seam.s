@@ -166,12 +166,22 @@ instrument_track_keyboard_locked_note:
 1:
     moveq #0,%d0
     rts
+    .globl instrument_track_keyboard_controller
+instrument_track_keyboard_controller:
+    move.l slot.instrument_vec,%d0
+    beq.s 1f
+    movea.l %d0,%a1
+    movea.l 68(%a1),%a1
+    jmp (%a1)
+1:
+    moveq #0,%d0
+    rts
     .globl instrument_track_owned
 instrument_track_owned:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 68(%a1),%a1
+    movea.l 72(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -181,7 +191,7 @@ ip_current_machine_sound:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 72(%a1),%a1
+    movea.l 76(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -191,7 +201,7 @@ ip_refresh_machine_track:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 76(%a1),%a1
+    movea.l 80(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -201,7 +211,7 @@ ip_src_draw_rotary:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 80(%a1),%a1
+    movea.l 84(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -210,7 +220,7 @@ ip_src_attach:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 84(%a1),%a1
+    movea.l 88(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_attach
@@ -219,7 +229,7 @@ ip_src_detach:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 88(%a1),%a1
+    movea.l 92(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_detach
@@ -228,7 +238,7 @@ ip_src_draw:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 92(%a1),%a1
+    movea.l 96(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_draw
@@ -237,7 +247,7 @@ ip_src_event:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 96(%a1),%a1
+    movea.l 100(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_event
@@ -246,7 +256,7 @@ ip_src_key:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 100(%a1),%a1
+    movea.l 104(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_key
@@ -255,7 +265,7 @@ ip_src_parameter:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 104(%a1),%a1
+    movea.l 108(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_parameter
@@ -264,7 +274,7 @@ ip_src_turn:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 108(%a1),%a1
+    movea.l 112(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_turn
@@ -273,7 +283,7 @@ ip_src_update:
     move.l slot.instrument_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 112(%a1),%a1
+    movea.l 116(%a1),%a1
     jmp (%a1)
 1:
     jmp ip_src_stock_update

@@ -121,15 +121,17 @@ static inline uint32_t isn_take(IsnQueue *q, MiEvent output[8])
             break;
         const IsnNote *note = &pending->note;
         MiEvent *event = &output[n];
-        /* A panel-shaped packet fits the existing wire validators. Shared
-         * note ownership is entirely CF-side. The DSP sees one raw voice
-         * onset/release and checks generation just as for a local key. */
+        /* Shared note ownership is entirely CF-side. The DSP sees one raw
+         * voice onset/release and checks generation just as for a local key.
+         * USB channel 1, not the panel: the DSP keeps the wheel and pitch
+         * bend per route and gives a voice of the panel route neither, so the
+         * notes and the controllers the track keyboard forwards share it. */
         event->epoch = q->epoch;
         event->sequence = 0;
         event->token = note->wire;
         event->generation = q->generation;
         event->kind = note->velocity ? MI_NOTE_ON : MI_NOTE_OFF;
-        event->port = MI_PANEL;
+        event->port = 0;
         event->channel = 0;
         event->track = (uint8_t)q->track;
         event->note = note->pitch;

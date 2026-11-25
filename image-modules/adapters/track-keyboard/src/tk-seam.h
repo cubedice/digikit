@@ -6,8 +6,8 @@
 #define DK_TRACK_KEYBOARD_SEAM_H
 #include <stdint.h>
 #define TK_SEAM_MAGIC 0x544b5331u
-#define TK_SEAM_VERSION 1u
-#define TK_SEAM_WORDS 63u
+#define TK_SEAM_VERSION 2u
+#define TK_SEAM_WORDS 64u
 #define TKX_tk_defaults 3u
 #define TKX_tk_track_defaults 4u
 #define TKX_tk_rate_division 5u
@@ -64,10 +64,11 @@
 #define TKX_instrument_track_keyboard_lanes 56u
 #define TKX_instrument_track_keyboard_legacy 57u
 #define TKX_instrument_track_keyboard_locked_note 58u
-#define TKX_instrument_track_owned 59u
-#define TKX_rtm_is_type 60u
-#define TKX_pp_position 61u
-#define TKX_tk_trig_draw 62u
+#define TKX_instrument_track_keyboard_controller 59u
+#define TKX_instrument_track_owned 60u
+#define TKX_rtm_is_type 61u
+#define TKX_pp_position 62u
+#define TKX_tk_trig_draw 63u
 #ifdef DK_SERVICE
 extern volatile uint32_t tk_img[TK_SEAM_WORDS];
 #define TK_HAVE(f) (tk_img[TKX_##f] != 0)

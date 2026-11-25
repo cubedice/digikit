@@ -6,6 +6,7 @@
 #include "track-capture.h"
 #include "track-memory.h"
 #include "track-service.h"
+#include "track-canopy.h"
 
 extern uint32_t dkrt_blocks(void);
 extern uint32_t dkrt_irq_mask(void);
@@ -437,6 +438,17 @@ static int note_message(uint8_t route, bool on, uint8_t note, uint8_t value, uin
     return !mixed && !record;
 }
 
+/* CC1, CC121 and pitch bend for the CANOPY tracks the message's channel plays (the Digitakt's MIDI config): CANOPY has no route of
+ * its own, so they go to it with the notes. Consumed only when every track the channel plays took it. */
+static int canopy_controller(uint8_t type, uint8_t data1, uint8_t data2, uint32_t native,
+                             int existing)
+{
+    if (existing || !native)
+        return 0;
+    uint16_t sent = tk_canopy_controller((uint16_t)native, type, data1, data2);
+    return sent && !(native & ~(uint32_t)sent);
+}
+
 int tk_midi_channel_message(const uint8_t *bytes, uint32_t len, uint32_t source, int existing_only)
 {
     if (!bytes || len != 3 || bytes[1] > 127 || bytes[2] > 127)
@@ -444,7 +456,7 @@ int tk_midi_channel_message(const uint8_t *bytes, uint32_t len, uint32_t source,
     if (source != 2 && source != 4 && source != 8 && source != 16)
         return 0;
     uint8_t type = bytes[0] & 0xf0u;
-    if (type != 0x80 && type != 0x90 && type != 0xb0)
+    if (type != 0x80 && type != 0x90 && type != 0xb0 && type != 0xe0)
         return 0;
 
     uint8_t route = (uint8_t)((bytes[0] & 15u) + (source < 8 ? 0 : MIDI_CHANNELS));
@@ -454,9 +466,16 @@ int tk_midi_channel_message(const uint8_t *bytes, uint32_t len, uint32_t source,
     uint32_t native = 0;
     if (!existing_only && (active | learning))
         native = tk_midi_route((uint8_t)(route % MIDI_CHANNELS), source == 4 || source == 16);
-    int consumed = type == 0xb0 ? controller(route, bytes[1], bytes[2], native, existing_only)
-                                : note_message(route, type == 0x90 && bytes[2], bytes[1], bytes[2],
-                                               native, existing_only);
+    int consumed;
+    if (type == 0xe0)
+        consumed = canopy_controller(type, bytes[1], bytes[2], native, existing_only);
+    else if (type == 0xb0) {
+        consumed = controller(route, bytes[1], bytes[2], native, existing_only);
+        if (bytes[1] == 1 || bytes[1] == 121)
+            consumed |= canopy_controller(type, bytes[1], bytes[2], native, existing_only);
+    } else
+        consumed = note_message(route, type == 0x90 && bytes[2], bytes[1], bytes[2], native,
+                                existing_only);
     dkrt_irq_restore(sr);
     return consumed;
 }

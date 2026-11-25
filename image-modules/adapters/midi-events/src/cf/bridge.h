@@ -12,6 +12,8 @@ int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint3
 void mi_seq_mute(uint32_t track, int on);
 /* Reset `track` and bind DSP instance slot `slot` to it on that reset. */
 void mi_instance_bind(uint32_t track, uint32_t slot);
+/* mi_track_control on the ledger, while it takes events (not after a reset it has not acknowledged). */
+int mi_track_controller(uint32_t track, uint32_t kind, uint32_t note, uint32_t value);
 /* The track an enabled USB (0) / DIN (1) channel route plays, or MI_NONE. */
 uint32_t mi_route_track(uint32_t port, uint32_t channel);
 void mi_panel_release(void);

@@ -32,6 +32,8 @@ extern int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token,
                                                  const struct IsnSnapshot *snapshot)
     __attribute__((weak));
 extern int instrument_track_owned(uint32_t track) __attribute__((weak));
+extern int instrument_track_keyboard_controller(uint32_t track, uint32_t kind, uint32_t note,
+                                                uint32_t value) __attribute__((weak));
 
 /* All of CANOPY's host is in the image (in the service build: in the image table tk_image). */
 static bool canopy_linked(void)
@@ -113,6 +115,21 @@ static bool send(void *unused, uint8_t track, const TkNoteEvent *event)
     }
     return instrument_track_keyboard_locked_note(track, event->token, event->pitch, event->velocity,
                                                  event->on, event->lane, &snapshot) != 0;
+}
+
+uint16_t tk_canopy_controller(uint16_t tracks, uint8_t type, uint8_t data1, uint8_t data2)
+{
+    uint16_t sent = 0;
+    if (!canopy_linked() || !TK_HAVE(instrument_track_keyboard_controller))
+        return 0;
+    uint32_t kind = type == 0xe0u ? MI_BEND : MI_CC;
+    for (uint8_t track = 0; track < TK_TRACKS; ++track) {
+        uint16_t bit = (uint16_t)(1u << track);
+        if ((tracks & bit) && tk_canopy_routed(track) &&
+            instrument_track_keyboard_controller(track, kind, data1, data2))
+            sent |= bit;
+    }
+    return sent;
 }
 
 static void apply_control(TkParams *p, uint32_t id, uint32_t value)

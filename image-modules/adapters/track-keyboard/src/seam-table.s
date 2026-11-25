@@ -6,8 +6,8 @@
     .globl tk_image
 tk_image:
     .long 0x544b5331
-    .long 1
-    .long 63
+    .long 2
+    .long 64
     .long tk_defaults
     .long tk_track_defaults
     .long tk_rate_division
@@ -64,6 +64,7 @@ tk_image:
     .long instrument_track_keyboard_lanes
     .long instrument_track_keyboard_legacy
     .long instrument_track_keyboard_locked_note
+    .long instrument_track_keyboard_controller
     .long instrument_track_owned
     .long rtm_is_type
     .long pp_position

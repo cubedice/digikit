@@ -23,6 +23,7 @@ instrument_vec_table:
     .long instrument_track_keyboard_lanes
     .long instrument_track_keyboard_legacy
     .long instrument_track_keyboard_locked_note
+    .long instrument_track_keyboard_controller
     .long instrument_track_owned
     .long ip_current_machine_sound
     .long ip_refresh_machine_track

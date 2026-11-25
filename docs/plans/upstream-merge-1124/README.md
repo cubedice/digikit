@@ -270,3 +270,12 @@ identity match, and the identity is the card's content id (`card.key`), its leng
 of its own (the base id and the record's hash, as `linkCard` in `tests/regression/runtime/write-safety.ts` does). With the base id
 copied, a boot of the base card (no record) was restored, and the first change of a key wrote a fresh record over the owner's in the
 copy; that was the harness, not the runtime.
+
+**Mod wheel and pitch bend.** CANOPY's DSP keeps the wheel and the pitch bend per MIDI route (port and channel) and gives a voice of
+the panel route neither. The track keyboard's notes came on the panel route, so with the track keyboard on every CANOPY track a
+controller's wheel and bend reached no voice (CANOPY's own route reached only the voices of its own engine, and the parity runs sent
+neither). The track keyboard's notes now come on USB channel 1 of their instance, and the track keyboard hands CC1, CC121 and pitch
+bend of each CANOPY track the message's channel plays (the Digitakt's MIDI config) to CANOPY (`tk_canopy_controller`,
+`instrument_track_keyboard_controller`), which queues them on that route; the message is the firmware's too unless every track the
+channel plays took it. [D] `modules/machine/digikit/canopy/tests/wheel-bend.device.test.ts`: a held A3 (57.0) rises to 58.9 with a
+full bend up on track 1's channel.
