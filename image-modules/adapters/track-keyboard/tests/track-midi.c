@@ -151,6 +151,30 @@ void tk_service_select_chord(uint8_t track, enum TkChord chord)
     record('S', track, 0, 0, (uint8_t)chord, 0);
 }
 
+/* The tracks CANOPY plays through the track keyboard, and the controllers given to them (track-canopy.c). */
+static uint16_t canopy_tracks;
+static Seen given[8];
+static uint8_t gifts;
+
+uint16_t tk_canopy_controller(uint16_t tracks, uint8_t type, uint8_t data1, uint8_t data2)
+{
+    assert(masked);
+    uint16_t sent = tracks & canopy_tracks;
+    for (uint8_t track = 0; track < TK_TRACKS; ++track)
+        if (sent & (1u << track)) {
+            assert(gifts < sizeof given / sizeof *given);
+            given[gifts++] = (Seen){'K', track, 0, type, data1, data2};
+        }
+    return sent;
+}
+
+static void expect_given(uint8_t at, uint8_t track, uint8_t type, uint8_t data1, uint8_t data2)
+{
+    const Seen expected = {'K', track, 0, type, data1, data2};
+    assert(at < gifts);
+    assert(!memcmp(&given[at], &expected, sizeof expected));
+}
+
 static int feed(uint32_t source, uint8_t status, uint8_t note, uint8_t value)
 {
     const uint8_t message[] = {status, note, value};
@@ -328,5 +352,23 @@ int main(void)
     assert(feed(4, 0x90, 60, 100));
     tk_midi_poll();
     expect_event(32, 'P', 0, TK_USB, 0, 60, 100);
+
+    /* CC1, CC121 and pitch bend go to the CANOPY tracks of the channel, and are consumed only when
+     * every track the channel plays took them. Other controllers are not given. */
+    enabled = 3;
+    tk_midi_poll();
+    canopy_tracks = 1;
+    routes[5] = 1;
+    assert(feed(2, 0xb5, 1, 100));
+    assert(feed(2, 0xe5, 0, 127));
+    routes[5] = 3;
+    assert(!feed(2, 0xb5, 1, 50));
+    assert(!feed(2, 0xb5, 7, 50));
+    routes[5] = 2;
+    assert(!feed(2, 0xe5, 0, 64));
+    assert(gifts == 3);
+    expect_given(0, 0, 0xb0, 1, 100);
+    expect_given(1, 0, 0xe0, 0, 127);
+    expect_given(2, 0, 0xb0, 1, 50);
     return 0;
 }

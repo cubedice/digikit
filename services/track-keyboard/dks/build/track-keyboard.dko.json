@@ -409,6 +409,13 @@
    "type": "cf.32"
   },
   {
+   "addend": 244,
+   "offset": 466,
+   "section": ".text",
+   "symbol": ".sec..bss",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
    "offset": 0,
    "section": ".rodata",
@@ -1361,7 +1368,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 236,
+   "addend": 240,
    "offset": 74,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
@@ -1652,6 +1659,34 @@
    "offset": 44,
    "section": ".text.tk_canopy_is_owner",
    "symbol": "instrument_track_owned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.tk_canopy_controller",
+   "symbol": ".sec..text.canopy_linked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 236,
+   "offset": 34,
+   "section": ".text.tk_canopy_controller",
+   "symbol": "tk_img",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.tk_canopy_controller",
+   "symbol": ".sec..text.tk_canopy_routed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": ".text.tk_canopy_controller",
+   "symbol": "instrument_track_keyboard_controller",
    "type": "cf.32"
   },
   {
@@ -6527,7 +6562,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 24,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
@@ -6639,14 +6674,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 180,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 190,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
@@ -6912,7 +6947,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 336,
    "section": ".text.poll",
    "symbol": "tk_img",
@@ -6926,14 +6961,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 354,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 372,
    "section": ".text.poll",
    "symbol": "tk_img",
@@ -9271,7 +9306,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 108,
    "section": ".text.tk_native_kind",
    "symbol": "tk_img",
@@ -9292,7 +9327,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 36,
    "section": ".text.tk_native_relay_sound",
    "symbol": "tk_img",
@@ -10062,7 +10097,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 170,
    "section": ".text.tk_trig_refresh_keys",
    "symbol": "tk_img",
@@ -12814,315 +12849,329 @@
   },
   {
    "addend": 0,
-   "offset": 120,
+   "offset": 130,
    "section": ".text.tk_midi_channel_message",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 140,
+   "offset": 150,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.bypass",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 204,
+   "offset": 200,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 240,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": "dkrt_irq_restore",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 254,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 260,
+   "offset": 206,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.learning",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 300,
+   "offset": 246,
    "section": ".text.tk_midi_channel_message",
    "symbol": "tk_midi_route",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 340,
+   "offset": 274,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..text.enqueue_capture",
+   "symbol": "tk_canopy_controller",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 354,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.pedals",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 370,
+   "offset": 342,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 394,
+   "offset": 416,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.pedals",
+   "symbol": "tk_canopy_controller",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 410,
+   "offset": 450,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.pedals",
+   "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 432,
+   "offset": 488,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.assigned",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 448,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 456,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.keys",
+   "symbol": ".sec..text.enqueue_capture",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 502,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..text.enqueue_capture",
+   "symbol": ".sec..bss.pedals",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 514,
+   "offset": 518,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 542,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.pedals",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 578,
+   "offset": 558,
    "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.ignored",
+   "symbol": ".sec..bss.pedals",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 636,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 642,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 778,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 784,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.learning",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 798,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": "tk_midi_notes_enabled",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 822,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": "tk_midi_selected_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 844,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 850,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.learning",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 856,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.selector_channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 4,
-   "offset": 862,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.selector_octave",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1024,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..text.enqueue_capture",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1030,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1040,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1070,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1100,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.bypass",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1260,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1284,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.keys",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1290,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.key_slots",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1304,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.busy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1324,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.ignored",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1370,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": "tk_capture_midi_mode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1390,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.learning",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1396,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..bss.active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1418,
-   "section": ".text.tk_midi_channel_message",
-   "symbol": ".sec..text.enqueue_capture",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1510,
+   "offset": 580,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.assigned",
    "type": "cf.32"
   },
   {
    "addend": 0,
+   "offset": 596,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 604,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 650,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..text.enqueue_capture",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 662,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.pedals",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 732,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.ignored",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 790,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 796,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 932,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 938,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.learning",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 952,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": "tk_midi_notes_enabled",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 976,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": "tk_midi_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 994,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1000,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.learning",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 1008,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.selector_channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 1014,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.selector_octave",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1176,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..text.enqueue_capture",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1182,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1192,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1222,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1252,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.bypass",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1408,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1432,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1438,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.key_slots",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1452,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.busy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1472,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.ignored",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1518,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": "tk_capture_midi_mode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 1538,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.learning",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1544,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1568,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..text.enqueue_capture",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1654,
+   "section": ".text.tk_midi_channel_message",
+   "symbol": ".sec..bss.assigned",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1682,
    "section": ".text.tk_midi_channel_message",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1592,
+   "offset": 1736,
    "section": ".text.tk_midi_channel_message",
    "symbol": ".sec..bss.bypass",
    "type": "cf.32"
@@ -14248,7 +14297,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 42,
    "section": ".text.tk_capture_midi_mode",
    "symbol": "tk_img",
@@ -15102,7 +15151,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 434,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_img",
@@ -15284,7 +15333,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 1094,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_img",
@@ -16260,10 +16309,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "2279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed1",
+   "hex": "2279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed1",
    "kind": "text",
    "name": ".text",
-   "size": 464
+   "size": 472
   },
   {
    "align": 4,
@@ -16277,7 +16326,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss",
-   "size": 252
+   "size": 256
   },
   {
    "align": 2,
@@ -16551,6 +16600,13 @@
    "kind": "text",
    "name": ".text.tk_canopy_is_owner",
    "size": 60
+  },
+  {
+   "align": 2,
+   "hex": "4fefffdc48d70cfc4eb9000000004a00660e424330034cd70cfc4fef00244e754ab90000000067ea71af002f0c80000000e066567804424371af00337faf003742822f4000207a01e5ad302f002ac0854a40672c200271802f004eb900000000588f4a00671a2f072f2f00242f042f024eb9000000004fef00104a806702868552827010b08266be608a780360a8",
+   "kind": "text",
+   "name": ".text.tk_canopy_controller",
+   "size": 142
   },
   {
    "align": 2,
@@ -18633,10 +18689,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffa848d77cfc246f005c282f0064242f00684a8a67247003b0af0060661c4a2a00016d164a2a00026d107210b284650a203c000101140900660c42804cd77cfc4fef00584e7516127af0ca8320030280000000e07f850c800000008067080c87000000b066d47c07720fbc8455c0c681e98896804eb9000000002f4000504a8267782003e2887c7841f9000000004241c086318108004286122a0002182a00011f4100470c87000000b06600018473847e40be8167120684ffffff887984e28c67067e7bbe81661e3839000000007040c886b081660000be71af0047ec88670000a44a82675042822f2f00504eb900000000588f20026000ff4430390000000032390000000080814a40678a7c047210bc8457c0b28457c47c0fcc8344804484808471802f002f064eb900000000508f2c006000ff644a4467ae42a7778342a74878000142a72f033f044267487800024eb9000000004fef001c4a00671041f90000000030303a00808431803a0075f9000000004682c4864a8257c2750244826000ff667b8341f90000000030305a00720260487b8341f9000000007e7830305a00be8167067e7bbe8166e443f90000000032315a0080814a40671873f9000000007f83207900000000284142812447b9c16244424133815a007203778342a77e0342a742a742a7ce812f033f0042672f074eb90000000042404fef001c41f90000000031805a004a826600feda4a446600ff5c6000fed24a280008670a7fa80006be8a66024250528141e8000c60a07290b3854a2f004756c072017f8341f90000000028474a0557c544804485ca80701fc084e1a971842640ea88244043f2cc002f41003a2e2f003a2f40004222309c00ce814a87662c71f90000000020790000000042815c8895ca2a40224c2f4b0048bbc162244a826600fe4c4a0566666000fe464a05660c202f003a4680c08121809c0074016000fe301028000247e8fffa1f40003e660e4a8a6610528141e8000c244b60bc7190b0896704264a60ec71a80001b0af004866f24a05670000f24a2b000a670001a04a826600fdea4201244b1741000830390000000032390000000080814a406700fdce4eb90000000024004a806700fdc2720f740fc2832f41004c4eb9000000007180b4806500015c7401e1aa3f42003032390000000034390000000041f9000000004bf9000000003a013f410040223c0000aaab3f42004a8a8274132005c086264071844c0108004241e4a82c4071af004f2f4000547001efa8342f0040c4804a426700011a342f004ac4804a426600010e143078006b0000f47502b4af0054660000fc342f0030c4804a42670000f024004682c4864a82660000e4240b848026428280600000d83c2b000442a742073f06426742a72f2f00542f0971d32f00487800014eb9000000003039000000004fef001c207900000000174700083200c2fc000c41f018fc42014a40665e4a01670633c0000000004a2b000966064a466700fe7a302b0002468622064286428741f9000000004a8256c2c280200ce888e7887502218608002187080431810800d1c0700f4247c680114400051145000631470002114300046000fc6641e8fff44a28000c6698122f003e5380608c4246609642403f4000306000fea62406c4804a82670a75357800bdc26700ff2652877010b0876600fed0340b6700fc227bc57184e8884685ca864a8066104a856600fc0e71c175cbb4806600fc044a8a665230390000000075c00c8200000200671a20405288c0fc000c24790000000033c800000000d5c04a8a66287e0113c7000000004a856600fbc8246f0042222f003a41f90000000043f2cc0083b09c006000fd7c4a8556c02c0b2f410036240020014680cc8044822f4200423f46003c4eb9000000002a46222f00362e004a80670001043439000000003039000000004682c480c48642a742a771af004f7d8441f90000000055872f002f0622462c407d832f063f014267487800042f48004e2f4900524e907001b08754c744877f872f073f0242672f0e226f005e2f092f063f0d426742a7206f006a4e904fef00384a006608424142423f41003c41f9000000003e2f003c3030ca0080873180ca004878000c42a72f0a4eb9000000007001156f005100093487354b00023542000415430006154400074fef000c154000084a8566044a426736e88e4280428141f900000000e78e21806800218168047201318b6800d1c631420002116f004f000411440005114100064a856600fa844a4257c26000fb1242426000ff0c",
+   "hex": "4fefffac48d77cfc246f0058282f00602a2f00644a8a67247003b0af005c661c4a2a00016d164a2a00026d107210b284650a203c000101140900660e428220024cd77cfc4fef00544e75161274f0c48320030280000000e07f820c800000008067100c87000000b067080c87000000e066ca7c07720fbc8455c0c681e98896804eb9000000002f40004c4a8567382003e2887c7841f9000000004241c086318108004286122a0002182a00011f41003f0c87000000e066784a8566044a8666404282600000f830390000000032390000000080814a4067ca7c047210bc8457c0b28457c47c0fcc8344804484808471802f002f064eb900000000508f2c0060a471af003f79842f002f042f073f0642674eb9000000004fef00104a4067a275c04682c4864a8257c2750244826000008e0c87000000b06600019473847440b48167120684ffffff887984e28c6706707bb081661e3439000000007e40c486be81660000c871af003fec88670000ae4a85675a428271aa00017201b28067067e79be8066384a856600013e4a86672c73aa00022f012f00487800b03f0642674eb9000000004fef00104a40670e71c04680c0864a8057c07b00448584852f2f004c4eb900000000588f6000fe744a4267a242a7778342a74878000142a72f033f024267487800024eb9000000004fef001c4a00671041f90000000030303a00808231803a0075f9000000004682c4864a8257c2750244826000ff5c798341f90000000030304a0072026048798341f9000000007e7830304a00be8167067e7bbe8166e443f90000000032314a0080814a40671873f9000000007f832079000000002a4142812647bbc16244424133814a007203778342a77e0342a742a742a7ce812f033f0042672f074eb90000000042404fef001c41f90000000031804a004a856600fed04a426600ff5c6000fec64a280008670a7fa80006be8b66024250528141e8000c60a042856000fef070907201b1824a2f003f56c07f8441f9000000002647ea8f4a0257c2448024472f4700404482c480701fc084e1a92f41003673832e2f0036284143f2cc0022309c00ce814a87662c71f90000000020790000000042815c8895ca2a40224c2f4b0044bbc162244a856600fd8a4a0266666000fd824a02660c202f00364680c08121809c0074016000fe681028000247e8fffa1f40003a660e4a8a6610528141e8000c244b60bc7190b0896704264a60ec71a80001b0af004466f24a02670000f04a2b000a6700019e4a856600fd284201244b1741000830390000000032390000000080814a406700fd0c4eb90000000024004a806700fdfa720f740fc2832f4100484eb9000000007180b4806500015a7201e1a930390000000034390000000091c843f9000000004bf9000000003a003f40003c3f4200468a82243c0000aaab2005c086264071844c0208007413e4a82c4071af004b2f4000507001efa8342f003cc4804a4267000118342f0046c4804a426600010c143178006b0000f27502b4af0050660000fa2400c4814a42670000f024004682c4864a82660000e4240b84802642240884802042600000d43c2b000442a742073f06426742a72f2f00502f0971d32f00487800014eb9000000003039000000004fef001c207900000000174700083200c2fc000c41f018fc42014a40665e4a01670633c0000000004a2b000966064a466700fe7c302b0002468622064286428741f900000000c280200ce888e788218608002187080431810800d1c011420006700f4247c6804a8556c211440005314700021143000475026000fca041e8fff44a28000c6698122f003a5380608c4246609642416000fea82406c4804a82670a75357800bdc26700ff2652877010b0876600fed2320b6700fb667bc57184e8884685ca864a8066104a856600fb5271c873cbb2806600fb484a8a665230390000000073c00c8100000200671a22005281c0fc000c24790000000033c100000000d5c04a8a66287c0113c6000000004a856600fb0c246f0040222f003641f90000000043f2cc0083b09c006000fd824a8556c02c0b2f480032240020084680cc8044822f4200403f4600384eb9000000002a46206f00322e004a80670001003439000000003039000000004682c480c48642a742a773af004771847d834df90000000055872f012f002f063f084267487800042f41004e2f40004a4e967001b08754c744877f872f073f024267222f00562f01226f00562f092f063f0d426742a74e964fef00384a006608424142423f41003841f9000000003e2f00383030ca0080873180ca004878000c42a72f0a4eb9000000007001156f004f00093487354b00023542000415430006154400074fef000c154000084a8566044a426736e88e4280428141f900000000e78e21806800218168047201318b6800d1c631420002116f004b000411440005114100064a856600f9cc4a4257c26000fa2c42426000ff10",
    "kind": "text",
    "name": ".text.tk_midi_channel_message",
-   "size": 1652
+   "size": 1796
   },
   {
    "align": 1,
@@ -19585,7 +19641,7 @@
   },
   {
    "align": 16,
-   "hex": "000000010001000000000000000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e0000001f000000200000002100000022000000230000002400000025000000260000002700000028000000290000002a0000002b0000002c0000002d0000002e0000002f0000003000000031000000320000003d0000003e",
+   "hex": "000000010001000000000000000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e0000001f000000200000002100000022000000230000002400000025000000260000002700000028000000290000002a0000002b0000002c0000002d0000002e0000002f0000003000000031000000320000003e0000003f",
    "kind": "data",
    "name": ".rodata.global.13",
    "size": 212
@@ -19634,14 +19690,14 @@
   },
   {
    "align": 2,
-   "hex": "202f0004222f000820405888224158890680000000fc22d8b08866fa204120bc544b53314e75",
+   "hex": "202f0004222f0008204058882241588906800000010022d8b08866fa204120bc544b53314e75",
    "kind": "text",
    "name": ".text._RNvNtCs1u70TlLGtUb_23dkrt_svc_track_keyboard4seam4copy",
    "size": 38
   },
   {
    "align": 2,
-   "hex": "206f00044a88670a203c544b5331b090670442004e757001b0a8000466f4703fb0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
+   "hex": "206f00044a88670a203c544b5331b090670442004e757002b0a8000466f47040b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
    "kind": "text",
    "name": ".text._RNvNtCs1u70TlLGtUb_23dkrt_svc_track_keyboard4seam6usable",
    "size": 66
@@ -19808,7 +19864,7 @@
    "size": 24
   }
  ],
- "source_sha256": "a7d6777d321df78ec5ef83d011b9511ca6a84192998e23fc09a46ace6d9d0a1b",
+ "source_sha256": "01087837d8b9c8c307eb9f2c310d4471028097ba54de507ebb2d6557372b82f3",
  "symbols": [
   {
    "global": false,
@@ -22740,6 +22796,12 @@
   },
   {
    "global": true,
+   "name": "instrument_track_keyboard_controller",
+   "section": ".text",
+   "value": 448
+  },
+  {
+   "global": true,
    "name": "instrument_track_keyboard_lanes",
    "section": ".text",
    "value": 424
@@ -22760,7 +22822,7 @@
    "global": true,
    "name": "instrument_track_owned",
    "section": ".text",
-   "value": 448
+   "value": 456
   },
   {
    "global": false,
@@ -23576,7 +23638,7 @@
    "global": true,
    "name": "rtm_is_type",
    "section": ".text",
-   "value": 456
+   "value": 464
   },
   {
    "global": false,
@@ -23804,6 +23866,12 @@
    "global": true,
    "name": "tk_canopy_backend",
    "section": ".text.tk_canopy_backend",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_canopy_controller",
+   "section": ".text.tk_canopy_controller",
    "value": 0
   },
   {
@@ -25534,8 +25602,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18576",
-  "isa_check": "0ba022caf367083bd84dcaf880653d2a1ba4371422ab1ac0c851d27b6302a6ec",
+  "instructions_redecoded": "18686",
+  "isa_check": "fed6584fc33a624a9f9cd80200bb49eb09acb0ab780874515a233014b8c69bf0",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

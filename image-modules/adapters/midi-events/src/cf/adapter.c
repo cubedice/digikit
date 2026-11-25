@@ -406,6 +406,14 @@ void mi_panel_release(void)
     dkrt_irq_restore(sr);
 }
 
+int mi_track_controller(uint32_t track, uint32_t kind, uint32_t note, uint32_t value)
+{
+    uint32_t sr = dkrt_irq_mask();
+    int sent = initialized && !reset_seen && mi_track_control(&mi_ledger, track, kind, note, value);
+    dkrt_irq_restore(sr);
+    return sent;
+}
+
 int mi_legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
 {
     uint32_t sr, port;
@@ -430,7 +438,8 @@ int mi_legacy_channel_message(const uint8_t *msg, uint32_t len, uint32_t source)
         consumed = msg[1] < 128 && msg[2] < 128
                        ? mi_release_known(&mi_ledger, (uint8_t)port, channel, msg[1], msg[2])
                        : 0;
-    } else if (shared && (kind == 9 || (kind == 11 && msg[1] != 1))) {
+    } else if (shared && (kind == 9 || kind == 11 || kind == 14)) {
+        /* the track keyboard's second pass forwards CC1, CC121 and pitch bend (tk_canopy_controller) */
         consumed = 0;
     } else {
         consumed = mi_message(&mi_ledger, port, msg, len);

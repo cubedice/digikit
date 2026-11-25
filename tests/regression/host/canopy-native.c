@@ -465,8 +465,9 @@ int main(int argc, char **argv)
         assert(isn_submit(&q, 7, 66, 0, 0));
         assert(isn_submit(&q, 8, 67, 0, 0));
         assert(isn_take(&q, batch) == 8);
-        assert(batch[0].port == MI_PANEL && batch[0].track == 5 && batch[0].epoch == 7 &&
-               batch[0].generation == 23 && batch[0].sequence == 0);
+        /* USB channel 1: the route of the controllers the track keyboard forwards (shared-notes.h) */
+        assert(batch[0].port == 0 && batch[0].channel == 0 && batch[0].track == 5 &&
+               batch[0].epoch == 7 && batch[0].generation == 23 && batch[0].sequence == 0);
         assert(batch[0].kind == MI_NOTE_ON && batch[0].token == 1 && batch[0].note == 60);
         assert(batch[1].kind == MI_NOTE_OFF && batch[1].token == 1 && batch[1].note == 60);
         assert(isn_take(&q, batch) == 8);

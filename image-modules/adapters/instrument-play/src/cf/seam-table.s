@@ -6,7 +6,7 @@
     .globl instrument_image
 instrument_image:
     .long 0x49505331
-    .long 1
+    .long 2
     .long 71
     .long cp_decode
     .long cp_encode

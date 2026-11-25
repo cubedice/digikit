@@ -78,6 +78,9 @@ int mi_route(MiLedger *m, uint32_t port, uint32_t channel, uint32_t track, uint3
 void mi_reset_track(MiLedger *m, uint32_t track);
 /* Reset a track and bind DSP instance slot `slot` (0-based) to it. */
 void mi_reset_bind(MiLedger *m, uint32_t track, uint32_t slot);
+/* A controller of a track the track keyboard plays: MI_CC (CC1 or CC121) or MI_BEND (`note` the LSB, `value` the MSB), on the
+ * route of its notes (USB channel 1, shared-notes.h) in the track's generation; no route or key takes part. 0 when it does not fit. */
+int mi_track_control(MiLedger *m, uint32_t track, uint32_t kind, uint32_t note, uint32_t value);
 int mi_reset_ack(MiLedger *m, uint32_t epoch, uint32_t track, uint32_t generation);
 /* Explicit panic/recovery with physical keys released; no automatic recovery
  * from lost ownership. Reset ACK and a subsequent route call are still needed. */

@@ -6,7 +6,7 @@
 #define DK_INSTRUMENT_SEAM_H
 #include <stdint.h>
 #define IP_SEAM_MAGIC 0x49505331u
-#define IP_SEAM_VERSION 1u
+#define IP_SEAM_VERSION 2u
 #define IP_SEAM_WORDS 71u
 #define IPX_cp_decode 3u
 #define IPX_cp_encode 4u

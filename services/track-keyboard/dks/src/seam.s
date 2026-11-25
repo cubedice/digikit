@@ -264,15 +264,19 @@ instrument_track_keyboard_legacy:
 instrument_track_keyboard_locked_note:
     movea.l tk_img+232,%a1
     jmp (%a1)
+    .globl instrument_track_keyboard_controller
+instrument_track_keyboard_controller:
+    movea.l tk_img+236,%a1
+    jmp (%a1)
     .globl instrument_track_owned
 instrument_track_owned:
-    movea.l tk_img+236,%a1
+    movea.l tk_img+240,%a1
     jmp (%a1)
     .globl rtm_is_type
 rtm_is_type:
-    movea.l tk_img+240,%a1
+    movea.l tk_img+244,%a1
     jmp (%a1)
     .bss
     .balign 4
     .globl tk_img
-tk_img: .space 252
+tk_img: .space 256

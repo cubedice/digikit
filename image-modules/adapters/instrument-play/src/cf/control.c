@@ -384,6 +384,20 @@ int instrument_track_keyboard_locked_note(uint32_t track, uint32_t token, uint32
     return result;
 }
 
+/* The mod wheel (CC1), Reset All Controllers (CC121) and pitch bend of a track the track keyboard plays: CANOPY has no MIDI route of
+ * its own there, so the track keyboard hands them over with the track's notes and they reach the DSP on the notes' route. */
+int instrument_track_keyboard_controller(uint32_t track, uint32_t kind, uint32_t note,
+                                         uint32_t value)
+{
+    if (track >= MI_TRACKS)
+        return 0;
+    uint32_t sr = dkrt_irq_mask();
+    int sent = track_keyboard_claim[track] && track_keyboard_lanes[track] &&
+               mi_track_controller(track, kind, note, value);
+    dkrt_irq_restore(sr);
+    return sent;
+}
+
 int instrument_track_keyboard_note(uint32_t track, uint32_t token, uint32_t pitch,
                                    uint32_t velocity, uint32_t on, uint32_t lane)
 {
@@ -432,10 +446,11 @@ int instrument_keyboard_events(uint32_t track, uint32_t epoch, uint32_t generati
     if (track < MI_TRACKS && track_keyboard_claim[track]) {
         /* The shared owner delivers resolved pitches. Consume any local
          * ledger traffic left after handoff without running the old chord
-         * mapper or routing its channel controllers into shared notes. */
+         * mapper; the controllers the track keyboard forwards pass. */
         if (count) {
-            if (track_keyboard_lanes[track] && count == 1 && input[0].kind == MI_CC &&
-                input[0].note == 1) {
+            if (track_keyboard_lanes[track] && count == 1 &&
+                (input[0].kind == MI_BEND ||
+                 (input[0].kind == MI_CC && (input[0].note == 1 || input[0].note == 121)))) {
                 mi_event_copy(output, input);
                 return 1;
             }

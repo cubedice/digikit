@@ -7,7 +7,7 @@
 # `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (the stock handler, with the caller's arguments). Without the service the
 # firmware runs stock: no ARP or KEYS page, no track keyboard, the stock step edits, MIDI routes and sequencer records.
 # Changing the order or the count changes the layout: bump `version`.
-version = 1
+version = 2
 
 [output]
 service_file = "services/track-keyboard.dks"
@@ -93,7 +93,7 @@ functions = [
 optional = [
     "cp_valid", "ilp_event_pair", "instrument_lock_source", "instrument_locked_sound", "instrument_src_track_keyboard",
     "instrument_track_keyboard_lanes", "instrument_track_keyboard_legacy", "instrument_track_keyboard_locked_note",
-    "instrument_track_owned", "rtm_is_type",
+    "instrument_track_keyboard_controller", "instrument_track_owned", "rtm_is_type",
 ]
 # addresses the moved code reads or compares with: image data, and a forwarder that a firmware table holds (the KEYS refresh
 # finds the TRIG view by its vtable draw entry, which is the image forwarder tk_trig_draw)
