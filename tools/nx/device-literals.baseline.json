@@ -224,7 +224,7 @@
   "modules/machine/digikit/canopy/tests/pattern-copy.device.test.ts": 8,
   "modules/machine/digikit/canopy/tests/pattern-ownership.manual.device.test.ts": 6,
   "modules/machine/digikit/canopy/tests/persistence.device.test.ts": 8,
-  "modules/machine/digikit/canopy/tests/project.json": 2,
+  "modules/machine/digikit/canopy/tests/project.json": 3,
   "modules/machine/digikit/canopy/tests/sound-lifetime.manual.device.test.ts": 5,
   "modules/machine/digikit/canopy/tests/sound-transfer.device.test.ts": 7,
   "modules/machine/digikit/canopy/tests/stage1.manual.device.test.ts": 4,

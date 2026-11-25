@@ -37,7 +37,7 @@ description = "Build a device's ready snapshot from the .syx alone: mise run emu
 
 ["emu:setup"]
 run = "uv run python -m tools.devtools.emu_setup"
-description = "Prepare this worktree for emulator device tests (firmware in firmware/): refs, toolchains, the SHARC cores, ready snapshots, audio cores and their index, the sample folder, the core libraries and daemons; reuses what another worktree has when it is the same. mise run emu:setup [-- --device dt2,dn2] [--check]"
+description = "Prepare this worktree for emulator device tests (firmware in firmware/): refs, toolchains, the SHARC cores, ready snapshots, audio cores and their index, the sample folder, the core libraries and daemons; reuses what another worktree has when it is the same. mise run emu:setup [-- --device DEV,...] [--check]"
 
 # --- web panel ---
 

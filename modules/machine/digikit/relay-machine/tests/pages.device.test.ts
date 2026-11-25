@@ -26,7 +26,7 @@ describeOn('dt2','RELAY track SRC pages',()=>{
     return {plan,artifacts,runtime,session,rt,tap,want};
   }
   test('records on the first SRC page and shares controls with the larger waveform',async()=>{
-    const {plan,artifacts,runtime,session,rt,tap}=await selectRelay();
+    const {plan,artifacts,session,rt,tap}=await selectRelay();
     const status=()=>dspWords(session,planSymbol(plan,'_relay_status'),14);
     await tap('AMP');
     await tap('SRC');

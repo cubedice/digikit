@@ -1,6 +1,6 @@
 """Prepare a worktree for emulator device tests.
 
-    mise run emu:setup [-- --device dt2,dn2] [--check]
+    mise run emu:setup [-- --device DEV,...] [--check]
 
 A new worktree has none of the untracked inputs that device tests read, and some of them take minutes, a card
 image or another lane's tools to make. Each step reuses what another worktree of the same clone already has
@@ -13,9 +13,9 @@ when it is the same thing, and makes it otherwise:
    belongs to the same `.syx`, else built (`emu:ready`). A snapshot rebuilt with today's tools differs from
    the one the stock goldens were recorded against, so a copy is preferred.
 5. The generated audio core of each device (`out/native/<device>-audio/gen`): copied when its
-   CORE_FINGERPRINT is the current one, else made (`perf:aot`; the DT2 one needs a card image, so it is only
-   copied), and registered for the snapshot's DSP image (`out/native/gen-index.json`).
-6. The DT2 sample folder of live sessions (`out/runs/patchkit/samples`).
+   CORE_FINGERPRINT is the current one, else made (`perf:aot`; a device whose samples are on a +Drive card
+   image needs that image, so its core is only copied), and registered for the snapshot's DSP image (`out/native/gen-index.json`).
+6. The sample folder of live sessions (`out/runs/patchkit/samples`).
 7. The core libraries and the daemons (`verify_build cores`, `verify_build daemons`).
 
 `--check` reports what is missing or stale and changes nothing. The exit status is 1 when something is still
@@ -36,6 +36,7 @@ from pathlib import Path
 
 from tools.emulator import card_check, digi_env
 from tools.firmware import config
+from tools.firmware import device as device_files
 from tools.patchkit import pk_device, pk_harness
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -223,8 +224,8 @@ class Setup:
             if src is not None:
                 copy_dir(src, gen)
                 self.note(what, f"copied from {src}")
-            elif device == "dn2":
-                if not run("-m", "tools.sharc_dev.aot_gen", "dn2"):
+            elif device_files.by_short(device).capabilities.get("card") != "path-fs":
+                if not run("-m", "tools.sharc_dev.aot_gen", device):
                     return self.lack(what, "perf:aot failed")
             else:
                 return self.lack(
@@ -275,7 +276,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument(
         "--device",
         default="",
-        help="comma-separated devices with a DSP (default: dt2 and dn2 when their firmware is present)",
+        help="comma-separated devices with a DSP (default: every one whose acceptance firmware is present)",
     )
     ap.add_argument("--check", action="store_true", help="report only; change nothing")
     args = ap.parse_args(argv)
@@ -284,7 +285,7 @@ def main(argv: list[str] | None = None) -> int:
         versions = pk_device.acceptance_firmware()
         devices = [
             d
-            for d in ("dt2", "dn2")
+            for d in pk_device.dsp_devices()
             if d in versions
             and config.stock(pk_harness.FIRMWARE[(d, versions[d])]["syx"]).is_file()
         ]
