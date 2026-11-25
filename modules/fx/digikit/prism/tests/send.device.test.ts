@@ -249,7 +249,9 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
     const onset = (x: Float32Array) => x.findIndex((v) => Math.abs(v) > 1e-6);
     const [a, b] = [onset(first), onset(sent)];
     expect(a).toBeGreaterThanOrEqual(0);
-    expect((b - a) % 2, 'the two captures start on the same channel').toBe(0);
+    expect(b).toBeGreaterThanOrEqual(0);
+    // either capture may start first: an odd distance is the other channel (`%` of a negative distance would be -0, not 0)
+    expect(Math.abs(b - a) % 2, 'the two captures start on the same channel').toBe(0);
     const n = Math.min(first.length - a, sent.length - b);
     const wet = Float32Array.from({ length: n }, (_, i) => sent[b + i]! - first[a + i]!);
     const dryPeak = peak(first);
