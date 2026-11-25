@@ -10,8 +10,7 @@ const KEYS: u32 = 8;
 const OUTPUT: u32 = 64;
 /// Where the loader keeps its copies in the block: each part starts on 16 bytes.
 const KEYS_AT: u32 = 32;
-const SECTION_AT: u32 = 48;
-const OUTPUT_AT: u32 = 256;
+const OUTPUT_AT: u32 = 48;
 const BLOCK: u32 = OUTPUT_AT + OUTPUT;
 
 /// The fixture module with the canonical V2 section (`dkneeds::fixtures`) as its DSP section.
@@ -49,13 +48,12 @@ fn a_v2_file_is_placed_in_one_block_and_handed_to_the_owner_unpublished() {
         let base = FIRST_ADDR;
         // the owner saw the whole section, for the selection of this load
         assert!(l.m.log.contains(&Ev::Admit(SECTION, 3)));
-        // one block: the image, then the copies of the keys table and of the section, then the output buffer of the relocated DSP image
+        // one block: the image, then the copy of the keys table, then the output buffer of the relocated DSP image (the section stays in the file)
         let allocs: Vec<_> = l.m.log.iter().filter(|e| matches!(e, Ev::Alloc(..))).copied().collect();
         assert_eq!(allocs, vec![Ev::Alloc(base, BLOCK)]);
         let mem = block(&l, base);
         let keys_off = file.len() - SECTION - KEYS as usize;
         assert_eq!(&mem[KEYS_AT as usize..(KEYS_AT + KEYS) as usize], &file[keys_off..keys_off + KEYS as usize]);
-        assert_eq!(&mem[SECTION_AT as usize..SECTION_AT as usize + SECTION], &dkneeds::fixtures::v2_section()[..]);
         // the needs reader (the hosts, the menu's scan) counts this block, and nothing for a transfer
         let needs = dkneeds::needs_of_v2(&mut &file[..]).unwrap();
         assert_eq!((needs.base.arena, needs.base.arena_xfer), (dkneeds::arena_block(BLOCK).unwrap(), 0));
@@ -68,7 +66,7 @@ fn a_v2_file_is_placed_in_one_block_and_handed_to_the_owner_unpublished() {
                 image_size: IMAGE,
                 keys: base + KEYS_AT,
                 keys_size: KEYS,
-                section: base + SECTION_AT,
+                section_off: (file.len() - SECTION) as u32,
                 section_size: SECTION as u32,
                 output: base + OUTPUT_AT,
                 output_size: OUTPUT,

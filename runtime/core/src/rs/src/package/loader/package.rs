@@ -173,7 +173,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
                 return Err(r);
             }
         }
-        let allocation = if f.c.v2 { v2_layout(&f.c, image_size + bss).3 } else { image_size + bss };
+        let allocation = if f.c.v2 { v2_layout(&f.c, image_size + bss).2 } else { image_size + bss };
         let Some(blk) = self.m.alloc(allocation) else {
             if f.c.dsp_size != 0 {
                 dsp::cancel(rec);

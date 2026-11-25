@@ -22,13 +22,15 @@ pub(super) struct Checked {
     pub(super) v2_output: u32,
 }
 
-/// Where the copies of a V2 file go in its record's block: the keys table, the DSP section and the output buffer, each 16-byte aligned after the image
+/// Where the parts of a V2 file go in its record's block: the copy of the keys table and the output buffer, each 16-byte aligned after the image
 /// and the bss (`total`), and the block's whole size. The staging buffer is reused by the next selected module before the owner is done.
-pub(super) fn v2_layout(c: &Checked, total: u32) -> (u32, u32, u32, u32) {
+///
+/// The DSP section is not copied (the fork, docs/plans/upstream-merge-1124): the owner reads it again from the file on the card when its transaction starts
+/// (`InstrumentLoad::section_off`), so the arena holds the DSP image once (the relocated output), not twice.
+pub(super) fn v2_layout(c: &Checked, total: u32) -> (u32, u32, u32) {
     let keys_at = (total + 15) & !15;
-    let section_at = keys_at + ((c.reg_size + 15) & !15);
-    let output_at = section_at + ((c.v2_size + 15) & !15);
-    (keys_at, section_at, output_at, output_at.checked_add(c.v2_output).unwrap_or(u32::MAX))
+    let output_at = keys_at + ((c.reg_size + 15) & !15);
+    (keys_at, output_at, output_at.checked_add(c.v2_output).unwrap_or(u32::MAX))
 }
 
 /// What `place_image` leaves for the steps that follow: the arguments of the role's place step and the addresses of `init` and `tick` (0: none).

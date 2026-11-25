@@ -12,9 +12,8 @@ use dkrt_sdk::store::{self, Entry};
 use dkrt_abi::platform::Tasking;
 use dkrt_sdk::E_BUSY;
 
-/// The table is streamed through two buffers of this size. The fork: 4 KiB (upstream 8 KiB), 8 KiB of cf.expansion back in DKRT_SDK_BUF so that
-/// RELAY fits on the fork's hardware image beside CANOPY, Overloop, PRISM and the track keyboard (docs/plans/upstream-merge-1124).
-pub const TBL_CAP: usize = 4096;
+/// The table is streamed through two buffers of this size.
+pub const TBL_CAP: usize = 8192;
 /// Offsets in the SysEx upload buffer (`transport::DKRT_UPLOAD_BUF`): the two table buffers, inside the body region (a command that is not DATA
 /// has a small body, copied out first), and the scratch region after the 32 KiB of body room (table read-back, header sector).
 pub const IN_AT: usize = 1024;

@@ -278,7 +278,7 @@ pub mod settings {
 
 pub mod proto {
     pub const VERSION: u8 = 1;
-    pub const MAX_CHUNK: usize = 16384;
+    pub const MAX_CHUNK: usize = 32768;
     pub const READ_MAX: usize = 768;
     pub const PEEK_MAX: usize = 512;
     pub const MAX_REQUEST_WIRE: usize = 40960;

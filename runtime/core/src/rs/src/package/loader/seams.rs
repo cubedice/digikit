@@ -21,7 +21,8 @@ pub struct Block {
 }
 
 /// A file of persistent V2 instruments after the loader placed it, handed to their owner (`Images::queue_instruments`). The addresses are in the
-/// module's arena block: the copies of the keys table and of the DSP section, and the output buffer of the relocated DSP image.
+/// module's arena block: the copy of the keys table and the output buffer of the relocated DSP image. The DSP section stays in the file: `section_off` is where
+/// it starts there, and the owner stages the file again when it admits the section (the file the loader staged last: `RealImages::stage`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InstrumentLoad {
     pub rec: usize,
@@ -30,7 +31,7 @@ pub struct InstrumentLoad {
     pub image_size: u32,
     pub keys: u32,
     pub keys_size: u32,
-    pub section: u32,
+    pub section_off: u32,
     pub section_size: u32,
     pub output: u32,
     pub output_size: u32,
@@ -109,6 +110,9 @@ pub(crate) type DeviceImages = crate::package::fake_checked_images::CheckedImage
 #[cfg(test)]
 pub(crate) const DEVICE_IMAGES: DeviceImages = crate::package::fake_checked_images::CheckedImages;
 
+/// The store file `RealImages::stage` loaded last (UI task only): a V2 file's owner keeps it to read the DSP section again.
+static mut LAST_STAGED: Option<dkrt_abi::storage::StoreFile> = None;
+
 impl Images for RealImages {
     unsafe fn stage(&mut self, path: *const u8) -> Result<Staged, i32> {
         let found = crate::package::resident::store::find(path)?;
@@ -116,6 +120,8 @@ impl Images for RealImages {
         if r != dkrt_sdk::OK {
             return Err(r);
         }
+        // the owner of a V2 file stages this file again for its DSP section (`queue_instruments`)
+        LAST_STAGED = Some(found);
         Ok(Staged { ptr: crate::package::resident::store::stage() as *const u8, size: found.size })
     }
     unsafe fn list(&mut self, prefix: *const u8, out: *mut dkrt_sdk::DkrtStoreEntry, max: u32) -> i32 {
@@ -198,7 +204,8 @@ impl Images for RealImages {
             l.image_size,
             l.keys,
             l.keys_size,
-            l.section,
+            LAST_STAGED,
+            l.section_off,
             l.section_size,
             l.output,
             l.output_size,

@@ -79,6 +79,7 @@ impl StatWire {
 }
 
 /// Where a store file is and what its table entry says its file hash is (`StoreFns::find`).
+#[derive(Clone, Copy)]
 #[repr(C)]
 pub struct StoreFile {
     pub first: u32,
