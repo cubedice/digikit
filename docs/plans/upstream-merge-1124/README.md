@@ -105,3 +105,24 @@ Items 1 to 10 are done on `integrate/upstream-1124` (2026-11-24); nothing is pus
     - **Tests.** Upstream boots live sessions from card images with the system package (`seededCard` of `live-card.ts` for the fork's seed
       folders), lists test image roots in `image-roots.json`, and starts a stock MAIN from its ready snapshot, made without a card (the
       track keyboard panel proof compares two cold boots of the card now).
+
+## After the merge: alignment with upstream (asked 2026-11-24)
+
+Four fork mechanisms were to move onto upstream's own (item 2), and the instrument host out of the system package (item 3). What
+upstream `c8f8a02c3` has for each, read from its code and its plans:
+
+| Fork mechanism | Upstream's | State |
+| --- | --- | --- |
+| Image boot need `boot_need_track_keyboard` (`plan.rs` `boot_needs`, `Loader::provider_is_boot_need` roots in `lifecycle/rt.rs`) | Selection pins: "a service path in the selection is a pin" (runtime-contract-and-lifecycle.md, decided 2026-11-22, RC2) | Not built upstream: its loader refuses a service file at a module index (`check_head`, `E_FORMAT`) and nothing pins a node. The boot need stays until RC2's pins land; then the card's selection names `services/track-keyboard.dks` and the three fork pieces go. |
+| `dk_machines_planned_ids`, `dk_machines_id_taken` (runtime-only exports of the machines file) | `internal = true` exports of `sdk/sdk.toml` ("an export that only the runtime calls, by name, through the loader's export table"); the plans' direction for runtime-to-service bridges is Query and Describe (rc3-briefs.md, E1) | Kept: they already are upstream's internal exports. Query does not fit: `resident_query` answers only once the boot is closed, and the V2 admission asks during the boot's check of CANOPY (`admit_instruments`). |
+| CANOPY rows of the DIGIKIT menu (`dk_app_instrument_settings_rows`, `dk_app_instrument_module_settings` through `package/menu_link.rs`) | No Settings part (Em, 2026-11-23: rejected); a service adds a SETTINGS row with `dk_ui_settings_row` in `init` (fx's FX ROUTING) | Open, for the owner: the two DIGIKIT rows (CANOPY, CANOPY STATUS) could become SETTINGS rows of `services/instrument.dks`; that moves them in the menu. A module's own settings page (CANOPY's) has no upstream mechanism before RC3m, so `dk_app_instrument_module_settings` stays. |
+| The V2 lease (`dl_claim`, `dl_send_owned`, `link::legacy_held`) beside the link queue | `dkrt-link`'s `Link` has owners and a queue, no exclusive owner | Kept: one arbiter means an exclusive mode in upstream's `dkrt-link` crate, a change to propose upstream rather than carry. |
+
+**Item 3, measured.** The fork's host is about 55 KB of the system package's 348,512 bytes: `package::instrument` 12,004 text, 4,366 bss,
+2,736 data; the fork-only SDK modules `instrument_{coordinator, admission, load, mailbox, section, descriptor, provider, image, registry,
+exchange, transport}` 31,772 text and 4,096 data; `dsp_memory` 1,014 (sections of `runtime/core/build/package.dko.json`). Out of the package,
+`PACKAGE_BYTES` could go back to 327,680 and every DT2 set would gain 20,992 bytes of cf.expansion. The arena pays instead, on every CANOPY
+boot. The CANOPY needs test (`needs.json` of its run) has the arena at 382,464 of 524,288 bytes with CANOPY, machines, instrument and the
+port file; `patchkit needs` gives track-keyboard 66,208 and fx 52,784 more: about 449 KB with the track keyboard, 502 KB with fx too. With
+the host in `services/instrument.dks` (about 55 KB more), CANOPY with the track keyboard and fx would need about 557 KB: it would not load.
+The host stays in the package unless the owner gives up that combination or the arena grows (which costs cf.expansion again).
