@@ -99,17 +99,20 @@ def test_the_service_file_needs_no_service_of_canopys(tmp_path):
 
 
 def test_the_hardware_set_has_the_track_keyboard_and_canopys_host(tmp_path):
+    # The owner's set on the hardware (docs/plans/upstream-merge-1124/README.md): it applies, so it fits. The 128 KiB that this test
+    # kept free before the upstream merge was the merge's room; the merge used it, and the arena/image divider now sets the rest.
     sets = (REPO_ROOT / "devices/digitakt-ii.toml").read_text()
     line = next(
-        row for row in sets.splitlines() if row.startswith("canopy-overloop-prism = ")
+        row
+        for row in sets.splitlines()
+        if row.startswith("canopy-overloop-prism-relay = ")
     )
     plan = plan_of(tmp_path, json.loads(line.split("=", 1)[1]))
     assert {
         "core/track-keyboard",
         "core/keyboard-panel",
         "core/instrument-play",
+        "core/relay-track",
     } <= ids(plan)
     used, size = plan["regions"]["cf.expansion"]
-    assert size - used > 128 * 1024, (
-        "less than 128 KiB of cf.expansion left before the upstream merge"
-    )
+    assert used <= size
