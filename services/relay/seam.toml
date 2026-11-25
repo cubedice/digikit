@@ -5,7 +5,7 @@
 # The vector is the [[slot]] word relay_vec of core/relay-track. The adapter keeps one forwarder per entry: it reads the slot and
 # jumps through word i of the table the service filled it with, or does `absent` while the slot is 0 (no service loaded): `rts`,
 # `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (an image function, with the caller's arguments). Without the service the
-# DT2 has no RELAY: no machine type answers to it, its frame words stay idle and the SRC page, the MOD routes, the TRIG picker and
+# device has no RELAY: no machine type answers to it, its frame words stay idle and the SRC page, the MOD routes, the TRIG picker and
 # the Sound save take their paths without RELAY. Changing the order or the count changes the layout: bump `version`.
 version = 1
 

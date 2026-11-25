@@ -738,6 +738,8 @@
   "services/machines/tests/guard.rs": 1,
   "services/machines/tests/records.rs": 1,
   "services/project/dks/module.toml": 2,
+  "services/relay/dks/module.toml": 1,
+  "services/relay/dks/src/lib.rs": 1,
   "services/samples/dks/module.toml": 2,
   "services/samples/src/files.rs": 5,
   "services/samples/src/files/tests.rs": 3,
