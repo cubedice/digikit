@@ -6,10 +6,10 @@ category = "machines"
 type = "machine"
 author = "digikit"
 status = "experimental"
-summary = "Persistent four-note pad instrument with keyboard modes and learned chords."
+summary = "Persistent four-voice pad instrument, played by the track keyboard."
 dynamic = true
 ports = ["dt2-1.17"]
-requires = ["core/instrument-play"]
+requires = ["core/instrument-play", "core/track-keyboard"]
 conflicts = []
 [targets]
 "dt2-1.17" = "experimental"
@@ -32,9 +32,10 @@ sources = ["src/dsp/voice.s",
 place = "dsp.l2"
 devices = ["dt2"]
 
-# The load cell boots the patch set with core/instrument-play (the V2 owner), core/loop-storage and core/loop-display.
+# The load cell boots the patch set with core/instrument-play (the V2 owner), core/track-keyboard (its note engine), core/loop-storage and
+# core/loop-display.
 [conformance]
-patch_set = "canopy-overloop"
+patch_set = "canopy-overloop-prism"
 
 # The rows init commits (src/module.c: one machine, no pages or params), counted from the builder calls: record_bytes is the 16-byte
 # header and a machine record (0x6c), as packages/patchkit/src/dkmsynth.rs record_bytes computes it. Without them the commit refuses (E_DECL_USES).

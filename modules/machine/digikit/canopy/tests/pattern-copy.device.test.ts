@@ -29,7 +29,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument', 'track-keyboard'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -48,7 +48,7 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     const { syx, plan } = await prepareRuntimePlanListedOffline(
       session.options, session.runDir, artifacts,
       ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats'],
-      { modules: ['core/instrument-play', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/track-keyboard', 'core/health'] },
     );
     await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true,
       auto_no: true, card: session.cardPath });

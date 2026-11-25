@@ -35,7 +35,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument', 'track-keyboard'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -62,7 +62,7 @@ describeOn('dt2', 'CANOPY arp on the DT2', () => {
           session.runDir,
           artifacts,
           ['DKRT_BOOT', '_ir_rows', '_iv_input'],
-          { modules: ['core/instrument-play', 'core/health'] },
+          { modules: ['core/instrument-play', 'core/track-keyboard', 'core/health'] },
         );
     const image = prepared?.syx ?? path.resolve(root, process.env.CANOPY_ARP_IMAGE!);
     const plan: RuntimePlan =

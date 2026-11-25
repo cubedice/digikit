@@ -32,7 +32,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
       fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
-    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
+    await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument', 'track-keyboard'] }]);
   });
   afterAll(() => {
     const owned = fs.realpathSync(cardSeed);
@@ -58,7 +58,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
       session.runDir,
       artifacts,
       ['DKRT_BOOT', 'ip_sa_info', 'ip_sa_stats'],
-      { modules: ['core/instrument-play', 'core/health'] },
+      { modules: ['core/instrument-play', 'core/track-keyboard', 'core/health'] },
     );
     expect(createHash('sha256').update(fs.readFileSync(syx)).digest('hex')).toBe(plan.output?.syx_sha256);
     const boot = async (card: string) => {
