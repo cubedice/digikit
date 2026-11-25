@@ -385,8 +385,7 @@ pub unsafe fn reserve(rec: usize, job: &Job) -> i32 {
         Some(o) => o,
         None => return E_DSP_NOSPACE,
     };
-    // the relocated image is freed once the link has sent it: from the top of the arena, so that it leaves no hole between the blocks that stay
-    let block = arena::alloc_top(job.image_size);
+    let block = arena::alloc(job.image_size);
     if block.is_null() {
         return E_NOMEM;
     }

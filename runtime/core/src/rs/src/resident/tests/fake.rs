@@ -25,7 +25,7 @@ extern "C" fn fake_base() -> u32 {
 }
 
 static FAKE_CARD: Group<CardFns> = Group::new(CardFns { writable: fake_writable });
-static FAKE_ARENA: Group<ArenaFns> = Group::new(ArenaFns { alloc: fake_alloc, free: fake_free, stats: fake_stats, size: fake_size, base: fake_base, alloc_top: fake_alloc });
+static FAKE_ARENA: Group<ArenaFns> = Group::new(ArenaFns { alloc: fake_alloc, free: fake_free, stats: fake_stats, size: fake_size, base: fake_base });
 
 #[test]
 fn the_facade_calls_the_entry_of_its_group() {

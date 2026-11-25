@@ -12,6 +12,4 @@ pub struct ArenaFns {
     pub size: extern "C" fn() -> u32,
     /// The device address of the arena.
     pub base: extern "C" fn() -> u32,
-    /// As `alloc`, from the top of the arena, for a block that is freed again soon (minor 6, the fork).
-    pub alloc_top: unsafe extern "C" fn(n: u32) -> u32,
 }

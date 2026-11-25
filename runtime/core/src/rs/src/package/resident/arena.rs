@@ -8,12 +8,6 @@ pub(crate) unsafe fn alloc(n: u32) -> DevAddr {
     DevAddr::new((table().arena.alloc)(n))
 }
 
-/// As `alloc`, from the top of the arena: for a block that is freed again soon.
-#[inline(always)]
-pub(crate) unsafe fn alloc_top(n: u32) -> DevAddr {
-    DevAddr::new((table().arena.alloc_top)(n))
-}
-
 #[inline(always)]
 pub(crate) unsafe fn free(p: DevAddr) -> bool {
     (table().arena.free)(p.get())

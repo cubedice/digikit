@@ -226,7 +226,7 @@ fn a_change_of_a_shared_view_layout_is_a_major_version() {
 fn minor_5_appended_the_instrument_entries_at_the_end_of_links_and_views() {
     use core::mem::{offset_of, size_of};
     use dkrt_abi::resident::{InstrumentLinks, InstrumentViews, LinkRows, Views};
-    assert!(RESIDENT_MINOR >= 5, "minor 5 appended the instrument entries");
+    assert_eq!(RESIDENT_MINOR, 5, "minor 5 appended the instrument entries: a later minor needs its own case");
     assert_eq!(offset_of!(LinkRows, instrument) + size_of::<InstrumentLinks>(), size_of::<LinkRows>());
     assert_eq!(offset_of!(Views, instrument) + size_of::<InstrumentViews>(), size_of::<Views>());
     let mut core_1_4 = copy();
@@ -234,19 +234,4 @@ fn minor_5_appended_the_instrument_entries_at_the_end_of_links_and_views() {
     let refused = open(&core_1_4, 5).err().expect("a minor-5 package on a minor-4 core is refused");
     assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 4, 5));
     assert!(open(&copy(), 4).is_ok());
-}
-
-/// Minor 6 (the fork) appended `alloc_top` at the end of `ArenaFns` (the DSP loader takes its transfer copies from the top of the arena). A minor-5 package reads the
-/// group as the prefix it knows; a minor-6 package is refused by a minor-5 core.
-#[test]
-fn minor_6_appended_alloc_top_at_the_end_of_the_arena_group() {
-    use core::mem::{offset_of, size_of};
-    use dkrt_abi::resident::ArenaFns;
-    assert_eq!(RESIDENT_MINOR, 6, "minor 6 appended alloc_top: a later minor needs its own case");
-    assert_eq!(offset_of!(ArenaFns, alloc_top) + size_of::<unsafe extern "C" fn(u32) -> u32>(), size_of::<ArenaFns>());
-    let mut core_1_5 = copy();
-    core_1_5.header.minor = 5;
-    let refused = open(&core_1_5, 6).err().expect("a minor-6 package on a minor-5 core is refused");
-    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 5, 6));
-    assert!(open(&copy(), 5).is_ok());
 }
