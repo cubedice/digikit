@@ -14,6 +14,9 @@ unsafe extern "C" fn stats(out: *mut u32) {
     *out = free;
     *out.add(1) = largest;
 }
+unsafe extern "C" fn alloc_top(n: u32) -> u32 {
+    arena::alloc_top(n).get()
+}
 extern "C" fn size() -> u32 {
     let s = crate::platform::st();
     s.arena.hi - s.arena.lo
@@ -22,4 +25,4 @@ extern "C" fn base() -> u32 {
     core::ptr::addr_of!(crate::state::DKRT_ARENA) as usize as u32
 }
 
-pub(super) static FNS: Group<ArenaFns> = Group::new(ArenaFns { alloc, free, stats, size, base });
+pub(super) static FNS: Group<ArenaFns> = Group::new(ArenaFns { alloc, free, stats, size, base, alloc_top });

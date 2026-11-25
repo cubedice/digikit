@@ -84,6 +84,59 @@ unsafe fn alloc_walk(n: u32) -> *mut u8 {
     null_mut()
 }
 
+/// As `alloc`, from the top of the arena: the free block at the highest address that fits gives its upper end. For a block that is freed again soon (the copy of a
+/// module's DSP image while the link sends it): above the blocks that stay, it leaves no hole between them when it goes, so a later module finds the free bytes in one
+/// piece (the fork: the hardware image's arena is full to a few KB, docs/plans/upstream-merge-1124).
+pub unsafe fn alloc_top(n: u32) -> DevAddr {
+    let sr = crate::platform::irq_mask();
+    let a = alloc_top_walk(n);
+    crate::platform::irq_restore(sr);
+    DevAddr::of_ptr(a)
+}
+
+unsafe fn alloc_top_walk(n: u32) -> *mut u8 {
+    let s = st();
+    if n == 0 || n > ARENA_BYTES as u32 {
+        return null_mut();
+    }
+    let need = ((n + 15) & !15) + HDR;
+    // the last free block that fits (the list is in address order) and the block before it in the list
+    let mut prev: *mut u32 = null_mut();
+    let mut cur = block(s.arena.free_head);
+    let mut fit: *mut u32 = null_mut();
+    let mut fit_prev: *mut u32 = null_mut();
+    while !cur.is_null() {
+        if *cur >= need {
+            fit = cur;
+            fit_prev = prev;
+        }
+        prev = cur;
+        cur = block(*cur.add(1));
+    }
+    if fit.is_null() {
+        return null_mut();
+    }
+    let rem = *fit - need;
+    let b = if rem >= 2 * HDR {
+        // the free block keeps its lower part and its place in the list; the new block is its upper end
+        *fit = rem;
+        let b = block(addr(fit) + rem);
+        *b = need;
+        b
+    } else {
+        // the whole block leaves the list (its size word stays)
+        let next = *fit.add(1);
+        if fit_prev.is_null() {
+            s.arena.free_head = next;
+        } else {
+            *fit_prev.add(1) = next;
+        }
+        fit
+    };
+    *b.add(1) = USED;
+    (b as *mut u8).add(HDR as usize)
+}
+
 /// Return a block. An address that is not a live block of this arena is ignored; returns whether it was freed.
 pub unsafe fn free(p: DevAddr) -> bool {
     let sr = crate::platform::irq_mask();
@@ -124,6 +177,47 @@ unsafe fn free_walk(a: u32) -> bool {
         *prev.add(1) = addr(h);
     }
     true
+}
+
+#[cfg(test)]
+mod top_tests {
+    use super::*;
+    use crate::fake_platform::test_arena::TestArena;
+
+    #[test]
+    fn a_block_from_the_top_leaves_no_hole_when_it_goes() {
+        let _a = TestArena::lock();
+        unsafe {
+            init();
+            let (free0, _) = stats();
+            let a = alloc(1000);
+            let t = alloc_top(4000);
+            let b = alloc(1000);
+            assert!(!a.is_null() && !t.is_null() && !b.is_null());
+            // the transient block is above the two that stay
+            assert!(t.get() > b.get() && b.get() > a.get());
+            assert!(free(t));
+            let (free1, largest) = stats();
+            assert_eq!(largest + HDR, free1, "the free bytes are one piece");
+            assert!(free(a) && free(b));
+            assert_eq!(stats().0, free0, "everything is back");
+        }
+    }
+
+    #[test]
+    fn a_block_from_the_top_takes_a_whole_block_that_has_no_room_to_split() {
+        let _a = TestArena::lock();
+        unsafe {
+            init();
+            let (free0, _) = stats();
+            let whole = alloc_top(free0 - HDR);
+            assert!(!whole.is_null(), "the whole arena in one block");
+            assert_eq!(stats().0, 0);
+            assert!(alloc_top(16).is_null(), "nothing is left");
+            assert!(free(whole));
+            assert_eq!(stats().0, free0);
+        }
+    }
 }
 
 /// Whether `p` is a live (allocated) block of this arena.

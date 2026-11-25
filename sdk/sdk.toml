@@ -1945,7 +1945,7 @@ polls = 4                            # the poll slots, owner 0x200 | i: POLLS of
 version = 1         # the request version byte; a request with another version gets E_PROTO
 
 [protocol.limits]   # sizes of the upload protocol; every host and the runtime take them from here
-max_chunk = 24576   # bytes of one PUT chunk (DATA body); the runtime's BEGIN reply sends it. The fork: 24 KiB (upstream 32 KiB), 8 KiB of the upload buffer back for RELAY on the DT2 hardware image
+max_chunk = 16384   # bytes of one PUT chunk (DATA body); the runtime's BEGIN reply sends it. The fork: 16 KiB (upstream 32 KiB), 16 KiB of the upload buffer back for RELAY on the fork's hardware image
 read_max = 768      # bytes of one READ (and SETTINGS) reply
 peek_max = 512      # bytes of one PEEK reply
 max_request_wire = 40960  # the largest request on the wire, SysEx-encoded (40 KiB)

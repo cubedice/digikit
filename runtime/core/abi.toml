@@ -88,8 +88,8 @@ doc = "Room for the entries a caller of dkrt_capacity gives (the runtime has 16 
 [[const]]
 name = "ARENA_BYTES"
 type = "usize"
-value = 524288
-doc = "The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it)."
+value = 532480
+doc = "The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 520 KiB (upstream 512 KiB): the hardware image holds every DSP transfer copy of the boot at once (docs/plans/upstream-merge-1124)."
 
 [[const]]
 name = "PACKAGE_BYTES"
@@ -101,7 +101,7 @@ doc = "The system package block: a static array of the runtime's bss, outside th
 name = "STAGE_BYTES"
 type = "usize"
 value = 106496
-doc = "The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the DT2 hardware image; the largest staged file is CANOPY (102,344 bytes)."
+doc = "The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes)."
 
 [[const]]
 name = "MACHINE_ROWS"
