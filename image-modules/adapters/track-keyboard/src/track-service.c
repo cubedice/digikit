@@ -163,10 +163,14 @@ const TkTrackConfig *tk_service_active_config(uint8_t track)
     return p && track < TK_TRACKS ? &p->tracks[track] : NULL;
 }
 
-static TkTrackConfig track_settings(uint8_t track)
+/* The settings track `track` of `p` plays and shows: its own once it has an override, else, for a backend that inherits (CANOPY),
+ * the performance settings its Sound carries. So the track keyboard plays every track of such a backend, edited or not; `*inherited`
+ * says whether the Sound's settings were taken (false: the track's own, or none to inherit yet). */
+static TkTrackConfig settings_of(const TkPattern *p, uint8_t track, bool *inherited)
 {
-    TkTrackConfig config = editing->tracks[track];
+    TkTrackConfig config = p->tracks[track];
     TkTrackInherit inherit = tracks[track].backend.inherit;
+    *inherited = false;
     if (!config.override && inherit) {
         TkTrackConfig legacy;
         if (inherit(track, &legacy)) {
@@ -176,9 +180,26 @@ static TkTrackConfig track_settings(uint8_t track)
                 legacy.selector_channel = config.selector_channel;
             }
             config = legacy;
+            *inherited = true;
         }
     }
     return config;
+}
+
+bool tk_service_active_settings(uint8_t track, TkTrackConfig *out)
+{
+    const TkPattern *p = playing ? playing : editing;
+    bool inherited;
+    if (!p || track >= TK_TRACKS)
+        return false;
+    *out = settings_of(p, track, &inherited);
+    return out->override || inherited;
+}
+
+static TkTrackConfig track_settings(uint8_t track)
+{
+    bool inherited;
+    return settings_of(editing, track, &inherited);
 }
 
 static void apply_track_settings(uint8_t track, const TkTrackConfig *config)
@@ -208,10 +229,11 @@ static void configure_live(TkTrack *t)
     if (!t->backend.output)
         return;
     if (p) {
-        const TkTrackConfig *config = &p->tracks[t->number];
-        TkParams params = config->params;
-        resolve_mode(t, config, &params);
-        tk_configure(&t->live, &params, &config->user);
+        bool inherited;
+        const TkTrackConfig config = settings_of(p, t->number, &inherited);
+        TkParams params = config.params;
+        resolve_mode(t, &config, &params);
+        tk_configure(&t->live, &params, &config.user);
     } else {
         tk_panic(&t->live);
     }
@@ -411,9 +433,11 @@ void tk_service_sequence_policy_for(TkSequencePolicy *policy, const TkPattern *p
     memset(policy, 0, sizeof *policy);
     if (!p)
         return;
+    bool inherited;
     for (uint8_t track = 0; track < TK_TRACKS; ++track) {
-        TkParams params = p->tracks[track].params;
-        if (available(track) && resolve_mode(&tracks[track], &p->tracks[track], &params))
+        const TkTrackConfig settings = settings_of(p, track, &inherited);
+        TkParams params = settings.params;
+        if (available(track) && resolve_mode(&tracks[track], &settings, &params))
             for (unsigned i = 0; i < TK_STEPS / 32u; ++i)
                 policy->steps[track][i] = UINT32_MAX;
     }
@@ -429,8 +453,9 @@ void tk_service_sequence_policy_for(TkSequencePolicy *policy, const TkPattern *p
         TkParams params;
         TkRecipe recipe;
         uint32_t bit = UINT32_C(1) << (step % 32u);
-        if (tk_resolve_step(&p->tracks[track], &entry->locks, &params, &recipe) &&
-            resolve_mode(&tracks[track], &p->tracks[track], &params))
+        const TkTrackConfig settings = settings_of(p, track, &inherited);
+        if (tk_resolve_step(&settings, &entry->locks, &params, &recipe) &&
+            resolve_mode(&tracks[track], &settings, &params))
             policy->steps[track][step / 32u] |= bit;
         else
             policy->steps[track][step / 32u] &= ~bit;
@@ -458,7 +483,9 @@ bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const 
     const TkStepLocks *locked = find_step(p, track, step);
     TkParams params;
     TkRecipe recipe;
-    if (!tk_resolve_step(&p->tracks[track], locked, &params, &recipe))
+    bool inherited;
+    const TkTrackConfig settings = settings_of(p, track, &inherited);
+    if (!tk_resolve_step(&settings, locked, &params, &recipe))
         return false;
     if (!tk_seed_valid(seed))
         return false;
@@ -482,7 +509,7 @@ bool tk_service_seed_for(const TkPattern *p, uint8_t track, uint8_t step, const 
     if (t->backend.prepare_seed &&
         !t->backend.prepare_seed(track, &params, &recipe, &effective, recorded != NULL, &pinned))
         return false;
-    if (!resolve_mode(t, &p->tracks[track], &params)) {
+    if (!resolve_mode(t, &settings, &params)) {
         tk_stop_transport(&t->sequence);
         t->sequence_pattern = NULL;
         return false;

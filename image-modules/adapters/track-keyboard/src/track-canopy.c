@@ -264,18 +264,22 @@ void tk_canopy_backend(TkTrackBackend *out)
                             .prepare_seed = prepare_seed};
 }
 
+/* The track keyboard is CANOPY's note engine: it takes every CANOPY track whose settings it has, its own once edited or those its Sound
+ * carries, and CANOPY plays the notes it resolves. A pattern that locks a step to a Sound that is not CANOPY's keeps the track with
+ * CANOPY's own path (`fallback`). */
 void tk_canopy_sync(uint8_t track, bool active, uint32_t pattern)
 {
-    const TkTrackConfig *config = active ? tk_service_active_config(track) : NULL;
+    TkTrackConfig config;
+    bool settled = active && tk_service_active_settings(track, &config);
     unsigned lanes = 0;
-    bool fallback = config && config->override && tk_sequence_canopy_sound_fallback(pattern, track);
+    bool fallback = settled && tk_sequence_canopy_sound_fallback(pattern, track);
     uint16_t bit = (uint16_t)(1u << track);
     if (fallback)
         tk_canopy_fallback |= bit;
     else
         tk_canopy_fallback &= (uint16_t)~bit;
-    if (config && config->override && !fallback) {
-        lanes = config->params.poly | (unsigned)config->params.arp << 1;
+    if (settled && !fallback) {
+        lanes = config.params.poly | (unsigned)config.params.arp << 1;
         if (!lanes)
             lanes = 1;
     }

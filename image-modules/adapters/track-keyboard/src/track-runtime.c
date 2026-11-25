@@ -189,9 +189,10 @@ static bool can_prepare_track(uint8_t track, const TkPattern *destination,
         return false;
     if (kind[track] == TK_NATIVE_CANOPY) {
         /* An early seed can use the active CANOPY Sound only when both
-         * patterns share that Sound and have adopted the shared keyboard. */
-        return active_kit && target.kit == active_kit && active->override && next->override &&
-               tk_canopy_routed(track) && !tk_sequence_canopy_sound_fallback(target.address, track);
+         * patterns share that Sound. The shared keyboard plays every CANOPY
+         * track, so neither pattern needs an override of its own. */
+        return active_kit && target.kit == active_kit && tk_canopy_routed(track) &&
+               !tk_sequence_canopy_sound_fallback(target.address, track);
     }
     if (kind[track] == TK_NATIVE_RELAY)
         return active_kit && target.kit == active_kit && !active->helpers && !next->helpers;
