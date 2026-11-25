@@ -8,7 +8,7 @@ author = "digikit"
 status = "experimental"
 summary = "Disposable emulator public-input transaction experiment; never install on hardware."
 requires = ["test/canopy-sound-proof"]
-conflicts = ["test/canopy-worker-refill", "test/canopy-live-proof"]
+conflicts = ["test/canopy-worker-refill"]
 ports = ["dt2-1.17"]
 
 [targets]

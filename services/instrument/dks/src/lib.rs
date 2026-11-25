@@ -22,6 +22,5 @@ dkrt_svc_rt::service!(
     fills = [
         ("instrument_vec", seam::instrument_vec_table, dt2),
         ("midi_vec", seam::midi_vec_table, dt2),
-        ("kbp_vec", seam::kbp_vec_table, dt2),
     ]
 );

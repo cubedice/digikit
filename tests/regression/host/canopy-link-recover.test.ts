@@ -22,7 +22,6 @@ test('a faulted note transport is recovered after about a second, a bounded numb
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-link-recover.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         ...[
           'preset.c',
           'src-state.c',

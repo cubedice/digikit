@@ -47,7 +47,7 @@ beforeAll(() => {
     { timeout: 20000 },
   );
 });
-test('resolved panel bridge consumes only CANOPY and releases ownership on view changes', () => {
+test('the KEYBOARD view gives CANOPY tracks to the track keyboard and records them through the stock note action', () => {
   expect(execFileSync(panelBinary, { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
 });
 afterAll(() => {
@@ -62,10 +62,7 @@ test.each([
   'paint',
   'diagrams',
   'tone',
-  'wavetable-fm',
-  'chord-preview',
   'fm-envelope',
-  'fm-presentation',
   'routing',
   'values',
   'delayed',

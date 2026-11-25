@@ -1,14 +1,11 @@
-// Manual proof (the `.manual` suffix keeps it out of the Nx graph): CANOPY's two note engines compared on the owner's own Sounds, for the
-// move that makes the track keyboard CANOPY's only note engine (docs/plans/upstream-merge-1124/README.md, "CANOPY as a voice host").
+// Manual proof (the `.manual` suffix keeps it out of the Nx graph): CANOPY played by the track keyboard, its only note engine, on the
+// owner's own Sounds (docs/plans/upstream-merge-1124/README.md, "CANOPY as a voice host"). This file compared it with CANOPY's own engine
+// until that engine was removed; the comparison was measured at commit 28ea6d093, and the file now records the track keyboard's side.
 //
-// PARITY_CONFIG=legacy boots an image without core/track-keyboard, so CANOPY's own engine plays; PARITY_CONFIG=shared boots one with it,
-// so the track keyboard plays every CANOPY track. Both boot the same card: CANOPY and its services with the owner's settings record
-// (HW_SETTINGS, the settings.bin of a device backup), whose working copy gives track 1 the owner's CANOPY Sound. Each run plays the same
-// inputs on track 1 and writes out/canopy-parity/<config>/: the raw captures (f32le stereo, 48 kHz) and report.json; the run that finds
-// the other configuration's report also writes out/canopy-parity/compare.json.
-//
-// MIDI goes to each engine on its own route: CANOPY's engine reads its saved route (the owner's is channel 2), the track keyboard reads
-// the Digitakt's MIDI config (track 1 hears channel 1).
+// It boots an image with core/track-keyboard on a card with CANOPY and its services and the owner's settings record (HW_SETTINGS, the
+// settings.bin of a device backup), whose working copy gives track 1 the owner's CANOPY Sound. It plays fixed inputs on track 1 and
+// writes out/canopy-parity/shared/: the raw captures (f32le stereo, 48 kHz) and report.json. MIDI reaches track 1 on its channel in the
+// Digitakt's MIDI config (channel 1).
 import fs from 'node:fs';
 import path from 'node:path';
 import { repoRoot } from '@digi/test-support';
@@ -32,7 +29,6 @@ import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 import { canopyPanel } from './canopy-panel.ts';
 import { envelope, pitches, RATE } from './audio.ts';
 
-const CONFIG = process.env.PARITY_CONFIG === 'shared' ? 'shared' : 'legacy';
 const SETTINGS = process.env.HW_SETTINGS;
 const WRITE_SETTINGS = [
   'import sys',
@@ -84,11 +80,11 @@ function analyse(c: Capture) {
   };
 }
 
-describeOn('dt2', `CANOPY note engine parity (${CONFIG})`, () => {
+describeOn('dt2', 'CANOPY note engine parity (shared)', () => {
   vi.setConfig({ hookTimeout: 600_000 });
   const options = liveOptions('dt2', { fresh: true });
   const root = fs.realpathSync(path.join(repoRoot(), 'out'));
-  const out = path.join(root, 'canopy-parity', CONFIG);
+  const out = path.join(root, 'canopy-parity', 'shared');
   const card = fs.mkdtempSync(path.join(root, 'canopy-parity-card-'));
   beforeAll(async () => {
     for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav'])
@@ -144,13 +140,13 @@ describeOn('dt2', `CANOPY note engine parity (${CONFIG})`, () => {
     const { session } = handle;
     fs.rmSync(out, { recursive: true, force: true });
     fs.mkdirSync(out, { recursive: true });
-    const modules = CONFIG === 'shared' ? ['core/track-keyboard', 'core/instrument-play', 'core/health'] : ['core/instrument-play', 'core/health'];
+    const modules = ['core/track-keyboard', 'core/instrument-play', 'core/health'];
     const { syx, plan } = await prepareRuntimePlanModulesOffline(session.options, session.runDir, out, ['DKRT_BOOT'], {
       modules,
       timeoutMs: 120_000,
     });
     const load = (await session.client.firmwareLoad({ syx, base_sha256: plan.base.syx_sha256, start: 'auto', force: true, auto_no: true, card: session.cardPath })) as Record<string, unknown>;
-    console.info('LOAD', CONFIG, JSON.stringify({ start_used: load?.start_used, cache_hit: load?.cache_hit, cache_dir: load?.cache_dir, key: process.env.PARITY_CARD_KEY ?? 'derive' }));
+    console.info('LOAD', JSON.stringify({ start_used: load?.start_used, cache_hit: load?.cache_hit, cache_dir: load?.cache_dir, key: process.env.PARITY_CARD_KEY ?? 'derive' }));
     await session.client.call('run.mode', { mode: 'free' });
     const dk = liveProtocol(session);
     await expectRuntimeUi(session, plan, out, { emulatedMs: 180_000 });
@@ -199,13 +195,13 @@ describeOn('dt2', `CANOPY note engine parity (${CONFIG})`, () => {
     const settled = await workState();
     expect(settled.applied, 'the working copy gave track 1 the owner Sound').toBeGreaterThan(0);
     const report: Record<string, unknown> = {
-      config: CONFIG,
+      config: 'shared',
       modules,
       work_copies_applied: settled.applied,
       work_timeline: { beforeChoose, afterChoose, settled },
     };
     const { tap, edge } = acknowledgedPanel(session);
-    const channel = CONFIG === 'legacy' ? 1 : 0; // the owner's CANOPY route (2) or track 1's Digitakt channel (1), zero-based
+    const channel = 0; // track 1's Digitakt channel (1), zero-based
     const captures: Capture[] = [];
     const ownership: Record<string, string[]> = {};
     const capture = async (name: string, play: (mark: (n: string) => void) => Promise<void>) => {
@@ -233,7 +229,7 @@ describeOn('dt2', `CANOPY note engine parity (${CONFIG})`, () => {
         await watcher;
       }
       ownership[name] = seen;
-      console.info('OWNER', CONFIG, name, '[claim0, lanes0]', seen.join(' '));
+      console.info('OWNER', name, '[claim0, lanes0]', seen.join(' '));
       captures.push({ name, file, marks });
     };
     const midi = (bytes: number[]) => session.client.call('midi.usb.in', { bytes });
@@ -285,31 +281,7 @@ describeOn('dt2', `CANOPY note engine parity (${CONFIG})`, () => {
     report.captures = captures.map(analyse);
     report.ownership = ownership;
     fs.writeFileSync(path.join(out, 'report.json'), JSON.stringify(report, null, 2));
-    console.info('PARITY', CONFIG, JSON.stringify(report));
-    const other = path.join(root, 'canopy-parity', CONFIG === 'legacy' ? 'shared' : 'legacy', 'report.json');
-    if (fs.existsSync(other)) {
-      const a = JSON.parse(fs.readFileSync(other, 'utf8')),
-        b = report as { captures: ReturnType<typeof analyse>[] };
-      const [legacy, shared] = CONFIG === 'legacy' ? [b, a] : [a, b];
-      const compare = (legacy.captures as ReturnType<typeof analyse>[]).map((l) => {
-        const s = (shared.captures as ReturnType<typeof analyse>[]).find((x) => x.name === l.name)!;
-        const first = (x: ReturnType<typeof analyse>) => (x.onsets_10ms[0] ?? NaN) * 10;
-        return {
-          name: l.name,
-          onsets: { legacy: l.onsets_10ms.length, shared: s.onsets_10ms.length },
-          first_onset_ms: { legacy: first(l), shared: first(s) },
-          onset_spacing_ms: {
-            legacy: l.onsets_10ms.slice(1).map((v, i) => (v - l.onsets_10ms[i]!) * 10),
-            shared: s.onsets_10ms.slice(1).map((v, i) => (v - s.onsets_10ms[i]!) * 10),
-          },
-          tail_ms: { legacy: l.tail_10ms === null ? null : l.tail_10ms * 10, shared: s.tail_10ms === null ? null : s.tail_10ms * 10 },
-          peak_db: { legacy: l.peak_db, shared: s.peak_db },
-          pitches: { legacy: l.pitches, shared: s.pitches },
-        };
-      });
-      fs.writeFileSync(path.join(root, 'canopy-parity', 'compare.json'), JSON.stringify(compare, null, 2));
-      console.info('PARITY-COMPARE', JSON.stringify(compare));
-    }
+    console.info('PARITY', JSON.stringify(report));
     for (const c of report.captures as ReturnType<typeof analyse>[]) expect(c.frames, `${c.name} was captured`).toBeGreaterThan(RATE);
   });
 });

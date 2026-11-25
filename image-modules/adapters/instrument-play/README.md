@@ -14,46 +14,41 @@ can exceed a DSP block (finding 345).
 
 Instance i is DSP slot i and registry instance i. A reset with word 10 = i+1
 binds the slot to the reset's track; the CF flags the selected track's instance
-with bit 15 of control word 0 so its status reaches INPUT/STATUS. The UI edits
-the selected track's instance; each instance keeps its own sound settings, SRC
-state, status and MIDI CHANNEL (saved under `canopy/channels/v1`). A channel
-already played by a lower instance is skipped and INPUT shows CHANNEL IN USE.
-Learned shapes are shared.
+with bit 15 of control word 0 so its status reaches STATUS. The UI edits the
+selected track's instance; each instance keeps its own sound settings, SRC
+state and status.
 
-The native UI revision uses the stock TUNE, source LEV and track LEV paths on
-SOUND, with native fonts and bounded custom cells. ARP follows the pattern tempo
-and remains playable from the keyboard while stopped; G/H are blank.
-Hold SRC uses the firmware's momentary values state. Detailed notes,
-pedal and clock state are under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
+The SRC pages are the track keyboard's three: VOICE, FM ENV and DETAIL. VOICE
+holds WAVE, the family's timbre controls and DRFT on H; FM ENV holds the
+wavetable or FM envelope and its modulation amounts (Velvet and Reed have
+none); DETAIL holds the stock TUNE (A) and source LEV (H) cells and MIX on G.
+WAVE selects Velvet, Reed, one of the five wavetables or FM, and has its own
+view-only identity so it cannot alias the FM algorithm field. Discrete lists
+accumulate four raw ticks per item without acceleration. Family transitions
+retain the held DSP voices and invalidate queued SRC edits. Hold SRC uses the
+firmware's momentary values state. Detailed notes, pedal and clock state are
+under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
 See the [accepted UI contract](../../../docs/design/canopy-ui-review.md).
+The global setup entry is CANOPY, with MODULATION, PRESETS, PANIC, RECOVER
+KEYBOARD, the status line and `MIDI: TRACK CHANNEL`. MODULATION holds scan
+clock/restart and the three wheel amounts. TUNE/LEV are exclusive to DETAIL
+A/H; unused cells cannot edit stock source parameters.
 
-SOUND B / CHRD now selects PLAY or any generated chord directly; SOUND D / WAVE
-selects Velvet, Reed, one of the five wavetables or FM. CHRD is a presentation of
-the mode/chord fields; WAVE has its own view-only identity so it cannot alias
-the FM algorithm field. Discrete lists accumulate four raw ticks per item without acceleration.
-Mode transitions retire old note ownership; root chord changes update held notes.
-Family transitions retain the held DSP voices and invalidate queued SRC edits.
-The global setup entry is CANOPY, with INPUT, CHORD LEARN, MODULATION and PRESETS.
-MODULATION holds scan clock/restart and the three wheel amounts. The complete
-position envelope is on wavetable TONE. TUNE/LEV are exclusive to SOUND A/H;
-unused cells on the other pages cannot edit stock source parameters.
-
-The DTII 1.17 KeyboardView bridge intercepts resolved performance notes before
-stock mono audition. It retains native key-up closures and uses a separate PANEL
-owner through PLAY/ROOT/LEARN. Local keys do not require enabling external MIDI.
-Keys play the admitted CANOPY on the selected track; stock machines and
-tracks without an instance delegate to the original handlers. Leaving keyboard mode or selecting
-another track cancels the
-panel phrase without canceling external notes. While the sequencer live
-records or a trig is held, presses on a CANOPY track go to the stock note
-action and still play on CANOPY's panel path. Step recording enters notes via
-the stock note-list writer instead; the adapter queues its completed entries
-so quickly played chords and delayed releases retain their order. The stock
-audition of a held recorded key is muted on the frame path. The other
-keys held with a recorded press are stored on its step as chord-note locks
-(IDs 53..55), which the mapper plays with the trig's note; live recording
-commits after the key event, so the UI tick watches the track's note list for
-the committed steps (findings 347 and 125).
+The DTII 1.17 KeyboardView bridge (`core/keyboard-panel`) gives the panel keys
+of a CANOPY track to the track keyboard, as for any track it plays; CANOPY has
+no panel path of its own, and tracks the track keyboard does not play keep the
+stock handlers. Leaving keyboard mode or detaching the view cancels the track
+keyboard's panel notes. While the sequencer live records, a press on a CANOPY
+track goes to the track keyboard's native record path
+(`tk_panel_native_record_on`), with the stock audition guarded for that track
+and pitch. During step entry, or with a trig held, the stock note action
+records the note and the track keyboard auditions it; both releases pair. A
+note the stock key handler writes with KEYBOARD held (without the note action)
+is captured by the track keyboard (`tk_capture_panel_press`, then
+`tk_capture_note_list_commit` after the stock note-list writer) and is not
+auditioned. Steps recorded earlier keep their chord-note locks (IDs 53..55),
+which the lock decode still reads; recording no longer writes them
+(findings 347 and 125).
 
 The early-frame transport callbacks copy normalized events into an owned input
 buffer. The admitted process callback runs once per frame; the raw stock-carrier
@@ -78,30 +73,32 @@ Neither kind of test establishes a hardware CPU budget.
 The normal-file loader publishes the assigned type only after CREATE. Because
 that happens after the stock machine chooser is constructed, a narrowly scoped
 hook remembers the persistent view and refreshes its items once on the UI task
-when the admitted type appears. The firmware module set remains boot-only. The
-CANOPY > INPUT setup starts disabled and exposes USB, DIN and channel 1-16.
-The corresponding stock MIDI receive ports must also be enabled.
+when the admitted type appears. The firmware module set remains boot-only.
 Sound changes revoke ownership before in-place writes; committed pattern changes
-may refresh the same admitted carrier. Route edits preserve key tombstones.
+may refresh the same admitted carrier.
 Version 3 replies carry row-zero phase and allocation generation. A process fault
 closes admission and requests acknowledged DETACH before releasing DSP storage;
 published CF code/metadata remain retained until reboot for existing readers.
 The adapter has its own UI tick and does not take Overloop's control callback.
 
-`modules/machine/digikit/canopy/tests/stage1.manual.device.test.ts` is the integrated acceptance.
-Prepare `out/patch/canopy-stage3.syx` from `core/instrument-play,core/digikit-menu`
-and `out/patch/canopy-dt2.dkm` from `digikit/canopy` before running the dedicated
-`canopy-stage1` Vitest project. It requires the preflighted coupled DT2 daemon
-and sample card. No firmware build in this document authorizes a device flash.
+The integrated device checks are the `canopy-arp-tests` project
+(`modules/machine/digikit/canopy/tests/*.device.test.ts`). No firmware build in
+this document authorizes a device flash.
 
 
-## Keyboard modes and shape memory
+## Keyboard modes and the track keyboard
 
-With `core/track-keyboard`, CANOPY uses the compact SOURCE layout with
-TUNE, WAVE, timbre, DRFT, MIX and LEV. Wavetable and FM sources also
-show TONE and ENV. The ARP and KEYS TRIG pages show inherited performance
-settings until a pattern override is written. Inherited sounds and patterns
-with native CANOPY locks continue using the legacy performer.
+The track keyboard (`core/track-keyboard`) is CANOPY's only note engine.
+Without it in the image, CANOPY tracks are admitted and keep their Sounds but
+nothing plays. A Sound still records its performance settings: the keyboard
+mode (PLAY, or ROOT with a chord TYPE and VOICING) and a user chord shape by
+value. The track keyboard reads them through `instrument_track_keyboard_legacy`
+and plays them; a preset or Sound load sets them, and CANOPY's own pages no
+longer edit them. The shape library (`canopy/shapes/v1`), route
+(`canopy/routes/v1`) and channel (`canopy/channels/v1`) records stay on the
+card unread. CANOPY has no MIDI route of its own: the track keyboard plays it
+from the Digitakt's MIDI config, and hands the track's pitch bend, CC1 and
+CC121 to CANOPY with its notes.
 
 The shared adapter calls `instrument_track_keyboard_lanes(track, lanes)`
 with bit 0 for the four foreground pad voices and bit 1 for the separate
@@ -110,8 +107,8 @@ the normal generation reset and bank configuration. Once ready, the owner
 sends resolved onsets and releases with
 `instrument_track_keyboard_note(track, token, pitch, velocity, on, lane)`.
 The bounded queue pairs event tokens, reserves release capacity and
-drops stale generations after a handoff. A zero mask returns ownership
-to the local performer.
+drops stale generations after a handoff. A zero mask releases the track;
+nothing plays on it until the track keyboard claims it again.
 
 The carrier suppresses its own arp and strum for a claimed track. With
 both lanes enabled it renders the Sound's MIX after eligible lock and
@@ -119,51 +116,15 @@ modulation overlays. A single lane plays at its full level and MIX shows
 that lane. The decoded Sound bank retains its saved controls. Use a
 matched CANOPY module and a firmware build with this adapter.
 
-Stage 2 keeps the sine renderer and adds a bounded ColdFire musical mapper to
-`core/instrument-play`. Open DIGIKIT > CANOPY > INPUT and explicitly enable routing.
-PLAY admits four foreground notes, preserving pitch, octave, velocity and token
-ownership; the existing DSP supplies the two bounded release tails. Stolen held
-keys stay in the physical ledger until their own releases and never reappear.
+Latch ownership is removed. Control slot 12 is reserved zero. Old CPST v1-v5
+records may contain latch 0/1; decode discards that setting and subsequent
+saves write zero without changing other sound controls. Malformed former latch
+values are still rejected.
 
-ROOT + TYPE uses last-pressed physical-root priority, falling back to the most
-recent still-held root. The selector octave defaults to C1 (MIDI 24-35).
-C/D/E/F/G/A/B choose major/sus2/minor/sus4/dom7/min7/maj7; the black keys choose
-major6/minor6/add9/diminished/custom. Selectors are silent. SELECT CH = 0 uses the
-selector octave on the root channel; 1-16 reserves that separate channel for
-selectors. Choosing the root channel as selector channel falls back to SAME so
-roles never overlap. USB/DIN and the root channel remain explicit setup choices.
-CLOSE, OPEN, INVERSION 1 and INVERSION 2 are available. A chord outside MIDI
-0-127 is rejected as a whole. A missing custom shape produces silence and an
-EMPTY status. Live chord/voicing edits retain the tokens of unchanged pitches.
-
-Latch ownership is removed. A released physical key starts its note's release
-unless held by the sustain pedal; arp candidates follow the same ownership.
-Control slot 12 is reserved zero. Old CPST v1-v5 records may contain latch 0/1;
-decode discards that setting and subsequent saves write zero without changing
-other sound controls. Malformed former latch values are still rejected.
-CC1, CC64, CC120, CC121, CC123 and per-route pitch bend retain their defined roles.
-The mapper handles pedal ownership; bend and wheel are forwarded once to the DSP.
-CC121 also emits a zero wheel value for its USB/DIN route; CC120 preserves it.
-Unsupported controllers still follow the existing stock fallthrough policy.
-
-In CANOPY > CHORD LEARN, choose one of eight SHAPE SLOT values, then LEARN TO ROOT.
-Capture auditions in isolated PLAY, accumulating up to four unique pitches even
-after release. The fifth distinct pitch reports FULL. SAVE checks the displayed
-session/revision, rejects an empty or changed capture, and stores ascending
-intervals relative to its lowest note. CANCEL or NO preserves the prior shape.
-Both exits restore the previous mode and invalidate held-key ownership.
-After saving, select SOUND B / CHRD = USER to play the learned shape.
-For example C-G-B-E above C saves 0,7,11,16; root D plays D-A-C#-F#.
-
-All eight templates occupy one versioned 48-byte `canopy/shapes/v1` record in the
-shared settings store. Validation covers length, version, checksum, reserved
-bytes, counts, range and ordering before applying any template. RAM save is
-immediate; a UI-task tick performs the durable write without holding the MIDI
-critical section. Failure retains RAM and dirty state; RETRY SHAPE SAVE retries.
-Learned templates and saved presets persist across reboot. Keyboard mode,
-voicing and sound controls start at defaults until you load a preset. External
-MIDI starts disabled unless SAVE ROUTING was used; saved routing is restored
-after instrument admission, with activation still gated by the DSP handshake.
+PANIC releases sound. RECOVER KEYBOARD asks for all keys and pedals to be
+released before clearing capacity quarantine and advancing the MIDI epoch. It
+cannot restore a failed boot/session guard or a retired DSP callback; those
+require a real restart.
 
 ### Stage 5 preset storage checkpoint
 
@@ -186,9 +147,7 @@ BPM/clock storage positions, and the custom shape by value. Current loads and
 saves normalize those retired fields to the pattern clock and a reserved BPM
 placeholder; they cannot select a separate tempo. Migration alone does not mark
 the sound as edited. It excludes routing, native TUNE/
-LEVEL, held keys, pedal membership, tokens, phase and pointers. Loading does not
-overwrite any of the eight learned library slots. Selecting a different shape
-slot or completing LEARN releases the preset shape override.
+LEVEL, held keys, pedal membership, tokens, phase and pointers.
 
 The format uses big-endian 16-bit controls and BPM, canonical zero padding and
 a 32-bit FNV-1a checksum. Length, schema, checksum, every range, shape ordering
@@ -205,36 +164,6 @@ Migration alone does not mark a loaded preset unsaved.
 
 This checkpoint does not implement the named SRC pages, display telemetry or
 native Sound/pattern persistence. Those Stage 5 acceptance tasks remain open.
-
-SAVE ROUTING stores enable, USB/DIN choices, root channel, selector channel and
-selector octave separately in a 16-byte `canopy/routes/v1` record. It snapshots
-the requested setup when pressed and writes on the UI task. Boot validates the
-entire record before restoring anything, then waits for a registered instrument
-generation. The existing healthy/prepared/configured handshake still gates
-actual MIDI route activation. An explicit route edit cancels deferred boot
-restoration. Invalid records leave routing disabled at its boot defaults.
-Failed saves keep working settings and offer retry through SAVE ROUTING.
-Including this entry, all CANOPY settings occupy 424 bytes with entry overhead.
-
-PANIC releases sound and retains held-key tombstones. RECOVER KEYBOARD separately
-asks for all keys and pedals to be released before clearing capacity quarantine
-and advancing the MIDI epoch. It cannot restore a failed boot/session guard or
-a retired DSP callback; those require a real restart. Route/mode changes also
-retain tombstones, so an old release cannot kill a new same-pitch press.
-
-The optional mapper consumes at most eight physical note events or one controller
-at a time. Selectors within a batch precede roots. Audible diffs contain at most
-eight commands; original FIFO retirement counts are separate from output counts.
-Retries retain the exact mapped packet, never re-run the musical transformation,
-and only matching acknowledgements retire physical events. Silent selector-only
-batches retire locally. Pending UI diffs are sent before new controller batches.
-Idle calls do no pool scan. No allocation, card access or UI calls run in this path.
-
-Host scenarios execute the production C engine, transport and UI callbacks in
-`tests/regression/host/canopy-keyboard.test.ts`; the combined Stage 1/2 acceptance
-remains in `modules/machine/digikit/canopy/tests/stage1.manual.device.test.ts` and uses the
-artifact names above. Instruction tests measure bounded CF work separately from
-SHARC rendering. These checks do not establish hardware timing or release approval.
 
 
 ## Stock MOD integration
@@ -366,7 +295,7 @@ parameter editor and bounded custom value cells; the remaining controls use
 stable preset IDs. The adapter captures queued encoder ownership at dispatch
 and excludes stock tracks, alternate context and opaque modals.
 
-Stage 5 acceptance is `modules/machine/digikit/canopy/tests/stage5.manual.device.test.ts`. The earlier
+Stage 5 acceptance was a manual device test, removed with CANOPY's own note engine. The earlier
 native-UI checkpoint used `out/patch/canopy-stage5-native.syx` and the matching
 `out/patch/canopy-stage5-native.dkm`; these are not the FM artifacts. The
 [FM handover](../../../docs/handovers/HANDOVER-2026-11-09-canopy-fm.md) records

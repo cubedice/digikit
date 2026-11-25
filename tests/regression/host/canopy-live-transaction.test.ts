@@ -22,7 +22,6 @@ beforeAll(() => {
       '-I',
       path.join(root, 'sdk/include'),
       path.join(import.meta.dirname, 'canopy-live-transaction.c'),
-      path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
       ...[
         'preset.c',
         'src-state.c',
@@ -44,13 +43,9 @@ afterAll(() => fs.rmSync(directory, { recursive: true, force: true }));
 test.each([
   ['encoder', 'publishes immutable snapshots through the public encoder or refuses without mutation'],
   ['native', 'passes native controls and list remainders without consuming reserved snapshots'],
-  ['midi', 'keeps musical notes and releases working when selectors are refused, then retries'],
-  ['track', 'attaches to the mapped keyboard track while another instance owns the UI'],
   ['identity', 'refuses stale owner identity and failed preparation without publishing or consuming reservations'],
-  ['admission', 'filters selectors with unavailable admission or binding while preserving notes and releases'],
-  ['learn', 'passes unmapped input and captures LEARN notes without invoking persistence callbacks'],
   ['disabled', 'rejects partial registration and restores ordinary APIs when callbacks are disabled'],
-  ['reentry', 'refuses nested encoder, MIDI, and registration calls without corrupting the outer edit'],
+  ['reentry', 'refuses nested encoder and registration calls without corrupting the outer edit'],
 ])('%s: %s', (scenario) => {
   expect(() => execFileSync(executable, [scenario], { timeout: 10_000 })).not.toThrow();
 });

@@ -5,19 +5,14 @@ static const uint16_t high[CP_CONTROLS] = {11, 3,   127, 127, 500, 127, 8,   4, 
                                            2,  0,   0,   127, 127, 4,   700, 100, 1000, 2,   2,
                                            1,  200, 127, 127, 200, 200, 100, 15,  200,  200};
 static const uint16_t fm_high[12] = {3, 100, 15, 15, 100, 127, 127, 100, 127, 200, 200, 200};
-static const uint8_t controls[4][8] = {
-    {CS_TUNE, CP_CHORD, CP_VOICING, CP_STRUM, CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL},
-    {CP_RATE, CP_ORDER, CP_OCTAVES, CP_GATE, CP_SWING, CP_RESTART, CS_NONE, CS_NONE},
-    {CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_DRIFT, CP_WT_CLOCK, CP_WT_RESET},
-    {CP_WT_ATTACK, CP_WT_RELEASE, CP_WTFM_DEPTH, CP_WTFM_RATIO, CP_WT_ENV, CP_WTFM_ENV,
-     CP_WT_VELOCITY, CS_NONE}};
 static uint32_t family(const CsState *s)
 {
     return (s->metadata >> 4) & 3;
 }
 uint32_t cs_pages(const CsState *s)
 {
-    return cs_shared_keyboard(s) ? CS_SHARED_PAGES : 4;
+    (void)s;
+    return CS_SHARED_PAGES;
 }
 static void remember(CsState *s)
 {
@@ -48,20 +43,6 @@ static void list_reset(CsState *s)
         ((volatile uint8_t *)s->list_id)[i] = CS_NONE;
     }
 }
-void cs_track_keyboard(CsState *s, int active)
-{
-    if (cs_shared_keyboard(s) == !!active)
-        return;
-    s->layout ^= CS_SHARED_KEYBOARD;
-    s->page[s->track] = 0;
-    s->focus = 0;
-    s->focus_id = CS_NONE;
-    list_reset(s);
-    if (s->token != UINT32_MAX)
-        ++s->token;
-    else
-        s->visible = 0;
-}
 static int is_list(const CsState *s, uint32_t control)
 {
     if (control == CS_WAVE)
@@ -70,9 +51,7 @@ static int is_list(const CsState *s, uint32_t control)
         return 1;
     if (family(s) == 3 && control >= 16 && control < 28)
         return control == CP_FM_ALG || control == CP_FM_RTA || control == CP_FM_RTB;
-    return control == CP_CHORD || control == CP_VOICING || control == CP_RATE ||
-           control == CP_ORDER || control == CP_OCTAVES || control == CP_RESTART ||
-           control == CP_WT_SHAPE || control == CP_WT_RESET || control == CP_WT_CLOCK ||
+    return control == CP_WT_SHAPE || control == CP_WT_RESET || control == CP_WT_CLOCK ||
            (control == CP_WT_RATE && s->value[CP_WT_CLOCK]);
 }
 static int32_t list_steps(CsState *s, uint32_t encoder, uint32_t control, int32_t movement)
@@ -108,6 +87,8 @@ void cs_init(CsState *s)
     s->value[CP_ATTACK] = 5;
     s->value[CP_RELEASE] = 15;
     cp_fm_defaults(s->fm);
+    /* the track keyboard plays every CANOPY track: its pages (VOICE, FM ENV, DETAIL) are the only layout */
+    s->layout = CS_SHARED_KEYBOARD;
     remember(s);
     list_reset(s);
 }
@@ -117,7 +98,7 @@ uint32_t cs_context(CsState *s, uint32_t track, uint32_t generation, int visible
     /* Legacy callers/presets may still supply the removed selector. ARP has
      * one clock domain now; its tempo comes from the pattern. */
     clock = CP_ARP_CLOCK;
-    if (track >= 16 || page >= cs_pages(s) || mode > KB_LEARN) {
+    if (track >= 16 || page >= cs_pages(s) || mode > KB_ROOT) {
         visible = 0;
         track = 0;
         page = 0;
@@ -171,63 +152,32 @@ void cs_sync(CsState *s, const uint16_t values[CP_CONTROLS])
     ++s->revision;
     s->pending |= changed;
 }
-uint32_t cs_control(uint32_t page, uint32_t encoder)
-{
-    return page < 4 && encoder < 8 ? controls[page][encoder] : CS_NONE;
-}
 uint32_t cs_mapped_control(const CsState *s, uint32_t encoder)
 {
     if (encoder >= 8)
         return CS_NONE;
     uint32_t page = s->page[s->track], source = family(s);
-    if (cs_shared_keyboard(s)) {
-        static const uint8_t voice[3][8] = {
-            {CS_WAVE, CP_COLOR, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_DRIFT},
-            {CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_WT_CLOCK, CP_WT_RESET,
-             CP_DRIFT},
-            {CS_WAVE, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CS_NONE, CP_DRIFT}};
-        static const uint8_t envelopes[2][8] = {
-            {CP_WT_ATTACK, CP_WT_RELEASE, CS_NONE, CP_WT_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
-             CP_WT_VELOCITY, CP_WTFM_ENV},
-            {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
-             CP_FM_VELOCITY, CS_NONE}};
-        static const uint8_t detail[8] = {CS_TUNE, CS_NONE, CS_NONE,    CS_NONE,
-                                          CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL};
-        uint32_t bank = source < 2 ? 0 : source - 1;
-        if (page == CS_VOICE)
-            return voice[bank][encoder];
-        if (page == CS_DETAIL)
-            return detail[encoder];
-        return page == CS_FM_ENV && source >= 2 ? envelopes[source - 2][encoder] : CS_NONE;
-    }
-    if (page == 2) {
-        if (family(s) < 2) {
-            static const uint8_t legacy[8] = {CS_WAVE, CP_COLOR, CP_DRIFT, CS_NONE,
-                                              CS_NONE, CS_NONE,  CS_NONE,  CS_NONE};
-            return legacy[encoder];
-        }
-        if (family(s) == 3) {
-            static const uint8_t fmtone[8] = {CS_WAVE,   CP_COLOR,  CP_FM_ALG, CP_FM_BAL,
-                                              CP_FM_RTA, CP_FM_RTB, CP_FM_FB,  CP_DRIFT};
-            return fmtone[encoder];
-        }
-    }
-    if (page == 3) {
-        if (family(s) < 2)
-            return CS_NONE;
-        if (family(s) == 3) {
-            static const uint8_t fmenv[8] = {CP_FM_ATTACK,  CP_FM_DECAY, CP_FM_SUSTAIN,
-                                             CP_FM_RELEASE, CP_FM_ENV,   CP_FM_VELOCITY,
-                                             CS_NONE,       CS_NONE};
-            return fmenv[encoder];
-        }
-    }
-    return cs_control(page, encoder);
+    static const uint8_t voice[3][8] = {
+        {CS_WAVE, CP_COLOR, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CS_NONE, CP_DRIFT},
+        {CS_WAVE, CP_WT_POS, CP_WT_DEPTH, CP_WT_RATE, CP_WT_SHAPE, CP_WT_CLOCK, CP_WT_RESET,
+         CP_DRIFT},
+        {CS_WAVE, CP_FM_ALG, CP_FM_BAL, CP_FM_RTA, CP_FM_RTB, CP_FM_FB, CS_NONE, CP_DRIFT}};
+    static const uint8_t envelopes[2][8] = {
+        {CP_WT_ATTACK, CP_WT_RELEASE, CS_NONE, CP_WT_ENV, CP_WTFM_DEPTH, CP_WTFM_RATIO,
+         CP_WT_VELOCITY, CP_WTFM_ENV},
+        {CP_FM_ATTACK, CP_FM_DECAY, CP_FM_SUSTAIN, CP_FM_RELEASE, CP_COLOR, CP_FM_ENV,
+         CP_FM_VELOCITY, CS_NONE}};
+    static const uint8_t detail[8] = {CS_TUNE, CS_NONE, CS_NONE,    CS_NONE,
+                                      CS_NONE, CS_NONE, CP_ARP_MIX, CS_LEVEL};
+    uint32_t bank = source < 2 ? 0 : source - 1;
+    if (page == CS_VOICE)
+        return voice[bank][encoder];
+    if (page == CS_DETAIL)
+        return detail[encoder];
+    return page == CS_FM_ENV && source >= 2 ? envelopes[source - 2][encoder] : CS_NONE;
 }
 uint32_t cs_choice_value(const CsState *s, uint32_t control)
 {
-    if (control == CP_CHORD)
-        return s->mode == KB_PLAY ? 0 : 1u + s->value[CP_CHORD];
     if (control == CS_CLOCK)
         return CP_ARP_CLOCK;
     if (control == CS_BPM)
@@ -240,8 +190,6 @@ uint32_t cs_choice_value(const CsState *s, uint32_t control)
 }
 uint32_t cs_choice_max(const CsState *s, uint32_t control)
 {
-    if (control == CP_CHORD)
-        return 12;
     if (control == CS_CLOCK)
         return 2;
     if (control == CS_BPM)
@@ -321,17 +269,14 @@ static int move(CsState *s, uint32_t token, uint32_t encoder, int32_t *detents, 
         return CS_STALE;
     uint32_t control = cs_mapped_control(s, encoder);
     *id = control;
-    if (s->modal || s->mode == KB_LEARN || control == CS_NONE)
+    if (s->modal || control == CS_NONE)
         return CS_READONLY;
     s->focus = 1;
     s->focus_id = (uint8_t)control;
     s->focus_at = now;
     if (control == CS_TUNE || control == CS_LEVEL)
         return CS_NATIVE;
-    if ((control >= 16 && control < CP_CONTROLS && family(s) < 2) || control == CP_SOURCE ||
-        (s->mode == KB_PLAY && (control == CP_VOICING || control == CP_STRUM)) ||
-        /* A learned shape fixes its voicing, not the choice of chord. */
-        (s->learned && control == CP_VOICING))
+    if ((control >= 16 && control < CP_CONTROLS && family(s) < 2) || control == CP_SOURCE)
         return CS_READONLY;
     /* Clamp before addition; even a malformed INT_MIN event cannot overflow. */
     uint32_t maximum = cs_choice_max(s, control),
@@ -386,23 +331,14 @@ int cs_edit(CsState *s, uint32_t token, uint32_t encoder, int32_t detents, uint3
     uint32_t maximum = cs_choice_max(s, control), current = cs_choice_value(s, control);
     int discrete = is_list(s, control);
     uint32_t next = (uint32_t)((int32_t)current + detents), metadata = s->metadata;
-    uint8_t mode = s->mode, learned = s->learned;
-    if (control == CP_CHORD) {
-        mode = next ? KB_ROOT : KB_PLAY;
-        learned = (uint8_t)(next == 11);
-        metadata = (metadata & ~3u) | mode;
-    } else if (control == CS_WAVE)
+    if (control == CS_WAVE)
         metadata = (metadata & ~0x30u) | ((next < 2 ? next : next == 7 ? 3u : 2u) << 4);
-    int context_changed =
-        mode != s->mode || learned != s->learned || ((metadata ^ s->metadata) & 0x3c);
+    int context_changed = !!((metadata ^ s->metadata) & 0x3c);
     if (context_changed && s->token == UINT32_MAX) {
         s->visible = 0;
         return CS_READONLY;
     }
-    if (control == CP_CHORD) {
-        if (next)
-            s->value[control] = (uint16_t)(next - 1);
-    } else if (control < CP_CONTROLS) {
+    if (control < CP_CONTROLS) {
         s->value[control] = (uint16_t)next;
         if (family(s) == 2 && control == CP_WT_CLOCK) {
             s->value[CP_WT_RATE] = (uint16_t)(next ? 3 : 10);
@@ -410,8 +346,6 @@ int cs_edit(CsState *s, uint32_t token, uint32_t encoder, int32_t detents, uint3
             list_reset(s);
         }
     }
-    s->mode = mode;
-    s->learned = learned;
     s->metadata = metadata;
     s->layout = (uint8_t)((s->layout & CS_SHARED_KEYBOARD) | family(s));
     if (control == CS_WAVE) {

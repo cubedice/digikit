@@ -3,7 +3,6 @@
 #define main settings_driver_main
 #include "canopy-settings.c"
 #undef main
-#undef keyboard
 #undef pad_family
 #undef pad_color
 #undef arp_bpm
@@ -18,29 +17,6 @@
 #include <assert.h>
 #include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
 #include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
-
-/* The suite links production keyboard.c. Unrelated selector-proof paths must
- * not be reached; their separate fixture is deliberately not substituted. */
-int kb_selector_candidate(const KbState *s, const MiEvent *input, uint32_t count, uint32_t *type)
-{
-    (void)s;
-    (void)input;
-    (void)count;
-    (void)type;
-    assert(!"selector proof is outside the menu test");
-    return -1;
-}
-int kb_process_locked_selector(KbState *s, const MiEvent *input, uint32_t count, MiEvent output[8],
-                               int allow)
-{
-    (void)s;
-    (void)input;
-    (void)count;
-    (void)output;
-    (void)allow;
-    assert(!"selector proof is outside the menu test");
-    return -1;
-}
 
 typedef struct {
     SsPool pool;
@@ -93,7 +69,7 @@ static void setup(MenuTransaction *tx, int family, uint32_t capacity)
 {
     memset(tx, 0, sizeof(*tx));
     ip_init();
-    keyboard_initialized = 1;
+    records_loaded = 1;
     cur = &inst[0];
     selected = focus = 0;
     cur->track = cur->bound = ip_tracks[0] = 0;

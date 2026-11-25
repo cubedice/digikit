@@ -43,16 +43,6 @@ midi_vec_table:
     .long mi_registry_expect_session
     .long mi_registry_reply
     .long instrument_write_frame
-    .globl kbp_vec_table
-kbp_vec_table:
-    .long instrument_track_owned
-    .long instrument_track_keyboard_routed
-    .long instrument_track_plays_keys
-    .long instrument_record_chord
-    .long instrument_select_track
-    .long mi_panel_key
-    .long mi_panel_release
-    .long mi_seq_mute
     .text
     .even
     .globl cp_decode
@@ -99,151 +89,143 @@ sa_seq:
 sa_slot:
     movea.l ip_img+52,%a1
     jmp (%a1)
-    .globl ip_panel_tick
-ip_panel_tick:
-    movea.l ip_img+56,%a1
-    jmp (%a1)
-    .globl ip_panel_step_note
-ip_panel_step_note:
-    movea.l ip_img+60,%a1
-    jmp (%a1)
     .globl ip_sa_ensure
 ip_sa_ensure:
-    movea.l ip_img+64,%a1
+    movea.l ip_img+56,%a1
     jmp (%a1)
     .globl ip_sa_store
 ip_sa_store:
-    movea.l ip_img+68,%a1
+    movea.l ip_img+60,%a1
     jmp (%a1)
     .globl ip_sa_tick
 ip_sa_tick:
-    movea.l ip_img+72,%a1
+    movea.l ip_img+64,%a1
     jmp (%a1)
     .globl dk_ui_core_handle
 dk_ui_core_handle:
-    movea.l ip_img+76,%a1
+    movea.l ip_img+68,%a1
     jmp (%a1)
     .globl dkrt_instrument_generation
 dkrt_instrument_generation:
-    movea.l ip_img+80,%a1
+    movea.l ip_img+72,%a1
     jmp (%a1)
     .globl dkrt_instrument_type
 dkrt_instrument_type:
-    movea.l ip_img+84,%a1
+    movea.l ip_img+76,%a1
     jmp (%a1)
     .globl dkrt_irq_mask
 dkrt_irq_mask:
-    movea.l ip_img+88,%a1
+    movea.l ip_img+80,%a1
     jmp (%a1)
     .globl dkrt_irq_restore
 dkrt_irq_restore:
-    movea.l ip_img+92,%a1
+    movea.l ip_img+84,%a1
     jmp (%a1)
     .globl dkrt_settings_flush
 dkrt_settings_flush:
-    movea.l ip_img+96,%a1
+    movea.l ip_img+88,%a1
     jmp (%a1)
     .globl dkrt_settings_get
 dkrt_settings_get:
-    movea.l ip_img+100,%a1
+    movea.l ip_img+92,%a1
     jmp (%a1)
     .globl dkrt_settings_put
 dkrt_settings_put:
-    movea.l ip_img+104,%a1
+    movea.l ip_img+96,%a1
     jmp (%a1)
     .globl mf_src_register
 mf_src_register:
-    movea.l ip_img+108,%a1
+    movea.l ip_img+100,%a1
     jmp (%a1)
     .globl mf_src_unregister
 mf_src_unregister:
-    movea.l ip_img+112,%a1
+    movea.l ip_img+104,%a1
     jmp (%a1)
     .globl pp_current_pattern
 pp_current_pattern:
-    movea.l ip_img+116,%a1
+    movea.l ip_img+108,%a1
     jmp (%a1)
     .globl tk_capture_note_list_commit
 tk_capture_note_list_commit:
-    movea.l ip_img+120,%a1
+    movea.l ip_img+112,%a1
     jmp (%a1)
     .globl tk_capture_panel_press
 tk_capture_panel_press:
-    movea.l ip_img+124,%a1
+    movea.l ip_img+116,%a1
     jmp (%a1)
     .globl tk_capture_panel_release
 tk_capture_panel_release:
-    movea.l ip_img+128,%a1
+    movea.l ip_img+120,%a1
     jmp (%a1)
     .globl tk_panel_cancel
 tk_panel_cancel:
-    movea.l ip_img+132,%a1
+    movea.l ip_img+124,%a1
     jmp (%a1)
     .globl tk_panel_focus
 tk_panel_focus:
-    movea.l ip_img+136,%a1
+    movea.l ip_img+128,%a1
     jmp (%a1)
     .globl tk_panel_native_record_on
 tk_panel_native_record_on:
-    movea.l ip_img+140,%a1
+    movea.l ip_img+132,%a1
     jmp (%a1)
     .globl tk_panel_off
 tk_panel_off:
-    movea.l ip_img+144,%a1
+    movea.l ip_img+136,%a1
     jmp (%a1)
     .globl tk_panel_on
 tk_panel_on:
-    movea.l ip_img+148,%a1
+    movea.l ip_img+140,%a1
     jmp (%a1)
     .globl tk_panel_record_audition
 tk_panel_record_audition:
-    movea.l ip_img+152,%a1
+    movea.l ip_img+144,%a1
     jmp (%a1)
     .globl tk_panel_retrig
 tk_panel_retrig:
-    movea.l ip_img+156,%a1
+    movea.l ip_img+148,%a1
     jmp (%a1)
     .globl tk_pattern_cleared
 tk_pattern_cleared:
-    movea.l ip_img+160,%a1
+    movea.l ip_img+152,%a1
     jmp (%a1)
     .globl tk_pattern_copied
 tk_pattern_copied:
-    movea.l ip_img+164,%a1
+    movea.l ip_img+156,%a1
     jmp (%a1)
     .globl tk_runtime_init
 tk_runtime_init:
-    movea.l ip_img+168,%a1
+    movea.l ip_img+160,%a1
     jmp (%a1)
     .globl tk_midi_channel_message
 tk_midi_channel_message:
-    movea.l ip_img+172,%a1
+    movea.l ip_img+164,%a1
     jmp (%a1)
     .globl rtm_can_save
 rtm_can_save:
-    movea.l ip_img+176,%a1
+    movea.l ip_img+168,%a1
     jmp (%a1)
     .globl rtm_mod_carrier
 rtm_mod_carrier:
-    movea.l ip_img+180,%a1
+    movea.l ip_img+172,%a1
     jmp (%a1)
     .globl rtm_mod_param
 rtm_mod_param:
-    movea.l ip_img+184,%a1
+    movea.l ip_img+176,%a1
     jmp (%a1)
     .globl rtm_src
 rtm_src:
-    movea.l ip_img+188,%a1
+    movea.l ip_img+180,%a1
     jmp (%a1)
     .globl dl_reset_begin
 dl_reset_begin:
-    movea.l ip_img+192,%a1
+    movea.l ip_img+184,%a1
     jmp (%a1)
     .globl dl_reset_quiesce
 dl_reset_quiesce:
-    movea.l ip_img+196,%a1
+    movea.l ip_img+188,%a1
     jmp (%a1)
     .bss
     .balign 4
     .globl ip_img
-ip_img: .space 284
+ip_img: .space 276

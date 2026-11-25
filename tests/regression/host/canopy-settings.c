@@ -4,7 +4,6 @@
 #include "../../../image-modules/adapters/instrument-play/src/cf/control.c"
 /* The driver plays the instance admitted on track 0 (instance 0); these names
  * keep its commands readable against the per-instance bridge. */
-#define keyboard (cur->keyboard)
 #define pad_family (cur->pad_family)
 #define pad_color (cur->pad_color)
 #define arp_bpm (cur->arp_bpm)
@@ -44,15 +43,10 @@ volatile uint32_t ip_track;
 volatile uint32_t ip_tracks[IP_INSTANCES] = {0, IP_NONE, IP_NONE, IP_NONE};
 volatile uint32_t ip_admission[IP_INSTANCES * 8];
 static struct dk_ui_menu menus[12];
-static unsigned menu_count, masked, unsafe_io, token = 1;
-static int exists, staged, put_error, flush_error, open_error;
-static uint8_t card[KB_RECORD_BYTES], pending_card[KB_RECORD_BYTES];
+static unsigned menu_count, masked, unsafe_io;
+static int put_error, flush_error, open_error;
 static uint8_t preset_card[CP_SLOTS][CP_RECORD_BYTES], preset_staged[CP_SLOTS][CP_RECORD_BYTES];
 static unsigned preset_exists, preset_staged_mask, preset_bytes[CP_SLOTS];
-static uint8_t route_card[CR_BYTES], route_staged[CR_BYTES];
-static int route_exists, route_staged_valid;
-static uint8_t channels_card[CC_BYTES], channels_staged[CC_BYTES];
-static int channels_exists, channels_staged_valid;
 static uint32_t admitted = 1, route_calls, status_reads;
 static uint32_t config_words[32], config_revision, config_schema, config_count;
 static int preset_index(const char *key)
@@ -115,12 +109,6 @@ void mi_instance_bind(uint32_t track, uint32_t slot)
     (void)slot;
     mi_instance_reset(track);
 }
-uint32_t mi_route_track(uint32_t p, uint32_t c)
-{
-    (void)p;
-    (void)c;
-    return MI_NONE;
-}
 int mi_registry_reply(uint32_t *out, uint32_t words)
 {
     (void)out;
@@ -177,22 +165,6 @@ int dkrt_settings_get(const char *key, uint8_t *out, uint32_t capacity)
 {
     if (masked)
         ++unsafe_io;
-    if (!strcmp(key, channels_key)) {
-        if (capacity < CC_BYTES)
-            return -69;
-        if (!channels_exists)
-            return -68;
-        memcpy(out, channels_card, CC_BYTES);
-        return CC_BYTES;
-    }
-    if (!strcmp(key, route_key)) {
-        if (capacity < CR_BYTES)
-            return -69;
-        if (!route_exists)
-            return -68;
-        memcpy(out, route_card, CR_BYTES);
-        return CR_BYTES;
-    }
     int index = preset_index(key);
     if (index >= 0) {
         if (capacity < CP_RECORD_BYTES)
@@ -202,35 +174,12 @@ int dkrt_settings_get(const char *key, uint8_t *out, uint32_t capacity)
         memcpy(out, preset_card[index], preset_bytes[index]);
         return (int)preset_bytes[index];
     }
-    if (strcmp(key, "canopy/shapes/v1") || capacity < sizeof(card))
-        return -69;
-    if (!exists)
-        return -68;
-    memcpy(out, card, sizeof(card));
-    return sizeof(card);
+    return -69;
 }
 int dkrt_settings_put(const char *key, const uint8_t *in, uint32_t size)
 {
     if (masked)
         ++unsafe_io;
-    if (!strcmp(key, channels_key)) {
-        if (size != CC_BYTES)
-            return -69;
-        if (put_error)
-            return put_error;
-        memcpy(channels_staged, in, CC_BYTES);
-        channels_staged_valid = 1;
-        return 0;
-    }
-    if (!strcmp(key, route_key)) {
-        if (size != CR_BYTES)
-            return -69;
-        if (put_error)
-            return put_error;
-        memcpy(route_staged, in, CR_BYTES);
-        route_staged_valid = 1;
-        return 0;
-    }
     int index = preset_index(key);
     if (index >= 0) {
         if (size != CP_RECORD_BYTES)
@@ -241,13 +190,7 @@ int dkrt_settings_put(const char *key, const uint8_t *in, uint32_t size)
         preset_staged_mask |= 1u << index;
         return 0;
     }
-    if (strcmp(key, "canopy/shapes/v1") || size != sizeof(card))
-        return -69;
-    if (put_error)
-        return put_error;
-    memcpy(pending_card, in, size);
-    staged = 1;
-    return 0;
+    return -69;
 }
 int dkrt_settings_flush(void)
 {
@@ -255,16 +198,6 @@ int dkrt_settings_flush(void)
         ++unsafe_io;
     if (flush_error)
         return flush_error;
-    if (route_staged_valid) {
-        memcpy(route_card, route_staged, CR_BYTES);
-        route_exists = 1;
-        route_staged_valid = 0;
-    }
-    if (channels_staged_valid) {
-        memcpy(channels_card, channels_staged, CC_BYTES);
-        channels_exists = 1;
-        channels_staged_valid = 0;
-    }
     for (unsigned i = 0; i < CP_SLOTS; ++i)
         if (preset_staged_mask & (1u << i)) {
             memcpy(preset_card[i], preset_staged[i], CP_RECORD_BYTES);
@@ -272,11 +205,6 @@ int dkrt_settings_flush(void)
             preset_exists |= 1u << i;
         }
     preset_staged_mask = 0;
-    if (staged) {
-        memcpy(card, pending_card, sizeof(card));
-        exists = 1;
-        staged = 0;
-    }
     return 0;
 }
 dk_ui_menu *dk_ui_menu_new(dk_ui *ui, const dk_ui_menu_desc *d)
@@ -382,73 +310,18 @@ int main(void)
         value = 0;
         if (sscanf(line, "%23s %d", cmd, &value) < 1)
             continue;
-        if (!strcmp(cmd, "learn"))
-            learn_begin(0, 0);
-        else if (!strcmp(cmd, "key")) {
-            MiEvent in = {0}, out[8];
-            in.kind = MI_NOTE_ON;
-            in.note = (uint8_t)value;
-            in.value = 90;
-            in.epoch = mi_ledger.epoch;
-            in.generation = mi_ledger.generations[0];
-            in.token = token++;
-            instrument_keyboard_events(0, in.epoch, in.generation, &in, 1, out);
-        } else if (!strcmp(cmd, "tick"))
+        if (!strcmp(cmd, "tick"))
             instrument_play_tick();
-        else if (!strcmp(cmd, "save"))
-            learn_close(0, 1);
-        else if (!strcmp(cmd, "yes")) {
-            if (learn_menu && learn_menu->open && value >= 0 && value < learn_menu->count &&
-                learn_menu->rows[value].fn)
-                learn_menu->rows[value].fn(learn_menu->rows[value].ctx,
-                                           learn_menu->rows[value].arg);
-        } else if (!strcmp(cmd, "suspend"))
+        else if (!strcmp(cmd, "suspend"))
             instrument_sound_suspend(0);
-        else if (!strcmp(cmd, "back"))
-            learn_back(0);
         else if (!strcmp(cmd, "puterror"))
             put_error = value;
         else if (!strcmp(cmd, "flusherror"))
             flush_error = value;
         else if (!strcmp(cmd, "openerror"))
             open_error = value;
-        else if (!strcmp(cmd, "retry"))
-            retry_save(0, 0);
-        else if (!strcmp(cmd, "routesave"))
-            route_save(0, 0);
-        else if (!strcmp(cmd, "enable")) {
-            enabled = value;
-            changed(0, 0);
-        } else if (!strcmp(cmd, "channel")) {
-            ui_channel = value;
-            channel_changed(0, value);
-        } else if (!strcmp(cmd, "usb")) {
-            usb = value;
-            changed(0, 0);
-        } else if (!strcmp(cmd, "din")) {
-            din = value;
-            changed(0, 0);
-        } else if (!strcmp(cmd, "selectorchannel")) {
-            selector_channel = value;
-            changed(0, 0);
-        } else if (!strcmp(cmd, "selectoroctave")) {
-            selector_octave = value;
-            changed(0, 0);
-        } else if (!strcmp(cmd, "admitted"))
+        else if (!strcmp(cmd, "admitted"))
             admitted = (uint32_t)value;
-        else if (!strcmp(cmd, "corruptroute"))
-            route_card[value] ^= 1;
-        else if (!strcmp(cmd, "resignroute")) {
-            route_card[14] = route_card[15] = 0;
-            for (unsigned i = 0; i < 14; ++i) {
-                route_card[14] += route_card[i];
-                route_card[15] += route_card[14];
-            }
-        } else if (!strcmp(cmd, "routestate"))
-            printf(
-                "{\"enabled\":%d,\"usb\":%d,\"din\":%d,\"channel\":%d,\"octave\":%d,\"selector\":%d,\"result\":%d,\"pending\":%d,\"restore\":%d,\"calls\":%u,\"unsafe\":%u}\n",
-                enabled, usb, din, (int)channel_of(cur), selector_octave, selector_channel,
-                route_result, route_pending, route_restore, route_calls, unsafe_io);
         else if (!strcmp(cmd, "presetsave"))
             preset_save(0, 0);
         else if (!strcmp(cmd, "presetload"))
@@ -503,7 +376,7 @@ int main(void)
             arp_bpm = value;
             pad_changed(0, value);
         } else if (!strcmp(cmd, "config")) {
-            healthy = enabled = prepared = 1;
+            healthy = prepared = 1;
             phase = 1;
             instrument_play_tick();
             printf(
@@ -527,8 +400,9 @@ int main(void)
             instrument_src_poll(100);
             printf("{\"pending\":%u}\n", src_state.pending);
         } else if (!strcmp(cmd, "mode")) {
+            /* the Sound's performance mode, which the track keyboard plays */
             uint32_t sr = dkrt_irq_mask();
-            chord_apply((uint32_t)value, keyboard.type);
+            cur->mode = value;
             dkrt_irq_restore(sr);
         } else if (!strcmp(cmd, "srcpage"))
             src_token = instrument_src_context(0, (uint32_t)value, 1);
@@ -545,7 +419,7 @@ int main(void)
             unsigned shown = value > 0 && value < 8 ? (unsigned)value : 0u;
             printf(
                 "{\"result\":%d,\"color\":%d,\"mix\":%d,\"rate\":%d,\"type\":%u,\"dirty\":%u,\"value\":\"%s\",\"heading\":\"%s\"}\n",
-                src_result, pad_color, arp_mix, arp_rate, keyboard.type, pad_dirty,
+                src_result, pad_color, arp_mix, arp_rate, (unsigned)cur->type, pad_dirty,
                 display.value[shown], display.heading);
         } else if (!strcmp(cmd, "statuswrap")) {
             struct dk_ui_menu status = {0};
@@ -574,24 +448,15 @@ int main(void)
             puts("]}");
         } else if (!strcmp(cmd, "type")) {
             uint32_t sr = dkrt_irq_mask();
-            chord_apply(keyboard.mode, (uint32_t)value);
+            cur->type = value;
             dkrt_irq_restore(sr);
         } else if (!strcmp(cmd, "voicing")) {
             cur->voicing = value;
-            keyboard.voicing = (uint8_t)value;
-            keyboard.update = 1;
-        } else if (!strcmp(cmd, "voices")) {
-            MiEvent out[8];
-            instrument_keyboard_events(0, mi_ledger.epoch, mi_ledger.generations[0], 0, 0, out);
+        } else if (!strcmp(cmd, "sound")) {
+            /* the Sound's performance fields and its source */
             printf(
-                "{\"mode\":%u,\"type\":%u,\"generation\":%u,\"family\":%d,\"table\":%d,\"voices\":[",
-                keyboard.mode, keyboard.type, mi_ledger.generations[0], pad_family, wt[0]);
-            unsigned n = 0;
-            for (unsigned i = 0; i < 4; ++i)
-                if (keyboard.voices[i].token)
-                    printf("%s[%u,%u]", n++ ? "," : "", keyboard.voices[i].note,
-                           keyboard.voices[i].token);
-            puts("]}");
+                "{\"mode\":%d,\"type\":%d,\"voicing\":%d,\"generation\":%u,\"family\":%d,\"table\":%d}\n",
+                cur->mode, cur->type, cur->voicing, mi_ledger.generations[0], pad_family, wt[0]);
         } else if (!strcmp(cmd, "menus")) {
             struct dk_ui_menu parent = {0};
             dk_app_instrument_settings_rows(&parent);
@@ -601,9 +466,12 @@ int main(void)
                 printf("%s\"%s\"", i ? "," : "", menu->rows[i].label);
             printf("],\"children\":[");
             for (int i = 0; i < menu->count; ++i) {
-                struct dk_ui_menu *child = menu->rows[i].ctx;
-                if (!child)
-                    return 2;
+                struct dk_ui_menu *child = menu->rows[i].fn ? 0 : menu->rows[i].ctx;
+                if (!child) {
+                    /* an action or a text row */
+                    printf("%s[]", i ? "," : "");
+                    continue;
+                }
                 dk_ui_menu_open(child);
                 printf("%s[", i ? "," : "");
                 for (int row = 0; row < child->count; ++row)
@@ -628,9 +496,6 @@ int main(void)
             if (child->rows[row].fn)
                 child->rows[row].fn(child->rows[row].ctx, setting);
             dk_ui_menu_close(child);
-        } else if (!strcmp(cmd, "shapeslot")) {
-            cur->slot = value;
-            changed(0, 0);
         } else if (!strcmp(cmd, "legacypreset")) {
             uint8_t *b = preset_card[preset_slot - 1];
             b[4] = (uint8_t)value;
@@ -648,22 +513,15 @@ int main(void)
             preset_card[preset_slot - 1][value] ^= 1;
         else if (!strcmp(cmd, "presetstate")) {
             printf(
-                "{\"color\":%d,\"dirty\":%d,\"result\":%d,\"present\":%u,\"durable\":%u,\"pending\":%d,\"override\":%u,\"unsafe\":%u,\"shape\":[",
+                "{\"color\":%d,\"dirty\":%d,\"result\":%d,\"present\":%u,\"durable\":%u,\"pending\":%d,\"unsafe\":%u,\"shape\":[",
                 pad_color, preset_dirty(), preset_result, preset_present, preset_exists,
-                preset_pending, keyboard.preset_shape_active, unsafe_io);
-            const KbShape *s = keyboard.preset_shape_active ? &keyboard.preset_shape
-                                                            : &keyboard.shapes[keyboard.slot];
+                preset_pending, unsafe_io);
+            const KbShape *s = &cur->shape;
             for (unsigned i = 0; i < s->count; ++i)
                 printf("%s%u", i ? "," : "", s->intervals[i]);
             puts("]}");
         } else if (!strcmp(cmd, "restart")) {
-            enabled = 0;
-            usb = din = channel = 1;
-            selector_channel = 0;
-            selector_octave = 1;
-            for (unsigned t = 0; t < MI_TRACKS; ++t)
-                track_channel[t] = 0;
-            keyboard_initialized = 0;
+            records_loaded = 0;
             instrument_play_tick();
         }
 #ifdef DK_CANOPY_SOUND_PROOF
@@ -677,11 +535,11 @@ int main(void)
             ip_admission[4] = 7;
             ip_admission[5] = admitted;
             ip_admission[6] = 0;
-            cur->voicing = keyboard.voicing = 2;
+            cur->voicing = 2;
             int bad_snapshot = instrument_sound_snapshot(0, 0x999900, &p, &generation);
             int preserved = !memcmp(&p, &unchanged, sizeof(p)) && generation == 0;
             int saved = instrument_sound_snapshot(0, 0x123400, &p, &generation);
-            cur->voicing = keyboard.voicing = 0;
+            cur->voicing = 0;
             int bad_generation = instrument_sound_restore(0, 0x123400, generation + 1, &p);
             int bad_sound = instrument_sound_restore(0, 0x999900, generation, &p);
             ip_admission[6] = 1;
@@ -691,18 +549,10 @@ int main(void)
             printf(
                 "{\"badSnapshot\":%d,\"preserved\":%d,\"saved\":%d,\"generation\":%u,\"badGeneration\":%d,\"badSound\":%d,\"duringLoad\":%d,\"restored\":%d,\"voicing\":%u,\"masked\":%u}\n",
                 bad_snapshot, preserved, saved, generation, bad_generation, bad_sound, during_load,
-                restored, keyboard.voicing, masked);
+                restored, (unsigned)cur->voicing, masked);
         }
 #endif
-        else if (!strcmp(cmd, "snapshot")) {
-            printf(
-                "{\"mode\":%u,\"dirty\":%u,\"status\":%u,\"storage\":%d,\"pending\":%d,\"exists\":%d,\"unsafe\":%u,\"shape\":[",
-                keyboard.mode, keyboard.dirty, keyboard.status, storage_result, save_pending,
-                exists, unsafe_io);
-            for (unsigned i = 0; i < keyboard.shapes[0].count; ++i)
-                printf("%s%u", i ? "," : "", keyboard.shapes[0].intervals[i]);
-            puts("]}");
-        } else
+        else
             return 2;
     }
     return 0;

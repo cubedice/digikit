@@ -16,7 +16,7 @@ beforeAll(() => {
     [
       'canopy-settings.c',
       settings,
-      ['keyboard.c', 'src-state.c', 'src-lock-packed.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
+      ['src-state.c', 'src-lock-packed.c', 'status.c', 'src-display.c'].map((f) => path.join(source, f)),
     ],
   ] as const) {
     execFileSync(
@@ -103,86 +103,27 @@ test('active preset validation rejects attempts to save a nonzero reserved latch
   expect(invalid!.result).toBe(-1);
   expect(record).toEqual({ version: 5, reserved: 0 });
 });
-test('SRC encoder edits use the real preset/configuration bank without enabling arp', () => {
-  const [edited, restored, stale, movement] = run(
+test('SRC encoder edits use the real preset/configuration bank', () => {
+  const [edited, restored, stale] = run(
     settings,
-    // SOUND page: COLOR is encoder 1 for the legacy families.
-    'srcpage 2\nsrcturn 1 12\nsrcstate 1\npresetsave\ntick\ncolor 10\npresetload\nsrcstate 1\n' +
-      'srcturn 1 1\nsrcstate 1\nsrcpage 1\nsrcturn 0 4\nsrcstate',
+    // VOICE page: COLOR is encoder 1 for the legacy families.
+    'srcpage 0\nsrcturn 1 12\nsrcstate 1\npresetsave\ntick\ncolor 10\npresetload\nsrcstate 1\n' +
+      'srcturn 1 1\nsrcstate 1',
   );
   // No status has arrived in this harness: the display waits for the first one and shows no fault heading.
   expect(edited).toMatchObject({ result: 1, color: 76, value: '76', dirty: 1, heading: '' });
   expect(restored).toMatchObject({ color: 76, value: '76' });
   expect(stale).toMatchObject({ result: -1, color: 76 });
-  expect(movement).toMatchObject({ result: 1, rate: 5, mix: 0 });
 });
 
-test('SRC waits for a full list step and cannot edit sound values during LEARN', () => {
-  const [play, modal, closed] = run(
+test('WAVE families and the performance mode survive preset save', () => {
+  const [reed, wave, legacy, restored, direct] = run(
     settings,
-    'srcpage 0\nsrcturn 1 1\nsrcstate\nlearn\nsrcpage 2\nsrcturn 1 10\nsrcstate\n' + 'back\nsrcturn 1 10\nsrcstate',
-  );
-  expect(play).toMatchObject({ result: 0, type: 0 });
-  expect(modal).toMatchObject({ result: 0, color: 64 });
-  expect(closed).toMatchObject({ result: -1, color: 64 });
-});
-
-test.each(['', 'learn\nkey 60\nkey 67\nkey 76\ntick\nsave\ntick\n'])(
-  'SRC can leave USER in either direction without changing learned memory (%s)',
-  (learn) => {
-    const [user, lower, userAgain, upper, memory] = run(
-      settings,
-      learn +
-        'mode 1\nsrcpage 0\nsrcturn 1 40\nsrcstate\n' +
-        'srcpage 0\nsrcturn 1 -4\nsrcstate\nsrcpage 0\nsrcturn 1 4\nsrcstate\n' +
-        'srcpage 0\nsrcturn 1 4\nsrcstate\nsnapshot',
-    );
-    expect(user).toMatchObject({ result: 1, type: 10 });
-    expect(lower).toMatchObject({ result: 1, type: 9 });
-    expect(userAgain).toMatchObject({ result: 1, type: 10 });
-    expect(upper).toMatchObject({ result: 1, type: 11 });
-    expect(memory).toMatchObject({ mode: 1, shape: learn ? [0, 7, 16] : [], unsafe: 0 });
-  },
-);
-
-test('a preset loaded with USER can select a standard chord and return without losing its embedded shape', () => {
-  const [loaded, standard, back, preserved] = run(
-    settings,
-    'learn\nkey 60\nkey 76\ntick\nsave\ntick\nmode 1\ntype 10\npresetsave\ntick\n' +
-      'type 0\npresetload\npresetstate\nsrcpage 0\nsrcturn 1 -40\nsrcstate\n' +
-      'srcpage 0\nsrcturn 1 40\nsrcstate\npresetstate',
-  );
-  expect(loaded).toMatchObject({ override: 1, shape: [0, 16] });
-  expect(standard).toMatchObject({ result: 1, type: 0 });
-  expect(back).toMatchObject({ result: 1, type: 10 });
-  expect(preserved).toMatchObject({ override: 1, shape: [0, 16], unsafe: 0 });
-});
-
-test('CHRD changes performance mode with one reset and changes root types live', () => {
-  const [play, rootBoundary, root, changed, playBoundary, direct] = run(
-    settings,
-    'key 60\nvoices\nsrcpage 0\nsrcturn 1 4\nvoices\nkey 60\nvoices\n' +
-      'srcpage 0\nsrcturn 1 4\nvoices\nsrcpage 0\nsrcturn 1 -8\nvoices\nkey 62\nvoices',
-  );
-  const notes = (row: Record<string, unknown> | undefined) => (row!.voices as number[][]).map((v) => v[0]);
-  expect(notes(play)).toEqual([60]);
-  expect(rootBoundary).toMatchObject({ mode: 1, type: 0, voices: [], generation: (play!.generation as number) + 1 });
-  expect(notes(root)).toEqual([60, 64, 67]);
-  expect(changed).toMatchObject({ mode: 1, type: 1, generation: root!.generation });
-  expect(notes(changed)).toEqual([60, 64, 67, 69]);
-  expect((changed!.voices as number[][]).slice(0, 3)).toEqual(root!.voices);
-  expect(playBoundary).toMatchObject({ mode: 0, voices: [], generation: (root!.generation as number) + 1 });
-  expect(notes(direct)).toEqual([62]);
-});
-
-test('CHRD modes and WAVE families survive preset save without changing routing', () => {
-  const [reed, wave, legacy, restored, routes, direct] = run(
-    settings,
-    // CHRD is KEYS encoder 1; WAVE is SOUND encoder 0.
-    'channel 4\nsrcpage 0\nsrcturn 1 4\nsrcpage 2\nsrcturn 0 4\nconfig\n' +
-      'srcpage 2\nsrcturn 0 16\nconfig\npresetsave\ntick\n' +
-      'srcpage 2\nsrcturn 0 -20\nconfig\npresetload\nconfig\nroutestate\n' +
-      'srcpage 0\nsrcturn 1 -4\npresetsave\ntick\nmode 1\npresetload\nvoices',
+    // WAVE is VOICE encoder 0.
+    'srcpage 0\nsrcturn 0 4\nconfig\n' +
+      'srcpage 0\nsrcturn 0 16\nconfig\npresetsave\ntick\n' +
+      'srcpage 0\nsrcturn 0 -20\nconfig\npresetload\nconfig\n' +
+      'mode 1\npresetload\nsound',
   );
   expect((reed!.values as number[])[1]).toBe(1);
   expect((wave!.values as number[])[1]).toBe(2);
@@ -190,35 +131,29 @@ test('CHRD modes and WAVE families survive preset save without changing routing'
   expect((legacy!.values as number[])[1]).toBe(0);
   expect((legacy!.values as number[])[16]! >>> 16).toBe(3);
   expect(restored!.values).toEqual(wave!.values);
-  expect(routes).toMatchObject({ channel: 4, unsafe: 0 });
   expect(direct).toMatchObject({ mode: 0, family: 2, table: 3 });
 });
 
 test('compact menus keep non-SRC settings accessible and omit duplicate performance controls', () => {
-  const [layout, route, config] = run(
+  const [layout, config] = run(
     settings,
-    'menus\nmenuset 0 0 1\nmenuset 0 3 9\nmenuset 0 5 2\nmenuset 0 6 6\n' +
-      // Wavetable ENV page: ATTACK 0, RELEASE 1, ENV 4, VELOCITY 6.
-      'srcpage 1\nsrcturn 7 21\nfamily 2\nsrcpage 3\nsrcturn 4 -40\nsrcturn 0 40\nsrcturn 1 45\nsrcturn 6 20\n' +
-      'menuset 2 2 -30\nmenuset 2 3 60\nmenuset 2 4 -20\n' +
-      'routestate\nconfig',
+    'menus\n' +
+      // A Velvet FM ENV page has no controls; wavetable FM ENV: ATTACK 0, RELEASE 1, ENV 3, VELOCITY 6.
+      'srcpage 1\nsrcturn 7 21\nfamily 2\nsrcpage 1\nsrcturn 3 -40\nsrcturn 0 40\nsrcturn 1 45\nsrcturn 6 20\n' +
+      'menuset 0 2 -30\nmenuset 0 3 60\nmenuset 0 4 -20\n' +
+      'config',
   );
   expect(layout!.entry).toBe('CANOPY');
-  expect(layout!.home).toEqual(['INPUT', 'CHORD LEARN', 'MODULATION', 'PRESETS']);
-  const children = layout!.children as string[][];
-  expect(children[0]!.slice(0, 9)).toEqual([
-    'EXTERNAL MIDI',
-    'USB',
-    'DIN',
-    'CHANNEL',
-    'SAVE ROUTING',
-    'SELECTOR OCTAVE',
-    'SELECT CH (0=SAME)',
+  expect(layout!.home).toEqual([
+    'MODULATION',
+    'PRESETS',
     'PANIC',
     'RECOVER KEYBOARD',
+    'SELECT CANOPY ON TRACK',
+    'MIDI: TRACK CHANNEL',
   ]);
-  expect(children[1]!.slice(0, 4)).toEqual(['SHAPE SLOT', 'LEARN TO ROOT', 'SHAPES SAVED', 'RETRY SHAPE SAVE']);
-  expect(children[2]).toEqual(['FREE HZ', 'FREE', 'WHEEL TO POS', 'WHEEL TO FM', 'WHEEL TO WT FM']);
+  const children = layout!.children as string[][];
+  expect(children[0]).toEqual(['FREE HZ', 'FREE', 'WHEEL TO POS', 'WHEEL TO FM', 'WHEEL TO WT FM']);
   const labels = children.flat();
   for (const duplicate of [
     'PLAY',
@@ -245,11 +180,10 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
   ]) {
     expect(labels).not.toContain(duplicate);
   }
-  expect(route).toMatchObject({ enabled: 1, channel: 9, octave: 2, selector: 6, unsafe: 0 });
   const values = config!.values as number[];
   expect(values[4]).toBe(5); // Legacy preset fields remain readable, not menu controls.
   expect(values[5]).toBe(15);
-  expect(values[7]).toBe(120); // Blank ARP H cannot change the compatibility field.
+  expect(values[7]).toBe(120); // A blank FM ENV H cannot change the compatibility field.
   expect(values.slice(23, 28).map((v) => v >>> 16)).toEqual([60, 45, 60, 120, 70]);
   expect(values[31]! >>> 16).toBe(80);
 });
@@ -285,21 +219,6 @@ test.each([
   expect(after).toEqual({ ...before, result: -1 });
 });
 
-test('SRC signed spread is saved and restored through the real control bank', () => {
-  const [negative, positive, restored] = run(
-    settings,
-    'srcpage 1\nsrcturn 2 -12\nconfig\npresetsave\ntick\nsrcpage 1\nsrcturn 2 24\nconfig\npresetload\nconfig',
-  );
-  for (const [row, encoded] of [
-    [negative, 0],
-    [positive, 6],
-    [restored, 0],
-  ] as const) {
-    expect(row!.schema).toBe(0x43505342);
-    expect((row!.values as number[])[11]).toBe(encoded);
-    expect((row!.values as number[])[24]! & 0xffff).toBe(encoded);
-  }
-});
 test('valid checksum cannot hide bad versions, padding, shape or parameter ranges', () => {
   // Every field class, including each stable control ID and unavailable SOURCE.
   const edits = [
@@ -356,25 +275,17 @@ test.each(['puterror', 'flusherror'])('%s preserves sound and the previous confi
   expect(old!.color).toBe(20);
   expect(retried).toMatchObject({ color: 90, dirty: 0, result: 0, unsafe: 0 });
 });
-test('reboot and corrupt load preserve validation and embedded shape independence', () => {
-  const [restored, isolated, corrupt] = run(
+test('reboot and corrupt load preserve validation', () => {
+  const [restored, corrupt] = run(
     settings,
-    'learn\nkey 60\nkey 76\ntick\nsave\ntick\npresetsave\ntick\nrestart\npresetload\npresetstate\n' +
-      'learn\nkey 60\nkey 67\ntick\nsave\ntick\npresetload\npresetstate\n' +
+    'color 70\npresetsave\ntick\nrestart\ncolor 10\npresetload\npresetstate\n' +
       'corruptpreset 4\nrestart\ncolor 95\npresetload\npresetstate',
   );
-  expect(restored!.shape).toEqual([0, 16]);
-  expect(isolated!.shape).toEqual([0, 16]);
-  expect(isolated!.override).toBe(1);
+  expect(restored!.color).toBe(70);
+  expect(restored!.shape).toEqual([]);
   expect(corrupt!.color).toBe(95);
   expect(corrupt!.present).toBe(0);
 });
-test('preset actions cannot interrupt an active LEARN session', () => {
-  const [s] = run(settings, 'presetsave\ntick\nlearn\nkey 60\npresetsave\npresetload\nsnapshot');
-  expect(s!.mode).toBe(2);
-  expect(s!.dirty).toBe(0);
-});
-
 test('deferred save retains the sound and destination selected when SAVE was pressed', () => {
   const [edited, saved] = run(
     settings,
@@ -382,68 +293,6 @@ test('deferred save retains the sound and destination selected when SAVE was pre
   );
   expect(edited).toMatchObject({ color: 90, dirty: 1, present: 1 });
   expect(saved).toMatchObject({ color: 20, dirty: 0 });
-});
-
-test('routing restores only after admission and cannot bypass the DSP handshake', () => {
-  const [waiting, restored] = run(
-    settings,
-    'enable 1\nusb 0\nchannel 16\nselectorchannel 5\nselectoroctave -1\nroutesave\ntick\n' +
-      'admitted 0\nrestart\nroutestate\nadmitted 1\ntick\nroutestate',
-  );
-  expect(waiting).toMatchObject({ enabled: 0, channel: 1, restore: 1, calls: 0 });
-  expect(restored).toMatchObject({
-    enabled: 1,
-    usb: 0,
-    din: 1,
-    channel: 16,
-    selector: 5,
-    octave: -1,
-    restore: 0,
-    calls: 0,
-    unsafe: 0,
-  });
-});
-
-test('a user route edit cancels deferred restoration', () => {
-  const [s] = run(
-    settings,
-    'enable 1\nchannel 16\nroutesave\ntick\nadmitted 0\nrestart\nchannel 4\nadmitted 1\ntick\nroutestate',
-  );
-  expect(s).toMatchObject({ enabled: 0, channel: 4, restore: 0, calls: 0 });
-});
-
-test.each(['puterror', 'flusherror'])('routing %s keeps working values and can be retried', (operation) => {
-  const [failed, restored, retried] = run(
-    settings,
-    `channel 4\nroutesave\ntick\nchannel 16\n${operation} -67\nroutesave\ntick\nroutestate\n` +
-      `restart\nroutestate\n${operation} 0\nchannel 16\nroutesave\ntick\nrestart\nroutestate`,
-  );
-  expect(failed).toMatchObject({ channel: 16, result: -67, unsafe: 0 });
-  expect(restored).toMatchObject({ channel: 4, result: 0 });
-  expect(retried).toMatchObject({ channel: 16, result: 0, unsafe: 0 });
-});
-
-test('corrupt routing cannot enable the keyboard or partially load routes', () => {
-  for (const offset of [0, 2, 3, 4, 7, 8, 10, 14, 15]) {
-    const [s] = run(settings, `enable 1\nchannel 16\nroutesave\ntick\ncorruptroute ${offset}\nrestart\nroutestate`);
-    expect(s).toMatchObject({ enabled: 0, usb: 1, din: 1, channel: 1, restore: 0, calls: 0 });
-    expect(s!.result).toBe(-1);
-  }
-});
-
-test('sound preset loading and saving do not replace device routing', () => {
-  const [s] = run(settings, 'channel 4\nroutesave\ntick\npresetsave\ntick\nchannel 16\npresetload\nroutestate');
-  expect(s).toMatchObject({ channel: 16, unsafe: 0 });
-});
-
-test('a valid routing checksum cannot conceal unsupported schema or channel ranges', () => {
-  for (const offset of [2, 3, 7, 10]) {
-    const [s] = run(
-      settings,
-      `enable 1\nchannel 16\nroutesave\ntick\ncorruptroute ${offset}\nresignroute\nrestart\nroutestate`,
-    );
-    expect(s).toMatchObject({ enabled: 0, channel: 1, restore: 0, calls: 0, result: -1 });
-  }
 });
 
 test('audio submission and SRC pending markers share the full configuration revision', () => {
@@ -493,9 +342,9 @@ test.each([1, 2])('legacy v%i initializes wavetable defaults without selecting i
 test('wavetable presets retain position, modulation and legacy color independently', () => {
   const [saved, restored, legacy] = run(
     settings,
-    // Wavetable SOUND page: POS 1, DEPTH 2; legacy SOUND page: COLOR 1.
-    'family 2\nsrcpage 2\nsrcturn 1 350\nsrcturn 2 55\nconfig\npresetsave\ntick\n' +
-      'srcpage 2\nsrcturn 1 200\ncolor 20\npresetload\nconfig\nfamily 0\nsrcpage 2\nsrcstate 1',
+    // Wavetable VOICE page: POS 1, DEPTH 2; legacy VOICE page: COLOR 1.
+    'family 2\nsrcpage 0\nsrcturn 1 350\nsrcturn 2 55\nconfig\npresetsave\ntick\n' +
+      'srcpage 0\nsrcturn 1 200\ncolor 20\npresetload\nconfig\nfamily 0\nsrcpage 0\nsrcstate 1',
   );
   expect((saved!.values as number[])[1]).toBe(2);
   expect((saved!.values as number[])[17]! >>> 16).toBe(350);
@@ -507,8 +356,8 @@ test('wavetable presets retain position, modulation and legacy color independent
 test('sync scan rate uses its own clock domain and clamps to musical divisions', () => {
   const [sync, free] = run(
     settings,
-    // Wavetable SOUND page: RATE is encoder 3.
-    'family 2\nscanclock 1\nsrcpage 2\nsrcturn 3 1000\nconfig\nscanclock 0\nsrcpage 2\nsrcturn 3 1000\nconfig',
+    // Wavetable VOICE page: RATE is encoder 3.
+    'family 2\nscanclock 1\nsrcpage 0\nsrcturn 3 1000\nconfig\nscanclock 0\nsrcpage 0\nsrcturn 3 1000\nconfig',
   );
   expect((sync!.values as number[])[19]! >>> 16).toBe(7);
   expect((sync!.values as number[])[22]! >>> 16).toBe(1);
@@ -577,11 +426,11 @@ test.each([
 test('FM and wavetable sound memories survive source changes and v5 preset save/load', () => {
   const [wavetable, fm, recalled, legacy, wtAgain] = run(
     settings,
-    // Wavetable SOUND: POS 1, RATE 3. WAVE (SOUND 0) to FM; FM SOUND: COLOR 1,
-    // ALG 2, RTA 4, RTB 5; FM ENV: ATTACK 0, SUSTAIN 2.
-    'color 77\nfamily 2\nsrcpage 2\nsrcturn 1 650\nsrcturn 3 989\nconfig\n' +
-      'srcpage 2\nsrcturn 0 20\nsrcpage 2\nsrcturn 2 12\nsrcturn 4 48\nsrcturn 5 28\n' +
-      'srcpage 2\nsrcturn 1 67\nsrcpage 3\nsrcturn 0 13\nsrcturn 2 25\nconfig\npresetsave\ntick\n' +
+    // Wavetable VOICE: POS 1, RATE 3. WAVE (VOICE 0) to FM; FM VOICE: ALG 1, RTA 3,
+    // RTB 4; FM ENV: ATTACK 0, SUSTAIN 2, COLOR 4.
+    'color 77\nfamily 2\nsrcpage 0\nsrcturn 1 650\nsrcturn 3 989\nconfig\n' +
+      'srcpage 0\nsrcturn 0 20\nsrcpage 0\nsrcturn 1 12\nsrcturn 3 48\nsrcturn 4 28\n' +
+      'srcpage 1\nsrcturn 4 67\nsrcpage 1\nsrcturn 0 13\nsrcturn 2 25\nconfig\npresetsave\ntick\n' +
       'family 0\ncolor 10\npresetload\nconfig\nfamily 0\nconfig\nfamily 2\nconfig',
   );
   const words = fm!.values as number[];
@@ -595,7 +444,7 @@ test('FM and wavetable sound memories survive source changes and v5 preset save/
 });
 
 test('legacy telemetry cannot acknowledge an active FM bank', () => {
-  const [legacy, current] = run(settings, 'family 3\nsrcpage 2\nackdetail 3\nackdetail 5');
+  const [legacy, current] = run(settings, 'family 3\nsrcpage 0\nackdetail 3\nackdetail 5');
   expect(legacy!.pending).toBe(0xffffffff);
   expect(current!.pending).toBe(0);
 });
@@ -625,11 +474,11 @@ test.each([
 test('wavetable FM shares timbre timing, preserves scanning and recalls its controls across FM and legacy sounds', () => {
   const [wave, changed, recalled, legacy, standalone, returned] = run(
     settings,
-    // Wavetable SOUND: POS 1, DEPTH 2, RATE 3; ENV: ATTACK 0, RELEASE 1,
-    // WT FM DEPTH 2, RATIO 3, WT FM ENV 5.
-    'family 2\nsrcpage 2\nsrcturn 1 350\nsrcturn 2 45\nsrcturn 3 30\nsrcpage 3\nsrcturn 0 40\nsrcturn 1 30\n' +
-      'srcpage 3\nsrcturn 2 65\nsrcturn 3 20\nsrcturn 5 -60\nmenus\nmenuset 2 4 75\nconfig\npresetsave\ntick\n' +
-      'srcpage 3\nsrcturn 2 -20\nconfig\npresetload\nconfig\nfamily 0\nconfig\nfamily 3\nconfig\nfamily 2\nconfig',
+    // Wavetable VOICE: POS 1, DEPTH 2, RATE 3; FM ENV: ATTACK 0, RELEASE 1,
+    // WT FM DEPTH 4, RATIO 5, WT FM ENV 7.
+    'family 2\nsrcpage 0\nsrcturn 1 350\nsrcturn 2 45\nsrcturn 3 30\nsrcpage 1\nsrcturn 0 40\nsrcturn 1 30\n' +
+      'srcpage 1\nsrcturn 4 65\nsrcturn 5 20\nsrcturn 7 -60\nmenus\nmenuset 0 4 75\nconfig\npresetsave\ntick\n' +
+      'srcpage 1\nsrcturn 4 -20\nconfig\npresetload\nconfig\nfamily 0\nconfig\nfamily 3\nconfig\nfamily 2\nconfig',
   ).slice(1);
   const words = wave!.values as number[];
   expect(words[0]! & 255).toBe(11);
@@ -645,7 +494,7 @@ test('wavetable FM shares timbre timing, preserves scanning and recalls its cont
 });
 
 test('old detail schemas acknowledge only old controls while schema5 confirms wavetable FM', () => {
-  const [old, current] = run(settings, 'family 2\nsrcpage 3\nsrcturn 0 70\nackdetail 4\nackdetail 5');
+  const [old, current] = run(settings, 'family 2\nsrcpage 1\nsrcturn 0 70\nackdetail 4\nackdetail 5');
   expect(old!.pending).toBe(0xf0000000);
   expect(current!.pending).toBe(0);
 });

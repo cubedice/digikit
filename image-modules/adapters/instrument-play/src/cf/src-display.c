@@ -134,13 +134,6 @@ static const char *label(const CsState *s, uint32_t id)
 }
 static void value(char out[8], const CsState *s, uint32_t id, const char *tune, const char *level)
 {
-    static const char *const chord[] = {"MAJ",  "MAJ6", "SUS2", "MIN6", "MIN",  "SUS4",
-                                        "ADD9", "DOM7", "DIM",  "MIN7", "USER", "MAJ7"};
-    static const char *const voice[] = {"CLS", "OPEN", "INV1", "INV2"};
-    static const char *const order[] = {"UP", "DOWN", "UPDN", "PLAY", "RND"};
-    static const char *const restart[] = {"TRIG", "PATT", "CONT"};
-    static const char *const rate[] = {"--",  "1/4",   "1/8", "1/8T", "1/16",
-                                       "5/Q", "1/16T", "7/Q", "1/32"};
     if (id == CS_TUNE || id == CS_LEVEL) {
         text(out, 8, id == CS_TUNE ? tune : level);
         return;
@@ -254,44 +247,7 @@ static void value(char out[8], const CsState *s, uint32_t id, const char *tune, 
         text(out, 8, n ? "SYNC" : "FREE");
         return;
     }
-    if (id == CP_CHORD)
-        v = s->mode == KB_PLAY ? "PLAY" : n < 12 ? chord[n] : "--";
-    else if (id == CP_VOICING)
-        v = s->mode == KB_PLAY ? "--" : s->learned ? "LRND" : n < 4 ? voice[n] : "--";
-    else if (id == CP_STRUM && s->mode == KB_PLAY)
-        v = "--";
-    else if (id == CP_STRUM) {
-        if (!n)
-            v = "OFF";
-        else {
-            number(out, n);
-            return;
-        }
-    } else if (id == CP_RATE)
-        v = n <= 8 ? rate[n] : "--";
-    else if (id == CP_OCTAVES) {
-        if (n == 3)
-            v = "0";
-        else {
-            out[0] = n < 3 ? '-' : '+';
-            number(out + 1, n < 3 ? 3 - n : n - 3);
-            return;
-        }
-    } else if (id == CP_GATE) {
-        unit(out, n, "%");
-        return;
-    } else if (id == CP_SWING) {
-        /* Existing DSP alternates 100+n / 100-n, so the long interval
-         * occupies (100+n)/2 percent of a pair. Round only the display. */
-        unit(out, (101 + n) / 2, "%");
-        return;
-    } else if (id == CP_ORDER)
-        v = n < 5 ? order[n] : "--";
-    else if (id == CP_RESTART)
-        v = n < 3 ? restart[n] : "--";
-    else if (id == CP_SOURCE)
-        v = "KEYS";
-    else if (id == CP_ARP_MIX && (n == 0 || n == 127))
+    if (id == CP_ARP_MIX && (n == 0 || n == 127))
         v = n ? "ARP" : "PAD";
     else if (id == CP_ARP_MIX) {
         unit(out, (n * 100 + 63) / 127, "%");
@@ -320,23 +276,12 @@ void cv_feedback(char out[32], const CsState *s, uint32_t encoder)
         text(out, 32, "WAVE: CHOOSE ANLG TO FM");
         return;
     }
-    if (s->mode == KB_PLAY && (id == CP_VOICING || id == CP_STRUM)) {
-        text(out, 32, "CHRD: CHOOSE A CHORD FIRST");
-        return;
-    }
-    if (s->learned && id == CP_VOICING) {
-        text(out, 32, "ROOT: LEARNED VOICING");
-        return;
-    }
     const char *name = id == CS_WAVE                                ? "Wave"
                        : fm_mode(s) && (id == CP_COLOR || id >= 16) ? label(s, id)
                                                                     : names[id];
     text(out, 32, name);
     uint32_t at = length(out, 31);
     out[at++] = '=';
-    static const char *const voicings[] = {"Closed", "Open", "Inversion 1", "Inversion 2"};
-    static const char *const orders[] = {"Up", "Down", "Up/Down", "As Played", "Random"};
-    static const char *const restarts[] = {"Trigger", "Pattern", "Continuous"};
     char v[8];
     value(v, s, id, "", "");
     const char *full = v;
@@ -350,22 +295,10 @@ void cv_feedback(char out[32], const CsState *s, uint32_t encoder)
     } else if ((id == CP_WTFM_RATIO || (fm_mode(s) && (id == CP_FM_RTA || id == CP_FM_RTB))) &&
                (n == 5 || n == 7))
         full = n == 5 ? "SQRT2" : "SQRT3";
-    else if (id == CP_CHORD && s->mode == KB_PLAY)
-        full = "PLAY (YOUR NOTES)";
-    else if (id == CP_VOICING && n < 4)
-        full = voicings[n];
-    else if (id == CP_ORDER && n < 5)
-        full = orders[n];
-    else if (id == CP_RESTART && n < 3)
-        full = restarts[n];
     text(out + at, 32 - at, full);
     at = length(out, 31);
     if (!fm_mode(s) && id == CP_WT_RATE && !s->value[CP_WT_CLOCK]) {
         text(out + at, 32 - at, " Hz");
-        at = length(out, 31);
-    }
-    if (id == CP_STRUM && s->value[id]) {
-        text(out + at, 32 - at, " ms");
         at = length(out, 31);
     }
     if (pending(s, id))
@@ -399,34 +332,6 @@ static void chord_name(char out[22], const uint8_t *pitch, uint32_t count)
                 return;
             }
     }
-}
-void cv_ownership(CvDisplay *d, const IsStatus *s, const KbState *k, uint32_t now)
-{
-    if (!is_detail_confirmed(s, now) || s->detail_schema < 2 || s->generation != k->generation ||
-        s->mode != k->mode)
-        return;
-    for (uint32_t slot = 0; slot < 4; ++slot) {
-        if (!(s->fast[1] & (1u << (16 + slot))))
-            continue;
-        uint32_t pitch = (s->fast[5] >> (slot * 8)) & 255, rank = 0;
-        for (uint32_t j = 0; j < 4; ++j)
-            if (s->fast[1] & (1u << (16 + j))) {
-                uint32_t other = (s->fast[5] >> (j * 8)) & 255;
-                if (other < pitch || (other == pitch && j < slot))
-                    ++rank;
-            }
-        d->membership[rank] = 0;
-        uint32_t token = s->detail[38 + slot];
-        if (!token)
-            continue;
-        for (uint32_t v = 0; v < 4; ++v)
-            if (k->voices[v].token == token && k->voices[v].note == pitch)
-                for (uint32_t i = 0; i < MI_KEYS; ++i)
-                    if (k->keys[i].token && k->keys[i].token == k->voices[v].source)
-                        d->membership[rank] =
-                            (uint8_t)((!!k->keys[i].held) | ((!!k->keys[i].pedal) << 1));
-    }
-    d->pedal = (uint8_t)!!k->pedals;
 }
 void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint32_t now,
                     const char *tune, const char *level, int save_error, uint32_t owner_mode)
@@ -469,24 +374,19 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
         if ((id < CS_TUNE || id >= CS_WAVE) &&
             (!fresh || !is_detail_confirmed(status, now) || pending(s, id)))
             d->pending |= (uint8_t)(1u << i);
-        if (id == CP_COLOR || id == CP_DRIFT || id == CP_ARP_MIX || id == CP_GATE ||
-            id == CP_SWING || (id == CP_STRUM && s->mode != KB_PLAY) ||
+        if (id == CP_COLOR || id == CP_DRIFT || id == CP_ARP_MIX ||
             (((s->metadata >> 4) & 3) == 2 &&
              (id == CP_WT_POS || id == CP_WT_DEPTH || id == CP_WT_ATTACK || id == CP_WT_RELEASE ||
               id == CP_WT_ENV || id == CP_WT_VELOCITY || id == CP_WTFM_DEPTH || id == CP_WTFM_ENV ||
               id == CP_WTFM_WHEEL)) ||
             (fm_mode(s) && id >= 16 && id < 28 && id != CP_FM_ALG && id != CP_FM_RTA &&
              id != CP_FM_RTB)) {
-            uint32_t max = id >= CP_WT_TABLE ? cs_choice_max(s, id)
-                           : id == CP_GATE   ? 100
-                           : id == CP_SWING  ? 75
-                           : id == CP_STRUM  ? 500
-                                             : 127;
+            uint32_t max = id >= CP_WT_TABLE ? cs_choice_max(s, id) : 127;
             d->rotary |= (uint8_t)(1u << i);
             d->knob[i] = (uint8_t)(d->raw[id] * 127 / max);
         }
     }
-    text(d->mode, 6, s->mode == KB_PLAY ? "K:PLY" : s->mode == KB_ROOT ? "K:RT" : "K:LRN");
+    text(d->mode, 6, s->mode == KB_ROOT ? "K:RT" : "K:PLY");
     for (uint32_t i = 0; i < 4; ++i)
         cv_note(d->notes[i], 0, 0);
     if (!fresh) {
@@ -563,13 +463,7 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
         d->focused = 1;
         d->highlight = 0;
         uint32_t id = s->focus_id;
-        if (s->mode == KB_PLAY && id == CP_CHORD)
-            text(d->heading, 22, "PLAY YOUR NOTES");
-        else if (s->mode == KB_PLAY && (id == CP_VOICING || id == CP_STRUM))
-            text(d->heading, 22, "CHOOSE CHRD FIRST");
-        else if (s->learned && id == CP_VOICING)
-            text(d->heading, 22, "AS LEARNED");
-        else if (id <= CS_WAVE) {
+        if (id <= CS_WAVE) {
             text(d->heading, 22, label(s, id));
             uint32_t at = length(d->heading, 21);
             d->heading[at++] = ' ';
@@ -595,8 +489,6 @@ void cv_build_owner(CvDisplay *d, const CsState *s, const IsStatus *status, uint
         text(d->heading, 22, "WAIT CLK");
     else if (!count)
         text(d->heading, 22, (flags & (7u << 23)) ? "RELEASE" : "NO NOTES");
-    else if (page == 3)
-        text(d->heading, 22, fm_mode(s) ? "FM ENVELOPE" : "WAVETABLE FM");
     else if (page == 2)
         text(d->heading, 22,
              fm_mode(s)                      ? "FM"

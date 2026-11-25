@@ -70,21 +70,9 @@ static void revalidate_routes(void)
  * 0x11), release mask (0x12), all-voice reset (0x15), pitch note<<8 (1 + t)
  * and velocity<<8 (0x1a + t). Each frame is sent once, so each trig is seen
  * once. Only tracks taking local keys (panel_mask) are played. */
-static uint32_t seq_muted;
-void mi_seq_mute(uint32_t track, int on)
-{
-    if (track >= MI_TRACKS)
-        return;
-    uint32_t sr = dkrt_irq_mask();
-    if (on)
-        seq_muted |= 1u << track;
-    else
-        seq_muted &= ~(1u << track);
-    dkrt_irq_restore(sr);
-}
 static void sequencer_frame(const volatile uint16_t *frame)
 {
-    uint32_t tracks = mi_ledger.panel_mask & ~seq_muted, trigs, releases, t;
+    uint32_t tracks = mi_ledger.panel_mask, trigs, releases, t;
     if (!frame)
         return;
     trigs = frame[0x11];
@@ -371,38 +359,6 @@ void mi_instance_bind(uint32_t track, uint32_t slot)
     uint32_t sr = dkrt_irq_mask();
     initialize();
     mi_reset_bind(&mi_ledger, track, slot);
-    dkrt_irq_restore(sr);
-}
-
-uint32_t mi_route_track(uint32_t port, uint32_t channel)
-{
-    if (port > 1 || channel >= 16)
-        return MI_NONE;
-    const MiRoute *r = &mi_ledger.routes[port * 16u + channel];
-    return r->enabled ? r->track : MI_NONE;
-}
-
-int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track)
-{
-    uint32_t sr = dkrt_irq_mask();
-    int result = 1;
-    initialize();
-    if (!reset_seen) {
-        if (down && track < MI_TRACKS && (mi_ledger.panel_mask & (1u << track)))
-            revalidate_track(track);
-        if (down)
-            result = mi_panel_down(&mi_ledger, key, note, velocity, track);
-        else
-            mi_panel_up(&mi_ledger, key);
-    }
-    dkrt_irq_restore(sr);
-    return result;
-}
-void mi_panel_release(void)
-{
-    uint32_t sr = dkrt_irq_mask();
-    if (initialized && !reset_seen)
-        mi_panel_cancel(&mi_ledger);
     dkrt_irq_restore(sr);
 }
 

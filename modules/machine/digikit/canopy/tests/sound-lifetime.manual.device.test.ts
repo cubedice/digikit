@@ -88,10 +88,8 @@ test.skipIf(!enabled)('switching away invalidates the Sound handle and a new CAN
       const index = await instance();
       if (index < 0) throw new Error('Track 1 is not admitted');
       const base = index * 48;
-      const [metadata, first, strum] = await Promise.all([
-        cf('src_state', base + 6), cf('src_state', base + 7), cf('src_state', base + 9),
-      ]);
-      return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+      const tone = await cf('src_state', base + 8);
+      return { color: tone >>> 16, drift: tone & 0xffff };
     };
     await selectMachine('DOWN');
     await expect.poll(instance, { timeout: 60_000 }).toBeGreaterThanOrEqual(0);
@@ -99,11 +97,12 @@ test.skipIf(!enabled)('switching away invalidates the Sound handle and a new CAN
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(0);
     for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== 0; i++) await key('SRC');
     await expect.poll(() => cf('ip_src_debug', 2), { timeout: 30_000 }).toBeGreaterThan(0);
-    evidence.defaults = await values();
+    const before = await values();
+    evidence.defaults = before;
     await turn(2, 20);
-    await turn(3, 12);
-    await turn(4, 16);
-    await expect.poll(values, { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 3 });
+    await turn(8, 12);
+    await expect.poll(values, { timeout: 30_000 }).toSatisfy((v: { color: number; drift: number }) =>
+      v.color > before.color && v.drift > before.drift);
     evidence.edited = await values();
     expect(evidence.edited).not.toEqual(evidence.defaults);
 

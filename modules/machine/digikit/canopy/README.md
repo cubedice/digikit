@@ -24,24 +24,17 @@ This is not a hardware-qualified release.
 
 Build and pack with `patchkit build digikit/canopy` and
 `patchkit pack digikit/canopy --device dt2 -o out/patch/canopy-dt2.dkm` through
-the repository's Python wrapper. Select CANOPY on any track, or on up to four tracks. In firmware containing
-the adapter, SETTINGS > DIGIKIT > CANOPY > INPUT opens USB/DIN,
-channel and EXTERNAL MIDI settings; CHANNEL belongs to the selected track's instance.
-The built-in KEYBOARD/TRIG route plays the selected admitted track without enabling
-external MIDI.
-Enable the corresponding stock MIDI receive ports as well. Development
-installation uses the upload/selection protocol; the generic module-browser fit
-calculator remains V1-only. External MIDI starts disabled unless you previously used SAVE ROUTING;
-saved routing is restored after CANOPY is admitted and ready. Learned chord
-templates and saved presets persist. Keyboard mode and sound controls start at
-defaults until you load a preset.
+the repository's Python wrapper. Select CANOPY on any track, or on up to four tracks. The track keyboard
+plays it from the panel keys, the sequencer and MIDI on the track's channel in the DTII's MIDI config;
+enable the corresponding stock MIDI receive ports. Development installation uses the upload/selection
+protocol; the generic module-browser fit calculator remains V1-only. Saved presets persist. Keyboard
+mode and sound controls start at defaults until you load a preset.
 Up to four tracks are admitted at once: the four lowest tracks whose machine is
-CANOPY, each with its own instance, sound settings, SRC pages and MIDI channel.
+CANOPY, each with its own instance, sound settings and SRC pages.
 A fifth CANOPY on a higher track stays silent with the stock TUNE/LEV page until
 one of the four is replaced. An instance keeps its track while the track stays
-CANOPY; a freed instance takes the next CANOPY track. If two instances use the
-same MIDI channel, the lower track plays it and the other shows CHANNEL IN USE.
-Other tracks and channels retain stock behavior. Four simultaneous worst-case
+CANOPY; a freed instance takes the next CANOPY track.
+Other tracks retain stock behavior. Four simultaneous worst-case
 sounds can exceed the DSP block time (finding 345).
 
 `src/dsp/voice.s` implements four foreground notes, two short release tails and
@@ -68,24 +61,19 @@ note. Zero-velocity Note On must already have been normalized by MIDI ingress.
 QUIET is returned only after every local release finishes, and the entire output
 block is always written. Independent banks allow separate track state.
 
-The adapter supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC1 mod wheel, CC64 sustain, CC121 controller reset, CC123 All Notes Off and CC120
+The track keyboard supplies PLAY, ROOT + TYPE and learned chord modes. The callback layer supports CC1 mod wheel, CC64 sustain, CC121 controller reset, CC123 All Notes Off and CC120
 All Sound Off, plus 14-bit pitch bend at a fixed +/-2 semitone range, scoped to
 MIDI port/channel.
 
 ## Playing and selecting sounds
 
-With the Track Keyboard adapter, find the arpeggiator on **TRIG 3** and
-POLY, CHRD, VOIC and STRM on **TRIG 4**. Without it, use SRC ARP and SRC KEYS.
-**KEYS B / CHRD** selects PLAY or a generated chord, including USER. PLAY
-sounds the notes you press. A generated chord uses the played note as its root.
-Turn CHRD fully left to return to PLAY.
-Changing between PLAY and root mode releases the previous phrase; press new
-keys to start. Changing chord type within root mode updates the held root.
-USER plays the learned or preset-embedded shape. VOIC and STRM are unavailable
-in PLAY, and USER keeps its learned voicing. The old read-only AUTO label is gone.
+The track keyboard's pages hold the arpeggiator on **TRIG 3** and POLY, CHRD,
+VOIC and STRM on **TRIG 4**. CHRD selects PLAY or a generated chord, including
+USER. PLAY sounds the notes you press. A generated chord uses the played note
+as its root. USER plays the learned or preset-embedded shape.
 
-CHRD, VOIC, ARP lists and sound lists use four raw knob ticks per choice, with no
-speed-based acceleration. Small turns accumulate, reversing clears partial
+Sound lists use four raw knob ticks per choice, with no speed-based
+acceleration. Small turns accumulate, reversing clears partial
 movement, and lists stop at their ends. Continuous controls and native tuning,
 source LEV and track LEVEL retain their existing scales.
 
@@ -97,15 +85,17 @@ ATK/REL graph, with PENV on D and FENV on H in the rightmost column. Its FM rati
 is on F. For Velvet and Reed, FM ENV points to AMP.
 **DETAIL** has native TUNE on A and source LEV on H, with pad/arp **MIX**
 on G. LEVEL/DATA sets track level. The page changes preserve stored
-presets and lock IDs. The later tables show the fallback SRC layout.
+presets and lock IDs. These three pages are the only SRC layout.
 [Full encoder map](../../../../docs/design/dt2-track-arpeggiator.md#canopy-src-after-moving-keyboard-controls)
 
-SETTINGS > DIGIKIT > CANOPY contains four groups: INPUT for connections and
-selector keys, CHORD LEARN for custom shapes, MODULATION for wheel amounts and
-scan settings, and PRESETS for save/load. With Track Keyboard, open NOTES to
-learn shapes and configure selector keys from the track. The arp follows the
-current pattern tempo, including while the sequencer is stopped. Adjust tempo
-with the DTII's normal TEMPO control.
+The track keyboard is CANOPY's only note engine: it plays CANOPY's tracks from
+the panel keys, the sequencer and MIDI on each track's channel in the DTII's
+MIDI config, and without it CANOPY plays nothing. Open NOTES on the track to
+choose a chord or learn a shape. SETTINGS > DIGIKIT > CANOPY holds MODULATION
+for wheel amounts and scan settings, PRESETS for save/load, PANIC, RECOVER
+KEYBOARD and the status. The arp follows the current pattern tempo, including
+while the sequencer is stopped. Adjust tempo with the DTII's normal TEMPO
+control.
 Arpeggiated notes have a minimum 64-sample onset ramp (about 1.33 ms) to prevent
 clicks when AMP ATT is zero. Slower AMP attacks, release times and the pad's
 own envelope are unchanged.
@@ -445,9 +435,8 @@ word (`test_canopy_wavetable_expand.py`), so the sound is unchanged; `canopy.dkm
 for the DTII is 102,328 bytes (148,280 with the full table).
 
 
-Stage 2 keyboard modes and learned shape memory are provided by the optional
-`core/instrument-play` adapter. See
-[the keyboard setup guide](../../../../image-modules/adapters/instrument-play/README.md#keyboard-modes-and-shape-memory).
+The track keyboard plays CANOPY's keyboard modes and learned shapes. See
+[the keyboard notes](../../../../image-modules/adapters/instrument-play/README.md#keyboard-modes-and-the-track-keyboard).
 The Stage 3 pad renderer and Stage 4 arp are implemented. See the
 [pad sound setup](../../../../image-modules/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
 

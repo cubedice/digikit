@@ -380,9 +380,11 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     return 1;
 }
 
+/* Live recording on an audio or CANOPY track: the stock note action records the note and the track keyboard sounds it. */
 int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    return track < TK_TRACKS && kind[track] == TK_NATIVE_AUDIO &&
+    return track < TK_TRACKS &&
+           (kind[track] == TK_NATIVE_AUDIO || kind[track] == TK_NATIVE_CANOPY) &&
            tk_panel_on(key, track, pitch, velocity);
 }
 

@@ -18,7 +18,8 @@ import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 // CANOPY on any track, several at once (finding 345): each of the four lowest
 // kit tracks whose Sound carries the instrument type gets its own instance,
-// SRC page, panel keys, MIDI route and audio; a fifth stays stock and silent.
+// SRC page and audio, and the track keyboard plays it from the panel keys and
+// from MIDI on the track's channel; a fifth stays stock and silent.
 vi.setConfig({ hookTimeout: 600_000 });
 
 const options = liveOptions('dt2');
@@ -32,7 +33,7 @@ beforeAll(async () => {
   for (const name of ['1-sine220.wav', '2-sine880.wav', '3-noise.wav']) {
     fs.copyFileSync(path.join(liveSampleFolder('dt2')!, name), path.join(cardSeed, name));
   }
-  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument'] }]);
+  await seedModules(cardSeed, 'dt2', [{ file: moduleFile, name: 'canopy.dkm', needs: ['machines', 'instrument', 'track-keyboard'] }]);
 });
 afterAll(() => {
   const owned = fs.realpathSync(cardSeed);
@@ -222,14 +223,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   await expect.poll(async () => (await heldPanel()).length, { timeout: 30_000 }).toBe(0);
   await key('KEYBOARD');
 
-  // External MIDI reaches the same track and is audible at the final output.
-  await openDigikitMenu(key);
-  await key('YES'); // CANOPY setup
-  await key('YES'); // INPUT
-  await key('YES'); // ENABLE
-  await expect.poll(() => cf('ip_control', 1), { timeout: 10_000 }).toBe(1);
-  await expect.poll(() => cf('ip_control'), { timeout: 30_000 }).toBe(3);
-  for (let i = 0; i < 4; i++) await key('NO');
+  // External MIDI on track 11's own channel reaches it and is audible at the final output.
   for (const [addr, value] of [
     [0x429368ca, 3],
     [0x42936872, 0],
@@ -245,7 +239,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   onTestFinished(async () => {
     if (capturing) await session.client.call('pcm.tap', { action: 'capture_stop' });
   });
-  await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x90, 67, 100] });
+  await session.client.call('midi.usb.in', { bytes: [0x9a, 60, 100, 0x9a, 67, 100] });
   await expect.poll(async () => (await voices()).length, { timeout: 30_000 }).toBe(2);
   await session.client.call('pcm.tap', { action: 'start' });
   await expect
@@ -270,7 +264,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   }
   const rms = Math.sqrt(energy / (2 * Math.min(frames, 8192)));
   expect(rms, 'track 11 renders the held chord').toBeGreaterThan(1e-4);
-  await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 67, 0] });
+  await session.client.call('midi.usb.in', { bytes: [0x8a, 60, 0, 0x8a, 67, 0] });
   await expect.poll(async () => (await voices()).length, { timeout: 60_000 }).toBe(0);
   console.info('CANOPY any-track: panel and USB notes sound on track 11');
 
@@ -285,8 +279,8 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   await captureRemoteOled(session, 'canopy-multi-track-1-src');
   console.info('CANOPY multi: tracks 11 and 1 admitted together');
 
-  // Both play at once: USB channel 1 stays with track 11 (it was routed
-  // first), while the panel keys play the selected track 1.
+  // Both play at once: channel 11 plays track 11, while the panel keys play
+  // the selected track 1.
   const pairs = async () => {
     const b = await peek(planSymbol(plan, '_mi_carrier_pairs'), 192);
     return [0, 10].map((t) => b.readUInt32LE((3 * t + 2) * 4));
@@ -298,7 +292,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   try {
     await edge('TRIG 9', true);
     await expect.poll(async () => (await voicesOf(1)).filter((v) => v.gate === 1).length, { timeout: 30_000 }).toBe(1);
-    await session.client.call('midi.usb.in', { bytes: [0x90, 60, 100, 0x90, 64, 100, 0x90, 67, 100] });
+    await session.client.call('midi.usb.in', { bytes: [0x9a, 60, 100, 0x9a, 64, 100, 0x9a, 67, 100] });
     await expect.poll(async () => (await voicesOf(0)).length, { timeout: 30_000 }).toBe(3);
     expect((await voicesOf(1)).filter((v) => v.gate === 1).length, 'track 1 still holds its panel note').toBe(1);
     // Both tracks' voices rendered through their own slots in the same frame.
@@ -324,7 +318,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
     load = ((await session.status()) as { load?: unknown }).load;
   } finally {
     await edge('TRIG 9', false);
-    await session.client.call('midi.usb.in', { bytes: [0x80, 60, 0, 0x80, 64, 0, 0x80, 67, 0] });
+    await session.client.call('midi.usb.in', { bytes: [0x8a, 60, 0, 0x8a, 64, 0, 0x8a, 67, 0] });
   }
   await key('KEYBOARD');
   const multiRaw = fs.readFileSync(multiCapture);
@@ -374,7 +368,7 @@ test('CANOPY runs on any track, and up to four instances play at once', async ()
   const menu = menuSelection(session, plan, 'core/instrument-play', key);
   await openDigikitMenu(key);
   await key('YES');
-  await menu('menu', 3);
+  await menu('menu', 1); // PRESETS
   await key('YES');
   await menu('preset_menu', 2);
   await key('YES');

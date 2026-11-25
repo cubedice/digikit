@@ -279,3 +279,13 @@ bend of each CANOPY track the message's channel plays (the Digitakt's MIDI confi
 `instrument_track_keyboard_controller`), which queues them on that route; the message is the firmware's too unless every track the
 channel plays took it. [D] `modules/machine/digikit/canopy/tests/wheel-bend.device.test.ts`: a held A3 (57.0) rises to 58.9 with a
 full bend up on track 1's channel.
+
+**The removal.** CANOPY's own note performer is gone: the keyboard mapper (`keyboard.c`), its MIDI route and channel tables and the
+INPUT setup, CHORD LEARN with the shape library and its save retry, the KEYS and ARP pages of the fallback SRC layout, the panel path of
+`core/keyboard-panel` into CANOPY (the `kbp` vector; the instrument seam is version 3) and the chord recording
+(`instrument_record_chord`). A Sound keeps its performance settings (mode, type, voicing, shape), which the track keyboard plays;
+without `core/track-keyboard` CANOPY plays nothing. The route, channel and shape records stay on the card unread. Its SRC pages are
+VOICE, FM ENV and DETAIL. The parity file now records the track keyboard's side only; the table above was measured at 28ea6d093.
+Measured [D] (1.17 emulator): `instrument.dks` 72,052 bytes (its object 123,268 → 91,537 section bytes); CANOPY's needs test with
+its services uses 265,856 → 234,128 of the 450,560-byte arena, largest free block 180,464 → 212,192; free cf.expansion of
+`canopy-overloop-prism-relay` 94,156 → 98,888.

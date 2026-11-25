@@ -38,7 +38,6 @@ static void toast(const char *text)
 }
 /* Sequencer UI state (finding 347): SRC view +0x6c, as KeyboardView +0x98. */
 extern uint8_t ip_panel_trig_held(uint32_t), ip_panel_live_record(uint32_t);
-extern int32_t ip_panel_step_note(uint32_t, uint32_t);
 /* Stock held-trig editor marks the gesture as an edit before touching locks.
  * Without this, releasing a short-held trig may toggle it and erase its locks. */
 extern void ip_lock_mark_edited(uint32_t, uint32_t);
@@ -51,7 +50,6 @@ extern const uint8_t ip_seq_step[];
 extern int rtm_src(uint8_t *, unsigned, uint8_t *) __attribute__((weak));
 static uint32_t owner_type, owner_generation, published, last_draw;
 static uint32_t saved_generation, saved_page, saved_valid, saved_track;
-static int saved_shared_keyboard;
 static uint32_t restore_pending, restore_page, was_owned;
 static uint32_t live_control = CS_NONE, live_value;
 static uint32_t live_track = UINT32_MAX, live_token;
@@ -77,9 +75,10 @@ static uint8_t *pointer(const uint8_t *p, uint32_t offset)
 {
     return (uint8_t *)(uintptr_t)word(p, offset);
 }
-static int native_cells(uint32_t page, int shared_keyboard)
+/* The page with the native TUNE and LEV cells. */
+static int native_cells(uint32_t page)
 {
-    return page == (shared_keyboard ? CS_DETAIL : 0);
+    return page == CS_DETAIL;
 }
 static int32_t lock_get(void *ctx, uint32_t code, uint32_t step)
 {
@@ -118,7 +117,7 @@ static uint32_t context(uint8_t *view)
         owner_type = 0;
     }
     uint32_t track = ip_src_track(word(view, 0x74)), page = word(view, 0x90),
-             pages = instrument_src_pages(track);
+             pages = CS_SHARED_PAGES;
     /* The SRC page's track is the UI selection for menus, presets and focus.
      * Sequencer byte +0x268 (ip_src_alternate) is not another context: it is
      * the held-trig "edited" mark that the first lock edit sets until the
@@ -128,11 +127,7 @@ static uint32_t context(uint8_t *view)
     int owns = type >= 7 && type < 32 && gen && track < 16 && instrument_track_owned(track) &&
                ip_src_type(view) == type;
     if (owns) {
-        int shared_keyboard = instrument_src_shared_keyboard(track);
-        if (saved_valid && saved_track == track && saved_shared_keyboard != shared_keyboard) {
-            page = 0;
-            *(uint32_t *)(view + 0x90) = page;
-        } else if (restore_pending) {
+        if (restore_pending) {
             page = restore_page;
             *(uint32_t *)(view + 0x90) = page;
         } else if (!was_owned && saved_valid && saved_generation == gen) {
@@ -140,7 +135,7 @@ static uint32_t context(uint8_t *view)
             *(uint32_t *)(view + 0x90) = page;
         }
         if (page >= pages) {
-            page = shared_keyboard ? 0 : 2;
+            page = 0;
             *(uint32_t *)(view + 0x90) = page;
         }
         MfSrcCapability cap = {MF_SRC_ABI, sizeof(cap), pages, gen};
@@ -154,7 +149,6 @@ static uint32_t context(uint8_t *view)
         saved_page = page;
         saved_valid = 1;
         saved_track = track;
-        saved_shared_keyboard = shared_keyboard;
     }
     if (page >= pages)
         page = 0;
@@ -239,86 +233,9 @@ static void diagram_text(uint8_t *b, int x, int y, const char *text)
 {
     dk_fw_text_draw_box(b, (uint8_t *)(uintptr_t)ip_src_label_font, x, 59 - y, 1, 0, 0, "%s", text);
 }
-static void diagram_node(uint8_t *b, int x, int y)
-{
-    diagram_box(b, x - 1, y - 1, 3, 3, 1);
-    diagram_box(b, x, y, 1, 1, 0);
-}
-static uint32_t diagram_sqrt(uint32_t n)
-{
-    uint32_t result = 0, bit = 1u << 30;
-    while (bit > n)
-        bit >>= 2;
-    while (bit) {
-        if (n >= result + bit) {
-            n -= result + bit;
-            result = (result >> 1) + bit;
-        } else
-            result >>= 1;
-        bit >>= 2;
-    }
-    return result;
-}
 static int native_index(const CvDisplay *d, uint32_t id)
 {
     return d->raw[id] < 128 ? d->raw[id] : 127;
-}
-static void diagram_envelope(uint8_t *b, const CvDisplay *d, int fm)
-{
-    uint32_t attack = canopy_env_weight[0][native_index(d, fm ? CP_FM_ATTACK : CP_WT_ATTACK)] -
-                      canopy_env_weight[0][0];
-    uint32_t release = canopy_env_weight[1][native_index(d, fm ? CP_FM_RELEASE : CP_WT_RELEASE)] -
-                       canopy_env_weight[1][0];
-    uint32_t decay = 0, sustain = 100;
-    if (fm) {
-        sustain = d->raw[CP_FM_SUSTAIN];
-        if (sustain > 100)
-            sustain = 100;
-        decay = ((canopy_env_weight[0][native_index(d, CP_FM_DECAY)] - canopy_env_weight[0][0]) *
-                 diagram_sqrt((100 - sustain) * 100)) /
-                100;
-        release = (release * diagram_sqrt(sustain * 100)) / 100;
-    }
-    uint32_t available = 39, total = attack + decay + release;
-    int x0 = 24, x1 = x0 + (int)(total ? (available * attack + total / 2) / total : 0);
-    int x2 = x0 + (int)(total ? (available * (attack + decay) + total / 2) / total : 0);
-    int end = 71, x3 = total ? end - (int)((available * release + total / 2) / total) : end;
-    if (fm) {
-        /* Attack/release only move their feet. Decay moves the sustain
-         * segment as a whole, keeping its length fixed. */
-        uint32_t amax = canopy_env_weight[0][127] - canopy_env_weight[0][0];
-        uint32_t rmax = canopy_env_weight[1][127] - canopy_env_weight[1][0];
-        x1 = 48;
-        x0 = x1 - (int)((24 * attack + amax / 2) / amax);
-        x2 = x1 + (int)((34 * decay + amax / 2) / amax);
-        x3 = x2 + 16;
-        end = x3 + (int)((23 * release + rmax / 2) / rmax);
-    }
-    if (x3 > end)
-        x3 = end;
-    int y = fm ? 29 - (int)((16 * sustain + 50) / 100) : 13;
-    diagram_line(b, x0, 29, x1, 13);
-    if (fm)
-        diagram_line(b, x1, 13, x2, y);
-    else
-        x2 = x1;
-    diagram_line(b, x2, y, x3, y);
-    diagram_line(b, x3, y, end, 29);
-    if (d->focus_id == (fm ? CP_FM_ATTACK : CP_WT_ATTACK))
-        diagram_line(b, x0, 30, x1, 14);
-    if (fm && d->focus_id == CP_FM_DECAY)
-        diagram_line(b, x1, 14, x2, y + 1);
-    if (fm && d->focus_id == CP_FM_SUSTAIN)
-        diagram_line(b, x2, y + 1, x3, y + 1);
-    if (d->focus_id == (fm ? CP_FM_RELEASE : CP_WT_RELEASE))
-        diagram_line(b, x3, y + 1, end, 30);
-    diagram_node(b, x1, 13);
-    if (fm)
-        diagram_node(b, x2, y);
-    diagram_node(b, x3, y);
-    if (x3 + 1 < 124)
-        for (int j = 12; j < 30; j += 2)
-            diagram_box(b, x3 + 1, j, 1, 1, 1);
 }
 static int32_t finite_env_time(const CvDisplay *d, uint32_t control)
 {
@@ -357,173 +274,6 @@ static void compact_wt_envelope(uint8_t *b)
     }
     for (unsigned x = COMPACT_END; x < FULL_END; ++x)
         upper[2 * x] &= ~graph;
-}
-static void diagram_keyboard(uint8_t *b, const CvDisplay *d)
-{
-    static const uint8_t white[] = {0, 2, 4, 5, 7, 9, 11}, black[] = {1, 3, 6, 8, 10},
-                         after[] = {0, 1, 3, 4, 5};
-    uint32_t pcs = 0;
-    if (d->fresh && d->fault != 2)
-        for (uint32_t i = 0; i < d->note_count && i < 4; ++i)
-            pcs |= 1u << (d->pitches[i] % 12);
-    for (int i = 0; i < 7; ++i) {
-        int x = 24 + 7 * i;
-        diagram_rect(b, x, 40, 7, 17);
-        if (pcs & (1u << white[i]))
-            diagram_box(b, x + 1, 50, 5, 6, 1);
-    }
-    for (int i = 0; i < 5; ++i) {
-        int x = 28 + 7 * after[i];
-        diagram_box(b, x, 40, 5, 10, 0);
-        diagram_rect(b, x, 40, 5, 9);
-        if (pcs & (1u << black[i]))
-            diagram_box(b, x + 1, 41, 3, 7, 1);
-    }
-    char caption[10];
-    uint32_t i = 0;
-    const char *s = d->waiting      ? ""
-                    : !d->fresh     ? "LINK LOST"
-                    : d->fault == 2 ? "VOICE ERR"
-                                    : d->playing;
-    while (i < 9 && s[i]) {
-        caption[i] = s[i];
-        ++i;
-    }
-    caption[i] = 0;
-    diagram_text(b, 48, 59, caption);
-    diagram_text(b, 78, 40, "P");
-    diagram_text(b, 93, 40, "A");
-    diagram_line(b, 77, 50, 95, 50);
-    diagram_line(b, 77, 48, 77, 52);
-    diagram_line(b, 95, 48, 95, 52);
-    int pos = 77 + (18 * d->raw[CP_ARP_MIX] + 63) / 127;
-    diagram_box(b, pos - 1, 47, 3, 7, 1);
-}
-static void diagram_keys(uint8_t *b, const CvDisplay *d)
-{
-    diagram_text(b, 85, 14, d->value[2]);
-    if (d->value[2][0] != '-')
-        for (int i = 0; i < 4; ++i) {
-            int x = 78 + 5 * i, y = 27 - 2 * i;
-            diagram_line(b, x, y, x + 2, y);
-            diagram_line(b, x + 2, y - 3, x + 2, y);
-        }
-    if (d->value[3][0] == '-')
-        diagram_text(b, 111, 19, "--");
-    else
-        for (int i = 0; i < 4; ++i) {
-            int stride = d->raw[CP_STRUM] ? 1 + (int)(2 * d->raw[CP_STRUM] / 500) : 0;
-            int y = 14 + 4 * i, x = 103 + stride * i;
-            diagram_box(b, x, y, 3, 2, 1);
-            diagram_line(b, x + 4, y, 120, y);
-        }
-    diagram_keyboard(b, d);
-}
-static void diagram_arp(uint8_t *b, const CvDisplay *d)
-{
-    uint32_t order = d->raw[CP_ORDER], oct = d->raw[CP_OCTAVES], gate = d->raw[CP_GATE],
-             swing = d->raw[CP_SWING];
-    if (oct > 6)
-        oct = 6;
-    if (order >= 3)
-        diagram_text(b, 59, 19, order == 3 ? "PLAY" : "RND");
-    else
-        for (int i = 0; i < 4; ++i) {
-            int rank = order == 1 ? 3 - i : order == 2 ? (i < 2 ? i : 3 - i) : i;
-            diagram_line(b, 51 + 4 * i, 28 - 4 * rank, 54 + 4 * i, 28 - 4 * rank);
-        }
-    diagram_text(b, 85, 14, d->value[2]);
-    for (int i = 0; i < 3; ++i) {
-        int y = oct < 3 ? 19 + 4 * i : oct > 3 ? 27 - 4 * i : 23;
-        diagram_line(b, 77 + 6 * i, y, 83 + 6 * i, y);
-        if (i < 2 && oct != 3)
-            diagram_line(b, 83 + 6 * i, y, 83 + 6 * i, oct < 3 ? y + 4 : y - 4);
-    }
-    int width = (int)((17 * gate + 50) / 100);
-    if (width < 1)
-        width = 1;
-    diagram_line(b, 102, 27, 104, 27);
-    diagram_line(b, 104, 27, 104, 17);
-    diagram_line(b, 104, 17, 104 + width, 17);
-    diagram_line(b, 104 + width, 17, 104 + width, 27);
-    diagram_line(b, 104 + width, 27, 121, 27);
-    int middle = 25 + (int)((17 * (100 + swing) + 100) / 200);
-    if (middle > 41)
-        middle = 41;
-    diagram_line(b, 24, 52, 43, 52);
-    diagram_line(b, 25, 44, 25, 52);
-    diagram_line(b, middle, 44, middle, 52);
-    diagram_line(b, 42, 44, 42, 52);
-    diagram_box(b, 26, 45, middle - 26, 2, 1);
-    diagram_box(b, middle + 1, 45, 42 - middle - 1, 2, 1);
-    diagram_text(b, 59, 43, d->value[5]);
-    diagram_line(b, 51, 52, 66, 52);
-    diagram_line(b, 51, 49, 51, 52);
-    diagram_line(b, 64, 50, 53, 50);
-    diagram_line(b, 53, 50, 54, 49);
-    if (order >= 3)
-        diagram_text(b, 98, 47, order == 3 ? "PLAY" : "RND");
-    else {
-        uint8_t candidates[16];
-        uint32_t count = 0;
-        if (order < 2 && d->fresh && d->fault != 2) {
-            uint32_t spread = oct < 3 ? 3 - oct : oct - 3;
-            for (uint32_t o = 0; o <= spread; ++o)
-                for (uint32_t k = 0; k < d->note_count && k < 4; ++k) {
-                    int pitch = (int)d->pitches[k] + (oct < 3 ? -12 : 12) * (int)o;
-                    if (pitch < 0 || pitch > 127)
-                        continue;
-                    uint32_t at = count;
-                    while (at && candidates[at - 1] > (uint8_t)pitch) {
-                        candidates[at] = candidates[at - 1];
-                        --at;
-                    }
-                    candidates[at] = (uint8_t)pitch;
-                    ++count;
-                }
-        }
-        for (int i = 0, marked = 0; i < 8; ++i) {
-            int rank = order == 1 ? 7 - i : order == 2 ? (i < 4 ? i : 7 - i) : i;
-            int y = 54 - 2 * rank;
-            uint32_t step = 0;
-            if (count) {
-                step = (uint32_t)i % count;
-                if (order == 1)
-                    step = count - 1 - step;
-                int range = candidates[count - 1] - candidates[0];
-                y = range ? 54 - 14 * (candidates[step] - candidates[0]) / range : 47;
-            }
-            diagram_line(b, 76 + 6 * i, y, 79 + 6 * i, y);
-            /* Mark only an actual candidate from the fresh, pitch-sorted set. */
-            if (count && d->arp_active && d->raw[CP_ARP_MIX] && d->clock_state != IS_CLOCK_LOST &&
-                d->clock_state != IS_CLOCK_WAIT && d->clock_state != IS_CLOCK_STOPPED && !marked) {
-                if (candidates[step] == d->arp_note) {
-                    diagram_rect(b, 75 + 6 * i, y - 2, 6, 5);
-                    marked = 1;
-                }
-            }
-        }
-    }
-    if (!d->fresh)
-        diagram_text(b, 98, 59, d->waiting ? "" : "LINK LOST");
-    else if (d->fault == 2)
-        diagram_text(b, 98, 59, "VOICE ERR");
-    else if (!d->raw[CP_ARP_MIX])
-        diagram_text(b, 98, 59, "ARP OFF");
-    else if (!d->note_count)
-        diagram_text(b, 98, 59, "NO NOTES");
-    else if (d->clock_state == IS_CLOCK_LOST)
-        diagram_text(b, 98, 59, "CLK LOST");
-    else if (d->clock_state == IS_CLOCK_WAIT)
-        diagram_text(b, 98, 59, "WAIT CLK");
-    else if (d->clock_state == IS_CLOCK_STOPPED)
-        diagram_text(b, 98, 59, "STOPPED");
-    else if (d->arp_active) {
-        char note[6];
-        cv_note(note, d->arp_note, 1);
-        diagram_text(b, 98, 59, note);
-    } else
-        diagram_text(b, 98, 59, "ARP --");
 }
 static void diagram_wavetable(uint8_t *b, const CvDisplay *d)
 {
@@ -583,47 +333,6 @@ static void diagram_wavetable(uint8_t *b, const CvDisplay *d)
         }
     }
 }
-static void diagram_operator(uint8_t *b, int x, int y, const char *name)
-{
-    diagram_rect(b, x, y, 13, 8);
-    diagram_text(b, x + 6, y + 2, name);
-}
-static void diagram_fm(uint8_t *b, const CvDisplay *d)
-{
-    uint32_t alg = d->raw[CP_FM_ALG];
-    diagram_operator(b, 50, 12, "A");
-    diagram_operator(b, 104, 12, "B");
-    diagram_operator(b, 50, 23, "X");
-    diagram_operator(b, 104, 23, "Y");
-    diagram_text(b, 82, 13, d->value[2]);
-    if (alg == 0) {
-        diagram_line(b, 56, 20, 56, 22);
-        diagram_line(b, 110, 20, 110, 22);
-    } else if (alg == 1) { /* B -> A -> X; Y is clean. */
-        diagram_line(b, 56, 11, 110, 11);
-        diagram_box(b, 56, 12, 1, 1, 1);
-        diagram_line(b, 56, 20, 56, 22);
-    } else if (alg == 2) { /* A+B -> X; Y is clean. */
-        diagram_line(b, 56, 20, 56, 22);
-        diagram_line(b, 103, 19, 64, 22);
-    } else { /* B -> A -> X -> Y. */
-        diagram_line(b, 56, 11, 110, 11);
-        diagram_box(b, 56, 12, 1, 1, 1);
-        diagram_line(b, 56, 20, 56, 22);
-        diagram_line(b, 63, 27, 103, 27);
-        diagram_line(b, 100, 26, 102, 27);
-        diagram_line(b, 100, 28, 102, 27);
-    }
-    if (alg != 3) {
-        diagram_line(b, 63, 27, 103, 27);
-    }
-    int balance = 76 + (int)((18 * d->raw[CP_FM_BAL] + 50) / 100);
-    diagram_box(b, balance - 1, 25, 2, 5, 1);
-    /* Feedback loop on B. */
-    diagram_line(b, 117, 13, 120, 13);
-    diagram_line(b, 120, 13, 120, 19);
-    diagram_line(b, 120, 19, 117, 19);
-}
 static void diagram_legacy(uint8_t *b, const CvDisplay *d, int width)
 {
     static const int8_t wave[] = {0,  2,  4,  6,  7,  7,  6,  5,  4,  3,  3,  3,  3,  2, 0,
@@ -638,27 +347,6 @@ static void diagram_legacy(uint8_t *b, const CvDisplay *d, int width)
         diagram_line(b, 26 + i, 48 - a, 27 + i, 48 - c);
     }
     diagram_text(b, 27 + width / 2, 59, d->family ? "REED" : "VELVET");
-}
-static void diagram_routing(uint8_t *b, int wt)
-{
-    if (wt) {
-        diagram_text(b, 110, 40, "ENV");
-        diagram_line(b, 110, 46, 110, 50);
-        diagram_line(b, 103, 50, 118, 50);
-        diagram_line(b, 103, 50, 103, 52);
-        diagram_line(b, 118, 50, 118, 52);
-        diagram_text(b, 104, 54, "P");
-        diagram_text(b, 118, 54, "F");
-    } else {
-        diagram_text(b, 82, 42, "ENV");
-        diagram_line(b, 93, 44, 101, 44);
-        diagram_line(b, 100, 43, 101, 44);
-        diagram_text(b, 110, 42, "FM");
-        diagram_text(b, 82, 53, "AMP");
-        diagram_line(b, 93, 55, 101, 55);
-        diagram_line(b, 100, 54, 101, 55);
-        diagram_text(b, 111, 53, "VOL");
-    }
 }
 static void compact_mix(uint8_t *b, const CvDisplay *d)
 {
@@ -693,20 +381,11 @@ static void compact_fm(uint8_t *b, const CvDisplay *d)
 static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
 {
     uint32_t family = d->family;
-    if (d->shared_keyboard) {
-        if (page == CS_VOICE)
-            return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
-        if (page == CS_FM_ENV)
-            return family < 2 ? 0xff : family == 2 ? 0x07 : 0x8f;
-        return 0x40;
-    }
-    if (page == 0)
-        return 0x7c;
-    if (page == 1)
-        return 0xfe;
-    if (page == 2)
-        return family == 2 ? 0x1e : family == 3 ? 0x0e : 0xf8;
-    return family == 2 ? 0x83 : family == 3 ? 0xcf : 0xff;
+    if (page == CS_VOICE)
+        return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
+    if (page == CS_FM_ENV)
+        return family < 2 ? 0xff : family == 2 ? 0x07 : 0x8f;
+    return 0x40;
 }
 static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
 {
@@ -725,34 +404,6 @@ static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
         diagram_text(b, 73, 17, "FM ENV");
         diagram_text(b, 73, 34, "SELECT FM OR TABLE");
         diagram_text(b, 73, 50, "VOLUME ON AMP");
-    }
-}
-static void diagram_draw(const uint8_t *view, uint8_t *b, const CvDisplay *d)
-{
-    if (d->shared_keyboard)
-        shared_diagram(view, b, d);
-    else if (d->page == 0)
-        diagram_keys(b, d);
-    else if (d->page == 1)
-        diagram_arp(b, d);
-    else if (d->page == 2) {
-        if (d->family == 2)
-            diagram_wavetable(b, d);
-        else if (d->family == 3)
-            diagram_fm(b, d);
-        else
-            diagram_legacy(b, d, 92);
-    } else if (d->family == 2) {
-        diagram_envelope(b, d, 0);
-        diagram_routing(b, 1);
-    } else if (d->family == 3) {
-        diagram_envelope(b, d, 1);
-        diagram_routing(b, 0);
-    } else {
-        diagram_text(b, 73, 17, d->family ? "REED" : "VELVET");
-        diagram_text(b, 73, 29, "TONE ON SOUND");
-        diagram_text(b, 73, 43, "VOLUME ENVELOPE");
-        diagram_text(b, 73, 52, "ON AMP");
     }
 }
 void ip_src_draw_rotary(uint8_t *view, uint8_t *canvas, uint32_t cell, uint32_t value)
@@ -796,20 +447,17 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         /* A held trig shows what it plays: its locks, else the Sound. */
         lock_snapshot(first, &locked);
         instrument_src_display_locked(&display, instrument_src_now(), tune, level, &locked);
-        if (display.page == 0 && !display.shared_keyboard)
-            instrument_src_preview_step(&display, &locked,
-                                        ip_panel_step_note(ip_src_debug[0], first));
     } else
         instrument_src_display(&display, instrument_src_now(), tune, level);
     uint32_t page = word(view, 0x90);
-    int native = native_cells(page, display.shared_keyboard);
+    int native = native_cells(page);
     uint32_t mask = diagram_mask(page, &display);
     if (native) {
         dk_fw_draw_fill_rect(canvas, 49, 27, 123, 52, 0);
         dk_fw_draw_fill_rect(canvas, 23, 0, 100, 25, 0);
     } else
         dk_fw_draw_fill_rect(canvas, 23, 0, 123, 52, 0);
-    int compact = display.shared_keyboard && page == CS_FM_ENV && display.family == 2;
+    int compact = page == CS_FM_ENV && display.family == 2;
     if (compact) {
         shared_envelope(view, canvas, &display);
         compact_wt_envelope(canvas);
@@ -845,7 +493,7 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         }
     }
     if (!compact)
-        diagram_draw(view, canvas, &display);
+        shared_diagram(view, canvas, &display);
     if (display.fault && display.fault != shown_fault) {
         ++ip_src_fault_toasts;
         toast(display.heading);
@@ -1016,25 +664,6 @@ static uint32_t lock_turn(uint8_t *view, uint8_t *event, uint32_t token, uint32_
     dk_fw_view_invalidate(view);
     return 1;
 }
-/* Panel recording (panel.c): the other notes of a recorded chord, as chord-note
- * locks on the steps the stock note action recorded on the current track.
- * Fewer notes clear the remaining chord-note locks, so a single re-recorded
- * note replaces an earlier chord. */
-int instrument_record_chord(const uint32_t steps[4], const int8_t *intervals, uint32_t count)
-{
-    int result = 1;
-    for (uint32_t i = 0; i <= ILP_NOTE_LAST - ILP_NOTE_FIRST; ++i) {
-        int r = i < count ? ilp_store_edit_steps(&lock_store, steps, ILP_NOTE_FIRST + i,
-                                                 (uint32_t)(intervals[i] + ILP_NOTE_CENTER), 0)
-                          : ilp_store_edit_steps(&lock_store, steps, ILP_NOTE_FIRST + i, 0, 1);
-        if (r < 0 && result > 0)
-            result = r;
-    }
-    if (result < 0)
-        toast(result == ILP_FULL || result == ILP_STORAGE_FULL ? "LOCKS FULL - CHORD CUT"
-                                                               : "CHORD NOT RECORDED");
-    return result;
-}
 /* Holding a trig and pressing a CANOPY encoder clears that control's lock. */
 static int lock_clear(uint8_t *view, uint32_t encoder, const uint32_t steps[4])
 {
@@ -1069,9 +698,7 @@ uint32_t ip_src_key(uint8_t *view, uint8_t *event)
     }
     published = 0;
     (void)instrument_src_context(ip_src_debug[0], page, 0);
-    if (token && key >= 41 && key <= 48 &&
-        (!native_cells(page, instrument_src_shared_keyboard(ip_src_debug[0])) ||
-         (key != 48 && key != 41)))
+    if (token && key >= 41 && key <= 48 && (!native_cells(page) || (key != 48 && key != 41)))
         return 1;
     return ip_src_stock_key(view, event);
 }
@@ -1128,7 +755,7 @@ uint32_t ip_src_parameter(uint8_t *view, uint32_t encoder)
     if (context(view)) {
         if (encoder == 8)
             return 10;
-        if (native_cells(word(view, 0x90), instrument_src_shared_keyboard(ip_src_debug[0]))) {
+        if (native_cells(word(view, 0x90))) {
             if (encoder == 0)
                 return 0xca;
             if (encoder == 7)

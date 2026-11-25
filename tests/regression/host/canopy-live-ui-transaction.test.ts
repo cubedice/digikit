@@ -23,7 +23,6 @@ beforeAll(() => {
       path.join(root, 'sdk/include'),
       path.join(import.meta.dirname, 'canopy-live-ui-transaction.c'),
       ...[
-        'keyboard.c',
         'preset.c',
         'src-state.c',
         'src-lock-packed.c',
@@ -45,13 +44,7 @@ test.each([
   ['preset', 'loads through the real preset row and retains pending saves on refusal'],
   ['modulation', 'commits scan clock/rate pairs and restores signed menu amounts on reservation refusal'],
   ['inactive', 'addresses inactive wheel banks and retains reservations after failed preparation'],
-  ['shape', 'restores the staged slot and preset override on refusal before retrying the real row'],
-  ['shape-same', 'preserves the preset override when the accepted shape slot does not change'],
-  ['learn-two', 'prepares two owners before attaching the real learned shape, including a PLAY peer'],
-  ['learn-three', 'includes a third owner whose selected library slot changes while shielding an override'],
-  ['learn-refuse-two', 'retains capture and reservations when the second owner refuses, then retries SAVE'],
-  ['learn-refuse-three', 'keeps every owner unchanged when the third owner refuses, then retries SAVE'],
-  ['disabled', 'retains ordinary preset, modulation, shape and LEARN menu behavior without registration'],
+  ['disabled', 'retains ordinary preset and modulation menu behavior without registration'],
 ])('%s: %s', (scenario) => {
   expect(() => execFileSync(executable, [scenario], { timeout: 10_000 })).not.toThrow();
 });

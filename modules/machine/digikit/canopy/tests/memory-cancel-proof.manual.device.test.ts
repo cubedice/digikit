@@ -84,12 +84,13 @@ if (process.env.DIGI_CANOPY_MEMORY_CANCEL === '1') {
       for (let i = 0; i < 4 && (await word('ip_src_debug', 1)) !== 0; i++) await key('SRC');
       await expect.poll(() => word('ip_src_debug', 1), { timeout: 30_000 }).toBe(0);
       await expect.poll(() => word('ip_src_debug', 2), { timeout: 30_000 }).toBeGreaterThan(0);
+      // COLOR (B) and DRIFT (H) of the VOICE page: word 8 of the SRC state
+      const tone = await word('src_state', index * 48 + 8);
       await turn(2, 20);
-      await turn(3, 12);
-      await expect.poll(async () => ({ mode: (await word('src_state', index * 48 + 6)) & 3,
-        voicing: (await word('src_state', index * 48 + 7)) & 0xffff }), { timeout: 30_000 })
-        .toEqual({ mode: 1, voicing: 3 });
-      const selected = [await word('src_state', index * 48 + 6), await word('src_state', index * 48 + 7), await word('src_state', index * 48 + 9)];
+      await turn(8, 12);
+      await expect.poll(() => word('src_state', index * 48 + 8), { timeout: 30_000 })
+        .toSatisfy((now: number) => now >>> 16 > tone >>> 16 && (now & 0xffff) > (tone & 0xffff));
+      const selected = [await word('src_state', index * 48 + 6), await word('src_state', index * 48 + 8), await word('src_state', index * 48 + 9)];
       const sound = await word('ip_admission', index * 8 + 1);
       expect(sound, 'admitted Sound pointer').not.toBe(0);
       await session.client.call('mem.cf.poke', { addr: planSymbol(plan, 'canopy_memory_target'), value: sound });
@@ -112,7 +113,7 @@ if (process.env.DIGI_CANOPY_MEMORY_CANCEL === '1') {
       expect(evidence.cleanup, 'temporary buffer reached the stock cleanup path').toEqual([1, expect.any(Number)]);
       expect((evidence.cleanup as number[])[1], 'temporary buffer was allocated').not.toBe(0);
       expect(await word('ip_admission', index * 8 + 1), 'same admitted Sound').toBe(sound);
-      expect([await word('src_state', index * 48 + 6), await word('src_state', index * 48 + 7), await word('src_state', index * 48 + 9)], 'edited SRC values remain intact').toEqual(selected);
+      expect([await word('src_state', index * 48 + 6), await word('src_state', index * 48 + 8), await word('src_state', index * 48 + 9)], 'edited SRC values remain intact').toEqual(selected);
       await session.expectNoFault('synthetic memory recall cancellation');
     });
 } else {

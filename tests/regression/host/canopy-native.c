@@ -27,18 +27,6 @@ uint8_t ip_panel_live_record(uint32_t seq)
     (void)seq;
     return 0;
 }
-int32_t ip_panel_step_note(uint32_t track, uint32_t step)
-{
-    (void)track;
-    (void)step;
-    return -1;
-}
-void instrument_src_preview_step(CvDisplay *d, const IlpSnapshot *s, int32_t note)
-{
-    (void)d;
-    (void)s;
-    (void)note;
-}
 void ip_lock_mark_edited(uint32_t seq, uint32_t edited)
 {
     assert(seq == (uint32_t)(uintptr_t)seq_object && edited == 1);
@@ -111,20 +99,6 @@ uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary)
 {
     (void)type;
     return ordinary;
-}
-uint32_t instrument_src_pages(uint32_t track)
-{
-    (void)track;
-    return cs_pages(&state);
-}
-int instrument_src_shared_keyboard(uint32_t track)
-{
-    (void)track;
-    return cs_shared_keyboard(&state);
-}
-uint32_t instrument_src_tune_page(uint32_t page)
-{
-    return page == (cs_shared_keyboard(&state) ? CS_DETAIL : 0);
 }
 static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, stock_turns,
                                      stock_keys, invalidations, polls;
@@ -508,8 +482,8 @@ int main(int argc, char **argv)
              {"", "", "", "", "", "", "MIX", ""}}};
         compact_envelope_pixels();
         real_display = 1;
-        cs_track_keyboard(&state, 1);
-        v[0x90 / 4] = 2;
+        /* a page past the three pages is page 0 */
+        v[0x90 / 4] = 3;
         clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
         assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 3);
@@ -628,22 +602,12 @@ int main(int argc, char **argv)
                 }
             }
         }
-        cs_track_keyboard(&state, 0);
-        v[0x190 / 4] = 0;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        assert(v[0x90 / 4] == 0 && mf_src_page_count(type_id) == 4);
-        assert(!strcmp(label_text[1], "CHRD"));
-        v[0x90 / 4] = 3; /* Standalone FM ENV retains its four-page renderer. */
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        assert(!amp_draws);
     } else if (!strcmp(argv[1], "live-lock")) {
         for (unsigned step = 0; step < 128; ++step)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)
                 test_locks[step][lane] = -1;
         v[0x6c / 4] = (uint32_t)(uintptr_t)seq_object;
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         uint32_t token = context((uint8_t *)v), steps[4] = {1u << 4, 0, 0, 0};
         e[4] = 20;
         assert(lock_turn((uint8_t *)v, (uint8_t *)e, token, 1, steps, 4) == 1);
@@ -660,7 +624,7 @@ int main(int argc, char **argv)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)
                 test_locks[step][lane] = -1;
         v[0x6c / 4] = (uint32_t)(uintptr_t)seq_object;
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         test_held = 1;
         uint32_t token = context((uint8_t *)v), steps[4] = {1u << 4, 0, 0, 0};
         e[4] = 20;
@@ -677,7 +641,7 @@ int main(int argc, char **argv)
                 test_locks[step][lane] = -1;
         real_display = 1;
         v[0x6c / 4] = (uint32_t)(uintptr_t)seq_object;
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         seq_object[0x258 / 4] = 1u << 4;
         test_held = 1;
         context((uint8_t *)v);
@@ -693,12 +657,17 @@ int main(int argc, char **argv)
         assert(canvas[20 * 128 + 52] != (before[20 * 128 + 52]));
         assert(canvas[20 * 128 + 80] == before[20 * 128 + 80]);
     } else if (!strcmp(argv[1], "paint")) {
+        /* DETAIL keeps the native TUNE and LEV cells unpainted */
+        v[0x90 / 4] = CS_DETAIL;
+        texts = 0;
+        memset(canvas, 0xaa, sizeof(canvas));
+        ip_src_draw((uint8_t *)v, canvas);
         for (int y = 0; y < 64; ++y)
             for (int x = 0; x < 128; ++x)
                 if (y < 11 || x < 23 || x >= 124 || (y < 37 && x < 48) || (y >= 38 && x >= 101))
                     assert(canvas[y * 128 + x] == 0xaa);
         assert(texts >= 6 && !toasts);
-        assert(mf_src_page_count(type_id) == 4);
+        assert(mf_src_page_count(type_id) == CS_SHARED_PAGES);
         now = 139;
         ip_src_update((uint8_t *)v);
         assert(!invalidations);
@@ -709,19 +678,19 @@ int main(int argc, char **argv)
         real_display = 1;
         for (unsigned family = 0; family < 4; ++family) {
             cs_metadata(&state, family << 4);
-            for (unsigned page = 0; page < 4; ++page) {
+            for (unsigned page = 0; page < CS_SHARED_PAGES; ++page) {
                 v[0x90 / 4] = page;
                 context((uint8_t *)v);
                 for (unsigned values = 0; values < 2; ++values) {
                     v[0x190 / 4] = values ? 0x01010101 : 0;
                     clear_paint(canvas);
                     ip_src_draw((uint8_t *)v, canvas);
-                    protected_pixels(canvas, page == 0);
+                    protected_pixels(canvas, page == CS_DETAIL);
                 }
             }
         }
         cs_metadata(&state, 2u << 4);
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         v[0x190 / 4] = 0;
         context((uint8_t *)v);
         uint8_t before[8192];
@@ -736,61 +705,10 @@ int main(int argc, char **argv)
         ip_src_draw((uint8_t *)v, canvas);
         assert(memcmp(before, canvas, sizeof(before)) && canvas[29 * 128 + 121]);
         protected_pixels(canvas, 0);
-        v[0x90 / 4] = 3;
-        context((uint8_t *)v);
-        state.value[CP_WT_ATTACK] = 0;
-        state.value[CP_WT_RELEASE] = 0;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        memcpy(before, canvas, sizeof(before));
-        state.value[CP_WT_ATTACK] = 127;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        assert(memcmp(before, canvas, sizeof(before)));
-        cs_metadata(&state, 3u << 4);
-        v[0x90 / 4] = 3;
-        context((uint8_t *)v);
-        state.value[CP_FM_SUSTAIN] = 0;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        memcpy(before, canvas, sizeof(before));
-        state.value[CP_FM_SUSTAIN] = 100;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        assert(memcmp(before, canvas, sizeof(before)));
-        protected_pixels(canvas, 0);
-        CvDisplay telemetry = {0};
-        telemetry.fresh = 1;
-        telemetry.note_count = 2;
-        telemetry.pitches[0] = 60;
-        telemetry.pitches[1] = 64;
-        telemetry.arp_note = 64;
-        telemetry.arp_active = 1;
-        telemetry.clock_state = IS_CLOCK_RUNNING;
-        telemetry.raw[CP_ARP_MIX] = 64;
-        telemetry.raw[CP_OCTAVES] = 3;
-        telemetry.raw[CP_GATE] = 50;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_arp(canvas, &telemetry);
-        assert(canvas[38 * 128 + 81] && !strcmp(arp_caption, "E4"));
-        telemetry.fresh = 0;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_arp(canvas, &telemetry);
-        assert(!canvas[38 * 128 + 81] && !strcmp(arp_caption, "LINK LOST"));
-        telemetry.fresh = 1;
-        telemetry.clock_state = IS_CLOCK_LOST;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_arp(canvas, &telemetry);
-        assert(!canvas[38 * 128 + 81] && !strcmp(arp_caption, "CLK LOST"));
-        telemetry.fault = 2;
-        telemetry.clock_state = IS_CLOCK_RUNNING;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_arp(canvas, &telemetry);
-        assert(!canvas[38 * 128 + 81] && !strcmp(arp_caption, "VOICE ERR"));
     } else if (!strcmp(argv[1], "tone")) {
         real_display = 1;
         cs_metadata(&state, 2u << 4);
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         context((uint8_t *)v);
         for (unsigned i = 0; i < 8; ++i)
             assert(ip_src_parameter((uint8_t *)v, i) == 0);
@@ -798,13 +716,13 @@ int main(int argc, char **argv)
         event((uint8_t *)e, 2, 350, 0, 0);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         assert(state.value[CP_WT_POS] == 350 && !stock_turns);
-        event((uint8_t *)e, 6, 100, 0, 0);
+        event((uint8_t *)e, 8, 100, 0, 0);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         assert(state.value[CP_DRIFT] == 100 && !stock_turns);
         focus_mask = 0;
         clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
-        const char *labels[] = {"WAVE", "POS", "DEP", "HZ", "SHAP", "DRFT", "CLK", "RST"};
+        const char *labels[] = {"WAVE", "POS", "DEP", "HZ", "SHAP", "CLK", "RST", "DRFT"};
         for (unsigned i = 0; i < 8; ++i)
             assert(!strcmp(label_text[i], labels[i]));
         protected_pixels(canvas, 0);
@@ -823,130 +741,11 @@ int main(int argc, char **argv)
             e[3] = key;
             assert(ip_src_key((uint8_t *)v, (uint8_t *)e) == 1);
         }
-    } else if (!strcmp(argv[1], "wavetable-fm")) {
-        real_display = 1;
-        cs_metadata(&state, 2u << 4);
-        v[0x90 / 4] = 3;
-        context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 4);
-        state.value[CP_WTFM_DEPTH] = 100;
-        state.value[CP_WTFM_RATIO] = 15;
-        state.value[CP_WTFM_ENV] = 0;
-        state.value[CP_WTFM_WHEEL] = 200;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *labels[] = {"ATK", "REL", "FM", "RAT", "PENV", "FENV", "VEL", ""};
-        for (unsigned i = 0; i < 8; ++i)
-            assert(!strcmp(label_text[i], labels[i]));
-        assert(!strcmp(body_text[3], "8.00") && graph_mask == 0x74);
-        protected_pixels(canvas, 0);
-        v[0x190 / 4] = 0x01010101;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *values[] = {"5", "15", "100%", "8.00", "0%", "-100%", "0%", ""};
-        for (unsigned i = 0; i < 8; ++i)
-            assert(!strcmp(label_text[i], values[i]));
-        protected_pixels(canvas, 0);
-        for (unsigned i = 0; i < 8; ++i)
-            assert(ip_src_parameter((uint8_t *)v, i) == 0);
-        assert(ip_src_parameter((uint8_t *)v, 8) == 10);
-        event((uint8_t *)e, 3, -1, 0, 0);
-        assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1 && state.value[CP_WTFM_DEPTH] == 99);
-        event((uint8_t *)e, 8, 1, 0, 0);
-        assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1 && !stock_turns);
-        event((uint8_t *)e, 9, 1, 0, 0);
-        assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 7 && stock_turns == 1);
-        event((uint8_t *)e, 4, -3, 0, 0);
-        ip_src_turn((uint8_t *)v, (uint8_t *)e);
-        assert(state.value[CP_WTFM_RATIO] == 15);
-        event((uint8_t *)e, 4, -1, 0, 0);
-        ip_src_turn((uint8_t *)v, (uint8_t *)e);
-        assert(state.value[CP_WTFM_RATIO] == 14);
-        for (unsigned key = 41; key <= 48; ++key) {
-            e[3] = key;
-            assert(ip_src_key((uint8_t *)v, (uint8_t *)e) == 1);
-        }
-    } else if (!strcmp(argv[1], "chord-preview")) {
-        CsState shown = state;
-        IsStatus status = {0};
-        CvDisplay d;
-        shown.mode = KB_ROOT;
-        shown.generation = 1;
-        shown.track = 0;
-        status.mode = KB_PLAY;
-        status.generation = 1;
-        status.track = 0;
-        status.fast_valid = 1;
-        status.fast_at = now;
-        cv_build_owner(&d, &shown, &status, now, "0", "127", 0, KB_PLAY);
-        assert(d.fresh && d.fault != 1);
-        const uint8_t notes[3] = {60, 64, 67};
-        cv_preview_notes(&d, notes, 3);
-        assert(d.note_count == 3 && !strcmp(d.playing, "C") && !strcmp(d.heading, "C"));
-        assert(d.pitches[0] == 60 && d.pitches[1] == 64 && d.pitches[2] == 67);
     } else if (!strcmp(argv[1], "fm-envelope")) {
-        CvDisplay env = {0};
-        env.focus_id = CS_NONE;
-        env.raw[CP_FM_SUSTAIN] = 100;
-        /* Zero attack must remain vertical for every release value. */
-        for (unsigned rel = 0; rel < 128; rel += rel == 0 ? 1 : rel == 1 ? 63 : 63) {
-            env.raw[CP_FM_RELEASE] = (uint16_t)rel;
-            memset(canvas, 0, sizeof(canvas));
-            diagram_envelope(canvas, &env, 1);
-            for (int y = 16; y < 28; ++y)
-                assert(canvas[y * 128 + 48] && !canvas[y * 128 + 49]);
-        }
-        /* An instant release is vertical at the sustain corner, even when all
-         * envelope times are at zero. */
-        env.raw[CP_FM_RELEASE] = 0;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_envelope(canvas, &env, 1);
-        for (int y = 16; y < 28; ++y)
-            assert(canvas[y * 128 + 64]);
-        /* The horizontal sustain has a constant width as decay changes;
-         * locate its two hollow nodes in the painted graph. */
-        for (unsigned level = 20; level <= 80; level += 30)
-            for (unsigned dec = 0; dec <= 127; dec += dec == 0 ? 64 : 63) {
-                env.raw[CP_FM_SUSTAIN] = (uint16_t)level;
-                env.raw[CP_FM_DECAY] = (uint16_t)dec;
-                memset(canvas, 0, sizeof(canvas));
-                diagram_envelope(canvas, &env, 1);
-                int y = 29 - (int)((16 * level + 50) / 100), nodes[2], count = 0;
-                for (int x = 47; x < 100 && count < 2; ++x)
-                    if (!canvas[y * 128 + x] && canvas[y * 128 + x - 1] &&
-                        canvas[y * 128 + x + 1] && canvas[(y - 1) * 128 + x - 1] &&
-                        canvas[(y - 1) * 128 + x] && canvas[(y - 1) * 128 + x + 1] &&
-                        canvas[(y + 1) * 128 + x - 1] && canvas[(y + 1) * 128 + x] &&
-                        canvas[(y + 1) * 128 + x + 1])
-                        nodes[count++] = x;
-                assert(count == 2 && nodes[1] - nodes[0] == 16);
-            }
-        env.raw[CP_FM_SUSTAIN] = 60;
-        env.raw[CP_FM_DECAY] = 50;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_envelope(canvas, &env, 1);
-        uint8_t middle[18 * 47];
-        int corner = 0;
-        for (int x = 50; x < 123; ++x)
-            if (canvas[12 * 128 + x]) {
-                corner = x - 1;
-                break;
-            }
-        assert(corner > 51);
-        for (int y = 12; y < 30; ++y)
-            for (int x = 50; x < 97; ++x)
-                middle[(y - 12) * 47 + x - 50] = canvas[y * 128 + x];
-        env.raw[CP_FM_ATTACK] = 127;
-        env.raw[CP_FM_RELEASE] = 127;
-        memset(canvas, 0, sizeof(canvas));
-        diagram_envelope(canvas, &env, 1);
-        for (int y = 12; y < 30; ++y)
-            for (int x = 50; x < corner - 1; ++x)
-                assert(middle[(y - 12) * 47 + x - 50] == canvas[y * 128 + x]);
         cs_metadata(&state, 3u << 4);
-        v[0x90 / 4] = 3;
+        v[0x90 / 4] = CS_FM_ENV;
         context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 4);
+        assert(mf_src_page_count(type_id) == CS_SHARED_PAGES);
         for (unsigned i = 0; i < 8; ++i)
             assert(ip_src_parameter((uint8_t *)v, i) == 0);
         assert(ip_src_parameter((uint8_t *)v, 8) == 10);
@@ -964,78 +763,15 @@ int main(int argc, char **argv)
         protected_pixels(canvas, 0);
         cs_metadata(&state, 2u << 4);
         context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 4 && v[0x90 / 4] == 3);
+        assert(mf_src_page_count(type_id) == CS_SHARED_PAGES && v[0x90 / 4] == CS_FM_ENV);
         assert(ip_src_parameter((uint8_t *)v, 0) == 0);
         cs_metadata(&state, 0);
         context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 4 && v[0x90 / 4] == 3);
-    } else if (!strcmp(argv[1], "fm-presentation")) {
-        real_display = 1;
-        cs_metadata(&state, 3u << 4);
-        v[0x90 / 4] = 2;
-        context((uint8_t *)v);
-        state.value[CP_FM_ALG] = 3;
-        state.value[CP_FM_BAL] = 100;
-        state.value[CP_FM_RTA] = 0;
-        state.value[CP_FM_RTB] = 15;
-        state.value[CP_FM_FB] = 100;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *tone_labels[] = {"WAVE", "DEP", "ALG", "BAL", "RTA", "RTB", "FDBK", "DRFT"};
-        for (unsigned i = 0; i < 8; ++i)
-            assert(!strcmp(label_text[i], tone_labels[i]));
-        assert(!strcmp(body_text[4], "0.25") && !strcmp(body_text[5], "8.00"));
-        assert(graph_mask == 0xc0 && graph_value[6] == 127);
-        protected_pixels(canvas, 0);
-        v[0x190 / 4] = 0x01010101;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *tone_values[] = {"FM", "32", "CHAIN", "100%", "0.25", "8.00", "100%", "0"};
-        for (unsigned i = 0; i < 8; ++i)
-            assert(!strcmp(label_text[i], tone_values[i]));
-        assert(graph_mask == 0xc0);
-        protected_pixels(canvas, 0);
-        state.value[CP_FM_RTA] = 5;
-        state.value[CP_FM_RTB] = 7;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        assert(!strcmp(label_text[4], "1.41") && !strcmp(label_text[5], "1.73"));
-        char feedback[32];
-        cv_feedback(feedback, &state, 4);
-        assert(!strcmp(feedback, "PAIR A RATIO=SQRT2*"));
-        cv_feedback(feedback, &state, 5);
-        assert(!strcmp(feedback, "PAIR B RATIO=SQRT3*"));
-        v[0x90 / 4] = 3;
-        v[0x190 / 4] = 0;
-        context((uint8_t *)v);
-        const uint16_t envelope[] = {127, 127, 100, 127, 0, 100, 200};
-        for (unsigned i = 0; i < 7; ++i)
-            state.value[CP_FM_ATTACK + i] = envelope[i];
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *env_labels[] = {"ATK", "DEC", "SUS", "REL", "ENV", "VEL", "", ""};
-        for (unsigned i = 0; i < 8; ++i)
-            assert(!strcmp(label_text[i], env_labels[i]));
-        assert(graph_mask == 0x30 && graph_value[4] == 0 && graph_value[5] == 63);
-        assert(canvas[20 * 128 + 24] == 0); /* FM ENV A is custom, not protected TUNE. */
-        protected_pixels(canvas, 0);
-        v[0x190 / 4] = 0x01010101;
-        clear_paint(canvas);
-        ip_src_draw((uint8_t *)v, canvas);
-        const char *env_values[] = {"127", "127", "100%", "127", "-100%", "0%", "", ""};
-        for (unsigned i = 0; i < 8; ++i) {
-            assert(!strcmp(label_text[i], env_values[i]));
-            assert(strlen(label_text[i]) <= 5);
-        }
-        assert(graph_mask == 0x30);
-        protected_pixels(canvas, 0);
-        assert(ip_src_parameter((uint8_t *)v, 0) == 0 && ip_src_parameter((uint8_t *)v, 7) == 0);
-        assert(ip_src_parameter((uint8_t *)v, 8) == 10);
-        event((uint8_t *)e, 8, 1, 0, 0);
-        assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
-        event((uint8_t *)e, 9, 1, 0, 0);
-        assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 7 && stock_turns == 1);
+        assert(mf_src_page_count(type_id) == CS_SHARED_PAGES && v[0x90 / 4] == CS_FM_ENV);
     } else if (!strcmp(argv[1], "routing")) {
+        /* DETAIL: the native TUNE (A) and LEV (H) cells, MIX on G */
+        v[0x90 / 4] = CS_DETAIL;
+        context((uint8_t *)v);
         assert(ip_src_parameter((uint8_t *)v, 0) == 0xca);
         assert(ip_src_parameter((uint8_t *)v, 7) == 0xd1);
         assert(ip_src_parameter((uint8_t *)v, 2) == 0);
@@ -1055,13 +791,17 @@ int main(int argc, char **argv)
         assert(ip_src_parameter((uint8_t *)v, 0) == 1000);
         assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 7 && stock_turns == 2);
     } else if (!strcmp(argv[1], "values")) {
-        assert(!strcmp(label_text[1], "COLR"));
+        /* DETAIL: MIX on G, the native TUNE and LEV cells, nothing else */
+        v[0x90 / 4] = CS_DETAIL;
+        context((uint8_t *)v);
+        ip_src_draw((uint8_t *)v, canvas);
+        assert(!strcmp(label_text[6], "COLR"));
         v[0x190 / 4] = 0x01010101;
         ip_src_draw((uint8_t *)v, canvas);
-        assert(!strcmp(label_text[1], "64"));
+        assert(!strcmp(label_text[6], "64"));
         v[0x190 / 4] = 0;
         ip_src_draw((uint8_t *)v, canvas);
-        assert(!strcmp(label_text[1], "COLR"));
+        assert(!strcmp(label_text[6], "COLR"));
         event((uint8_t *)e, 7, 1, 0, 0);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         ip_src_draw((uint8_t *)v, canvas);
@@ -1069,28 +809,18 @@ int main(int argc, char **argv)
         focus_mask = 0;
         ip_src_draw((uint8_t *)v, canvas);
         assert(!strcmp(label_text[6], "COLR"));
-        v[0x90 / 4] = 1;
-        context((uint8_t *)v);
-        assert(ip_src_parameter((uint8_t *)v, 8) == 10);
-        uint32_t revision = state.revision;
-        event((uint8_t *)e, 8, 12, 0, 0);
-        ip_src_turn((uint8_t *)v, (uint8_t *)e);
-        assert(cs_choice_value(&state, CS_BPM) == 120 && state.revision == revision &&
-               !stock_turns);
         /* Earlier checks intentionally use the all-COLR display stub. Switch
-         * to the real model to prove retired controls are blank, and seed the
-         * canvas to verify their old labels/graphics are actually erased. */
+         * to the real model to prove the unused cells are blank, and seed the
+         * canvas to verify that no label or graphic is left in them. */
         real_display = 1;
         focus_mask = 0;
         for (unsigned values = 0; values < 2; ++values) {
             v[0x190 / 4] = values ? 0x01010101 : 0;
             clear_paint(canvas);
             ip_src_draw((uint8_t *)v, canvas);
-            for (unsigned cell = 6; cell < 8; ++cell) {
+            for (unsigned cell = 1; cell < 6; ++cell)
                 assert(!label_text[cell][0] && !body_text[cell][0] && !(graph_mask & (1u << cell)));
-                /* Read-only diagram pixels may occupy these cells. */
-            }
-            protected_pixels(canvas, 0);
+            protected_pixels(canvas, 1);
         }
     } else if (!strcmp(argv[1], "delayed")) {
         event((uint8_t *)e, 4, 3, 0, 0);
@@ -1102,6 +832,8 @@ int main(int argc, char **argv)
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         assert(!stock_turns);
     } else if (!strcmp(argv[1], "overflow")) {
+        v[0x90 / 4] = CS_DETAIL;
+        context((uint8_t *)v);
         uint32_t events[65][6];
         for (unsigned i = 0; i < 65; ++i)
             event((uint8_t *)events[i], 7, 1, 0, 0);
@@ -1178,7 +910,7 @@ int main(int argc, char **argv)
             for (unsigned lane = 0; lane < ILP_LANES; ++lane)
                 test_locks[step][lane] = -1;
         v[0x6c / 4] = (uint32_t)(uintptr_t)seq_object;
-        v[0x90 / 4] = 2;
+        v[0x90 / 4] = CS_VOICE;
         test_held = 1;
         uint32_t steps[4] = {1u << 4, 0, 0, 0}, token = context((uint8_t *)v);
         assert(token);

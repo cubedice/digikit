@@ -39,20 +39,18 @@ void cs_import(CsState *, const CpPreset *);
 void cs_metadata(CsState *, uint32_t metadata);
 void cs_touch(CsState *);
 void cs_native_tune(CsState *, uint32_t raw);
-/* Switch layouts only when the track keyboard owns both note generation and its UI. */
-void cs_track_keyboard(CsState *, int active);
+/* Always set (cs_init): the track keyboard's layout is CANOPY's only one. */
 static inline int cs_shared_keyboard(const CsState *s)
 {
     return !!(s->layout & CS_SHARED_KEYBOARD);
 }
 uint32_t cs_context(CsState *, uint32_t track, uint32_t generation, int visible, uint32_t page,
                     uint32_t mode, uint32_t clock, int learned, int modal);
-uint32_t cs_control(uint32_t page, uint32_t encoder);
 uint32_t cs_pages(const CsState *);
 enum CsSharedPage { CS_VOICE, CS_FM_ENV, CS_DETAIL, CS_SHARED_PAGES };
 uint32_t cs_mapped_control(const CsState *, uint32_t encoder);
-/* View-only choices. PLAY is followed by the twelve persisted chord types;
- * Velvet/Reed are followed by the five persisted wavetable identifiers. */
+/* View-only choices: Velvet/Reed are followed by the five persisted wavetable
+ * identifiers, then FM. */
 uint32_t cs_choice_value(const CsState *, uint32_t control);
 uint32_t cs_choice_max(const CsState *, uint32_t control);
 int cs_edit(CsState *, uint32_t token, uint32_t encoder, int32_t detents, uint32_t now_ms,

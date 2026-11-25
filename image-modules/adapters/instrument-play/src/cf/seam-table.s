@@ -6,8 +6,8 @@
     .globl instrument_image
 instrument_image:
     .long 0x49505331
-    .long 2
-    .long 71
+    .long 3
+    .long 69
     .long cp_decode
     .long cp_encode
     .long cp_fm_defaults
@@ -19,8 +19,6 @@ instrument_image:
     .long sa_put
     .long sa_seq
     .long sa_slot
-    .long ip_panel_tick
-    .long ip_panel_step_note
     .long ip_sa_ensure
     .long ip_sa_store
     .long ip_sa_tick

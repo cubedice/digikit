@@ -22,7 +22,6 @@ test('real SRC edits commit copy-on-share snapshots or refuse without mutation',
         '-I',
         path.join(root, 'sdk/include'),
         path.join(import.meta.dirname, 'canopy-sound-share-transaction.c'),
-        path.join(root, 'tests/regression/fixtures/canopy_keyboard_proof.c'),
         ...[
           'preset.c',
           'src-state.c',

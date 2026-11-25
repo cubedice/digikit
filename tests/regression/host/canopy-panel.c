@@ -1,15 +1,16 @@
+/* The KEYBOARD view handler (keyboard-panel/src/cf/panel.c) with the firmware and the track keyboard modeled: CANOPY has no panel
+ * path of its own, so its tracks are the track keyboard's to play, and recording goes through the stock note action. */
 #include <assert.h>
 #include <stdio.h>
 #include "../../../image-modules/adapters/keyboard-panel/src/cf/panel.c"
 static uint8_t view[0x200], other[0x200], object[4];
-static uint32_t machine = 9, selected, downs, ups, cancels, original_on, original_off, detaches,
-                last_down_key, last_down_note;
-static uint8_t active = 1, live, held, step_record, keyboard_held, shared_route;
-static uint32_t shared_downs, shared_ups, shared_track, shared_notes, shared_canceled, capture_step;
-static uint32_t seq_object[0x100];
-static uint16_t expected_native_record[16];
+static uint32_t machine = 9, selected, instrument_track = 0, original_on, original_off, detaches;
+static uint8_t active = 1, live, held, step_record, keyboard_held, routed = 1, native_record = 1;
+static uint32_t tk_downs, tk_ups, tk_cancels, tk_focus = 99, tk_notes, tk_canceled;
+static uint32_t native_downs, capture_presses, capture_step, capture_track, capture_pitch;
+static uint32_t commits, commit_track, commit_step, commit_note;
 static uint32_t guarded_track = 16, guarded_pitch;
-static uint32_t filtered_on, filtered_off, native_record_route, native_record_downs;
+static uint32_t seq_object[0x100];
 #define SEQ ((uint32_t)(uintptr_t)seq_object)
 uint8_t ip_panel_live_record(uint32_t seq)
 {
@@ -34,121 +35,30 @@ uint32_t ip_panel_key_down(uint32_t key)
 uint32_t ip_panel_project_settings(uint32_t controller)
 {
     (void)controller;
-    assert(0);
     return 0;
 }
 uint32_t ip_panel_trig_mode(uint32_t settings)
 {
     (void)settings;
-    assert(0);
     return 0;
 }
 const uint8_t ip_panel_trig_return[1] = {0};
-/* A fake pattern object (finding 349): trig words per track, the note-list
- * entries at +0x6a50 and the head index per (track, step) at +0x12a50. The
- * recorder commits after the key event; commit() models that write. */
-static uint8_t pattern[0x1dc00];
-static uint32_t entries, clock_ms = 1000;
-uint32_t pp_current_pattern(void)
-{
-    return (uint32_t)(uintptr_t)pattern;
-}
-uint32_t instrument_src_now(void)
-{
-    return clock_ms;
-}
-static void commit(uint32_t track, uint32_t step, uint32_t note)
-{
-    uint8_t *trig = pattern + 0x6a5 * track + 2 * step;
-    trig[1] |= 1;
-    uint8_t *e = pattern + 0x6a50 + 6 * entries;
-    e[0] = (uint8_t)track;
-    e[1] = (uint8_t)step;
-    e[2] = (uint8_t)note;
-    uint8_t *h = pattern + 0x12a50 + 2 * (128 * track + step);
-    h[0] = (uint8_t)(entries >> 8);
-    h[1] = (uint8_t)entries;
-    uint8_t *n = pattern + 0x13a50 + 2 * entries;
-    n[0] = n[1] = 0xff;
-    ++entries;
-}
-/* The stock recorder adding a note to a step's existing list (same head). */
-static void append(uint32_t track, uint32_t step, uint32_t note)
-{
-    const uint8_t *h = pattern + 0x12a50 + 2 * (128 * track + step);
-    uint32_t at = (uint32_t)((h[0] << 8) | h[1]);
-    for (;;) {
-        uint8_t *n = pattern + 0x13a50 + 2 * at;
-        if (n[0] == 0xff) {
-            n[0] = (uint8_t)(entries >> 8);
-            n[1] = (uint8_t)entries;
-            break;
-        }
-        at = (uint32_t)((n[0] << 8) | n[1]);
-    }
-    uint8_t *e = pattern + 0x6a50 + 6 * entries;
-    e[0] = (uint8_t)track;
-    e[1] = (uint8_t)step;
-    e[2] = (uint8_t)note;
-    uint8_t *n = pattern + 0x13a50 + 2 * entries;
-    n[0] = n[1] = 0xff;
-    ++entries;
-}
-static void heads_empty(void)
-{
-    for (unsigned i = 0; i < 16 * 128; ++i)
-        pattern[0x12a50 + 2 * i] = pattern[0x12a51 + 2 * i] = 0xff;
-}
-static int plays_keys = 1;
-int kbp_track_plays_keys(uint32_t t)
-{
-    (void)t;
-    return plays_keys;
-}
-static uint32_t chord_steps[4], chord_count, chord_calls, mutes;
-static int8_t chord[3];
-int kbp_record_chord(const uint32_t steps[4], const int8_t *intervals, uint32_t count)
-{
-    for (int i = 0; i < 4; ++i)
-        chord_steps[i] = steps[i];
-    for (uint32_t i = 0; i < count; ++i)
-        chord[i] = intervals[i];
-    chord_count = count;
-    ++chord_calls;
-    return 1;
-}
-void kbp_seq_mute(uint32_t track, int on)
-{
-    assert(track < 16);
-    mutes = on ? mutes | (1u << track) : mutes & ~(1u << track);
-}
-volatile uint32_t ip_track;
-int kbp_track_owned(uint32_t t)
-{
-    return t == ip_track;
-}
-int kbp_track_keyboard_routed(uint32_t track)
-{
-    return shared_route && kbp_track_owned(track);
-}
-void kbp_select_track(uint32_t t)
-{
-    (void)t;
-}
 uint32_t dkrt_instrument_type(void)
 {
     return 9;
 }
+/* The track's object, and its machine type: the instrument type (9) on CANOPY's track. */
+static uint32_t object_track;
 uint8_t *ip_panel_track_object(uint32_t manager, uint32_t track)
 {
     (void)manager;
-    assert(track == ip_track);
-    return object;
+    object_track = track;
+    return track < 16 ? object : 0;
 }
 uint32_t ip_panel_track_type(uint8_t *p)
 {
     assert(p == object);
-    return machine;
+    return object_track == instrument_track ? machine : 0;
 }
 uint32_t ip_panel_selected_track(uint32_t manager)
 {
@@ -168,66 +78,36 @@ void ip_panel_stock_toggle(uint32_t manager)
 void ip_panel_original_on(uint8_t *v, uint32_t key, uint32_t track, uint32_t pitch,
                           uint32_t velocity, uint32_t a, uint32_t b, uint32_t c)
 {
-    assert(v == view && key < 16 && (track <= 1 || track == 10) && velocity == 88 && a == 5 &&
-           b == 6 && c == 7);
-    assert(key != 3 || pitch == 65);
-    if (expected_native_record[key]) {
+    assert(v == view && key < 16 && track < 16 && velocity == 88 && a == 5 && b == 6 && c == 7);
+    /* the stock audition is guarded exactly while a live-recorded press runs it */
+    if (guarded_track != 16)
         assert(guarded_track == track && guarded_pitch == pitch);
-        ++filtered_on;
-    } else
-        assert(guarded_track == 16);
     ++original_on;
 }
 void ip_panel_original_off(uint8_t *v, uint32_t key)
 {
     assert(v == view && key < 16);
-    uint16_t record = expected_native_record[key];
-    if (record) {
-        assert(guarded_track == (record >> 8) - 1u && guarded_pitch == (record & 0xffu));
-        expected_native_record[key] = 0;
-        ++filtered_off;
-    } else
-        assert(guarded_track == 16);
     ++original_off;
 }
-/* Step recording: the stock key handler writes the entry itself. */
-static int stock_step = -1;
-static uint8_t stock_note;
-static void commit(uint32_t track, uint32_t step, uint32_t note);
-/* The stock note-list writer behind the hook: it updates the fake pattern. */
+static uint8_t pattern[0x1dc00];
+static uint32_t entries;
+/* The stock note-list writer behind the hook: it updates the fake pattern (finding 349). */
 void ip_note_list_original(uint8_t *editor, uint32_t track, uint32_t step, uint32_t *records)
 {
     (void)editor;
-    commit(track, step, ((const uint8_t *)(uintptr_t)records[0])[0]);
-}
-static uint32_t irq_masked;
-uint32_t dkrt_irq_mask(void)
-{
-    uint32_t old = irq_masked;
-    irq_masked = 1;
-    return old;
-}
-void dkrt_irq_restore(uint32_t old)
-{
-    irq_masked = old;
-}
-/* A stock commit through the hooked writer: one record {note, velocity}. */
-static uint8_t record_bytes[4];
-static uint32_t record_vector[2];
-static void note_commit(uint32_t track, uint32_t step, uint32_t note)
-{
-    record_bytes[0] = (uint8_t)note;
-    record_bytes[1] = 100;
-    record_vector[0] = (uint32_t)(uintptr_t)record_bytes;
-    record_vector[1] = (uint32_t)(uintptr_t)(record_bytes + 4);
-    ip_note_list_write(0, track, step, record_vector);
+    uint8_t *e = pattern + 0x6a50 + 6 * entries;
+    e[0] = (uint8_t)track;
+    e[1] = (uint8_t)step;
+    e[2] = ((const uint8_t *)(uintptr_t)records[0])[0];
+    uint8_t *h = pattern + 0x12a50 + 2 * (128 * track + step);
+    h[0] = (uint8_t)(entries >> 8);
+    h[1] = (uint8_t)entries;
+    ++entries;
 }
 uint32_t ip_panel_stock_key(uint8_t *v, uint8_t *e)
 {
     (void)e;
     assert(v == view);
-    if (stock_step >= 0)
-        note_commit(0, (uint32_t)stock_step, stock_note);
     return 17;
 }
 void ip_panel_stock_detach(uint8_t *v, uint8_t *m)
@@ -236,47 +116,33 @@ void ip_panel_stock_detach(uint8_t *v, uint8_t *m)
     assert(v == view || v == other);
     ++detaches;
 }
-int kbp_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track)
-{
-    (void)track;
-    assert(key < 16);
-    if (down) {
-        assert((key != 3 || note == 65) && (velocity == 88 || velocity == 100));
-        last_down_key = key;
-        last_down_note = note;
-        ++downs;
-    } else
-        ++ups;
-    return 1;
-}
-void kbp_panel_release(void)
-{
-    ++cancels;
-}
+/* The track keyboard, modeled: it plays the tracks it routes. */
 int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    if (!kbp_track_keyboard_routed(track))
+    assert(key < 16 && track < 16 && pitch < 128 && velocity == 88);
+    if (!routed)
         return 0;
-    assert(key < 16 && pitch < 128 && (velocity == 88 || velocity == 100));
-    uint32_t bit = 1u << key;
-    if (!(bit & (shared_notes | shared_canceled))) {
-        shared_notes |= bit;
-        shared_track = track;
-        last_down_key = key;
-        last_down_note = pitch;
-        ++shared_downs;
-    }
+    tk_notes |= 1u << key;
+    ++tk_downs;
     return 1;
+}
+int tk_panel_off(uint32_t key)
+{
+    uint32_t bit = 1u << key;
+    int owned = !!((tk_notes | tk_canceled) & bit);
+    if (tk_notes & bit)
+        ++tk_ups;
+    tk_notes &= ~bit;
+    tk_canceled &= ~bit;
+    return owned;
 }
 int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    assert(guarded_track == 16); /* Shared dispatch precedes the stock audition guard. */
-    if (!native_record_route)
+    assert(guarded_track == 16 && live && key < 16 && track < 16 && pitch < 128 && velocity == 88);
+    if (!native_record)
         return 0;
-    assert(live && key < 16 && track < 16 && pitch < 128 && velocity == 88 && !capture_step);
-    expected_native_record[key] = (uint16_t)(((track + 1u) << 8) | pitch);
-    shared_notes |= 1u << key;
-    ++native_record_downs;
+    tk_notes |= 1u << key;
+    ++native_downs;
     return 1;
 }
 void tk_panel_record_audition(uint32_t track, uint32_t pitch)
@@ -285,478 +151,172 @@ void tk_panel_record_audition(uint32_t track, uint32_t pitch)
     guarded_track = track;
     guarded_pitch = pitch;
 }
-int tk_panel_off(uint32_t key)
+int tk_panel_retrig(uint32_t key, uint32_t track)
 {
-    assert(guarded_track == 16); /* Shared releases precede the stock guard too. */
-    uint32_t bit = 1u << key;
-    int owned = !!(bit & (shared_notes | shared_canceled));
-    if (shared_notes & bit)
-        ++shared_ups;
-    shared_notes &= ~bit;
-    shared_canceled &= ~bit;
-    return owned;
+    (void)key;
+    (void)track;
+    return 0;
 }
 void tk_panel_cancel(void)
 {
-    shared_canceled |= shared_notes;
-    shared_notes = 0;
+    tk_canceled |= tk_notes;
+    tk_notes = 0;
+    ++tk_cancels;
 }
 void tk_panel_focus(uint32_t track)
 {
-    if (shared_track != track)
-        tk_panel_cancel();
+    tk_focus = track;
 }
 void tk_capture_panel_press(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity,
                             uint32_t step)
 {
     (void)key;
-    (void)track;
-    (void)pitch;
     (void)velocity;
+    ++capture_presses;
+    capture_track = track;
+    capture_pitch = pitch;
     capture_step = step;
+}
+void tk_capture_panel_release(uint32_t key)
+{
+    (void)key;
+}
+void tk_capture_note_list_commit(uint32_t notes, uint32_t track, uint32_t step, uint32_t note,
+                                 uint32_t velocity)
+{
+    assert(notes == (uint32_t)(uintptr_t)(pattern + 0x6a50) && velocity == 100);
+    ++commits;
+    commit_track = track;
+    commit_step = step;
+    commit_note = note;
+}
+/* A stock note editor: its vtable entry +0x28 gives the pattern's note entries. */
+static uint32_t editor_notes(uint8_t *editor)
+{
+    (void)editor;
+    return (uint32_t)(uintptr_t)(pattern + 0x6a50);
+}
+static uint32_t editor_vtable[16], editor[4];
+static void press(uint32_t key, uint32_t track, uint32_t pitch)
+{
+    ip_panel_on(view, key, track, pitch, 88, 5, 6, 7);
 }
 int main(void)
 {
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(downs == 1 && !original_on);
-    /* Ordinary pitches and velocity have already been resolved by firmware. */
-    ip_panel_off(view, 3);
-    assert(ups == 1 && original_off == 1);
-    machine = 0;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    machine = 9;
-    ip_panel_on(view, 3, 1, 65, 88, 5, 6, 7);
-    assert(original_on == 2 && downs == 1);
-    assert(ip_panel_key_event(view, 0) == 17 && !cancels);
-    selected = 1;
-    assert(ip_panel_key_event(view, 0) == 17 && cancels == 1);
-    selected = 0;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    selected = 1;
-    ip_panel_update(view);
-    assert(cancels == 2);
-    /* Foreign views cannot release the current local phrase. */
-    selected = 0;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    ip_panel_detach(other, 0);
-    assert(cancels == 2 && detaches == 1);
-    ip_panel_detach(view, 0);
-    assert(cancels == 3 && detaches == 2);
-    ip_panel_off(view, 3);
-    assert(ups == 2 && original_off == 2);
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    ip_panel_toggle(0);
-    assert(!active && cancels == 4);
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == 3);
-    ip_panel_toggle(0);
-    assert(active && cancels == 4);
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    active = 0;
-    ip_panel_update(view);
-    assert(cancels == 5);
-    /* The instrument on track 11: only that resolved track is consumed. */
-    active = 1;
-    ip_track = 10;
-    selected = 10;
-    ip_panel_on(view, 3, 10, 65, 88, 5, 6, 7);
-    assert(downs == 6 && original_on == 3);
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(downs == 6 && original_on == 4);
-    ip_panel_update(view);
-    assert(cancels == 5);
-    selected = 0;
-    ip_panel_update(view);
-    assert(cancels == 6);
-    ip_track = 0xffffffffu;
-    ip_panel_on(view, 3, 10, 65, 88, 5, 6, 7);
-    assert(downs == 6 && original_on == 5);
-    /* Live recording, step recording or a held trig: the stock note action
-     * records the press and CANOPY still plays it, with the stock audition
-     * muted on the frame path while the key is held. */
-    heads_empty();
-    pattern[0x485] = 60;
-    pattern[0x6a5 + 0x485] = 70;
-    assert(ip_panel_step_note(0, 6) == 60 && ip_panel_step_note(1, 6) == 70);
-    assert(ip_panel_step_note(16, 0) == -1 && ip_panel_step_note(0, 128) == -1);
-    ip_track = 0;
-    selected = 0;
     *(uint32_t *)(view + 0x98) = SEQ;
+    for (unsigned i = 0; i < 16 * 128; ++i)
+        pattern[0x12a50 + 2 * i] = pattern[0x12a51 + 2 * i] = 0xff;
+
+    /* Playing: the track keyboard takes every track it routes, CANOPY's too; the stock action runs for none of them. */
+    press(3, 0, 65);
+    assert(tk_downs == 1 && !original_on);
+    ip_panel_off(view, 3);
+    assert(tk_ups == 1 && !original_off);
+    press(3, 1, 65);
+    assert(tk_downs == 2 && !original_on);
+    ip_panel_off(view, 3);
+    /* A track it does not route stays stock: the stock action sounds and releases it. */
+    routed = 0;
+    press(3, 0, 65);
+    assert(tk_downs == 2 && original_on == 1);
+    ip_panel_off(view, 3);
+    assert(original_off == 1);
+    routed = 1;
+
+    /* Live recording on CANOPY's track: the track keyboard sounds the note while the stock note action records it, with the
+     * stock audition guarded for that track and pitch; the release keeps the original track after the selection changes. */
     live = 1;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == 6 && downs == 7 && ip_panel_recorded == 1 && mutes == 1);
-    ip_panel_off(view, 3);
-    assert(!mutes);
-    live = 0;
-    step_record = 1;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == 7 && downs == 8 && ip_panel_recorded == 2);
-    ip_panel_off(view, 3);
-    /* A held trig takes the note at once: a lone key clears chord notes. */
-    step_record = 0;
-    held = 1;
-    seq_object[0x258 / 4] = 1u << 4;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == 8 && downs == 9 && ip_panel_recorded == 3);
-    assert(chord_calls == 1 && !chord_count && chord_steps[0] == (1u << 4));
-    ip_panel_off(view, 3);
-    /* Held C, E, G on a held trig: each press stores the earlier keys. */
-    ip_panel_on(view, 9, 0, 60, 88, 5, 6, 7);
-    ip_panel_on(view, 11, 0, 64, 88, 5, 6, 7);
-    assert(chord_calls == 3 && chord_count == 1 && chord[0] == -4);
-    ip_panel_on(view, 13, 0, 67, 88, 5, 6, 7);
-    assert(chord_calls == 4 && chord_count == 2 && chord[0] == -3 && chord[1] == -7);
-    ip_panel_off(view, 9);
-    ip_panel_off(view, 11);
-    ip_panel_off(view, 13);
-    seq_object[0x258 / 4] = 0;
-    held = 0;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == 11 && downs == 13 && ip_panel_recorded == 6);
-    ip_panel_off(view, 3);
-    clock_ms += 2000;
-    ip_panel_tick();
-    /* Live recording commits each trig and its note list after the key
-     * event. A committed step whose note belongs to the held group gets the
-     * group's other notes, relative to that note, on the next UI tick. */
-    live = 1;
-    chord_calls = 0;
-    ip_panel_on(view, 9, 0, 60, 88, 5, 6, 7);
-    ip_panel_on(view, 11, 0, 64, 88, 5, 6, 7);
-    ip_panel_on(view, 13, 0, 67, 88, 5, 6, 7);
-    ip_panel_tick();
-    assert(!chord_calls);
-    commit(0, 6, 67);
-    assert(ip_panel_step_note(0, 6) == 67 && ip_panel_step_note(1, 6) == 70);
-    ip_panel_tick();
-    assert(chord_calls == 1 && chord_steps[0] == (1u << 6) && chord_count == 2 && chord[0] == -3 &&
-           chord[1] == -7);
-    ip_panel_tick();
-    assert(chord_calls == 1); /* unchanged steps are not rewritten */
-    commit(0, 7, 60);
-    ip_panel_tick();
-    assert(chord_calls == 2 && chord_steps[0] == (1u << 7) && chord_count == 2 && chord[0] == 7 &&
-           chord[1] == 4);
-    commit(0, 8, 50);
-    ip_panel_tick();
-    assert(chord_calls == 2); /* not a held note */
-    /* A note added to step 7's list (same head) is seen as a change. */
-    append(0, 7, 64);
-    ip_panel_tick();
-    assert(chord_calls == 3 && chord_steps[0] == (1u << 7) && chord[0] == 7 && chord[1] == 4);
-    /* The watch outlives the release briefly, then stops. */
-    ip_panel_off(view, 9);
-    ip_panel_off(view, 11);
-    ip_panel_off(view, 13);
-    assert(!mutes);
-    clock_ms += 1000;
-    commit(0, 9, 64);
-    ip_panel_tick();
-    assert(chord_calls == 4 && chord_steps[0] == (1u << 9) && chord[0] == 3 && chord[1] == -4);
-    clock_ms += 1000;
-    ip_panel_tick();
-    commit(0, 10, 64);
-    ip_panel_tick();
-    assert(chord_calls == 4);
-    /* A ROOT chord sound records its root alone (clears chord notes). */
-    plays_keys = 0;
-    ip_panel_on(view, 9, 0, 60, 88, 5, 6, 7);
-    ip_panel_on(view, 11, 0, 64, 88, 5, 6, 7);
-    commit(0, 11, 64);
-    ip_panel_tick();
-    assert(chord_calls == 5 && !chord_count && chord_steps[0] == (1u << 11));
-    ip_panel_off(view, 9);
-    ip_panel_off(view, 11);
-    clock_ms += 2000;
-    ip_panel_tick();
-    plays_keys = 1;
-    /* Another selected track stops the watch: locks address the UI track. */
-    ip_panel_on(view, 9, 0, 60, 88, 5, 6, 7);
-    ip_panel_on(view, 11, 0, 64, 88, 5, 6, 7);
-    selected = 1;
-    commit(0, 12, 64);
-    ip_panel_tick();
-    assert(chord_calls == 5);
-    selected = 0;
-    ip_panel_off(view, 9);
-    ip_panel_off(view, 11);
-    /* Leaving keyboard mode releases recorded keys and their mute. */
-    ip_panel_on(view, 9, 0, 60, 88, 5, 6, 7);
-    assert(mutes == 1);
-    ip_panel_toggle(0);
-    assert(!active && !mutes);
-    ip_panel_toggle(0);
-    live = 0;
-    /* Step recording with KEYBOARD held: each trig key's note is committed
-     * through the hooked note-list writer, during or after the key event,
-     * without the note action. CANOPY takes the commits in order: each note
-     * sounds for the oldest waiting key, the stock audition is muted and the
-     * held group's other notes are stored on the committed step. */
-    {
-        uint32_t ev[8] = {0};
-        ev[4] = 1;
-        step_record = 1;
-        keyboard_held = 1;
-        live = 0;
-        chord_calls = 0;
-        unsigned on = original_on, d = downs;
-        ev[3] = 0x19 + 8;
-        stock_step = 20;
-        stock_note = 60;
-        assert(ip_panel_key_event(view, (uint8_t *)ev) == 17);
-        assert(chord_calls == 1 && chord_steps[0] == (1u << 20) && !chord_count && downs == d + 1 &&
-               mutes == 1);
-        ev[3] = 0x19 + 10;
-        stock_note = 64;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(chord_calls == 2 && chord_count == 1 && chord[0] == -4 && downs == d + 2);
-        ev[3] = 0x19 + 12;
-        stock_note = 67;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(chord_calls == 3 && chord_count == 2 && chord[0] == -3 && chord[1] == -7 &&
-               downs == d + 3);
-        /* Releases commit nothing; the mute ends with the last held key. */
-        stock_step = -1;
-        ev[3] = 0x19 + 8;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ip_panel_off(view, 8);
-        assert(chord_calls == 3 && mutes == 1);
-        ip_panel_off(view, 10);
-        ip_panel_off(view, 12);
-        assert(!mutes && original_on == on);
-        /* The firmware can call note-off before delivering the key release.
-         * Neither that event nor auto-repeat starts another entry. */
-        ev[3] = 0x19 + 12;
-        ev[4] = 0x10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ev[4] = 9;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(!waiting_count && !mutes);
-        ev[4] = 1;
-        /* The next entry starts a new group: a lone note clears chord notes. */
-        ev[3] = 0x19 + 9;
-        stock_step = 21;
-        stock_note = 62;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(chord_calls == 4 && chord_steps[0] == (1u << 21) && !chord_count);
-        stock_step = -1;
-        ip_panel_off(view, 9);
-        assert(!mutes);
-        /* A press that commits nothing (e.g. KEYBOARD itself) changes nothing. */
-        ev[3] = 0x12;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(chord_calls == 4 && !mutes);
-        /* Simultaneous presses: all three key events come before any commit;
-         * the commits then arrive together, in press order, and every note
-         * joins the chord. */
-        d = downs;
-        ev[3] = 0x19 + 8;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ev[3] = 0x19 + 10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ev[3] = 0x19 + 12;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(chord_calls == 4 && mutes == 1 && downs == d);
-        note_commit(0, 22, 60);
-        note_commit(0, 22, 64);
-        note_commit(0, 22, 67);
-        ip_panel_tick();
-        assert(chord_calls == 7 && chord_steps[0] == (1u << 22) && chord_count == 2 &&
-               chord[0] == -3 && chord[1] == -7);
-        assert(downs == d + 3);
-        ip_panel_off(view, 8);
-        ip_panel_off(view, 10);
-        ip_panel_off(view, 12);
-        assert(!mutes);
-        /* A key released before its commit still records its note. */
-        d = downs;
-        ev[3] = 0x19 + 9;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ip_panel_off(view, 9);
-        note_commit(0, 23, 62);
-        ip_panel_tick();
-        assert(chord_calls == 8 && chord_steps[0] == (1u << 23) && !chord_count && downs == d);
-        /* After the entry window, commits on this track are not taken: a
-         * later copy or paste cannot touch chord-note locks. */
-        clock_ms += 600;
-        ip_panel_tick();
-        note_commit(0, 24, 62);
-        ip_panel_tick();
-        assert(chord_calls == 8 && !mutes);
-        /* A waiting key whose note never comes expires and ends the mute. */
-        ev[3] = 0x19 + 11;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(mutes == 1);
-        clock_ms += 600;
-        ip_panel_tick();
-        assert(!mutes && chord_calls == 8);
-        /* The first key may be released while both commits are still in
-         * flight. Its tombstone must not steal the second key's note. */
-        d = downs;
-        ev[3] = 0x19 + 8;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ev[3] = 0x19 + 10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ip_panel_off(view, 8);
-        note_commit(0, 25, 60);
-        note_commit(0, 25, 64);
-        ip_panel_tick();
-        assert(chord_calls == 10 && chord_count == 1 && chord[0] == -4);
-        assert(downs == d + 1 && last_down_key == 10 && last_down_note == 64);
-        /* A different note-list write with no pending entry is not a chord. */
-        note_commit(0, 26, 67);
-        ip_panel_tick();
-        assert(chord_calls == 10);
-        ip_panel_off(view, 10);
-        ip_panel_tick();
-        assert(!mutes);
-        /* A new group can reuse a released key before its prior commit. */
-        ev[3] = 0x19 + 9;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        ip_panel_off(view, 9);
-        ev[3] = 0x19 + 9;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        note_commit(0, 27, 62);
-        note_commit(0, 28, 65);
-        ip_panel_tick();
-        assert(chord_calls == 12 && !chord_count && last_down_key == 9 && last_down_note == 65);
-        ip_panel_off(view, 9);
-        ip_panel_tick();
-        assert(!mutes);
-        /* The release gives a late commit its full grace period. */
-        ev[3] = 0x19 + 9;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        clock_ms += 450;
-        ip_panel_off(view, 9);
-        clock_ms += 100;
-        ip_panel_tick();
-        note_commit(0, 31, 62);
-        ip_panel_tick();
-        assert(chord_calls == 13 && !mutes);
-        /* A delayed commit must never write locks to a newly selected track. */
-        ev[3] = 0x19 + 8;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        note_commit(0, 29, 60);
-        selected = 1;
-        ip_panel_tick();
-        assert(chord_calls == 13 && !mutes);
-        selected = 0;
-        ip_panel_off(view, 8);
-        ev[3] = 0x19 + 8;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        note_commit(0, 30, 60);
-        step_record = 0;
-        ip_panel_tick();
-        assert(chord_calls == 13 && !mutes);
-        ip_panel_off(view, 8);
-        step_record = 0;
-    }
-    /* A shared track sounds the pitch selected by the native step writer.
-     * The temporary KEYBOARD key can stay held with the Keyboard view off. */
-    {
-        uint32_t ev[8] = {0};
-        ev[3] = 0x19 + 8;
-        ev[4] = 1;
-        shared_route = step_record = 1;
-        active = keyboard_held = 0;
-        assert(ip_panel_key_event(view, (uint8_t *)ev) == 17);
-        assert(!mutes && !shared_notes && !waiting_count);
-
-        keyboard_held = 1;
-        uint32_t legacy_downs = downs, off = original_off, writes = chord_calls;
-        stock_step = 32;
-        stock_note = 60;
-        assert(ip_panel_key_event(view, (uint8_t *)ev) == 17);
-        assert(step_note(pattern, 0, 32) == 60 && chord_calls == writes + 1);
-        assert(shared_downs == 1 && shared_notes == (1u << 8) && downs == legacy_downs);
-        assert(last_down_key == 8 && last_down_note == 60 && mutes == 1);
-
-        ev[3] = 0x19 + 10;
-        stock_note = 67;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(step_note(pattern, 0, 32) == 67 && chord_calls == writes + 2);
-        assert(chord_count == 1 && chord[0] == -7);
-        assert(shared_downs == 2 && shared_notes == ((1u << 8) | (1u << 10)));
-        assert(last_down_key == 10 && last_down_note == 67 && downs == legacy_downs);
-
-        stock_step = -1;
-        ip_panel_off(view, 8);
-        assert(shared_ups == 1 && original_off == off + 1 && mutes == 1);
-        selected = 1;
-        ip_panel_update(view);
-        assert(!shared_notes && shared_canceled == (1u << 10) && !mutes);
-        /* The native key event can release a canceled key without a callback. */
-        ev[4] = 0x10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(!shared_canceled && original_off == off + 1);
-        selected = 0;
-        ip_panel_tick();
-
-        ev[3] = 0x19 + 9;
-        ev[4] = 1;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        note_commit(0, 33, 64);
-        ev[4] = 0x10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(step_note(pattern, 0, 33) == 64 && chord_calls == writes + 3);
-        assert(shared_downs == 2 && downs == legacy_downs && !mutes);
-
-        ev[4] = 1;
-        stock_step = 34;
-        stock_note = 65;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(shared_downs == 3 && shared_notes == (1u << 9) && mutes == 1);
-        stock_step = -1;
-        ev[4] = 0x10;
-        ip_panel_key_event(view, (uint8_t *)ev);
-        assert(shared_ups == 2 && !shared_notes && !mutes);
-
-        /* The direct note action also follows the step recorder and pairs
-         * the Shared release with the stock release. */
-        active = 1;
-        ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-        assert(capture_step && shared_downs == 4 && downs == legacy_downs && mutes == 1);
-        ip_panel_off(view, 3);
-        assert(!shared_notes && shared_ups == 3 && !mutes);
-        assert(original_off == off + 2);
-        step_record = 0;
-        shared_route = 0;
-    }
-    /* Stock live recording takes precedence over the held-trig edit mark. */
-    held = 1;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(capture_step);
-    ip_panel_off(view, 3);
-    live = 1;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(!capture_step);
-    ip_panel_off(view, 3);
-    held = 0;
-    /* Foreign tracks never ask the sequencer. */
-    live = 1;
-    machine = 0;
-    unsigned before = original_on, recorded = ip_panel_recorded;
-    ip_panel_on(view, 3, 0, 65, 88, 5, 6, 7);
-    assert(original_on == before + 1 && ip_panel_recorded == recorded);
-
-    /* Live-recorded stock voices keep the original track and pitch for
-     * release, even after recording stops or the selected track changes. */
-    native_record_route = 1;
-    unsigned up = shared_ups, stock_off = original_off;
-    ip_panel_on(view, 8, 0, 60, 88, 5, 6, 7);
-    ip_panel_on(view, 10, 1, 64, 88, 5, 6, 7);
-    ip_panel_on(view, 8, 0, 60, 88, 5, 6, 7); /* Held repetition. */
-    assert(native_record_downs == 2 && filtered_on == 2 && guarded_track == 16);
-    assert(original_on == before + 3 && ip_panel_recorded == recorded + 2);
+    press(8, 0, 60);
+    assert(native_downs == 1 && original_on == 2 && guarded_track == 16 && ip_panel_recorded == 1);
+    assert(capture_presses == 1 && !capture_step);
     live = 0;
     selected = 1;
     ip_panel_off(view, 8);
-    assert(filtered_off == 1 && shared_ups == up + 1 && guarded_track == 16);
-    uint32_t native_release[8] = {[3] = 0x19 + 10, [4] = 0x10};
-    assert(ip_panel_key_event(view, (uint8_t *)native_release) == 17);
-    assert(filtered_off == 2 && original_off == stock_off + 2 && shared_ups == up + 2);
-    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] &&
-           guarded_track == 16);
+    assert(original_off == 2 && !tk_notes && guarded_track == 16);
+    selected = 0;
+    /* A track the track keyboard does not record natively is stock live recording. */
+    live = 1;
+    native_record = 0;
+    press(8, 2, 60);
+    assert(native_downs == 1 && original_on == 3 && tk_cancels == 1);
+    ip_panel_off(view, 8);
+    native_record = 1;
+    live = 0;
+
+    /* Step entry on CANOPY's track: the stock note action records, the track keyboard auditions, and both releases pair. */
+    step_record = 1;
+    unsigned downs = tk_downs, cancels = tk_cancels;
+    press(9, 0, 62);
+    assert(original_on == 4 && tk_downs == downs + 1 && tk_cancels == cancels && capture_step);
+    assert(ip_panel_recorded == 2 && (tk_notes & (1u << 9)));
+    ip_panel_off(view, 9);
+    assert(!tk_notes && original_off == 4);
+    /* The same on another track: stock records and auditions, the track keyboard's notes are cancelled. */
+    press(9, 1, 62);
+    assert(original_on == 5 && tk_downs == downs + 1 && tk_cancels == cancels + 1);
+    ip_panel_off(view, 9);
+    step_record = 0;
+    /* A held trig on CANOPY's track takes the note the same way. */
+    held = 1;
+    press(4, 0, 64);
+    assert(original_on == 6 && tk_downs == downs + 2 && capture_step);
+    ip_panel_off(view, 4);
+    held = 0;
+
+    /* Step entry with KEYBOARD held: the stock key handler writes the note without the note action. The track keyboard's
+     * capture takes the press and, after the stock writer, the committed note. */
+    {
+        uint32_t ev[8] = {0};
+        ev[3] = 0x19 + 5;
+        ev[4] = 1;
+        step_record = keyboard_held = 1;
+        selected = 0;
+        unsigned presses = capture_presses;
+        assert(ip_panel_key_event(view, (uint8_t *)ev) == 17);
+        assert(capture_presses == presses + 1 && capture_track == 0 && capture_pitch == 128 &&
+               capture_step);
+        editor[0] = (uint32_t)(uintptr_t)editor_vtable;
+        editor_vtable[0x28 / 4] = (uint32_t)(uintptr_t)editor_notes;
+        static uint8_t record[4] = {67, 100, 0, 0};
+        uint32_t records[2] = {(uint32_t)(uintptr_t)record, (uint32_t)(uintptr_t)(record + 4)};
+        ip_note_list_write((uint8_t *)editor, 0, 20, records);
+        assert(commits == 1 && commit_track == 0 && commit_step == 20 && commit_note == 67);
+        assert(step_note(pattern, 0, 20) == 67);
+        /* A write with no editor is the stock writer alone. */
+        ip_note_list_write(0, 0, 21, records);
+        assert(commits == 1 && step_note(pattern, 0, 21) == 67);
+        /* The release event of a shared step audition releases it even without a note-off callback. */
+        keyboard_held = 0;
+        press(6, 0, 60);
+        assert(tk_notes & (1u << 6));
+        ev[3] = 0x19 + 6;
+        ev[4] = 0x10;
+        ip_panel_key_event(view, (uint8_t *)ev);
+        assert(!(tk_notes & (1u << 6)));
+        step_record = 0;
+    }
+
+    /* While a step entry holds KEYBOARD on CANOPY's track, the track keyboard keeps its focus there. */
+    step_record = 1;
+    press(7, 0, 60);
+    active = 0;
+    ip_panel_update(view);
+    assert(tk_focus == 0);
+    step_record = 0;
+    ip_panel_update(view);
+    assert(tk_focus == IP_NONE);
+    active = 1;
+    ip_panel_off(view, 7);
+
+    /* Leaving keyboard mode and detaching the view cancel the track keyboard's panel notes. */
+    cancels = tk_cancels;
+    ip_panel_toggle(0);
+    assert(!active && tk_cancels == cancels + 1);
+    ip_panel_toggle(0);
+    assert(active && tk_cancels == cancels + 1);
+    ip_panel_detach(other, 0);
+    ip_panel_detach(view, 0);
+    assert(detaches == 2 && tk_cancels == cancels + 3);
     puts("ok");
     return 0;
 }

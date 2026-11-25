@@ -7,7 +7,7 @@ role = "adapter"
 type = "framework"
 author = "digikit"
 status = "stable"
-summary = "The KEYBOARD view of the panel for the track keyboard and persistent instruments: key down and up, retrig, recording and step entry, offered to core/track-keyboard and, while services/instrument.dks is loaded, to CANOPY."
+summary = "The KEYBOARD view of the panel for the track keyboard: key down and up, retrig, recording and step entry, offered to core/track-keyboard, which plays CANOPY's tracks too."
 requires = ["core/runtime"]
 conflicts = []
 ports = ["dt2-1.17"]
@@ -16,15 +16,14 @@ ports = ["dt2-1.17"]
 "dt2-1.17" = "stable"
 
 # panel.c is the KeyboardView handler that core/instrument-play had (docs/plans/fork-image-diet.md section 9). It runs in the image, so the
-# track keyboard plays and records without CANOPY. Its calls into CANOPY's host (ownership of a track, chord recording, the MIDI ledger) go
-# through the forwarders of seam.s, which read the slot word kbp_vec that services/instrument.dks fills; while it is 0 they answer as for a
-# track that CANOPY does not own. src-clock.c is the pure SRC clock that core/relay-track and the service read too.
+# track keyboard plays and records without CANOPY, and it calls nothing of CANOPY's host: the track keyboard plays CANOPY's tracks too.
+# src-clock.c is the pure SRC clock that core/relay-track and the service read too.
 [[object]]
 path = "build/keyboard-panel-cf.dko.json"
-sources = ["src/cf/panel.c", "src/cf/panel.s", "src/cf/src-clock.c", "src/cf/seam.s"]
+sources = ["src/cf/panel.c", "src/cf/panel.s", "src/cf/src-clock.c"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig", "pp_current_pattern"]
+optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig"]
 
 [object.externs]
 ip_panel_active = "cf.page.site.instrument_panel_active"
@@ -45,9 +44,6 @@ ip_panel_on_resume = "hook.cf.page.site.instrument_panel_on.return"
 ip_panel_off_resume = "hook.cf.page.site.instrument_panel_off.return"
 ip_note_list_resume = "hook.cf.page.site.instrument_note_list_write.return"
 
-# services/instrument.dks fills the slot word with its table kbp_vec_table (seam.toml).
-[[slot]]
-name = "kbp_vec"
 
 [[op]]
 op = "write"
