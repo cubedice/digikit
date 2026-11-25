@@ -1,0 +1,16 @@
+{
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "core/runtime-service-tests",
+  "tags": ["test-only"],
+  "implicitDependencies": ["core/runtime"],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": ["service-commands.device.test.ts"],
+        "firmwareOnly": "the real USB SysEx path carries command bodies of every size",
+        "tags": ["C:transport"],
+        "modules": ["test/svc-echo"]
+      }
+    ]
+  }
+}

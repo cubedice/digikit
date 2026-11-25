@@ -1,0 +1,37 @@
+diff --git a/modules/core/runtime/src/rs/src/handlers.rs b/modules/core/runtime/src/rs/src/handlers.rs
+index 08cdaf35c..781337895 100644
+--- a/modules/core/runtime/src/rs/src/handlers.rs
++++ b/modules/core/runtime/src/rs/src/handlers.rs
+@@ -49,6 +49,8 @@ pub mod exports {
+     pub const FX_ROUTES_ENTRY: &str = "dk_fx_routes_entry";
+     pub const MACHINES_GUARD_STATE: &str = "dk_machines_guard_state";
+     pub const MACHINES_OWNED_IDS: &str = "dk_machines_owned_ids";
++    pub const MACHINES_PLANNED_IDS: &str = "dk_machines_planned_ids";
++    pub const MACHINES_ID_TAKEN: &str = "dk_machines_id_taken";
+ 
+     /// Host tests: a fake export, by name hash, for the function that the table does not hold as a ColdFire address.
+     #[cfg(test)]
+@@ -104,6 +106,23 @@ pub mod exports {
+             None => 0,
+         }
+     }
++    /// The `[key, number]` pairs the machines service planned for the module at index `selection` of the boot's selection (`instrument::resolve_types`): the
++    /// `machines` service file's export; returns how many (none without the file).
++    pub fn planned_ids(selection: u32, out: &mut [[u32; 2]; 8]) -> usize {
++        match find_export(MACHINES_PLANNED_IDS) {
++            Some(a) => unsafe {
++                (core::mem::transmute::<usize, unsafe extern "C" fn(u32, *mut u32) -> u32>(a)(selection, out.as_mut_ptr() as *mut u32) as usize).min(out.len())
++            },
++            None => 0,
++        }
++    }
++    /// Whether the machines service has machine type `id` taken in its rows: the `machines` service file's export; not taken without the file.
++    pub fn id_taken(id: u32) -> bool {
++        match find_export(MACHINES_ID_TAKEN) {
++            Some(a) => unsafe { core::mem::transmute::<usize, unsafe extern "C" fn(u32) -> u32>(a)(id) != 0 },
++            None => false,
++        }
++    }
+     /// The shapes of the lfo service, for the runtime's own tests of the record path.
+     #[cfg(test)]
+     pub(crate) use dkrt_svc_lfo::records::{number_of, owner_of, shape, used, Lfo, MAX_SHAPES, SAMPLES};

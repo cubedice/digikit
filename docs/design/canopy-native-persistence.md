@@ -31,7 +31,7 @@ outside Sound memory is sketched in
 ## Reproducing the persistence failure
 
 The DTII device test
-[`persistence.device.test.ts`](../../modules/machines/canopy/tests/persistence.device.test.ts)
+[`persistence.device.test.ts`](../../modules/machine/digikit/canopy/tests/persistence.device.test.ts)
 (registered since finding 351; it used to need `DIGI_CANOPY_PERSIST_TEST=1`)
 edits CHRD, VOIC and STRUM on two independently admitted CANOPY tracks, uses the
 stock panel to save the project, and starts a new emulator on the resulting
@@ -42,7 +42,7 @@ including the built CANOPY module and DTII 1.17 firmware. From the repository
 root, run:
 
 ```sh
-mise exec -- pnpm --filter @digi/regression exec vitest run --project runtime ../../modules/machines/canopy/tests/persistence.device.test.ts
+mise exec -- pnpm --filter @digi/regression exec vitest run --project runtime ../../modules/machine/digikit/canopy/tests/persistence.device.test.ts
 ```
 
 On the unfixed implementation the comparison fails: track 1's

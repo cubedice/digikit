@@ -1,0 +1,98 @@
+[[site]]
+name = "cf.page.site.track_trig_key_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 8, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view's key vtable slot. Stock target 0x4007302c."
+
+[[site]]
+name = "cf.page.site.track_trig_draw_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 16, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view's draw vtable slot. Stock target 0x40073264."
+
+[[site]]
+name = "cf.page.site.track_trig_turn_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 68, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view's turn vtable slot. Stock target 0x4007375a."
+
+[[site]]
+name = "cf.page.site.track_trig_parameter_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 188, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view's parameter vtable slot. Stock target 0x40069628."
+
+[[site]]
+name = "cf.page.site.track_trig_turn_interface_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 256, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view's turn_interface vtable slot. Stock target 0x4007385c."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_key"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "446a3c0e2f392db912b347ca577d0f0f6f8db12fa6076534e62a1153109ae96e" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Unmodified entry called when wrapping the TRIG view key method."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_draw"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "d17760e9c50dce8f5315dbaff5609dba83c0798ad63ef2c273c1f7c9add59a5f" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Unmodified entry called when wrapping the TRIG view draw method."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_turn"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "a923baf036b38dc5303a27fc20f4ab6cbc923767f6a6a7c5234815fbb946f969" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Unmodified entry called when wrapping the TRIG view turn method."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_parameter"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "c8b3769c5f48e59c0c160ea38f10ebd451882524bb4eafdc34cf57eae15c1d26" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Unmodified entry called when wrapping the TRIG view parameter method."
+
+[[site]]
+name = "cf.page.site.track_trig_title_slot"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 260, offset = 76, len = 4, sha256 = "8854b03c33812096d8c5e09004e27cf086601ca7dc99a59e577b46a50611565d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "DTII 1.17 TRIG parameter view title slot. Stock target 0x4006965a returns a COW std::string to A0."
+
+[[site]]
+name = "cf.page.site.track_trig_stock_title"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, len = 6, sha256 = "ac8506583ca85b41a876e649429f5028096067c8dd6a24fcfa411730bfcfe19d" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Native TRIG page title routine. The adapter preserves this method and return ABI for both stock pages."

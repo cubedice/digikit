@@ -8,7 +8,7 @@ test('task refill keeps credits across owner and MIDI changes during allocation'
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-credit-refill-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
     const twoPhase = path.join(root, 'tests/regression/fixtures/canopy-two-phase');
     const executable = path.join(directory, 'credit-refill');
     execFileSync(

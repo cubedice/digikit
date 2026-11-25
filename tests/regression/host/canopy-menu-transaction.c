@@ -16,8 +16,8 @@
 #undef src_state
 #undef src_status
 #include <assert.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
 
 /* The suite links production keyboard.c. Unrelated selector-proof paths must
  * not be reached; their separate fixture is deliberately not substituted. */

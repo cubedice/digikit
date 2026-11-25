@@ -1,3 +1,4 @@
+import { oledPng } from './oled-png.ts';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -101,6 +102,8 @@ export interface SessionOptions {
   dsp?: DspMode;
   /** Card sample directory for `card.load` (DT2). */
   card?: string;
+  /** Builds a card image that `firmware.load` mounts as it is (instead of `card.load` of `card`). */
+  cardImage?: () => Promise<string>;
   /** Run directory; default a fresh temporary directory. */
   runDir?: string;
   /** Shared store of booted-state snapshots (`DIGI_SNAPSHOT_DIR`); default `<runDir>/patched`, private to the run dir. */
@@ -134,7 +137,7 @@ export interface RuntimeBaseline {
   /** Every caller must explicitly choose its scenario's guard policy, including an unguarded one. */
   guard: GuardSetParams;
   deliverExceptions?: boolean;
-  /** Real logical panel transitions before cold execution; explicitly supplied (even empty) selects start:cold. */
+  /** Real logical panel transitions before the first guest instruction. They are part of the ready-pair key: a hit restores a boot of the same presses, a miss boots cold and publishes. */
   initialButtons?: readonly InitialButton[];
   /** Use the MainPanel contract with DIGI_COLD_RELAX_FS: missing filesystem verification is accepted, explicit failure is rejected. Stock verification/loading may continue. */
   relaxedReady?: boolean;
@@ -303,6 +306,7 @@ export class Session {
     if (options.startEmpty && (options.dsp !== 'sharc' || !options.runtime?.reuse))
       throw new Error('empty startup requires a reusable coupled session');
     if (options.runtime?.reuse && options.mirror) throw new Error('reusable runtime sessions cannot mirror cards');
+    if (options.card && options.cardImage) throw new Error('`card` and `cardImage` both name the card: set one');
     const inp = resolveInputs(options.device, options.firmware);
     if (options.runtime) validateRuntimeInputs(inp);
     const volume = options.runDir && fs.existsSync(options.runDir) ? options.runDir : os.tmpdir();
@@ -384,7 +388,8 @@ export class Session {
         return session;
       }
       let card: string | undefined;
-      if (options.card) card = (await checked(c.cardLoad(options.card))).card;
+      if (options.cardImage) card = await checked(options.cardImage());
+      else if (options.card) card = (await checked(c.cardLoad(options.card))).card;
       session.#card = card;
       session.#load = await checked(
         c.firmwareLoad({
@@ -522,7 +527,7 @@ export class Session {
           // force still reconstructs the firmware and opens the explicit pristine card.
           replace: !prepared,
           force: true,
-          start: baseline.initialButtons === undefined ? 'auto' : 'cold',
+          start: 'auto',
           initial_buttons: baseline.initialButtons,
           // a paused baseline keeps the daemon's press of NO at ready: settling would step the emulator that a test counts from the ready point
           auto_no: settlesBootWindow(this.options, baseline.paused) ? false : (this.options.autoNo ?? true),
@@ -670,6 +675,12 @@ export class Session {
   /** Hex SHA-256 of the 1024 decoded OLED bytes. */
   frameHash(): Promise<string> {
     return this.client.frameHash();
+  }
+  /** The current OLED as a grayscale PNG (4x scale). */
+  async framePng(): Promise<Buffer> {
+    const r = await this.client.framebufferGet();
+    if (!r.data_b64) throw new Error('framebuffer.get returned no data');
+    return oledPng(Buffer.from(r.data_b64, 'base64'));
   }
   leds(): Promise<LedsResult> {
     return this.client.ledsGet();

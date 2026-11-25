@@ -131,6 +131,9 @@ test('a fault detail names the crashed module from CRASH_MOD when no module list
     ev(3, 'CRASH_TAIL', [90, 4500, (LOG_KIND.MOD_LOG << 16) | lv(2, 1), word('tick'), 0]),
     ev(4, 'CRASH_TAIL', [90, 0, 0, 0, 1]),
   ];
+  const overlappingSymbol = () => 'unrelated_function';
+  expect(eventText(runtimeEvent(events[0]!), new Map(), overlappingSymbol)).not.toContain('unrelated_function');
+  expect(faultDetail(stop, events, new Map(), overlappingSymbol)).not.toContain('unrelated_function');
   expect(faultDetail(stop, events)).toMatch(/ 90 +3\.000s info +dyn-fx-hang +MOD_LOG/);
   expect(faultDetail(stop, events, new Map([[1, 'listed']]))).toMatch(/ 90 +3\.000s info +listed +MOD_LOG/);
 });
@@ -156,6 +159,20 @@ test('a module that needs a missing module is reported once, with the module it 
     'usb-fast not loaded: this firmware has no core/usb-bulk. Flash firmware from the Firmware page.',
   );
   expect(loadFailureShort(f!)).toBe('usb-fast not loaded (needs usb-bulk)');
+});
+
+test('a limit of the provider search is named by its cause', () => {
+  const events = [
+    ev(1, 'BOOT_START'),
+    ev(2, 'MOD_LOAD', [0xfffffffe, 0xffffffb2, word('(tab'), 1, 0], 1),
+    ev(3, 'MOD_LOAD', [0xfffffffe, 0xffffffb2, word('(fil'), 2, 0], 1),
+    ev(4, 'MOD_LOAD', [0xfffffffe, 0xffffffb2, word('(nee'), 4, 0], 1),
+  ];
+  const texts = loadFailures(events).map(loadFailureText);
+  expect(texts).toHaveLength(3);
+  expect(texts[0]).toMatch(/provider table is full/);
+  expect(texts[1]).toMatch(/holds more files/);
+  expect(texts[2]).toMatch(/needs more services/);
 });
 
 test('only the last boot counts, and other codes keep the loader text', () => {

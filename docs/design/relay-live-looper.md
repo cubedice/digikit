@@ -89,7 +89,7 @@ A punch can span many laps. Press LEN to restore the tape to its state before th
 
 **Saving a fresh recording.** Close WRITE and use the stock Sound or project Save command. RELAY writes the stereo sample and shows **SAVE SOUND AGAIN**. Repeat the original save to store its reference. Panel changes such as RATE, LEN and MIX reuse the recorded sample. [Native sample format](../../packages/dksample/src/lib.rs)
 
-The shared tape pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174 seconds. Multiple tracks can play independently while one records. If another track owns the recorder, RELAY shows **REC ON Txx**. A punch creates a private writable revision and retains the previous version for undo. Tracks sharing a saved revision keep their own audio when one of them records again. [Pool layout](../../modules/core/adapters/relay-storage/README.md)
+The shared tape pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174 seconds. Multiple tracks can play independently while one records. If another track owns the recorder, RELAY shows **REC ON Txx**. A punch creates a private writable revision and retains the previous version for undo. Tracks sharing a saved revision keep their own audio when one of them records again. [Pool layout](../../image-modules/adapters/relay-storage/README.md)
 
 ## Acceptance on DTII OS 1.17
 
@@ -102,4 +102,4 @@ The shared tape pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174
 7. Switch pages and tracks during a punch. Verify blank PLAY stays idle. Shorten a completed loop with LEN, check its boundary in both directions, then restore LEN and play the full take again. Check that both pages use the same WRITE, PLAY and LEN controls.
 8. Save, reboot and load onto another track in a different-length pattern. Verify the full take, recorded step grid and selected loop length.
 
-[Track machine source](../../modules/machines/relay/src/module.c)
+[Track machine source](../../modules/machine/digikit/relay-machine/src/module.c)

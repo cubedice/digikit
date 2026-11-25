@@ -3,23 +3,19 @@ import Base from '../layouts/Base.astro';
 import DeviceArt from '../components/DeviceArt.astro';
 import ModuleCard from '../components/ModuleCard';
 import { shippedModules } from '../data/modules';
-import {
-  deviceNameOf,
-  deviceNamesText,
-  deviceProfiles,
-  runtimeDeviceIds,
-} from '@digi/workbench-core/data/device-profiles.ts';
+import { deviceNameOf, deviceProfiles } from '@digi/workbench-core/data/device-profiles.ts';
+import { siteDeviceNamesText, siteDevices } from '../firmware/site-policy';
 import { SHOW_EMULATOR } from '../../site.config.mjs';
 
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
-// Without the emulator, only the releases patchkit has a port file for (devices/ports/<device>-<version>.toml).
+// Without the emulator, only the releases patchkit has a port file for (ports/<device>-<version>.toml).
 const portFiles = new Set(
-  Object.keys(
-    import.meta.glob('../../../../devices/ports/*.toml', { query: '?raw', import: 'default', eager: true }),
-  ).map((p) => p.split('/').pop()),
+  Object.keys(import.meta.glob('../../../../ports/*.toml', { query: '?raw', import: 'default', eager: true })).map(
+    (p) => p.split('/').pop(),
+  ),
 );
 // Releases the emulator boots and patchkit has ports for: the ones with a boot profile.
-const supported = runtimeDeviceIds.map((id) => ({
+const supported = siteDevices().map((id) => ({
   id,
   name: deviceProfiles[id]?.name ?? id,
   versions: (deviceProfiles[id]?.firmware ?? [])
@@ -32,11 +28,11 @@ const supported = runtimeDeviceIds.map((id) => ({
 ---
 
 <Base
-  title={`digikit · new machines and effects for ${deviceNamesText('and')}`}
+  title={`digikit · new machines and effects for ${siteDeviceNamesText('and')}`}
   description={
     SHOW_EMULATOR
-      ? `Add community machines and effects to your own ${deviceNamesText('or')} firmware, then try it in the emulator before you flash. Everything runs in your browser.`
-      : `Add loadable machines and effects to your own ${deviceNamesText('or')} firmware. Everything runs in your browser.`
+      ? `Add community machines and effects to your own ${siteDeviceNamesText('or')} firmware, then try it in the emulator before you flash. Everything runs in your browser.`
+      : `Add loadable machines and effects to your own ${siteDeviceNamesText('or')} firmware. Everything runs in your browser.`
   }
   active="home"
 >
@@ -44,7 +40,7 @@ const supported = runtimeDeviceIds.map((id) => ({
     <section class="hero">
       <div class="wrap hero-grid">
         <div class="hero-copy">
-          <span class="eyebrow accent">{runtimeDeviceIds.map(deviceNameOf).join(' · ')}</span>
+          <span class="eyebrow accent">{siteDevices().map(deviceNameOf).join(' · ')}</span>
           <h1>Loadable machines and effects for your Elektron&nbsp;box.</h1>
           <p class="lede">
             {SHOW_EMULATOR
@@ -313,7 +309,7 @@ const supported = runtimeDeviceIds.map((id) => ({
     top: -20%;
     width: 70%;
     height: 120%;
-    background: radial-gradient(closest-side, rgba(243, 181, 44, 0.16), rgba(243, 181, 44, 0));
+    background: radial-gradient(closest-side, var(--hero-glow), var(--hero-glow-end));
     pointer-events: none;
   }
   .hero-grid {
@@ -334,7 +330,7 @@ const supported = runtimeDeviceIds.map((id) => ({
     font-weight: 660;
   }
   .eyebrow.accent {
-    color: var(--amber);
+    color: var(--action);
   }
   .lede {
     font-size: var(--t-md);
@@ -375,7 +371,7 @@ const supported = runtimeDeviceIds.map((id) => ({
   .facts svg {
     width: 15px;
     height: 15px;
-    color: var(--amber);
+    color: var(--action);
   }
   .hero-device {
     margin-right: calc(var(--gutter) * -1.2);

@@ -18,8 +18,8 @@
 #undef src_state
 #undef src_status
 #include <assert.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
 
 /* Link the production keyboard.c so capture and save are the actual code.
  * These unrelated selector-proof entry points belong to another fixture;

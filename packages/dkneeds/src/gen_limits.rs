@@ -13,9 +13,8 @@ pub const DSP_SLACK: u32 = 8;
 pub const ARENA_HDR: u32 = 16;
 pub const COLLECT_BYTES: u32 = 1618;
 pub const TABLE_MAGIC: u32 = 1145787458;
-pub const TABLE_VERSION: u32 = 2;
-pub const PROVIDER_MAX: u32 = 6;
-pub const BIND_MAX: u32 = 24;
+pub const TABLE_VERSION: u32 = 3;
+pub const PROVIDER_MAX: u32 = 8;
 pub const INSTALL_SITES: u32 = 48;
 pub const SLOTS_MAX: u32 = 16;
 pub const INFO_MAX: u32 = 64;
@@ -208,8 +207,10 @@ pub const KIND_NATIVE_PAGE_V2: u32 = 7;
 pub const LEN_NATIVE_PAGE_V2: u32 = 0x98;
 pub const KIND_LFO_SHAPE: u32 = 8;
 pub const LEN_LFO_SHAPE: u32 = 0x50;
+pub const KIND_SHORTCUT: u32 = 9;
+pub const LEN_SHORTCUT: u32 = 0x44;
 /// Every record kind in the order of its number: (kind, record length with its header, owning service).
-pub const KINDS: [(u32, u32, &str); 8] = [
+pub const KINDS: [(u32, u32, &str); 9] = [
     (KIND_PARAM, LEN_PARAM, "machines"),
     (KIND_MACHINE, LEN_MACHINE, "machines"),
     (KIND_PAGE, LEN_PAGE, "machines"),
@@ -218,6 +219,7 @@ pub const KINDS: [(u32, u32, &str); 8] = [
     (KIND_NATIVE_PAGE, LEN_NATIVE_PAGE, "machines"),
     (KIND_NATIVE_PAGE_V2, LEN_NATIVE_PAGE_V2, "machines"),
     (KIND_LFO_SHAPE, LEN_LFO_SHAPE, "lfo"),
+    (KIND_SHORTCUT, LEN_SHORTCUT, "shortcuts"),
 ];
 /// The kinds of the `machines` service: (kind, record length).
 pub const KINDS_MACHINES: [(u32, u32); 6] = [
@@ -236,6 +238,10 @@ pub const KINDS_FX: [(u32, u32); 1] = [
 pub const KINDS_LFO: [(u32, u32); 1] = [
     (KIND_LFO_SHAPE, LEN_LFO_SHAPE),
 ];
+/// The kinds of the `shortcuts` service: (kind, record length).
+pub const KINDS_SHORTCUTS: [(u32, u32); 1] = [
+    (KIND_SHORTCUT, LEN_SHORTCUT),
+];
 /// The services of `[handle] services` that are in the runtime image (not the ones a `.dks` provides): the names a module's `NEEDS` meets without a provider (hashed by `dkneeds::keys::name_hash`).
 pub const HANDLE_SERVICES: [&str; 6] = [
     "runtime",
@@ -246,7 +252,7 @@ pub const HANDLE_SERVICES: [&str; 6] = [
     "sdhc_large",
 ];
 /// The kind names of `[records.kinds]` in lower case with their numbers: the `kind` of a `[[record]]` of a module.toml.
-pub const KIND_NAMES: [(&str, u32); 8] = [
+pub const KIND_NAMES: [(&str, u32); 9] = [
     ("param", KIND_PARAM),
     ("machine", KIND_MACHINE),
     ("page", KIND_PAGE),
@@ -255,6 +261,7 @@ pub const KIND_NAMES: [(&str, u32); 8] = [
     ("native_page", KIND_NATIVE_PAGE),
     ("native_page_v2", KIND_NATIVE_PAGE_V2),
     ("lfo_shape", KIND_LFO_SHAPE),
+    ("shortcut", KIND_SHORTCUT),
 ];
 /// The kinds a module emits with `dk_record_add`.
 pub const GENERIC_KINDS: [u32; 1] = [

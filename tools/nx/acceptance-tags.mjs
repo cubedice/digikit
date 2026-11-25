@@ -1,11 +1,12 @@
 // The closed vocabulary of `tags` on `metadata.runtimeAcceptance` records, and the check that every device test file has tags.
 // Tags say which service or layer a device test proves (docs/plans/test-architecture.md, T1e).
 //   S:<service>   machines, samples, lfo (a service in the runtime image; fx is a service file, `fx.dks`: its tests carry the tags of the adapters they prove)
+//                 the fork's instrument and track-keyboard (service files: a port declaration they use and their own sources name the tag)
 //   C:<area>      state, boot, loading, dsp, storage, transport, diagnostics, tick, layout; and the mechanisms device-facts, fault, types
 //   A:<id>        an adapter or app module of category core (the module must exist)
-//   M:<id>        a tool module (the module must exist under modules/tools)
+//   M:<id>        a tool module (the module must have category tools)
 // `C:layout` marks tests that depend on addresses: addrmap, log-names, memaudit, crash and fault tests.
-export const SERVICES = ['machines', 'samples', 'lfo'];
+export const SERVICES = ['machines', 'samples', 'lfo', 'shortcuts', 'instrument', 'track-keyboard'];
 // Mechanism tags: `C:device-facts` marks tests that check the device facts the runtime reads at run time (its device object against the
 // device file); `C:fault` the crash and fault record tests; `C:types` the tests that observe the machine type words and the dynamic registry.
 export const AREAS = [
@@ -23,7 +24,7 @@ export const AREAS = [
   'types',
 ];
 
-// Why `tag` is not in the vocabulary, or '' when it is. `modules`: id -> { category, root } of every module.
+// Why `tag` is not in the vocabulary, or '' when it is. `modules`: id -> manifest of every module.
 export const tagProblem = (tag, modules) => {
   if (typeof tag !== 'string') return 'is not a string';
   const [kind, name] = [tag.slice(0, 2), tag.slice(2)];
@@ -33,8 +34,7 @@ export const tagProblem = (tag, modules) => {
     const module = modules.get(name);
     if (!module) return 'names no module';
     if (kind === 'A:' && module.category !== 'core') return 'names a module that is not of category core';
-    if (kind === 'M:' && !module.root?.startsWith('modules/tools/'))
-      return 'names a module that is not under modules/tools';
+    if (kind === 'M:' && module.category !== 'tools') return 'names a module that is not of category tools';
     return '';
   }
   return 'has no S:, C:, A: or M: prefix';

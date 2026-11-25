@@ -1,0 +1,228 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text",
+   "symbol": "mi_channel_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text",
+   "symbol": "mi_din_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text",
+   "symbol": "mi_din_return",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_begin",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 98,
+   "section": ".text",
+   "symbol": "mi_dsp_reset_next",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 114,
+   "section": ".text",
+   "symbol": "slot.midi_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 132,
+   "section": ".text",
+   "symbol": "slot.midi_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 150,
+   "section": ".text",
+   "symbol": "slot.midi_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 170,
+   "section": ".text",
+   "symbol": "slot.midi_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 190,
+   "section": ".text",
+   "symbol": "slot.midi_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text.mi_dsp_reset_release",
+   "symbol": "dl_reset_quiesce",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.mi_channel_message",
+   "symbol": "tk_midi_channel_message",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.mi_channel_message",
+   "symbol": "mi_legacy_channel_message",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4feffff048d703032f2f00182f2f00182f2f00184eb9000000004fef000c4a804cd703034fef001066064ef9000000004ef9000000004e714feffff048d703034a2f001767084eb900000000600a4eb9000000004a80670e4cd703034fef00104ef9000000004cd703034fef00104e752039000000006706224022514ed170004e7520390000000067082240226900044ed14e7520390000000067082240226900084ed170ff4e75203900000000670822402269000c4ed170ff4e7520390000000067082240226900104ed14e75",
+   "kind": "text",
+   "name": ".text",
+   "size": 206
+  },
+  {
+   "align": 2,
+   "hex": "41f9000000004a88670e4e907202b28056c0710044804e75700160fa",
+   "kind": "text",
+   "name": ".text.mi_dsp_reset_release",
+   "size": 28
+  },
+  {
+   "align": 2,
+   "hex": "2f0a45f9000000004a8a6724487800012f2f00142f2f00142f2f00144e924fef00104a80670a5ec071004480245f4e752f2f00102f2f00102f2f00104eb9000000004fef000c4a80661a4a8a67de42a72f2f00142f2f00142f2f00144e924fef001060c8700160c4",
+   "kind": "text",
+   "name": ".text.mi_channel_message",
+   "size": 104
+  }
+ ],
+ "source_sha256": "288ae5edb43e9323456fd5ed3159b6889792e50529ecee168da1a496de3ead6a",
+ "symbols": [
+  {
+   "global": true,
+   "name": "dl_reset_quiesce",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_write_frame",
+   "section": ".text",
+   "value": 188
+  },
+  {
+   "global": true,
+   "name": "mi_channel_message",
+   "section": ".text.mi_channel_message",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_hook",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_next",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_din_return",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_begin",
+   "section": ".text",
+   "value": 130
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_hook",
+   "section": ".text",
+   "value": 56
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_next",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_dsp_reset_release",
+   "section": ".text.mi_dsp_reset_release",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mi_legacy_channel_message",
+   "section": ".text",
+   "value": 112
+  },
+  {
+   "global": true,
+   "name": "mi_registry_expect_session",
+   "section": ".text",
+   "value": 148
+  },
+  {
+   "global": true,
+   "name": "mi_registry_reply",
+   "section": ".text",
+   "value": 168
+  },
+  {
+   "global": true,
+   "name": "slot.midi_vec",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_midi_channel_message",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "109",
+  "isa_check": "03ee6f4ecca905f02e4e9624dc5a9333903a0141d17b8aeb31623aa22eea2131",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

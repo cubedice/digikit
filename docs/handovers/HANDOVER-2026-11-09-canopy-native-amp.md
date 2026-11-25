@@ -99,7 +99,7 @@ remain open.
   before assertions while looking for the ColdFire toolchain. The cached
   toolchain also supplies the missing Wasm target, and its owner build passes
   (`out/canopy-amp-wasm-recheck.log`).
-- The final core rebuild made `modules/core/fw/reference.json` stale; it was
+- The final core rebuild made `ports/bindings/reference.json` stale; it was
   regenerated and `gen --check --scope shared` passes. Five newly introduced
   layout warnings were fixed by moving the raw fixture into CANOPY's tests.
   Remaining layout warnings (41), 16 TypeScript formatting failures, two Python

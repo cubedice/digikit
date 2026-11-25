@@ -2,7 +2,7 @@
 #ifndef CANOPY_TWO_PHASE_H
 #define CANOPY_TWO_PHASE_H
 #include <stdint.h>
-#include "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
 enum { TP_BATCH_MAX = 4 };
 typedef struct {
     /* True only in task context with interrupts enabled. */

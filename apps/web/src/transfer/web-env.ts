@@ -5,9 +5,9 @@
 import { DkSession } from '@digi/dk-session';
 import type { DkTransport } from '@digi/dk-session';
 import type { KeyValue } from '@digi/workbench-core/storage.ts';
-import { indexedDbBlobStore, type BlobStore } from '@digi/workbench-core/blob-store.ts';
 import { localStorageKeyValue } from '@digi/workbench-core/storage.ts';
-import { deviceNameOf, deviceOfPort, runtimeDeviceIds } from '@digi/workbench-core/data/device-profiles.ts';
+import { deviceNameOf, deviceOfPort } from '@digi/workbench-core/data/device-profiles.ts';
+import { siteDevices } from '../firmware/site-policy';
 import { createTransferApp, type TransferApp } from '@digi/workbench-core/transfer/app.ts';
 import type { TransferEnv } from '@digi/workbench-core/transfer/env.ts';
 import { createSessionHub } from '@digi/workbench-core/transfer/session-core.ts';
@@ -68,7 +68,6 @@ export function createWebEnv(app: () => TransferApp): { env: TransferEnv; usable
     return accessPromise;
   }
 
-  const open = new Map<string, WebMidiTransport>();
   const wasm = fetchWasmSource(BASE);
 
   const { library, source } = createWebLibrary({
@@ -82,10 +81,8 @@ export function createWebEnv(app: () => TransferApp): { env: TransferEnv; usable
     source,
     moduleFiles: (id) => MODULE_FILES[id],
     wasm,
-    // the firmware-free bundle the binder reads beside patchkit.wasm: the ports and the firmware declarations (gen-modules.mjs)
-    bindBundle: async () => new Uint8Array(await (await fetchOk(`${BASE}modules/bind.json`)).arrayBuffer()),
     deviceName: async (device) => deviceNameOf(device),
-    libraryDevices: [...runtimeDeviceIds],
+    libraryDevices: [...siteDevices()],
     // only where the browser has WebUSB; devices the user already allowed are used, `requestAccess` (from a click) asks for another
     ...(webUsbAvailable() ? { bulk: { ...webUsbOpener(), requestAccess: () => WebUsbBulkLink.requestAccess() } } : {}),
     targets: {
@@ -118,18 +115,9 @@ export function createWebEnv(app: () => TransferApp): { env: TransferEnv; usable
         const output: MidiOutputLike | undefined = outputs.find((p) => (p.name ?? p.id) === t.port);
         if (!input || !output)
           throw new Error(`The MIDI port "${t.port}" is not there. Connect the device and pick the port again.`);
-        open.get(t.port)?.close();
-        const transport = await WebMidiTransport.open(input, output, a, (e) => {
+        return WebMidiTransport.open(input, output, a, (e) => {
           app().connection.noteConnection({ type: 'closed', reason: e.message });
-          app().target.portLost(t.port);
         });
-        open.set(t.port, transport);
-        return transport;
-      },
-      async close(t: Target) {
-        if (t.kind !== 'midi') return;
-        open.get(t.port)?.close();
-        open.delete(t.port);
       },
     },
     logRun(run) {
@@ -151,19 +139,12 @@ export interface WebTransfer {
   start(): Promise<void>;
 }
 
-/** The browser's keep of the user's stock firmware (shared by the Firmware and Transfer pages of this browser; it never leaves it). */
-export const stockStore = (): BlobStore => indexedDbBlobStore('digikit-stock', 'firmware');
-
-export function createWebTransferApp(
-  storage: KeyValue = localStorageKeyValue(),
-  stockBlobs: BlobStore = stockStore(),
-): WebTransfer {
+export function createWebTransferApp(storage: KeyValue = localStorageKeyValue()): WebTransfer {
   let app!: TransferApp;
   const web = createWebEnv(() => app);
   app = createTransferApp(web.env, {
     storage,
-    stockBlobs,
-    sessions: createSessionHub((transport) => new DkSession(transport, { timeoutMs: 6000 })),
+    sessions: createSessionHub((transport, opts) => new DkSession(transport, { timeoutMs: 6000, ...opts })),
   });
   return {
     app,

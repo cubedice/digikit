@@ -11,6 +11,7 @@ await useFitWasm();
 // The pure logic of the Transfer page (packages/workbench-core/src/transfer/transfer-core.ts).
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
+import { PROVIDER_MAX } from '@digi/workbench-core/modules/services.ts';
 import {
   DONE_ON_CARD,
   applyEvent,
@@ -27,7 +28,6 @@ import {
   deleteResultLines,
   neededServiceText,
   serviceRefusalText,
-  serviceTags,
   modulesBar,
   onDevice,
   onDeviceWithPending,
@@ -75,7 +75,7 @@ const view: TransferView = {
   ],
 };
 
-test('the lists: on device is every card file, available is the repo in three groups', () => {
+test('the lists: on device is every card file, available is the repo in four groups', () => {
   assert.deepEqual(
     onDevice(view).map((r) => r.path),
     ['modules/effect.dkm', 'modules/junk.dkm', 'modules/machine.dkm'],
@@ -83,15 +83,15 @@ test('the lists: on device is every card file, available is the repo in three gr
   const a = available(view, false);
   assert.deepEqual(
     a.map((g) => g.group),
-    ['Machines', 'Effects', 'Tools'],
+    ['Machines', 'Effects', 'LFO shapes', 'Tools'],
   );
   assert.deepEqual(
     a[0].rows.map((r) => r.id),
     ['someone/machine'],
   );
   assert.equal(a[1].rows.length, 0); // Effects: no run-time effects yet
-  assert.equal(a[2].rows.length, 0); // the test module is hidden
-  assert.equal(available(view, true)[2].rows.length, 1);
+  assert.equal(a[3].rows.length, 0); // the test module is hidden
+  assert.equal(available(view, true)[3].rows.length, 1);
   assert.equal(available({ ...view, modules: [] }, true)[1].rows.length, 0);
 });
 
@@ -396,20 +396,11 @@ const pluck = row('a/pluck', 'Machines', { label: 'pluck', services: [fx, machin
 const shot = row('a/shot', 'Machines', { label: 'shot', services: [machines] });
 const sv = { ...view, modules: [pluck, shot] };
 
-test('services: the with line, sub row tags, the fit line and the services to upload', () => {
+test('services: selection count and the services to upload', () => {
   assert.deepEqual(tickCountText(0, 12), { lead: '', rest: '12 items' });
   assert.deepEqual(tickCountText(0, 1), { lead: '', rest: '1 item' });
   assert.deepEqual(tickCountText(0, 0), { lead: '', rest: '' });
   assert.deepEqual(tickCountText(3, 12), { lead: '3', rest: ' of 12 selected' });
-  assert.deepEqual(
-    serviceTags(fx).map((t) => [t.text, t.tone]),
-    [['not on device', 'warn']],
-  );
-  assert.deepEqual(
-    serviceTags(machines).map((t) => [t.text, t.tone]),
-    [['on device', 'ok']],
-  );
-  assert.equal(serviceTags({ ...fx, state: 'differs' })[0].text, 'differs');
   // each service once, skipping the one on the device
   assert.deepEqual(installServices(sv, new Set(['a/pluck', 'a/shot'])), [
     { id: 'fx', path: 'services/fx.dks', bytes: 38400 },
@@ -442,10 +433,10 @@ test('services: tickedFit counts the services once and enforces the provider lim
     tickedFit(v, new Set(['a/pluck', 'a/shot']))!.text,
     'The 2 ticked modules and their 2 services fit the device together.',
   );
-  const many = Array.from({ length: 7 }, (_, i) => ({ ...fx, stem: `s${i}`, label: `s${i} service` }));
+  const many = Array.from({ length: PROVIDER_MAX + 1 }, (_, i) => ({ ...fx, stem: `s${i}`, label: `s${i} service` }));
   const big = { ...v, modules: [{ ...pluck, needs, services: many }] };
   assert.deepEqual(tickedFit(big, new Set(['a/pluck'])), {
-    text: 'The selection needs more than 6 services.',
+    text: `The selection needs more than ${PROVIDER_MAX} services.`,
     tone: 'warn',
   });
   assert.equal(tickedLoad(big, new Set(['a/pluck'])), null);
@@ -461,8 +452,15 @@ test('services: tickedFit counts the services once and enforces the provider lim
 test('services: refusal texts, the service mismatch tag, the needed-by tag', () => {
   const r = { module: 'pluck', service: 'machines' } as const;
   assert.equal(
-    serviceRefusalText({ ...r, kind: 'fingerprint', runtime: '0.5.2', builtFor: '0.5.0' }),
-    'pluck not installed. It needs the machines service, and this workbench has no machines service for the runtime on your device (runtime 0.5.2, service built for 0.5.0). Nothing was uploaded for pluck. Update the workbench, or flash a matching runtime from the Firmware page.',
+    serviceRefusalText({
+      ...r,
+      kind: 'fingerprint',
+      runtime: '0.5.2',
+      builtFor: '0.5.0',
+      runtimeAbi: '5dbf8e20',
+      serviceAbi: '16be0e73',
+    }),
+    'pluck not installed. It needs the machines service, and this workbench has no machines service for the runtime on your device (runtime 0.5.2, ABI 5dbf8e20; service built for 0.5.0, ABI 16be0e73). Nothing was uploaded for pluck. Update the workbench, or flash a matching runtime from the Firmware page.',
   );
   assert.equal(
     serviceRefusalText({ module: 'pluck', service: 'fx', kind: 'missing' }),
@@ -478,12 +476,19 @@ test('services: refusal texts, the service mismatch tag, the needed-by tag', () 
   );
   assert.equal(
     serviceRefusalText({ module: 'pluck', service: 'fx', kind: 'too-many' }),
-    'pluck not installed. The selection needs more than 6 services.',
+    `pluck not installed. The selection needs more than ${PROVIDER_MAX} services.`,
   );
-  const refusal = { ...r, kind: 'fingerprint', runtime: '0.5.2', builtFor: '0.5.0' } as const;
+  const refusal = {
+    ...r,
+    kind: 'fingerprint',
+    runtime: '0.5.2',
+    builtFor: '0.5.0',
+    runtimeAbi: '5dbf8e20',
+    serviceAbi: '16be0e73',
+  } as const;
   const [tag] = localTags({ ...pluck, service_refusal: refusal }).filter((t) => t.text === 'service mismatch');
   assert.equal(tag.tone, 'warn');
-  assert.equal(tag.title, 'machines service built for 0.5.0, device runtime is 0.5.2');
+  assert.equal(tag.title, 'machines service built for 0.5.0 (ABI 16be0e73), device runtime is 0.5.2 (ABI 5dbf8e20)');
   const dks = { ...row(null, 'Tools'), path: 'services/machines.dks', needed_by: ['shot'] };
   assert.deepEqual(
     deviceTags(dks).map((t) => [t.text, t.tone]),

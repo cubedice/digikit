@@ -1,0 +1,24 @@
+[package]
+name = "dkrt-svc-svc-test-dks"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Test fixture: the svc-test service as a service file (.dks) whose object also links the C and assembler of ../csrc"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+dkrt-sdk = { path = "../../../../../../../runtime/core/sdk" }
+dkrt-svc-rt = { path = "../../../../../../../runtime/core/svc-rt" }
+dkrt-svc-svc-test = { path = ".." }
+
+# This crate sits inside the repository's cargo workspace tree but is built on its own (`patchkit build`).
+[workspace]
+
+[profile.release]
+opt-level = "s"
+panic = "abort"
+lto = false
+codegen-units = 1
+debug = false

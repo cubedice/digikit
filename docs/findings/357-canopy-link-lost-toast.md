@@ -43,7 +43,7 @@ valid), so the struct keeps its size and offsets.
 
 ## Evidence
 
-- **[D]** `modules/machines/canopy/tests/track-switch.device.test.ts` (DT2, emulator): CANOPY on tracks 11 and 12, six
+- **[D]** `modules/machine/digikit/canopy/tests/track-switch.device.test.ts` (DT2, emulator): CANOPY on tracks 11 and 12, six
   switches with the SRC page open. Without the change (the test and the counter alone): 6 fault toasts for 6 switches.
   With it: 0, the status of each selected track arrives, the note transport does not fault.
 - **[D]** `tests/regression/host/canopy-src.test.ts`, scenario `status-wait`: the wait after a selection, its end after

@@ -5,6 +5,8 @@
 // Two clients live here. `DkClient` wraps the wasm codec (the web page). `DkSession`, at the end of the file, is pure TypeScript:
 // the same framing and every command of the protocol (INFO, LIST, upload, DELETE, CLEAR, ABORT, MODULES, CAPACITY, READ, VERIFY, SELECT,
 // RESTART, LOG), with the numbers generated from sdk/sdk.toml (`gen_proto.ts`). The desktop app uses it (no wasm, no Python).
+import { wireModuleSettings } from './module-settings.ts';
+import { decodeModulesPage, OLD_MODULES } from './modules-reply.ts';
 import {
   CAP as GCAP,
   CAPACITY_KINDS,
@@ -68,6 +70,15 @@ export interface DkTransport {
    * while it writes the last one (finding 43, "Two requests in flight"). A link to a device leaves it out until that has run on hardware.
    */
   readonly dataDepth?: number;
+  /**
+   * Make the link usable again after an exchange failed, for example a device that re-enumerated on USB: reopen what the transport holds.
+   * Must not throw when the device is not back yet; the next failure calls it again. Does nothing after close().
+   */
+  recover?(): Promise<void>;
+  /** Wait for host commands still completing after a cancelled request. */
+  drain?(): Promise<void>;
+  /** Let go of the link. */
+  close?(): Promise<void>;
 }
 
 const cancelledError = () => new DkError({ error: 'cancelled', kind: 'cancelled' });
@@ -81,6 +92,10 @@ function abortable<T>(p: Promise<T>, signal: AbortSignal): Promise<T> {
     p.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort));
   });
 }
+
+/** Rows and words of the DSP stats window (P8d): a header of 4 words, then 16 rows of 6 words. */
+const DSP_STATS_ROWS = 16;
+const DSP_STATS_WORDS = 4 + 6 * DSP_STATS_ROWS;
 
 /**
  * A used poll slot of the runtime (`dkrt_poll_add`), from PROFILE_STATE: the module record that registered the function (`'runtime'`: the firmware
@@ -99,6 +114,40 @@ export interface ProfileSpan {
   calls: number;
   sumTicks: bigint;
   maxTicks: number;
+}
+
+/** A frozen trace from PROFILE_READ. Start ticks are decimal strings so the trace can be serialized losslessly. */
+export interface ProfileTrace {
+  version: 1;
+  generation: number;
+  hz: number;
+  dropped: number;
+  events: { owner: number; startTicks: string; durationTicks: number }[];
+}
+
+/** One row of the DSP stats window (P8d): a DSP dispatch row, 0 to 7 machines and 8 to 15 effects. Cycles are in DSP cycles (the emulator: instructions). */
+export interface DspRow {
+  row: number;
+  kind: 'machine' | 'effect';
+  calls: number;
+  sumCycles: bigint;
+  maxCall: number;
+  maxBlock: number;
+}
+
+/** The state and the newest complete sweep of the DSP stats window, from PROFILE_DSP. `sweep` is absent until a sweep of the current generation is complete. */
+export interface DspStats {
+  on: boolean;
+  generation: number;
+  /** The mirror counters: complete sweeps, sweeps ended by a gap, records ignored. */
+  counts: { sweeps: number; gaps: number; ignored: number };
+  sweep?: {
+    number: number;
+    blocks: number;
+    maxStockBlockDelta: number;
+    overruns: number;
+    rows: DspRow[];
+  };
 }
 
 export class DkError extends Error {
@@ -595,16 +644,44 @@ export function deviceError(what: string, status: number, body?: Uint8Array): Dk
 
 export const fmtVersion = (packed: number): string => `${packed >>> 16}.${(packed >>> 8) & 255}.${packed & 255}`;
 
+/**
+ * The refusal counters of the card write guard (`core/card-guard`; INFO appends them after the card state): requests to the firmware's eMMC block write
+ * and erase that lay outside the rows of their writer class were refused with the driver's out-of-range error. `last_*` describe the last refused request.
+ */
+export interface DkCardGuard {
+  version: number;
+  refused_writes: number;
+  refused_erases: number;
+  /** The first sector and the length in sectors of the last refused request (0 when none was refused). */
+  last_sector: number;
+  last_sectors: number;
+  /** `stock`: a caller in the firmware; `runtime`: the digikit runtime's raw card write. Null when none was refused. */
+  last_class: 'stock' | 'runtime' | null;
+  last_kind: 'write' | 'erase' | null;
+}
+
 /** INFO with the fields of later runtimes (`caps` and the 32-bit runtime version appeared in 0.2). */
 export interface DkInfoFull extends DkInfo {
   /** The packed runtime version (major << 16 | minor << 8 | patch). */
   runtime: number;
   caps: number | null;
   card_read_only: boolean;
+  /** INFO flags bit 3: the debug module's log sink is present. */
+  log_sink: boolean;
+  /** INFO flags bit 4: the runtime found a fault record from an earlier run (`crate::fault::seen`). Reading it does not send the FAULT command. */
+  fault_found: boolean;
+  /** The card's capacity in 512-byte sectors as the firmware's driver reports it (0xFFFFFFFF: the driver is not ready), or null when the runtime does not report it. */
+  card_sectors: number | null;
+  /** The card check's state: 0 unknown, 1 ours, 2 blank, 3 foreign, 4 unreadable, 5 too small; null when the runtime does not report it. */
+  card_state: number | null;
+  /** The card write guard's counters (core/card-guard), or null when the runtime does not report them or the module is not in the image (version 0). */
+  card_guard: DkCardGuard | null;
   /** The id of the flashed image as 16 hex digits (runtime 0.5.2 and later; patchkit stamps it), or null when the reply has none. */
   image_id: string | null;
   /** The runtime's ABI fingerprint for service files (`CAP_SVC_ABI`; the word a `.dks` carries at header 0x3c), or null when the runtime does not report it. */
   svc_abi: number | null;
+  /** The firmware identity of the image as 16 hex digits (`CAP_FW_ID`): the first 8 bytes of the SHA-256 of the stock firmware, the `FW` item of its port file; null when the runtime does not report it. */
+  fw_id: string | null;
 }
 
 /** The LOGCFG state: the default log level, the level of each module record (0xff: the default), and whether the debug module is loaded (it always answers 1). */
@@ -698,6 +775,8 @@ export function parseCardLog(bytes: Uint8Array): CardLogFile {
 }
 
 export interface DkModule {
+  /** Present for a loaded instance that registered public settings. */
+  uiInstance?: number;
   index: number;
   name: string;
   version: number;
@@ -707,10 +786,29 @@ export interface DkModule {
   cf_size: number;
   dsp_off: number;
   dsp_len: number;
+  /** What each loaded service holds for the module: the words of its section, by the 8-digit hex of the service name hash (`serviceHash`); a service with nothing has no entry. */
+  sections: Record<string, number[]>;
+  /** From the `machines` section: the voice rows the module owns (mask). */
   rows: number;
+  /** From the `machines` section: the machine types of the module. */
   types: number[];
+  /** From the `machines` section: the guard's fault count for those types. */
   faults: number;
+  /** From the `machines` section: the guard switched one of them off. */
   guard_off: boolean;
+  /** From the `fx` section: a row for each effect row of the module that has a page. */
+  effects: DkEffectRow[];
+}
+
+/** One effect row of a module: the routes are bit masks (1 master, 2 send). */
+export interface DkEffectRow {
+  row: number;
+  /** The route it runs on in this boot. */
+  running: number;
+  /** The route the settings give it now: differs from `running` after a pick that waits for its reload. */
+  saved: number;
+  allowed: number;
+  dflt: number;
 }
 
 export interface DkLogEvent {
@@ -735,6 +833,8 @@ export interface DkSessionOptions {
   emulatedProbe?: EmulatedProbe;
   /** Time source of `waitForBoot` and `waitForRestart` (default `wallClock`). A harness and `wb --emu` give `emulatedClock(status)`; a paused daemon gives a stepping clock. */
   clock?: Clock;
+  /** Called once per request: true after the matching reply, false after the last failed try (not for a cancelled request), with the reason. */
+  onLink?: (ok: boolean, reason?: string, silentInfo?: boolean) => void;
 }
 
 /** Options of `waitForBoot` and `waitForRestart`. */
@@ -753,6 +853,8 @@ export interface BootWaitOptions {
    * where the firmware may never reach its UI loop. `waitForRestart` always waits for 'ready'.
    */
   until?: 'boot' | 'ready';
+  /** Require fresh boot events. An INFO reply after a missed probe is insufficient. */
+  requireBootEvidence?: boolean;
 }
 
 /** See `DkSessionOptions.emulatedProbe`. */
@@ -900,6 +1002,9 @@ export class DkSession {
   private emulatedProbe: EmulatedProbe | undefined;
   private sessionClock: Clock;
   private fileHashOk = false;
+  /** The `caps` word of the last INFO (undefined before the first one): MODULES decodes by it without asking again. */
+  private lastCaps: number | null | undefined;
+  private onLink?: DkSessionOptions['onLink'];
   private turn: Promise<unknown> = Promise.resolve();
   /** False from `restart()` until a stock MidiRpc request has been answered in the new boot (`waitRpcService`). */
   private rpcProven = true;
@@ -913,6 +1018,7 @@ export class DkSession {
     this.depth = Math.max(1, Math.floor(options.depth ?? transport.dataDepth ?? 1));
     this.emulatedProbe = options.emulatedProbe;
     this.sessionClock = options.clock ?? wallClock;
+    this.onLink = options.onLink;
   }
 
   /** The clock of this session's waits. */
@@ -949,6 +1055,26 @@ export class DkSession {
     old.abort();
   }
 
+  private rawPortHeld = false;
+
+  /** Reserve the link for raw firmware traffic. Queued exchanges finish before the handoff.
+   * New session requests are cancelled until the owner releases the link. */
+  async reserveTransport(): Promise<() => void> {
+    if (this.rawPortHeld) throw cancelledError();
+    this.rawPortHeld = true;
+    const release = () => {
+      this.rawPortHeld = false;
+    };
+    try {
+      await this.turn;
+      await this.t.drain?.();
+      return release;
+    } catch (error) {
+      release();
+      throw error;
+    }
+  }
+
   /** One request and its reply (any status), after the requests queued before it. A timeout sends the request again with a new seq. */
   request(cmd: number, body: Uint8Array = new Uint8Array(), quick: Quick = false): Promise<RawReply> {
     return this.withTurn((signal) => this.exchange(cmd, body, quick, signal));
@@ -956,6 +1082,7 @@ export class DkSession {
 
   /** `fn` alone on the link, after the requests queued before it. */
   private withTurn<T>(fn: (signal: AbortSignal) => Promise<T>): Promise<T> {
+    if (this.rawPortHeld) return Promise.reject(cancelledError());
     const signal = this.ctl.signal;
     const next = this.turn.then(() => {
       if (signal.aborted) throw cancelledError();
@@ -1059,11 +1186,27 @@ export class DkSession {
       both = c.signal;
     }
     try {
-      return await this.exchangeLoop(cmd, body, retries, retryBusy, timeoutMs, both);
+      const r = await this.exchangeLoop(cmd, body, retries, retryBusy, timeoutMs, both);
+      this.onLink?.(true);
+      return r;
     } catch (e) {
-      if (probe && probe.signal.aborted && !signal.aborted && e instanceof DkError && e.kind === 'cancelled')
-        throw lost();
-      throw e;
+      const failure =
+        probe && probe.signal.aborted && !signal.aborted && e instanceof DkError && e.kind === 'cancelled' ? lost() : e;
+      if (failure !== e) {
+        // the probe saw the device gone: reopen the link before the next request
+        try {
+          await this.t.recover?.();
+        } catch {
+          // the device may not be back yet; the next failure calls recover again
+        }
+      }
+      if (!(failure instanceof DkError && failure.kind === 'cancelled'))
+        this.onLink?.(
+          false,
+          failure instanceof Error ? failure.message : String(failure),
+          cmd === GCMD.INFO && failure instanceof DkError && failure.kind === 'timeout',
+        );
+      throw failure;
     } finally {
       release();
     }
@@ -1078,26 +1221,57 @@ export class DkSession {
     signal: AbortSignal,
   ): Promise<RawReply> {
     let busy = 0;
+    let linkError: unknown;
     for (let attempt = 0; attempt <= retries; attempt++) {
       if (signal.aborted) throw cancelledError();
       const seq = this.takeSeq();
-      await abortable(Promise.resolve(this.t.send(frame(cmd, seq, body))), signal);
-      const deadline = Date.now() + timeoutMs;
-      for (let left = deadline - Date.now(); left > 0; left = deadline - Date.now()) {
-        const raw = await abortable(this.t.recv(left, signal), signal);
-        if (!raw) break;
-        const r = parseReply(raw);
-        if (r && r.seq === seq && r.cmd === cmd) {
-          if (!retryBusy || statusName(r.status) !== 'E_BUSY' || busy >= BUSY_RETRIES) return r;
-          // the device's store is in use: the request did nothing; ask again shortly (not a timeout: it does not use up a retry)
-          busy++;
-          await abortable(new Promise<void>((done) => setTimeout(done, BUSY_WAIT_MS)), signal);
-          attempt--;
-          break;
+      linkError = undefined;
+      let answered = false;
+      try {
+        await abortable(Promise.resolve(this.t.send(frame(cmd, seq, body))), signal);
+      } catch (e) {
+        if (e instanceof DkError && e.kind === 'cancelled') throw e;
+        // a transport without `recover` cannot reopen its link: a retry would not help, so rethrow as before
+        if (typeof this.t.recover !== 'function') throw e;
+        linkError = e;
+      }
+      if (linkError === undefined) {
+        const deadline = Date.now() + timeoutMs;
+        for (let left = deadline - Date.now(); left > 0; left = deadline - Date.now()) {
+          let raw: Uint8Array | null;
+          try {
+            raw = await abortable(this.t.recv(left, signal), signal);
+          } catch (e) {
+            if (e instanceof DkError && e.kind === 'cancelled') throw e;
+            // a transport without `recover` cannot reopen its link: rethrow at once
+            if (typeof this.t.recover !== 'function') throw e;
+            linkError = e;
+            break;
+          }
+          if (!raw) break;
+          const r = parseReply(raw);
+          if (r && r.seq === seq && r.cmd === cmd) {
+            if (!retryBusy || statusName(r.status) !== 'E_BUSY' || busy >= BUSY_RETRIES) return r;
+            // the device's store is in use: the request did nothing; ask again shortly (not a timeout: it does not use up a retry)
+            busy++;
+            await abortable(new Promise<void>((done) => setTimeout(done, BUSY_WAIT_MS)), signal);
+            attempt--;
+            answered = true;
+            break;
+          }
+        }
+      }
+      // No reply, or the transport failed: the link may be stale (a device that re-enumerated); the transport reopens it before the next try
+      // and before the next request.
+      if (!answered && !signal.aborted) {
+        try {
+          await this.t.recover?.();
+        } catch {
+          // the device may not be back yet; the next failure calls recover again
         }
       }
     }
-    throw new DkError({ error: 'no reply from the device', kind: 'timeout' });
+    throw linkError !== undefined ? linkError : new DkError({ error: 'no reply from the device', kind: 'timeout' });
   }
 
   private async ok(
@@ -1115,7 +1289,6 @@ export class DkSession {
   private async needFileHash(): Promise<void> {
     if (this.fileHashOk) return;
     if (!hasCap(await this.info(), 'FILEHASH')) throw new DkError({ error: OLD_STORE, kind: 'request' });
-    this.fileHashOk = true;
   }
 
   /** `quick`: one INFO with a short timeout and no retries (a probe for a device that may not run the runtime). */
@@ -1133,6 +1306,10 @@ export class DkSession {
     let caps: number | null = null;
     let imageId: string | null = null;
     let svcAbi: number | null = null;
+    let fwId: string | null = null;
+    let cardSectors: number | null = null;
+    let cardState: number | null = null;
+    let cardGuard: DkCardGuard | null = null;
     if (b.length >= at + 9 + 8 + 8) {
       runtime = u32(b, at + 9 + 8);
       caps = u32(b, at + 9 + 12);
@@ -1143,21 +1320,56 @@ export class DkSession {
       // then the ABI fingerprint of service files (4 bytes), when the capability SVC_ABI is set
       if (caps !== null && ((caps >>> GCAP.SVC_ABI) & 1) === 1 && b.length >= at + 9 + 24 + 4)
         svcAbi = u32(b, at + 9 + 24);
+      // then the firmware identity (8 bytes), when the capability FW_ID is set
+      let o = at + 9 + 28;
+      if (svcAbi !== null && caps !== null && ((caps >>> GCAP.FW_ID) & 1) === 1 && b.length >= o + 8) {
+        fwId = Array.from(b.subarray(o, o + 8), (x) => x.toString(16).padStart(2, '0')).join('');
+        o += 8;
+      }
+      // then the card's capacity in sectors and the card check's state (4 bytes each)
+      if (b.length >= o + 8) {
+        cardSectors = u32(b, o);
+        cardState = u32(b, o + 4);
+        o += 8;
+        // then the card write guard's six words: version (0: not in the image), refused writes, refused erases, the last refused sector and length, class | kind << 8
+        if (b.length >= o + 24 && u32(b, o) !== 0) {
+          const refused = u32(b, o + 4) + u32(b, o + 8) > 0;
+          const classKind = u32(b, o + 20);
+          cardGuard = {
+            version: u32(b, o),
+            refused_writes: u32(b, o + 4),
+            refused_erases: u32(b, o + 8),
+            last_sector: u32(b, o + 12),
+            last_sectors: u32(b, o + 16),
+            last_class: refused ? ((classKind & 255) === 1 ? 'runtime' : 'stock') : null,
+            last_kind: refused ? (((classKind >>> 8) & 255) === 1 ? 'erase' : 'write') : null,
+          };
+        }
+      }
     }
-    return {
+    const info: DkInfoFull = {
       protocol,
       runtime_version: u16(b, 2),
       runtime,
       caps,
       image_id: imageId,
       svc_abi: svcAbi,
+      fw_id: fwId,
+      card_sectors: cardSectors,
+      card_state: cardState,
+      card_guard: cardGuard,
       port,
       free_bytes: free,
       max_chunk: maxChunk,
       safe_mode: (flags & 1) !== 0,
       upload_open: (flags & 2) !== 0,
       card_read_only: (flags & 4) !== 0,
+      log_sink: (flags & 8) !== 0,
+      fault_found: (flags & 16) !== 0,
     };
+    this.fileHashOk = hasCap(info, 'FILEHASH');
+    this.lastCaps = caps;
+    return info;
   }
 
   /**
@@ -1209,35 +1421,25 @@ export class DkSession {
 
   /** The loaded modules with their ranges, needed runtime versions and faults (MODULES, runtime 0.2.0, capability MODULES), every page. */
   async modules(quick: Quick = false): Promise<DkModule[]> {
+    const caps = this.lastCaps !== undefined ? this.lastCaps : (await this.info(quick)).caps;
+    if (caps === null || ((caps >>> GCAP.MODULE_SECTIONS) & 1) === 0)
+      throw new DkError({ error: OLD_MODULES, kind: 'request' });
     const out: DkModule[] = [];
     let start = 0;
     for (;;) {
       const b = await this.ok(GCMD.MODULES, 'modules', Uint8Array.of(start), quick);
-      const total = b[16]!;
-      const n = b[17]!;
-      let at = 18;
-      for (let i = 0; i < n; i++) {
-        const nt = b[at + 65]!;
-        const name = new TextDecoder().decode(b.subarray(at + 1, at + 33)).split('\0')[0]!;
-        out.push({
-          index: b[at]!,
-          name,
-          version: u32(b, at + 33),
-          needs: u32(b, at + 37),
-          cf_base: u32(b, at + 45),
-          cf_size: u32(b, at + 49),
-          dsp_off: u32(b, at + 53),
-          dsp_len: u32(b, at + 57),
-          rows: u32(b, at + 61),
-          types: Array.from(b.subarray(at + 66, at + 66 + nt)),
-          faults: u32(b, at + 66 + nt),
-          guard_off: (b[at + 70 + nt]! & 1) !== 0,
-        });
-        start = b[at]! + 1;
-        at += 71 + nt;
+      const { total, modules } = decodeModulesPage(b, caps);
+      for (const m of modules) {
+        out.push(m);
+        start = m.index + 1;
       }
+      const n = modules.length;
       if (out.length >= total || n === 0) return out;
     }
+  }
+
+  moduleSettings(slot: number, instance: number, current: () => boolean) {
+    return wireModuleSettings(this, slot, instance, current);
   }
 
   /** CAPACITY (runtime 0.2.2): per resource `{limit, used, largest}`, keyed by the kind's name. */
@@ -1325,6 +1527,90 @@ export class DkSession {
     await this.ok(GCMD.RESTART, 'restart');
     this.rpcProven = false;
   }
+  /**
+   * RETRY (resident core, also in a core-only boot): clear the boot counter without an upload, so that the next boot tries the system package again. It restarts nothing; call
+   * `restart` after it. No body; E_STATE while an upload is open or the store is busy.
+   */
+  async retry(): Promise<void> {
+    await this.ok(GCMD.RETRY, 'retry');
+  }
+  /**
+   * RELOAD (runtime capability RELOAD): queue the reload of the loaded module that came from the store path `path`; the new file is on the card already. The reply says only that the
+   * job is queued (E_BUSY: one runs, E_STATE: an upload is open, E_NOT_FOUND: no loaded module has that path). See `reloadState` and `reloadAndWait`.
+   */
+  async reload(path: string): Promise<void> {
+    await this.ok(GCMD.RELOAD, 'reload', concat(text.encode(path), Uint8Array.of(0)));
+  }
+  /**
+   * LOAD (runtime capability LIVE): queue the load of the module file at the store path `path`, which no loaded module came from; the file is on the card already. The same job and
+   * replies as `reload`, except E_LOADED (a module of that path is loaded) in place of E_NOT_FOUND. See `loadAndWait`.
+   */
+  async load(path: string): Promise<void> {
+    await this.ok(GCMD.LOAD, 'load', concat(text.encode(path), Uint8Array.of(0)));
+  }
+  /**
+   * UNLOAD (runtime capability LIVE): queue the unload of the loaded module that came from the store path `path` (no replacement; the file stays on the card). The same job and
+   * replies as `reload`. See `unloadAndWait`.
+   */
+  async unload(path: string): Promise<void> {
+    await this.ok(GCMD.UNLOAD, 'unload', concat(text.encode(path), Uint8Array.of(0)));
+  }
+  /**
+   * RELOAD_STATE: the state of the live job, whichever it is (a load, an unload or a reload). `phase` 0 (no job yet), 1 (queued or running) or 2 (finished), the `result` (0 is ok;
+   * else the refusal before anything changed, or the failure after the old module was torn down), the job's `step`, `op` (1 load, 2 unload, 3 reload; 0 from a runtime that does not say) and `unloaded`: true when the module was torn down, so it is not
+   * loaded unless the result is 0 and the job loaded; false when it still runs (or, for a load, was never there).
+   */
+  async reloadState(): Promise<{ phase: number; result: number; step: number; unloaded: boolean; op: number }> {
+    const b = await this.ok(GCMD.RELOAD_STATE, 'reload state');
+    return {
+      phase: b[0]!,
+      result: new DataView(b.buffer, b.byteOffset, b.byteLength).getInt32(1),
+      step: b[5]!,
+      unloaded: b[6] === 1,
+      op: b[7] ?? 0,
+    };
+  }
+  /** Queue with `queue`, then `reloadState` on the session clock until the job ends: `{ result, unloaded }` (see `reloadState`). A job that does not end within `withinMs` rejects. */
+  private async liveAndWait(
+    queue: () => Promise<void>,
+    what: string,
+    opts: { withinMs?: number; pollMs?: number; hangMs?: number },
+  ): Promise<{ result: number; unloaded: boolean }> {
+    await queue();
+    const s = await poll(
+      this.sessionClock,
+      () => this.reloadState(),
+      (v) => v.phase === 2,
+      {
+        withinMs: opts.withinMs ?? 30_000,
+        intervalMs: opts.pollMs ?? this.sessionClock.pollMs ?? WALL_POLL_MS,
+        message: what,
+        hangMs: opts.hangMs,
+      },
+    );
+    return { result: s.result, unloaded: s.unloaded };
+  }
+  /** `reload`, then wait for the job: `{ result, unloaded }` (see `reloadState`). */
+  async reloadAndWait(
+    path: string,
+    opts: { withinMs?: number; pollMs?: number; hangMs?: number } = {},
+  ): Promise<{ result: number; unloaded: boolean }> {
+    return this.liveAndWait(() => this.reload(path), `the reload of ${path}`, opts);
+  }
+  /** `load`, then wait for the job: `{ result, unloaded }`; a result of 0 means the module is loaded. */
+  async loadAndWait(
+    path: string,
+    opts: { withinMs?: number; pollMs?: number; hangMs?: number } = {},
+  ): Promise<{ result: number; unloaded: boolean }> {
+    return this.liveAndWait(() => this.load(path), `the load of ${path}`, opts);
+  }
+  /** `unload`, then wait for the job: `{ result, unloaded }`; a result of 0 (with `unloaded`) means the module is not loaded any more. */
+  async unloadAndWait(
+    path: string,
+    opts: { withinMs?: number; pollMs?: number; hangMs?: number } = {},
+  ): Promise<{ result: number; unloaded: boolean }> {
+    return this.liveAndWait(() => this.unload(path), `the unload of ${path}`, opts);
+  }
   /** LOG (the debug module `digikit/debug`): events from `from` on (the log of this boot), `[oldest, newest, events]`. */
   async logPage(from: number, quick: Quick = false): Promise<[number, number, DkLogEvent[]]> {
     const b = await this.ok(SERVICE_CMD.LOG, 'log', be32(from), quick);
@@ -1360,20 +1646,46 @@ export class DkSession {
     }
     return out;
   }
-  /** PROFILE_STATE (debug module): `get` the state, `start` or `stop` the spans, or `reset` the counters. The reply is the state after the op, with the ticks of the span clock that passed while running since the last reset (the window the sums belong to). */
+  /**
+   * SETUP (debug module): queue the change of a track's machine or filter type. The UI task performs it through the firmware's own kit commit and logs
+   * SETUP_DONE with the returned `seq` (wait for it: `trackSetup`). Refused with E_BUSY while one request is queued. Returns the request's seq.
+   */
+  async setup(what: 'machine' | 'filter', track: number, type: number, quick: Quick = false): Promise<number> {
+    const op = { machine: 1, filter: 2 }[what];
+    const b = await this.ok(SERVICE_CMD.SETUP, 'setup', Uint8Array.of(op, track, type), quick);
+    if (b.length < 1) throw new DkError({ error: 'setup: malformed reply', kind: 'protocol' });
+    return b[0]!;
+  }
+  /** PROFILE_STATE (debug module): get the state, start spans (with a trace for `startTrace`), stop, or reset. The reply includes the span clock ticks elapsed while running since reset. */
   async profileState(
-    op: 'get' | 'start' | 'stop' | 'reset',
+    op: 'get' | 'start' | 'stop' | 'reset' | 'startTrace',
     quick: Quick = false,
-  ): Promise<{ running: boolean; hz: number; rows: number; elapsedTicks: bigint; polls: (PollSlot | undefined)[] }> {
-    const code = { get: 0, start: 1, stop: 2, reset: 3 }[op];
+  ): Promise<{
+    running: boolean;
+    hz: number;
+    rows: number;
+    elapsedTicks: bigint;
+    polls: (PollSlot | undefined)[];
+    traceVersion?: number;
+    traceGeneration?: number;
+  }> {
+    const code = { get: 0, start: 1, stop: 2, reset: 3, startTrace: 4 }[op];
     const b = await this.ok(SERVICE_CMD.PROFILE_STATE, 'profile state', Uint8Array.of(code), quick);
     if (b.length < 15) throw new DkError({ error: 'profile state: malformed reply', kind: 'protocol' });
     const elapsedTicks = new DataView(b.buffer, b.byteOffset, b.length).getBigUint64(7);
     // the 4 poll slots follow (u8 owner: 0 empty, 1 + record, 0xff firmware image; u32 address); a debug module from before them sends none
     const polls: (PollSlot | undefined)[] = [];
-    for (let at = 15; at + 5 <= b.length; at += 5)
+    for (let at = 15; at + 5 <= Math.min(35, b.length); at += 5)
       polls.push(b[at] === 0 ? undefined : { owner: b[at] === 0xff ? 'runtime' : b[at]! - 1, fn: u32(b, at + 1) });
-    return { running: b[0] === 1, hz: u32(b, 1), rows: u16(b, 5), elapsedTicks, polls };
+    const state = { running: b[0] === 1, hz: u32(b, 1), rows: u16(b, 5), elapsedTicks, polls };
+    const traceVersion = b[35];
+    if (op === 'startTrace') {
+      const traceGeneration = b.length >= 40 ? u32(b, 36) : 0;
+      if (traceVersion !== 1 || !traceGeneration)
+        throw new DkError({ error: 'profile state: missing trace generation', kind: 'protocol' });
+      return { ...state, traceVersion, traceGeneration };
+    }
+    return traceVersion === undefined ? state : { ...state, traceVersion };
   }
   /** PROFILE_READ (debug module): the span rows from row `first`; the device may return fewer rows than a page holds. */
   async profileRead(
@@ -1393,12 +1705,97 @@ export class DkSession {
     }
     return { first: u16(b, 0), rows };
   }
+  /** PROFILE_READ in trace mode: page through the frozen trace, pinning the generation from the first reply. */
+  async profileTrace(expectedGeneration?: number, quick: Quick = false): Promise<ProfileTrace> {
+    const version = 1;
+    const headerBytes = 18;
+    const recordBytes = 16;
+    const maxEvents = 256;
+    const malformed = () => new DkError({ error: 'profile trace: malformed reply', kind: 'protocol' });
+    const body = Uint8Array.of(version, 0, 0, 0, 0, 0, 0);
+    const request = new DataView(body.buffer);
+    const events: ProfileTrace['events'] = [];
+    let capture: { generation: number; total: number; dropped: number; hz: number } | undefined;
+    do {
+      const first = events.length;
+      request.setUint32(1, capture?.generation ?? expectedGeneration ?? 0);
+      request.setUint16(5, first);
+      const b = await this.ok(SERVICE_CMD.PROFILE_READ, 'profile trace', body, quick);
+      if (b.length < headerBytes || b[0] !== version) throw malformed();
+      const view = new DataView(b.buffer, b.byteOffset, b.length);
+      const generation = view.getUint32(1);
+      const total = view.getUint16(5);
+      const dropped = view.getUint32(7);
+      const hz = view.getUint32(11);
+      const count = view.getUint8(17);
+      if (
+        generation === 0 ||
+        (expectedGeneration !== undefined && generation !== expectedGeneration) ||
+        hz === 0 ||
+        total > maxEvents ||
+        view.getUint16(15) !== first ||
+        first + count > total ||
+        (count === 0 && first < total) ||
+        b.length !== headerBytes + count * recordBytes ||
+        (capture &&
+          (generation !== capture.generation ||
+            total !== capture.total ||
+            dropped !== capture.dropped ||
+            hz !== capture.hz))
+      )
+        throw malformed();
+      capture ??= { generation, total, dropped, hz };
+      for (let i = 0; i < count; i++) {
+        const at = headerBytes + i * recordBytes;
+        events.push({
+          owner: view.getUint32(at),
+          startTicks: view.getBigUint64(at + 4).toString(),
+          durationTicks: view.getUint32(at + 12),
+        });
+      }
+    } while (events.length < capture.total);
+    return { version, generation: capture.generation, hz: capture.hz, dropped: capture.dropped, events };
+  }
+  /** PROFILE_DSP (debug module): `get` the DSP stats, `start` or `stop` the counters, or `clear` them (a new clear generation). The reply is the state after the op. */
+  async profileDsp(op: 'get' | 'start' | 'stop' | 'clear' = 'get', quick: Quick = false): Promise<DspStats> {
+    const code = { get: 0, start: 1, stop: 2, clear: 3 }[op];
+    const b = await this.ok(SERVICE_CMD.PROFILE_DSP, 'profile dsp', Uint8Array.of(code), quick);
+    if (b.length < 20 || b[0] !== 1 || b[3] !== DSP_STATS_ROWS)
+      throw new DkError({ error: 'profile dsp: malformed reply', kind: 'protocol' });
+    const hasSweep = (b[1]! & 2) !== 0;
+    if (hasSweep && b.length < 20 + 4 * DSP_STATS_WORDS)
+      throw new DkError({ error: 'profile dsp: malformed reply', kind: 'protocol' });
+    const out: DspStats = {
+      on: (b[1]! & 1) !== 0,
+      generation: b[2]!,
+      counts: { sweeps: u32(b, 8), gaps: u32(b, 12), ignored: u32(b, 16) },
+    };
+    if (hasSweep) {
+      const view = new DataView(b.buffer, b.byteOffset, b.length);
+      const w = (i: number) => view.getUint32(20 + 4 * i);
+      const rows: DspRow[] = [];
+      for (let i = 0; i < DSP_STATS_ROWS; i++) {
+        const at = 4 + 6 * i;
+        rows.push({
+          row: i,
+          kind: i < 8 ? 'machine' : 'effect',
+          calls: w(at),
+          sumCycles: (BigInt(w(at + 2)) << 32n) | BigInt(w(at + 1)),
+          maxCall: w(at + 3),
+          maxBlock: w(at + 4),
+        });
+      }
+      out.sweep = { number: u32(b, 4), blocks: w(0), maxStockBlockDelta: w(1), overruns: w(2), rows };
+    }
+    return out;
+  }
   /**
    * All span rows: the state, then pages of PROFILE_READ. Row layout: 0..M-1 module records, then 3 service phases (early, late, last), then
    * 4 polls, with M = rows - 7.
    */
   async profileAll(quick: Quick = false): Promise<{
     running: boolean;
+    traceVersion?: number;
     hz: number;
     elapsedTicks: bigint;
     spans: ProfileSpan[];
@@ -1419,7 +1816,14 @@ export class DkSession {
         spans.push({ row, kind: kind as 'module' | 'phase' | 'poll', index, ...r });
       }
     }
-    return { running: st.running, hz: st.hz, elapsedTicks: st.elapsedTicks, spans, polls: st.polls };
+    return {
+      running: st.running,
+      hz: st.hz,
+      elapsedTicks: st.elapsedTicks,
+      spans,
+      polls: st.polls,
+      traceVersion: st.traceVersion,
+    };
   }
   /** LOGCFG (read): the default log level, the level of each module record (0xff: the default), and whether the debug module is loaded. */
   async logConfig(quick: Quick = false): Promise<LogConfig> {
@@ -1565,6 +1969,7 @@ export class DkSession {
    * timed out may have been done, so the caller decides (`RpcFiles` does not repeat one).
    */
   rpc(type: number, payload: Uint8Array = new Uint8Array(), timeoutMs: number = this.timeoutMs): Promise<Uint8Array> {
+    if (this.rawPortHeld) return Promise.reject(cancelledError());
     const next = this.turn.then(async () => {
       if (!this.rpcProven) await this.waitRpcService();
       return this.rpcOnce(type, payload, timeoutMs);
@@ -1690,8 +2095,8 @@ export class DkSession {
    * boot's log holds the RESTART request (an UPLOAD event whose first argument is the command), the new boot's log starts with BOOT_START and never saw
    * it; then FW_READY (first UI-loop pass, the stock MidiRpc service answers). A runtime older than FW_READY logs only UI_FIRST: FW_READY_GRACE_MS of
    * clock time after UI_FIRST without FW_READY ends the wait. `opts.until: 'boot'` ends the wait at BOOT_START instead (a test of a crash, a fault or the boot itself). Without the
-   * log (INFO has no LOG capability) the device is taken as booted when it answers again after a failed read (the port is silent while it resets). Every
-   * request goes through `probe` (2 s emulated on the emulator, 1 s on hardware), so a request lost while the device resets costs one probe, not
+   * log (INFO has no LOG capability) the device is taken as booted when it answers again after a failed read (the port is silent while it resets), unless
+   * `opts.requireBootEvidence` is set. Every request goes through `probe` (2 s emulated on the emulator, 1 s on hardware), so a request lost while the device resets costs one probe, not
    * `timeoutMs` of the session. Time is the session clock (`timeoutMs` in its ms; default `wallClock`).
    * `opts.signal` cancels the wait; `opts.stillBooting()` extends the deadline.
    */
@@ -1783,7 +2188,8 @@ export class DkSession {
             if (untilBoot || ready || (uiFirstAt !== undefined && elapsed - uiFirstAt >= FW_READY_GRACE_MS)) return;
             last = 'the new boot has not reached its UI loop';
           } else last = 'the old boot still runs';
-        } else if (silent) return;
+        } else if (opts.requireBootEvidence) last = 'INFO answered without a boot log';
+        else if (silent) return;
         else last = 'the old boot still runs';
       } catch (e) {
         if (e instanceof DkError && e.kind === 'cancelled') throw e;

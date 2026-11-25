@@ -1,0 +1,221 @@
+diff --git a/packages/patchkit/src/dkm.rs b/packages/patchkit/src/dkm.rs
+index 7f93fdf63..589ba5d8c 100644
+--- a/packages/patchkit/src/dkm.rs
++++ b/packages/patchkit/src/dkm.rs
+@@ -35,25 +35,56 @@ pub fn fmt_runtime(v: u32) -> String {
+     format!("{}.{}.{}", v >> 16, v >> 8 & 255, v & 255)
+ }
+ 
+-pub use dkneeds::Needs;
++pub use dkneeds::{InstrumentNeeds, Needs, V2Needs};
+ 
+ /// What a load of the file takes of each resource, inferred from the file's own contents (the register records, the DSP section and the
+-/// sizes the loader reads: `dkneeds`, the code the runtime's menu runs on the device). Nothing in the file declares it.
++/// sizes the loader reads: `dkneeds`, the code the runtime's menu runs on the device). Nothing in the file declares it. For a file of
++/// persistent V2 instruments (a version 7 or 8 DSP section) these are its totals of the same resources; [`needs_v2`] has its instrument rows.
+ pub fn needs(f: &[u8]) -> Result<Needs> {
+-    dkneeds::needs_of(&mut &f[..]).map_err(|e| err!("{}", e.text()))
++    needs_v2(f).map(|n| n.base)
+ }
+ 
+-/// The needs of a file as JSON, for the command line and the wasm export: `file_size` and the CAPACITY names of [`Needs::fields`].
++/// [`needs`] with the instrument rows, tracks and state bytes of a V2 section (all zero for any other file): the reader of the runtime's
++/// scan. The menu's scan and fit entries have no instrument rows, so the fit rule judges the resources of [`Needs`] only.
++pub fn needs_v2(f: &[u8]) -> Result<V2Needs> {
++    dkneeds::needs_of_v2(&mut &f[..]).map_err(|e| err!("{}", e.text()))
++}
++
++/// (name, value) of what a V2 section's instruments need beyond [`Needs::fields`] (which has their rows and tracks): the state bytes, a
++/// part of `DSP_AREA`. Empty for a file without instruments.
++pub fn instrument_fields(n: &InstrumentNeeds) -> Vec<(&'static str, u32)> {
++    if *n == InstrumentNeeds::default() {
++        return vec![];
++    }
++    vec![("INSTRUMENT_STATE", n.state_bytes)]
++}
++
++/// The needs of a file as JSON, for the command line and the wasm export: `file_size` and the CAPACITY names of [`Needs::fields`], then
++/// [`instrument_fields`] for a file of V2 instruments.
+ pub fn needs_json(f: &[u8]) -> Result<serde_json::Value> {
+-    let n = needs(f)?;
++    let n = needs_v2(f)?;
+     let mut o = serde_json::Map::new();
+-    o.insert("file_size".into(), n.file_size.into());
+-    for (name, v) in n.fields() {
++    o.insert("file_size".into(), n.base.file_size.into());
++    for (name, v) in n.base.fields() {
++        o.insert(name.into(), v.into());
++    }
++    for (name, v) in instrument_fields(&n.instruments) {
+         o.insert(name.into(), v.into());
+     }
+     Ok(serde_json::Value::Object(o))
+ }
+ 
++/// The needs as one line of text for a person: `arena 1234, ...` in lower case, the instrument fields last.
++pub fn needs_text(n: &V2Needs) -> String {
++    n.base
++        .fields()
++        .into_iter()
++        .chain(instrument_fields(&n.instruments))
++        .map(|(k, v)| format!("{} {v}", k.to_lowercase()))
++        .collect::<Vec<_>>()
++        .join(", ")
++}
++
+ // header field offsets
+ pub const H_MAGIC: usize = dkneeds::H_MAGIC as usize;
+ pub const H_FORMAT: usize = dkneeds::H_FORMAT as usize;
+@@ -191,6 +222,22 @@ fn record_kind_needs(needs: &mut Vec<dkneeds::keys::Need>, kinds: &[u32]) {
+     needs.sort_by_key(|n| n.service);
+ }
+ 
++/// A hard NEED on each service in `served` (the services that serve an adapter the module requires); the needs stay sorted by name hash.
++fn served_needs(needs: &mut Vec<dkneeds::keys::Need>, served: &[String]) {
++    for service in served {
++        let h = dkneeds::keys::name_hash(service);
++        match needs.iter_mut().find(|n| n.service == h) {
++            Some(n) => n.hard = true,
++            None => needs.push(dkneeds::keys::Need {
++                service: h,
++                min_version: 0,
++                hard: true,
++            }),
++        }
++    }
++    needs.sort_by_key(|n| n.service);
++}
++
+ /// The `KINDS` of a service file: each record kind `service` owns (`[records.kinds]`) with `init` as the handler entry. The `service!` macro of `dkrt-svc-rt`
+ /// declares every kind with the address of `init`, and the loader compares the declarations with this table.
+ fn service_kinds(service: &str, init: u32) -> Vec<dkneeds::keys::KindDecl> {
+@@ -208,10 +255,13 @@ fn service_kinds(service: &str, init: u32) -> Vec<dkneeds::keys::KindDecl> {
+ /// The header table to write: `reg` is the table the caller built (empty: a module that takes and keeps nothing) with the `NEEDS` entry replaced by
+ /// the needs of `imports`.
+ ///
+-/// `provides` and `exports` are added to the ones of `reg`; a table with any `PROVIDES` is written as version 2.
++/// `provides` and `exports` are added to the ones of `reg`; a table with any `PROVIDES` is written as version 2. `uses_add` are uses the packer
++/// counts itself (the persistent instruments of the DSP section); they replace an entry of the same resource in `reg`.
+ fn table_with_needs(
+     reg: &[u8],
+     imports: &[&str],
++    served: &[String],
++    uses_add: &[dkneeds::keys::Use],
+     provides: &[dkneeds::keys::Pair],
+     exports_add: &[dkneeds::keys::Pair],
+     hooks_add: &[dkneeds::keys::Pair],
+@@ -229,6 +279,7 @@ fn table_with_needs(
+         let kinds: Vec<u32> = k.key_groups().map(|g| g.0).collect();
+         record_kind_needs(&mut needs, &kinds);
+     }
++    served_needs(&mut needs, served);
+     let (mut uses, mut kinds, mut slots, mut hooks, mut exports, mut resources) =
+         (vec![], vec![], vec![], vec![], vec![], vec![]);
+     let mut groups: Vec<(u32, Vec<u32>)> = vec![];
+@@ -254,6 +305,9 @@ fn table_with_needs(
+             groups.push((kind, ks.collect()));
+         }
+     }
++    uses.retain(|u: &dkneeds::keys::Use| !uses_add.iter().any(|a| a.resource == u.resource));
++    uses.extend_from_slice(uses_add);
++    uses.sort_by_key(|u| u.resource);
+     exports.extend_from_slice(exports_add);
+     hooks.extend_from_slice(hooks_add);
+     slots.extend_from_slice(slots_add);
+@@ -307,6 +361,8 @@ pub struct Options {
+     pub gate: bool,
+     /// A service provider (`role = "service"`): the file gets [`ROLE_SERVICE`] and a table with its `PROVIDES` and `EXPORTS`. `None`: a content module.
+     pub service: Option<Provided>,
++    /// Services the module needs because an adapter it requires runs from them (`served_by`, `Library::served_needs`): hard `NEEDS`.
++    pub served: Vec<String>,
+ }
+ 
+ /// The low 24 bits of a `HOOKS` entry of a service file: the handler's image offset. The top byte is the device mask of the hook.
+@@ -719,9 +775,22 @@ fn pack_inner(
+             )
+         }
+     };
++    // The persistent V2 instruments of the DSP section are uses of the module: their types and their track instances
++    // (`RES_INSTRUMENT_ROWS`, `RES_INSTRUMENT_TRACKS`). A module does not declare them; the boot plan reads them from the table.
++    let mut instrument_uses = vec![];
++    if let Ok(n) = dkneeds::instrument_section_needs(dsp) {
++        for (resource, count) in [
++            (dkneeds::RES_INSTRUMENT_ROWS, n.rows),
++            (dkneeds::RES_INSTRUMENT_TRACKS, n.tracks),
++        ] {
++            instrument_uses.push(dkneeds::keys::Use { resource, count });
++        }
++    }
+     let table = table_with_needs(
+         reg,
+         &imports,
++        &o.served,
++        &instrument_uses,
+         &provides,
+         &svc_exports,
+         &svc_hooks,
+@@ -1069,6 +1138,7 @@ mod tests {
+             stereo: false,
+             gate: false,
+             service: None,
++            served: vec![],
+         }
+     }
+ 
+@@ -1382,6 +1452,8 @@ mod tests {
+                 latched: 0,
+             }],
+             fxs: vec![],
++            instruments: vec![],
++            executable: vec![],
+         }
+         .encode()
+     }
+@@ -1437,6 +1509,47 @@ mod tests {
+         assert_eq!(j["file_size"], f.len());
+     }
+ 
++    #[test]
++    fn a_file_of_v2_instruments_has_needs_and_names_its_instrument_rows() {
++        let f = pack_keys(
++            Some(&object()),
++            &[],
++            &dkneeds::fixtures::v2_section(),
++            &opts(),
++        )
++        .unwrap();
++        // the canonical V2 section (dkneeds::fixtures): the reader without instruments refuses the section; this one gives what the loader's V2 path takes
++        assert!(dkneeds::needs_of(&mut &f[..]).is_err());
++        let n = needs_v2(&f).unwrap();
++        assert_eq!(needs(&f).unwrap(), n.base);
++        // align64(image 64 + bss 8 + two states of align8(12)); the instrument is no voice row
++        assert_eq!((n.base.dsp_area, n.base.voice_rows), (128, 0));
++        let j = needs_json(&f).unwrap();
++        assert_eq!(j["DSP_AREA"], 128);
++        assert_eq!(j["INSTRUMENT_ROWS"], 1);
++        assert_eq!(j["INSTRUMENT_TRACKS"], 2);
++        // the packer wrote them as uses of the module, for the boot plan
++        let parsed = Dkm::parse(&f).unwrap();
++        let table = dkneeds::keys::Keys::parse(&parsed.register).unwrap();
++        assert_eq!((table.instrument_rows(), table.instrument_tracks()), (1, 2));
++        assert_eq!(j["INSTRUMENT_STATE"], 32);
++        assert!(
++            needs_text(&n).ends_with("instrument_rows 1, instrument_tracks 2, instrument_state 32")
++        );
++        // a file without instruments says nothing of them
++        let old = pack_keys(Some(&object()), &[], &dsp_section(100, 3), &opts()).unwrap();
++        let j = needs_json(&old).unwrap();
++        assert_eq!(
++            (&j["INSTRUMENT_ROWS"], &j["INSTRUMENT_TRACKS"]),
++            (&0.into(), &0.into())
++        );
++        assert!(j.get("INSTRUMENT_STATE").is_none());
++        assert!(!needs_text(&needs_v2(&old).unwrap()).contains("instrument_state"));
++        let parsed = Dkm::parse(&old).unwrap();
++        let table = dkneeds::keys::Keys::parse(&parsed.register).unwrap();
++        assert_eq!(table.instrument_rows(), 0);
++    }
++
+     #[test]
+     fn packing_is_deterministic() {
+         assert_eq!(

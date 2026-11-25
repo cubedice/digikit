@@ -3,7 +3,7 @@ import path from 'node:path';
 import { repoRoot, type Device } from '@digi/test-support';
 import { parse } from 'smol-toml';
 
-/** The one reader of devices/<profile>.toml and devices/ports/<device>-<firmware>.toml. Only the keys read by the tests are typed. */
+/** The one reader of devices/<profile>.toml and ports/<device>-<firmware>.toml. Only the keys read by the tests are typed. */
 export interface DeviceProfile {
   input: { backend: string };
   panel: {
@@ -30,6 +30,8 @@ export interface DeviceProfile {
   };
   /** `[ui]`: `brain_ptr`, the Brain pointer global (the port anchor `cf.view.value.brain`). The view stack and boot window facts are read by `@digi/test-support` `bootWindowFacts`. */
   ui: { brain_ptr: number };
+  /** `[midi]`: `track_channels[n]` is the factory MIDI channel (1-16) of track n+1. */
+  midi?: { track_channels: number[] };
   capabilities: { card: 'path-fs' | 'slots' | 'none' | 'unknown' } & Record<string, string>;
   storage?: { samples?: string };
   card: {
@@ -58,12 +60,11 @@ export interface PortFile {
   anchor?: { name: string; addr?: number }[];
 }
 
-const PROFILES: Record<Device, string> = { dt2: 'digitakt-ii', dn2: 'digitone-ii' };
+const PROFILES: Record<Device, string> = { dt2: 'digitakt-ii', dn2: 'digitone-ii', st: 'syntakt' };
 
-const readToml = <T>(...parts: string[]) =>
-  parse(fs.readFileSync(path.join(repoRoot(), 'devices', ...parts), 'utf8')) as T;
+const readToml = <T>(...parts: string[]) => parse(fs.readFileSync(path.join(repoRoot(), ...parts), 'utf8')) as T;
 
-export const deviceProfile = (device: Device) => readToml<DeviceProfile>(`${PROFILES[device]}.toml`);
+export const deviceProfile = (device: Device) => readToml<DeviceProfile>('devices', `${PROFILES[device]}.toml`);
 
 export const portFile = (device: Device, firmware: string) => readToml<PortFile>('ports', `${device}-${firmware}.toml`);
 

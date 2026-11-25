@@ -1,0 +1,13 @@
+[package]
+name = "dkrt-svc-instrument"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "The instrument service of the digikit runtime: the service type (no record kinds) and the check of the image table instrument_image; the moved C of core/instrument-play and core/midi-events is in the service file (dks/)"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+dkrt-abi = { path = "../../runtime/core/abi" }
+dkrt-sdk = { path = "../../runtime/core/sdk" }

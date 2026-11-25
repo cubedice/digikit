@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { cloneFile, type Device } from '@digi/test-support';
+import { writeIdFile } from './card-cache.ts';
 import { cardStore, deviceProfile, expansionRegion, uploadStore } from './device-data.ts';
 import type { RuntimePlan } from './runtime-plan.ts';
 
@@ -13,7 +15,11 @@ const RECORD = 8 + 64 + SECTOR;
 // Sectors of one settings copy (tools/device/dkproto.py SETTINGS_SECTORS).
 const SETTINGS_SECTORS = 16;
 // Kit-library sector ranges of the firmware (hi exclusive), allowed by the fx-kit and fx-routes policies.
-export const KIT_AREAS: Record<Device, [number, number][]> = { dt2: [[0x16000, 0x17000]], dn2: [[0x2000, 0x2100]] };
+export const KIT_AREAS: Record<Device, [number, number][]> = {
+  dt2: [[0x16000, 0x17000]],
+  dn2: [[0x2000, 0x2100]],
+  st: [],
+};
 
 export type SafetyPolicy = 'default' | 'settings' | 'fx-kit' | 'fx-routes';
 
@@ -145,6 +151,18 @@ export function linkCard(base: string, dir: string, overlay: Buffer): string {
     cloneFile(base, card);
   }
   fs.writeFileSync(overlayFile(card), overlay);
+  // The content id of the new card (`card.key`, which the daemon puts in its snapshot key): the id of the base and the sha256 of the
+  // writes, so equal content in another directory finds the snapshot and other writes never share one. A base with no id gives none.
+  const id = path.join(dir, 'card.key');
+  const baseId = path.join(path.dirname(base), 'card.key');
+  fs.rmSync(id, { force: true });
+  if (fs.existsSync(baseId)) {
+    const text = createHash('sha256')
+      .update(`${fs.readFileSync(baseId, 'utf8').trim()}\0${createHash('sha256').update(overlay).digest('hex')}`)
+      .digest('hex')
+      .slice(0, 32);
+    writeIdFile(id, text);
+  }
   return card;
 }
 
@@ -170,8 +188,9 @@ export function dmaHoles(plan: RuntimePlan): [number, number][] {
     if (start !== undefined) holes.push([start, size]);
     return start !== undefined;
   };
-  if (!hole('DKRT_STAGE', deviceProfile(plan.base.device as Device).limits.stage_bytes!))
-    throw new Error('no symbol core/runtime:DKRT_STAGE');
+  const stageBytes = deviceProfile(plan.base.device as Device).limits.stage_bytes;
+  if (stageBytes === undefined) throw new Error(`no limits.stage_bytes in the ${plan.base.device} profile`);
+  if (!hole('DKRT_STAGE', stageBytes)) throw new Error('no symbol core/runtime:DKRT_STAGE');
   hole('DKRT_SECBUF', 512);
   hole('DKRT_UPLOAD_BUF', 36896);
   hole('DKRT_SDK_BUF', 17408); // the SDK file calls' table streams (card reads land by DMA)

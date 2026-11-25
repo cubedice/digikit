@@ -11,7 +11,7 @@ firmware, module manifest or packaged DSP. No new agents were delegated.
 
 ## Implemented policy
 
-`modules/machines/canopy/src/movement.h` and `movement.c` expose a serialized,
+`modules/machine/digikit/canopy/src/movement.h` and `movement.c` expose a serialized,
 allocation-free block scheduler. This code currently has no runtime caller.
 One tick is 32 samples at 48 kHz. It consumes four admitted notes, not the
 physical keyboard ledger. Each note retains velocity, port and channel.

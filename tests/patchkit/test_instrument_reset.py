@@ -9,7 +9,7 @@ from tools.patchkit import pk_sharc
 @pytest.fixture(scope="module")
 def reset_worker():
     source = (
-        REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp/lifecycle.s"
+        REPO_ROOT / "image-modules/adapters/instrument-registry/src/dsp/lifecycle.s"
     ).read_text()
     source += """
 .SECTION/PM seg_pmco;

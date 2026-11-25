@@ -64,7 +64,7 @@ until the real switch the loop of pattern 1 sounds like pattern 1 itself.
 
 - The playing pattern is track 1's word `0x44f37bd0`, read through a new data anchor, `cf.pattern.site.playing_lit`:
   the literal of the tick's `lea 0x44f37bd0,a6` at `0x400d84ae` (rule `cf_window_hash`, 12 bytes from `0x400d84ac`,
-  offset 2, unique in MAIN; in `devices/fw/pattern.toml` and the DT2 1.17 port file, entered by hand because
+  offset 2, unique in MAIN; in `ports/fw/pattern.toml` and the DT2 1.17 port file, entered by hand because
   `mise run patch:port` fails at an unrelated anchor, finding 359). No hook is added: the existing tick hook reads it.
 - It is taken at a master step edge (the substep `0x43164f9a` is 0) and at START; between edges the pattern taken at the
   last edge stays, so a track faster than the master grid cannot move it into a step.

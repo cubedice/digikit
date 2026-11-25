@@ -71,9 +71,9 @@ and worst-case CPU qualification remain open; physical Overloop coexistence
 passed on November 3. This is not a hardware release. Evidence is in the
 [Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
 
-The implementation uses [instrument MIDI ownership](../../modules/core/adapters/midi-events/README.md),
-[the admitted playback adapter](../../modules/core/adapters/instrument-play/README.md)
-and the [CANOPY sine kernel](../../modules/machines/canopy/README.md).
+The implementation uses [instrument MIDI ownership](../../image-modules/adapters/midi-events/README.md),
+[the admitted playback adapter](../../image-modules/adapters/instrument-play/README.md)
+and the [CANOPY sine kernel](../../modules/machine/digikit/canopy/README.md).
 Earlier fixture checkpoints below remain historical evidence; the current
 completion checklist and acceptance table define the next work.
 
@@ -160,7 +160,7 @@ final-output gate.
 | Pattern timing | Overloop bridge publishes committed master-grid boundaries | Validated finer clock for subdivisions, triplets and swing |
 | Settings | Device-wide runtime store, called on the UI task; no public DKM settings API | Bounded module-owned settings access and explicit presets |
 
-Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../modules/core/adapters/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../devices/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../modules/core/runtime/src/rs/src/settings.rs).
+Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../image-modules/points/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../ports/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../runtime/core/src/rs/src/settings.rs).
 
 The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
 now confirms that the cable-0 byte parser also queues complete channel messages,
@@ -333,7 +333,7 @@ changed-file check passes layering but still reports the existing 256 stale
 references in 78 files.
 
 V2 registration bookkeeping is now implemented in
-`modules/core/runtime/sdk/src/instrument_registry.rs`. A single loader task owns
+`runtime/core/sdk/src/instrument_registry.rs`. A single loader task owns
 eight fixed rows and a caller-supplied track-instance limit. A whole module is
 reserved atomically, remains invisible until publication, and is hidden from new
 admissions when retirement starts. Reserved and retiring rows continue to consume
@@ -343,7 +343,7 @@ are released only after the matching DSP detach/reset completion, never timeout.
 Tickets bind the module slot and a monotonic generation; stale completions cannot
 publish or release a replacement. Generation exhaustion fails closed.
 
-`modules/core/runtime/fit/src/instruments.rs` checks the separately reported V2
+`runtime/core/fit/src/instruments.rs` checks the separately reported V2
 row/instance capacity plus existing resources. Missing V2 capacity is unsupported,
 not unlimited. Planning consumes both snapshots only after every requirement fits.
 It does not reserve the live registry or change the existing scan/fit ABI.
@@ -359,7 +359,7 @@ packing remain disabled. Five registry lifecycle tests and twelve fit tests
 references pass their focused path check. No ColdFire or emulator execution of
 these new lifecycle components has been claimed.
 
-`modules/core/runtime/sdk/src/instrument_load.rs` now owns the registry through a
+`runtime/core/sdk/src/instrument_load.rs` now owns the registry through a
 bounded transfer state machine. It emits commands for image transfer,
 initialization, publication, detachment and storage release. Image transfer and
 initialization require separate ordered acknowledgements carrying the reservation
@@ -380,8 +380,8 @@ interleaved owners, cancellation at each transfer stage, stale completions and
 retained capacity after timeout. Logs: `out/canopy-v2-load.log` and
 `out/canopy-v2-load-fit.log`. These are host tests, not DSP transport acceptance.
 
-DSP-link now carries optional V2 registration data through window 3. The existing
-ColdFire sender encodes the fourth window, and both SHARC receivers use optional
+DSP-link now carries optional V2 registration data through window 4 (window 3 is upstream's statistics control; the window field took bit 29). The existing
+ColdFire sender encodes the fifth window, and both SHARC receivers use optional
 `_dl_irows`/`_dl_iwords` provider bounds. Absent, misaligned, zero-sized or oversized
 providers fail closed; each write must fit the declared region. Existing frame
 suffixes and reply allocations are unchanged. Component tests execute the actual
@@ -393,7 +393,7 @@ QUERY reports zero capabilities; INITIALIZE and DETACH return unsupported, never
 a successful lifecycle acknowledgement. The block wrapper invokes the provider
 and copies its eight-word reply into existing instrument reply words 4..11,
 covered by the existing reply checksum. No extra SPI reply rows are allocated.
-See [mailbox protocol](../../modules/core/adapters/instrument-registry/README.md).
+See [mailbox protocol](../../image-modules/adapters/instrument-registry/README.md).
 Next: implement bounded DSP initialization/reset and detachment, then connect the
 load controller to these acknowledgements. No instrument rows are published yet.
 Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
@@ -433,7 +433,7 @@ references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
 execution is claimed.
 
 An internal SHARC V2 single-instance reset worker is now implemented in
-`modules/core/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
+`image-modules/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
 state extent, callback range and reset reason before any write/call, clears state
 only for CREATE, and accepts only a zero callback result. Its current clearing
 limit is 1024 words per call. It is not yet connected to mailbox commands: trusted
@@ -449,7 +449,7 @@ check passes 193 host tests (16 skipped), formatting, types and layering; its on
 failure is the existing 256 stale references. Changed document references pass.
 
 The DSP now has an internal eight-row lifecycle table and begin/tick routines in
-`modules/core/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
+`image-modules/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
 detachment reset at most one track instance per tick. Completion follows the last
 callback return; failures retain the owner/generation and attempted-instance count.
 Partial initialization detaches only attempted instances, including a faulted
@@ -468,7 +468,7 @@ the existing 256 stale references and the recurring minimum-delay timer failure
 `out/canopy-row-lifecycle-timing.log`.
 
 A protected row-tick boundary is now implemented in
-`modules/core/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
+`image-modules/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
 callback scratch context, both 80-bit multiplier accumulators, addressing lengths
 and arithmetic mode/status while pinning the callback ABI. B3 is restored before
 I3; accumulator guard words are restored after middle words. Entry must already be
@@ -506,7 +506,7 @@ references and recurring timer assertion (192 host tests passed, 16 skipped); th
 timer passes an isolated rerun (`out/canopy-mailbox-scheduler-timing.log`). No
 device or hardware acceptance is claimed.
 
-An internal admission planner in `modules/core/runtime/sdk/src/instrument_admission.rs`
+An internal admission planner in `runtime/core/sdk/src/instrument_admission.rs`
 now validates ticket-bound allocator grants against reserved physical rows before
 transfer. It checks exact type coverage, L2/image/state bounds, non-overlap,
 executable callback extents, instance allocation and declared budgets. It produces
@@ -1687,7 +1687,7 @@ No sustained-AMP workaround should be required to play the keyboard.
 Prove that the engine does not kill the custom renderer prematurely at its own envelope termination, and that stock shared velocity is neutral. A low-velocity first note must not reduce the volume of a later high-velocity note. Inspect both module output and final track output.
 
 The raw-adapter component probe in
-[test_canopy_carrier.py](../../modules/machines/canopy/tests/test_canopy_carrier.py) now exercises
+[test_canopy_carrier.py](../../modules/machine/digikit/canopy/tests/test_canopy_carrier.py) now exercises
 the sine kernel through the production voice wrapper. It checks inactive-track
 rendering, stock retrigger independence, stereo-copy state preservation and
 restarting after local QUIET. This is pre-AMP evidence only: the test does not run
@@ -1738,7 +1738,7 @@ If a sustained carrier cannot provide the required lifetime, investigate an expl
 
 ## Transport alongside Overloop
 
-The [DSP-link implementation](../../modules/core/adapters/dsp-link/README.md), [pattern-position provider](../../modules/core/adapters/pattern-position/README.md) and [Overloop display](../../modules/core/adapters/loop-display/README.md) already share forward/reply transport. Centralize any new allocation in DSP-link and its receiver. Preserve the pattern-position suffix and its ABI.
+The [DSP-link implementation](../../runtime/platform/dsp-link/README.md), [pattern-position provider](../../image-modules/adapters/pattern-position/README.md) and [Overloop display](../../image-modules/adapters/loop-display/README.md) already share forward/reply transport. Centralize any new allocation in DSP-link and its receiver. Preserve the pattern-position suffix and its ABI.
 
 The DTII profile describes 174 spare forward words. Pattern position reserves the final 16. A candidate additional reservation is 32 words immediately before those 16: eight header words plus eight three-word event records. With the loader's existing three-word header, its maximum payload would become 123 words when both bridges are enabled. Confirm this calculation against the actual sender and receiver before assigning bytes; update both bounds and all upload chunk calculations together.
 
@@ -2035,7 +2035,7 @@ Plain SRC cycles SOUND/MOVEMENT; native UP/DOWN page navigation is retained. Sto
 
 Preserve FUNC+SRC for MACHINE selection. Preserve stock transport, trig keys, TRK selection and modifier combinations. Do not assign YES to setup or learning from the ordinary SRC page: added-machine YES/sample-picker handling remains an open firmware input question. Initial setup/LEARN access stays at DIGIKIT > MODULES > CANOPY > SETTINGS. Do not route a delayed turn captured for one page/generation into a different page or track after a mode switch.
 
-The existing `mf_srcpage` hook resets added machines to one page on each draw. Extend it with the explicit multiple-page capability for CANOPY, leaving existing machines on their current path. Then provide page-specific paint, encoder and formatter dispatch. See [SRC page analysis](../findings/50-dt2-src-second-page.md), [input routing](../findings/71-ui-components-1-17.md) and the [current machine hook](../../modules/core/adapters/machines/src/cf/dt2/machines.s). This is a required implementation dependency, not only a mockup detail.
+The existing `mf_srcpage` hook resets added machines to one page on each draw. Extend it with the explicit multiple-page capability for CANOPY, leaving existing machines on their current path. Then provide page-specific paint, encoder and formatter dispatch. See [SRC page analysis](../findings/50-dt2-src-second-page.md), [input routing](../findings/71-ui-components-1-17.md) and the [current machine hook](../../image-modules/points/machines/src/cf/dt2/machines.s). This is a required implementation dependency, not only a mockup detail.
 
 ### LEARN dialog
 
@@ -2228,7 +2228,7 @@ and compares the same pitch at velocities 40 and 127 while DIN G stays held.
 An injected callback-generation fault must produce silence and acknowledged
 DETACH before DSP allocation release; published CF storage remains until reboot.
 
-Acceptance: `modules/machines/canopy/tests/stage1.manual.device.test.ts` passes in 347.66 s;
+Acceptance: `modules/machine/digikit/canopy/tests/stage1.manual.device.test.ts` passes in 347.66 s;
 log `out/canopy-stage1-live.log`, PCM and fits `out/canopy-stage1*`.
 The package uses V2 reset/process entries, not a stock type-1 shadow. The adapter
 is optional, DTII-only, one instance, track 1 (since 2026-11-11 the lowest track
@@ -2265,7 +2265,7 @@ voice leading and the final SRC pages remain later presentation/musical work;
 Stage 2 exposes the fixed close/open/inversion choices. There is no arp or pad
 oscillator claim in this stage.
 
-See [the adapter guide](../../modules/core/adapters/instrument-play/README.md)
+See [the adapter guide](../../image-modules/adapters/instrument-play/README.md)
 for exact selectors, ownership behavior, storage and recovery controls.
 Stage 2 is complete at its functional emulator acceptance boundary. The combined
 menu/audio test passes normal admission, independent-note continuity, silent
@@ -2664,10 +2664,10 @@ Use generated SDK constants and extend existing helpers. Core runtime/adapters r
 
 | Owner | Planned changes |
 | --- | --- |
-| `devices/fw/` and `devices/ports/` | New 1.17 MIDI, lifecycle and SRC declarations, hash-resolved anchors |
+| `ports/fw/` and `devices/ports/` | New 1.17 MIDI, lifecycle and SRC declarations, hash-resolved anchors |
 | `sdk/sdk.toml` and generated bindings | V2 instrument/events/control descriptors, settings capabilities |
 | `packages/patchkit/` | Descriptor validation, capability/version errors, packing and tests |
-| `modules/core/runtime/` | Optional MIDI callback composition, namespaced settings, loader checks |
+| `runtime/core/` | Optional MIDI callback composition, namespaced settings, loader checks |
 | `modules/core/adapters/` | Note routing, composed transport, V2 lifetime, controls/views and clock extension |
 | `modules/machines/` | New CANOPY declaration, DSP, control logic, player documentation and tests |
 | `tests/support/machine_rig.py` | V2 event-stream conformance support |

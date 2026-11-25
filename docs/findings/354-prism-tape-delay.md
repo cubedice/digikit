@@ -6,7 +6,7 @@ install on a Digitakt II without a listening test (below). Marks as in `docs/FIN
 
 ## What changed
 
-- **Engine** (`modules/fx/prism/src/dsp`). New `tape.s`: one stereo head on the rolling bank (the 21.5 s the engine already
+- **Engine** (`modules/fx/digikit/prism/src/dsp`). New `tape.s`: one stereo head on the rolling bank (the 21.5 s the engine already
   kept for PAST takes). It runs before the capture write of each block, reads behind the block about to be written and
   leaves the block's delay output and its feedback; `capture.s` adds the feedback to the input it writes. FORWARD slews the
   delay by at most half a frame per sample; REVERSE plays segments of TIME backwards, a block late so that no read falls

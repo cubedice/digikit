@@ -1,0 +1,135 @@
+# DTII 1.17 native trig clipboard and editor entry points.
+
+[[site]]
+name = "cf.track_steps.site.copy"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "02f31e012cb104dfb6583a48ecfb8275e645a00fc5c519ae1df650a8ece62f7f" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Copy native trigs from the selected steps to the clipboard."
+
+[[hook]]
+name = "cf.track_steps.hook.copy"
+site = "cf.track_steps.site.copy"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pair the native operation with the attached step settings."
+
+[[site]]
+name = "cf.track_steps.site.paste"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "01421d0e9953190cfb79efdb5fdd22e1beeb7563f21e5d2797ba2ecf58cc7f4c" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Paste native clipboard trigs onto a destination step."
+
+[[hook]]
+name = "cf.track_steps.hook.paste"
+site = "cf.track_steps.site.paste"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pair the native operation with the attached step settings."
+
+[[site]]
+name = "cf.track_steps.site.clear"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "0ee1dbcb4d7fbe189edcb7b0f6d83b08f869d4bd7240b218add9edb0f0f9f0ff" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Clear native trig data for the selected steps."
+
+[[hook]]
+name = "cf.track_steps.hook.clear"
+site = "cf.track_steps.site.clear"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pair the native operation with the attached step settings."
+
+[[site]]
+name = "cf.track_steps.site.toggle"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 8, sha256 = "68ff1e6c1dfc202ed82ef64f880b067e694728f6fa27207ea8b2b0568010f28a" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Set a native note trig's active state."
+
+[[hook]]
+name = "cf.track_steps.hook.toggle"
+site = "cf.track_steps.site.toggle"
+cpu = "cf"
+devices = ["dt2"]
+mode = "replace"
+regs = { in = [], clobbers = ["d0-d1", "a0-a1", "ccr"] }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Pair the native operation with the attached step settings."
+
+[[fn]]
+name = "cf.track_steps.fn.clipboard"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 36, offset = 8, len = 6, sha256 = "0b2ccea1fdca52fe90a527e3dba366b985341e4cec1d878a23a5fb611114b6cd" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Return the native clipboard and undo slots."
+
+[[fn]]
+name = "cf.track_steps.fn.clip_get"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 32, offset = 0, len = 6, sha256 = "9a389ee68aaa96999326d639ce0520b30ff8e36ec782e83c1a658f06e7800cea" }
+mark = "D"
+users = ["core/track-keyboard"]
+doc = "Read the typed trig clipboard and acquire its reference."
+
+[[fn]]
+name = "cf.track_steps.fn.ref_copy"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "062823c8bf77be0fbcefacfcf52dc09a162a7c7b3fcaaf7ff33caa49faf14db2" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Acquire another native clipboard reference."
+
+[[fn]]
+name = "cf.track_steps.fn.ref_drop"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "9367592607f3ffd893c8e72ba2c610c32a69cba0a1bf0ecf0af175d922746972" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Release a native clipboard reference."
+
+[[fn]]
+name = "cf.track_steps.fn.clip_set"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 88, offset = 0, len = 6, sha256 = "7f5fbc57b2541f37244fdd9656cf48f1198eed269ca175991e75715a8a8d8999" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Replace one clipboard or undo slot with a retained native object."
+
+[[fn]]
+name = "cf.track_steps.fn.length"
+cpu = "cf"
+devices = ["dt2"]
+rule = { kind = "cf_window_hash", search_len = 88, offset = 0, len = 6, sha256 = "961ac964092d7f05c4f5ebebb2d2037b1f03536ebf9a41d8c5fd2df8019d0d59" }
+mark = "D"
+users = ["core/track-keyboard", "core/services/track-keyboard"]
+doc = "Return a track's native sequence length in steps."

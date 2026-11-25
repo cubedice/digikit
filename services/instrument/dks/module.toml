@@ -1,0 +1,113 @@
+[module]
+id = "core/services/instrument"
+version = "0.1.0"
+name = "instrument service"
+category = "core"
+role = "service"
+service = "instrument"
+type = "raw"
+author = "digikit"
+status = "experimental"
+summary = "The persistent instrument host of CANOPY (V2 transport, admission, SRC pages, keyboard and locks) and its MIDI ownership, moved out of the image of core/instrument-play and core/midi-events; it fills their two forwarding slots"
+requires = ["core/instrument-play", "core/midi-events", "core/keyboard-panel"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+# The two slot words of the image adapters (docs/plans/fork-image-diet.md): each forwarder of their seam.s reads its slot and jumps
+# through word i of the table, so the image runs this code only while the file is loaded. The tables and the forwarders are
+# generated together from ../seam.toml (tools/seam.py).
+[[fill]]
+slot = "instrument_vec"
+entry = "instrument_vec_table"
+devices = ["dt2"]
+
+[[fill]]
+slot = "midi_vec"
+entry = "midi_vec_table"
+devices = ["dt2"]
+
+[[fill]]
+slot = "kbp_vec"
+entry = "kbp_vec_table"
+devices = ["dt2"]
+
+# Rust glue (src/lib.rs, src/seam.rs) with the C of the two adapters that left the image, and the generated seam (src/seam.s: the
+# vector tables, the thunks into the image, the copy of the image table). The C stays where it was, so its host tests do not move;
+# it is compiled with -DDK_SERVICE (src/cf/seam.h of core/instrument-play reads the image table then). src-clock.c is in the image
+# as well: the clock is pure and core/relay-track reads it without the service.
+[[object]]
+path = "build/instrument.dko.json"
+sources = [
+    "Cargo.toml",
+    "../../../image-modules/adapters/instrument-play/src/cf/control.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/keyboard.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-state.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-lock-packed.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-lock-event.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-lock-capture.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-mod.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/status.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-display.c",
+    "../../../image-modules/adapters/keyboard-panel/src/cf/src-clock.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/src-native.c",
+    "../../../image-modules/adapters/instrument-play/src/cf/sound.c",
+    "../../../image-modules/adapters/midi-events/src/cf/ownership.c",
+    "../../../image-modules/adapters/midi-events/src/cf/transport.c",
+    "../../../image-modules/adapters/midi-events/src/cf/lock-wire.c",
+    "../../../image-modules/adapters/midi-events/src/cf/adapter.c",
+    "src/seam.s",
+]
+include_dirs = [
+    "../../../image-modules/adapters/instrument-play/build/gen",
+    "../../../image-modules/adapters/instrument-play/src",
+    "../../../image-modules/adapters/midi-events/build/gen",
+    "../../../image-modules/adapters/midi-events/src",
+    "../../../image-modules/adapters/keyboard-panel/src/cf",
+]
+place = "cf.expansion"
+
+# The firmware names of the moved C (the aliases core/instrument-play used), as imports `patchkit bind` resolves for the user's firmware.
+[object.externs]
+ip_kit = "cf.project.fn.active_kit"
+ip_lock_clear = "cf.page.site.instrument_lock_clear"
+ip_lock_get = "cf.page.site.instrument_lock_get"
+ip_lock_mark_edited = "cf.page.site.instrument_lock_mark_edited"
+ip_lock_set = "cf.page.site.instrument_lock_set"
+ip_mod_track_type = "cf.machine.site.instrument_mod_type_row_literal"
+ip_panel_active = "cf.page.site.instrument_panel_active"
+ip_panel_key_down = "cf.input.fn.key_down"
+ip_panel_live_record = "cf.page.site.instrument_live_record"
+ip_panel_project_settings = "cf.project.fn.settings"
+ip_panel_selected_track = "cf.page.site.instrument_panel_selected_track"
+ip_panel_step_record = "cf.page.site.instrument_step_record"
+ip_panel_stock_detach = "cf.page.site.instrument_panel_detach"
+ip_panel_stock_key = "cf.page.site.instrument_panel_key"
+ip_panel_stock_toggle = "cf.page.site.instrument_panel_toggle"
+ip_panel_track_object = "cf.page.site.instrument_panel_track_object"
+ip_panel_track_type = "cf.page.site.instrument_panel_track_type"
+ip_panel_trig_held = "cf.page.site.instrument_trig_held"
+ip_panel_trig_mode = "cf.page.fn.instrument_panel_trig_mode"
+ip_panel_trig_return = "cf.page.site.instrument_panel_trig_return"
+ip_project = "cf.project.fn.singleton"
+ip_refresh = "cf.machine.fn.refresh_track"
+ip_seq_step = "cf.page.site.instrument_seq_step"
+ip_src_amp_adsr = "cf.page.site.instrument_src_amp_adsr"
+ip_src_focus_active = "cf.page.site.instrument_focus_active"
+ip_src_focus_touch = "cf.page.site.instrument_focus_touch"
+ip_src_label_font = "cf.page.site.instrument_label_font"
+ip_src_level_format = "cf.page.site.instrument_src_level_format"
+ip_src_stock_attach = "cf.page.site.instrument_src_attach"
+ip_src_stock_detach = "cf.page.site.instrument_src_detach"
+ip_src_stock_draw = "cf.page.site.instrument_src_draw"
+ip_src_stock_event = "cf.page.site.instrument_src_event_dispatch"
+ip_src_stock_key = "cf.page.site.instrument_src_key"
+ip_src_stock_parameter = "cf.page.site.instrument_src_parameter"
+ip_src_stock_turn = "cf.page.site.instrument_src_turn"
+ip_src_stock_update = "cf.page.site.instrument_src_update"
+ip_src_track = "cf.page.site.instrument_src_track"
+ip_src_tune_format = "cf.page.site.instrument_src_tune_format"
+ip_src_type = "cf.machine.fn.current_track_type"
+ip_src_value = "cf.page.site.instrument_src_value"
+ip_view_build = "cf.machine.fn.view.build"

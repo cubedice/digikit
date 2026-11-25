@@ -1,0 +1,99 @@
+diff --git a/modules/core/runtime/src/rs/src/loader/tests.rs b/modules/core/runtime/src/rs/src/loader/tests.rs
+index 7f40a3e9b..c3bd2ed60 100644
+--- a/modules/core/runtime/src/rs/src/loader/tests.rs
++++ b/modules/core/runtime/src/rs/src/loader/tests.rs
+@@ -29,6 +29,10 @@ enum Ev {
+     AddRow(usize, *const dkrt_abi::service::ServiceRow),
+     Remove(usize),
+     AbiOk(u32),
++    /// `admit_instruments`: the bytes of the section and the selection index.
++    Admit(usize, u32),
++    /// `queue_instruments`.
++    Queue(InstrumentLoad),
+ }
+ 
+ /// What the init of the module does.
+@@ -58,6 +62,9 @@ struct FakeImages {
+     /// The n-th alloc (from 1) returns `None`.
+     fail_alloc: Option<u32>,
+     init: Init,
++    /// The owner of persistent V2 instruments: whether it is idle, and its answer to a section (`tests/v2.rs`). The default is a device without one.
++    v2_idle: bool,
++    v2_admit: Result<u32, i32>,
+     log: Vec<Ev>,
+ }
+ 
+@@ -170,6 +177,16 @@ impl Images for FakeImages {
+     unsafe fn enter_fini(&mut self, rec: usize, fini: u32, _: *const Ctx) {
+         self.log.push(Ev::Fini(rec, fini));
+     }
++    unsafe fn instruments_idle(&mut self) -> bool {
++        self.v2_idle
++    }
++    unsafe fn admit_instruments(&mut self, section: &[u8], selection: u32) -> Result<u32, i32> {
++        self.log.push(Ev::Admit(section.len(), selection));
++        self.v2_admit
++    }
++    unsafe fn queue_instruments(&mut self, load: InstrumentLoad) {
++        self.log.push(Ev::Queue(load));
++    }
+ }
+ 
+ /// What the fake services were asked at a module's lifecycle (`module_begin`, `module_commit`): the record number, and for a commit its phase, base and image size.
+@@ -305,6 +322,8 @@ fn module_file() -> Vec<u8> {
+     module_file_with(&[], &[])
+ }
+ 
++mod v2;
++
+ type Fake = Loader<FakePlatform, FakeImages, FakeRegistry>;
+ 
+ /// A loader in the boot phase over one file, with the runtime tables cleared.
+@@ -321,7 +340,7 @@ unsafe fn loader_of(init: Init, file: Vec<u8>) -> Fake {
+     crate::cleanup_tests::lenient_tick_drop();
+     let mut files = BTreeMap::new();
+     files.insert(PATH[..PATH.len() - 1].to_vec(), file);
+-    let imgs = FakeImages { files, staged: Vec::new(), live: Vec::new(), allocs: 0, fail_alloc: None, init, log: Vec::new() };
++    let imgs = FakeImages { files, staged: Vec::new(), live: Vec::new(), allocs: 0, fail_alloc: None, init, v2_idle: true, v2_admit: Err(E_CONTRACT), log: Vec::new() };
+     let reg = FakeRegistry {
+         abi: true,
+         add_result: OK,
+@@ -1426,3 +1445,38 @@ fn keys_of_gives_the_keys_of_a_kind_for_an_accepted_module_only() {
+         assert_eq!(l.keys_of(SEL_MAX as u32, dkneeds::KIND_LFO_SHAPE, &mut out), 0);
+     }
+ }
++
++#[test]
++fn an_image_that_asks_for_a_service_has_it_found_planned_and_loaded_with_no_module_selected() {
++    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
++    unsafe {
++        // no module is selected, and without the image's entry nothing is searched
++        let mut l = staged_boot(service_file(&svc_table(&svc_bind(&STOCK)), 0), module_file());
++        let allocs = l.m.allocs;
++        let plan = l.plan_with_caps(0, &wide_caps());
++        assert_eq!((plan.np, l.m.allocs), (0, allocs), "nothing was searched");
++        // an adapter's `[[info]] name = "boot_need_svc_test"` (`-` written `_`): the boot looks for the file, plans it and loads it
++        // as a provider
++        let h = super::boot_need_hash(SVC.as_bytes()).unwrap();
++        assert_eq!(h, dkneeds::keys::name_hash("boot_need_svc_test"));
++        l.p.info_entries.borrow_mut().push((h, vec![0]));
++        let plan = l.plan_with_caps(0, &wide_caps());
++        assert_eq!(plan.np, 1, "the image asked for the service");
++        assert_eq!(l.found.path(0), SVC_PATH);
++        l.load_providers(&plan);
++        assert_eq!(l.loaded[0], true);
++        assert_eq!(records::module(MAX_MODULES).used, 1);
++    }
++}
++
++#[test]
++fn a_service_the_image_asks_for_and_a_module_needs_is_searched_once() {
++    let _g = LOCK.lock().unwrap_or_else(|e| e.into_inner());
++    let mut want = [0u32; super::WANT_MAX];
++    let l = unsafe { staged_boot(service_file(&svc_table(&svc_bind(&STOCK)), 0), consumer_file(&user_table())) };
++    l.p.info_entries.borrow_mut().push((super::boot_need_hash(SVC.as_bytes()).unwrap(), vec![0]));
++    want[0] = dkneeds::keys::name_hash(SVC);
++    assert_eq!(unsafe { super::boot_needs(&l.p, &mut want, 1) }, 1);
++    assert_eq!(unsafe { super::boot_needs(&l.p, &mut want, 0) }, 1);
++    assert_eq!(want[0], dkneeds::keys::name_hash(SVC));
++}

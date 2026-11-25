@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/shared-notes.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-native.c"
+#include "../../../image-modules/adapters/instrument-play/src/cf/shared-notes.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-native.c"
 static CsState state;
 static uint32_t test_held, test_marked, seq_object[0xa0];
 static int32_t test_locks[128][ILP_LANES];

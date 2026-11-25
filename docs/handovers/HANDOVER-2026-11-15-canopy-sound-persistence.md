@@ -24,7 +24,7 @@ install); nothing from this work is installed.
 - `control.c`: `sa_follow` and `sa_publish`. An instance adopts its Sound's
   extension; a Sound without one keeps the instance's state and is claimed.
   Pattern switches therefore now switch CANOPY settings per pattern Sound.
-- Declarations: `devices/fw/util.toml` (new: memcpy, memset, bzero),
+- Declarations: `ports/fw/util.toml` (new: memcpy, memset, bzero),
   `machine.toml` (sound_serialize, sound_init_slices, sound_type_write),
   `project.toml` (kit table and Sound pool literals), and the missing
   declaration of `cf.page.hook.instrument_note_list_write` (its port record
@@ -35,7 +35,7 @@ install); nothing from this work is installed.
 - Tests: `persistence.device.test.ts`, `copy-handoff.device.test.ts` and
   `pattern-copy.device.test.ts` (renamed from `pattern-copy-proof`, now always
   two CANOPY tracks) run the production adapter only and are registered in
-  `modules/machines/canopy/tests/project.json`.
+  `modules/machine/digikit/canopy/tests/project.json`.
 
 ## Evidence
 
@@ -59,7 +59,7 @@ Preset pool and +Drive (`sound-transfer.device.test.ts`, registered): pool save
 and load onto another track and back, +Drive save and load in the same session
 and onto a new CANOPY track after a power cycle all carry the settings; see the
 finding for the values and the menu paths. Shared panel steps are in
-`modules/machines/canopy/tests/canopy-panel.ts`.
+`modules/machine/digikit/canopy/tests/canopy-panel.ts`.
 
 ## Gate cleanup (second part of this session)
 
@@ -72,10 +72,10 @@ finding for the values and the menu paths. Shared panel steps are in
   differs in `dkrt-sdk`, `dkrt-fit`, `dkneeds` and `dkfw`, which the gate
   excludes because their sources are hashed into committed objects.
 - Layercheck holds. CANOPY's Python tests, its three generators/probes
-  (`modules/machines/canopy/tools/{fm_tables,wavetables,carrier_probe}.py`), its
+  (`modules/machine/digikit/canopy/tools/{fm_tables,wavetables,carrier_probe}.py`), its
   movement host test and its runtime proofs (now `*.manual.device.test.ts`, run
   by name, outside the Nx gate like before) moved into the module; Overloop's
-  test, conformance provider and display proof into `modules/fx/overloop/tests`.
+  test, conformance provider and display proof into `modules/fx/digikit/overloop/tests`.
   The midi-events composed-frame test is shared (`tests/support/midi_frame.py`)
   and CANOPY runs its own consumer case; the FX conformance worker loads a
   module's `tests/fx_provider.py`. Two exceptions are named in `layercheck.py`:

@@ -5,7 +5,8 @@
 // in MODULES on the device, then applies and restarts there. Restart only restarts the device and reports what loaded. Delete removes the
 // ticked files from the card; a loaded module stays loaded until the restart.
 import WaitNotice from './WaitNotice';
-import { For, Show, createSignal, type JSX } from 'solid-js';
+import { For, Show, createMemo, createSignal, type JSX } from 'solid-js';
+import CopyErrorButton from '../components/CopyErrorButton';
 import Segmented, { type SegmentedOption } from '../components/Segmented';
 import { errorLine, formatBytes } from '../../src/modules/backend';
 import {
@@ -13,15 +14,16 @@ import {
   LocalPane,
   DevicePane,
   SelectAll,
-  ServiceSubRow,
   createConfirm,
   DeleteButton,
   writing,
   type ChipStatus,
   type PageCtx,
 } from './TransferParts';
+import { activateSystemPackage } from '../../src/runtime/activate-system-package';
 import { noteActivity } from '../../src/transfer/activity';
 import ModuleFilesArea from './ModuleFilesArea';
+import type { ModuleFileClient } from '../../src/module-ui/module-files';
 import { useTransferApp } from '../../src/transfer/app-context';
 import { createPaneSelect } from '../../src/transfer/pane-select';
 import SplitPane from './SplitPane';
@@ -29,15 +31,18 @@ import {
   applyEvent,
   applyVerified,
   available,
+  visibleRefusals,
   countLabel,
   DONE_ON_CARD,
   deleteDoneText,
   deletePaths,
+  dependencyBadge,
   deviceTags,
   eventText,
   installModules,
   installServices,
   serviceRefusalText,
+  installOutcome,
   localTags,
   tickedFit,
   tickedLoad,
@@ -62,7 +67,9 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
     browsing,
     delTicks,
     lastView,
+    jobProgress,
     progress,
+    readingAfterJob,
     setBrowseDevice,
     setDelTicks,
     setLog,
@@ -76,6 +83,36 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
     verified,
   } = app.state;
   let input: HTMLInputElement | undefined;
+  const coreOnly = () => lastView()?.coreOnly === true && !browsing();
+  const systemPackage = env.extras?.systemPackage;
+  const emulatorBusy = () => app.target.target().kind === 'emulator' && app.jobs.busy('emulator');
+
+  const installSystemPackage = () =>
+    run('Installing system package', async () => {
+      if (!systemPackage || !coreOnly()) return;
+      setLog([]);
+      setProgress(undefined);
+      const binding = app.target.bindSession();
+      const install = async () => {
+        const pkg = await systemPackage();
+        const controller = new AbortController();
+        const unbind = binding.beforeLeave(async () => controller.abort());
+        try {
+          await activateSystemPackage(await binding.session(), pkg, {
+            repair: true,
+            check: binding.check,
+            signal: controller.signal,
+            progress: jobProgress,
+          });
+        } finally {
+          unbind();
+        }
+      };
+      if (binding.target.kind === 'emulator')
+        await app.jobs.runJob('Installing system package', { group: 'emulator' }, install);
+      else await install();
+      setLog(['System package verified and active.']);
+    });
 
   const onEvent = (e: TransferEvent) => {
     noteActivity();
@@ -100,7 +137,7 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
   const install = () =>
     run('Installing', async () => {
       const v = lastView();
-      if (!v) return;
+      if (!v || coreOnly()) return;
       const modules = installModules(v, ticks());
       const services = installServices(v, ticks());
       setProgress(
@@ -111,9 +148,14 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
           services,
         ),
       );
+      let done = DONE_ON_CARD;
       await job(
-        () => transferBackend.install(modules, onEvent),
-        () => DONE_ON_CARD,
+        async () => {
+          const out = installOutcome(await transferBackend.install(modules, onEvent), DONE_ON_CARD);
+          if ('error' in out) throw new Error(out.error);
+          done = out.message;
+        },
+        () => done,
       );
       setTicks(new Set<string>());
     });
@@ -181,14 +223,19 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
     const v = lastView();
     return v ? available(v, showTests()).flatMap((g) => g.rows.filter((r) => r.id).map(rowKey)) : [];
   };
-  const deviceKeys = () => {
+  const refusals = createMemo(() => {
     const v = lastView();
-    return v
-      ? onDeviceWithPending(v, progress())
-          .filter((r) => r.on_card !== 'no')
-          .map((r) => r.path)
-      : [];
-  };
+    return v ? visibleRefusals(v, showTests()) : [];
+  });
+  const refusalMessages = createMemo(() => refusals().map(serviceRefusalText));
+  const deviceRows = createMemo(() => {
+    const v = lastView();
+    return v ? onDeviceWithPending(v, progress(), busy() === 'Installing') : [];
+  });
+  const deviceKeys = () =>
+    deviceRows()
+      .filter((r) => r.on_card !== 'no')
+      .map((r) => r.path);
   // the same selection model as the Samples lists: click, Shift, Cmd or Ctrl, a marquee, Cmd+A, Esc (no folders here)
   const lsel = createPaneSelect({
     keys: localKeys,
@@ -225,13 +272,26 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
     return id && env.moduleFiles?.(id) ? id : undefined;
   };
 
+  function moduleFiles(id: string): ModuleFileClient {
+    return {
+      list: () => app.backend.listModuleFiles(id),
+      read: (name) => app.backend.readModuleFile(id, name),
+      send: (name, bytes, progress) => app.backend.putModuleFile(id, name, bytes, progress),
+      remove: (name) => app.backend.removeModuleFile(id, name),
+    };
+  }
+
   const browseOptions = (): SegmentedOption<string>[] =>
     (env.libraryDevices ?? []).map((d) => ({ id: d, label: deviceNameOf(d) }));
 
+  const { libraryOnly } = app.target;
+  const localOnly = () => libraryOnly() || browsing() || !lastView();
   const lists = (
     <SplitPane id="transfer">
       <LocalPane
-        onDrop={(f) => void addFiles(f)}
+        onDrop={(f) => {
+          if (!coreOnly() && (addToList() || !localOnly())) void addFiles(f);
+        }}
         select={lsel}
         selectAll={
           <SelectAll
@@ -271,7 +331,7 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
             <button
               type="button"
               class="act small"
-              disabled={!!busy()}
+              disabled={!!busy() || coreOnly() || (!addToList() && localOnly())}
               title={
                 addToList()
                   ? 'Add module files from your computer to this list, then install them'
@@ -296,7 +356,7 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
             <button
               type="button"
               class="act primary"
-              disabled={!!busy() || ticked() === 0 || browsing()}
+              disabled={!!busy() || ticked() === 0 || localOnly()}
               title={
                 browsing()
                   ? `Connect a ${deviceNamesText('or')} running the digikit runtime to install`
@@ -314,18 +374,19 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
         <Show when={lastView()} fallback={<p class="empty">{busy() ? `${busy()}…` : 'No module list yet.'}</p>}>
           {(v) => (
             <>
-              <Show when={v().refusals?.length}>
+              <Show when={refusalMessages().length}>
                 <div class="err refusals" role="alert">
                   <div class="msg">
-                    <For each={v().refusals}>{(r) => <div>{serviceRefusalText(r)}</div>}</For>
+                    <For each={refusalMessages()}>{(message) => <div>{message}</div>}</For>
                   </div>
+                  <CopyErrorButton text={refusalMessages().join('\n')} />
                   <Show
                     when={
                       props.onFlash &&
-                      v().refusals?.some(
+                      refusals().some(
                         (r) =>
                           r.kind === 'fingerprint' ||
-                          r.kind === 'no-stock' ||
+                          r.kind === 'no-port' ||
                           (r.kind === 'version' && r.service === 'runtime'),
                       )
                     }
@@ -353,39 +414,35 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
                       <ul class="rows">
                         <For each={g.rows}>
                           {(r) => (
-                            <>
-                              <ListRow
-                                rowKey={rowKey(r)}
-                                selected={ticks().has(rowKey(r)) || (!!filesId(r) && selectedId() === filesId(r))}
-                                onSelect={
-                                  r.id
-                                    ? (e) => {
-                                        const f = filesId(r);
-                                        if (f) setSelectedId(f);
-                                        else {
-                                          setSelectedId(undefined);
-                                          lsel.click(rowKey(r), e);
-                                        }
+                            <ListRow
+                              rowKey={rowKey(r)}
+                              selected={ticks().has(rowKey(r)) || (!!filesId(r) && selectedId() === filesId(r))}
+                              onSelect={
+                                r.id
+                                  ? (e) => {
+                                      const f = filesId(r);
+                                      if (f) setSelectedId(f);
+                                      else {
+                                        setSelectedId(undefined);
+                                        lsel.click(rowKey(r), e);
                                       }
-                                    : undefined
-                                }
-                                check={{
-                                  label: `Install ${label(r)}`,
-                                  checked: ticks().has(rowKey(r)),
-                                  disabled: writing(busy()),
-                                  onChange: () => lsel.tick(rowKey(r)),
-                                }}
-                                name={label(r)}
-                                title={r.id ?? r.path}
-                                tags={localTags(r)}
-                                version={r.version ?? ''}
-                                size={formatBytes(r.file_size)}
-                                action={sourceAction(r)}
-                              />
-                              <For each={r.services ?? []}>
-                                {(s) => <ServiceSubRow service={s} selected={ticks().has(rowKey(r))} />}
-                              </For>
-                            </>
+                                    }
+                                  : undefined
+                              }
+                              check={{
+                                label: `Install ${label(r)}`,
+                                checked: ticks().has(rowKey(r)),
+                                disabled: writing(busy()),
+                                onChange: () => lsel.tick(rowKey(r)),
+                              }}
+                              name={label(r)}
+                              title={r.id ?? r.path}
+                              tags={localTags(r)}
+                              dependencies={dependencyBadge(r.services)}
+                              version={r.version ?? ''}
+                              size={formatBytes(r.file_size)}
+                              action={sourceAction(r)}
+                            />
                           )}
                         </For>
                       </ul>
@@ -409,47 +466,47 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
         </Show>
       </LocalPane>
 
-      <DevicePane
-        ctx={props.ctx}
-        select={dsel}
-        selectAll={
-          <SelectAll
-            label="Select all files to delete"
-            keys={deviceKeys()}
-            ticked={delTicks()}
-            disabled={!!busy()}
-            onChange={(next) => {
-              setDelTicks(next);
-              confirm.stop();
-            }}
-          />
-        }
-        actions={
-          <>
-            <DeleteButton
-              n={browsing() ? 0 : nDelete()}
-              busy={busy()}
-              confirming={confirm.confirming()}
-              title="Delete the ticked files from the device (a loaded module stays loaded until the next restart)"
-              onClick={() => confirm.click(() => void removeSelected())}
+      <Show when={!env.targets.inHeader || !localOnly()} fallback={<section class="col" aria-label="On device" />}>
+        <DevicePane
+          ctx={props.ctx}
+          select={dsel}
+          selectAll={
+            <SelectAll
+              label="Select all files to delete"
+              keys={deviceKeys()}
+              ticked={delTicks()}
+              disabled={!!busy()}
+              onChange={(next) => {
+                setDelTicks(next);
+                confirm.stop();
+              }}
             />
-            <button
-              type="button"
-              class="act"
-              disabled={!!busy() || !lastView() || browsing()}
-              title="RESTART the device (it loads what its MODULES menu has selected)"
-              onClick={() => void restart()}
-            >
-              {busy() === 'Restarting' ? 'Restarting…' : 'Restart'}
-            </button>
-          </>
-        }
-      >
-        <WaitNotice active={!!busy()} cancel={busy() !== 'Installing'} />
-        <Show when={lastView()}>
-          {(v) => (
+          }
+          actions={
+            <>
+              <DeleteButton
+                n={browsing() || coreOnly() ? 0 : nDelete()}
+                busy={busy()}
+                confirming={confirm.confirming()}
+                title="Delete the ticked files from the device (a loaded module stays loaded until the next restart)"
+                onClick={() => confirm.click(() => void removeSelected())}
+              />
+              <button
+                type="button"
+                class="act"
+                disabled={!!busy() || !lastView() || browsing() || coreOnly()}
+                title="RESTART the device (it loads what its MODULES menu has selected)"
+                onClick={() => void restart()}
+              >
+                {busy() === 'Restarting' ? 'Restarting…' : 'Restart'}
+              </button>
+            </>
+          }
+        >
+          <WaitNotice active={!!busy()} cancel={busy() !== 'Installing' && !readingAfterJob()} />
+          <Show when={lastView()}>
             <Show
-              when={onDeviceWithPending(v(), progress()).length}
+              when={deviceRows().length}
               fallback={
                 <p class="empty">
                   {browsing()
@@ -459,7 +516,7 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
               }
             >
               <ul class="rows">
-                <For each={onDeviceWithPending(v(), progress())}>
+                <For each={deviceRows()}>
                   {(r) => (
                     <ListRow
                       rowKey={r.on_card === 'no' ? undefined : r.path}
@@ -489,6 +546,7 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
                       name={label(r)}
                       title={r.path}
                       tags={deviceTags(r)}
+                      dependencies={dependencyBadge(r.card_services)}
                       version={r.version ?? ''}
                       size={formatBytes(r.file_size)}
                       status={status(r)}
@@ -498,19 +556,50 @@ export default function ModulesMode(props: { ctx: PageCtx; onFlash?: () => void 
                 </For>
               </ul>
             </Show>
-          )}
-        </Show>
-      </DevicePane>
+          </Show>
+        </DevicePane>
+      </Show>
     </SplitPane>
   );
 
   return (
     <>
+      <Show when={coreOnly()}>
+        <div class="err" role="status">
+          <span class="msg">
+            The target is running in core-only mode.
+            <Show when={systemPackage}> Install the system package to restore module support.</Show>
+          </span>
+          <Show when={systemPackage}>
+            <button
+              type="button"
+              class="act small"
+              disabled={!!busy() || emulatorBusy()}
+              onClick={() => void installSystemPackage()}
+            >
+              Install system package
+            </button>
+          </Show>
+        </div>
+      </Show>
       {lists}
-      <Show when={selectedId()}>
+      <Show when={!localOnly() && !coreOnly() && selectedId()} keyed>
         {(id) => (
-          <Show when={env.moduleFiles?.(id())}>
-            {(spec) => <ModuleFilesArea ctx={props.ctx} id={id()} spec={spec()} />}
+          <Show when={env.moduleFiles?.(id)}>
+            {(spec) => (
+              <ModuleFilesArea
+                ctx={props.ctx}
+                id={id}
+                spec={spec()}
+                files={moduleFiles(id)}
+                refresh={lastView}
+                prepareSend={async () => {
+                  if (lastView()?.modules.find((row) => row.id === id)?.on_card === 'no') {
+                    await app.backend.install([id], () => {});
+                  }
+                }}
+              />
+            )}
           </Show>
         )}
       </Show>

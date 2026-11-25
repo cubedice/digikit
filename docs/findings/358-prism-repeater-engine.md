@@ -4,11 +4,11 @@ Step 1 of the redesign in [the plan](../plans/prism-overloop-redesign.md): PRISM
 repeater on one tape. The grains, the phrase capture and the two-bank swap of findings 352 and 354 are gone. This finding
 is about the engine alone, on the SHARC-only rig. Nothing ran on an emulated or a real Digitakt II, no page drives the
 engine yet, and nobody has listened to it. Marks as in `docs/FINDINGS.md`; every number is **[D]**: measured once, by
-`modules/fx/prism/tests/engine.rig.test.ts` unless a line says otherwise.
+`modules/fx/digikit/prism/tests/engine.rig.test.ts` unless a line says otherwise.
 
 ## The engine
 
-Sources in `modules/fx/prism/src/dsp`; the control words, the constants that can be tuned and the state layout are in
+Sources in `modules/fx/digikit/prism/src/dsp`; the control words, the constants that can be tuned and the state layout are in
 `src/prism.h`.
 
 ```
@@ -188,7 +188,7 @@ everything at rest costs 5,194, with HALO 8,637. Instructions of the rig, not a 
 - **[O]** How it sounds. Nobody has listened. "Sounds like a Mimeophon" is not something these tests show: they show
   that each control does what the plan says, without clicks and within bounds. The zone ranges, the two filter corners,
   the amount of saturation and drift, the HALO range, the glide speed and the 20 ms are first values for the owner's ears.
-  Renders for that: `node modules/fx/prism/tests/render-audio.ts OUTDIR` (the module's README).
+  Renders for that: `node modules/fx/digikit/prism/tests/render-audio.ts OUTDIR` (the module's README).
 - **[O]** At the top of RPTS a sustained tone ends as a nearly square wave at about +-0.5 (rms 0.474 for a peak of 0.498):
   a limiter without memory in a loop with a gain above 1 flattens whatever it holds. The engine before did the same
   behind its 3 kHz low pass. A limiter that follows the level instead would keep the wave's shape; not built.

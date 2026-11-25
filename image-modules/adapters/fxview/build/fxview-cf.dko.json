@@ -1,0 +1,594 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text",
+   "symbol": "fxv_key_filter",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text",
+   "symbol": "fxv_walk_back",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_view_draw",
+   "symbol": "fxv_stock_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.fxv_view_draw",
+   "symbol": "phrase_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.fxv_view_draw",
+   "symbol": "loop_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.fxv_key_filter",
+   "symbol": "rtm_stop_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.fxv_key_filter",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.fxv_key_filter",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 110,
+   "section": ".text.fxv_key_filter",
+   "symbol": "phrase_dispatch_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.fxv_key_filter",
+   "symbol": "relay_trig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 158,
+   "section": ".text.fxv_key_filter",
+   "symbol": "tk_picker_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 42,
+   "section": ".text.fxv_panel_led",
+   "symbol": "tk_picker_led",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.fxv_panel_led",
+   "symbol": "phrase_led_claim",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".text.fxv_panel_led",
+   "symbol": "fxv_stock_led",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_visible_view",
+   "symbol": "cf.view.fn.brain.instance",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text.fxv_visible_view",
+   "symbol": "cf.view.fn.brain.view_manager",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text.fxv_visible_view",
+   "symbol": ".sec..text.fxv_view_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.fxv_box",
+   "symbol": "cf.draw.fn.fill_rect",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 10,
+   "section": ".text.fxv_text",
+   "symbol": "fxv_label_font",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.fxv_text",
+   "symbol": ".sec..rodata.fxv_text.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 78,
+   "section": ".text.fxv_text",
+   "symbol": "cf.text.fn.draw_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text.fxv_text",
+   "symbol": ".sec..text.fxv_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".text.fxv_help_draw",
+   "symbol": "fxv_stock_help_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.fxv_help_draw",
+   "symbol": ".sec..text.fxv_visible_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".text.fxv_help_draw",
+   "symbol": "phrase_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.fxv_help_draw",
+   "symbol": "loop_fxv_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.fxv_view_key",
+   "symbol": "phrase_fxv_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fxv_view_key",
+   "symbol": "loop_fxv_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.fxv_view_key",
+   "symbol": "fxv_stock_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.fxv_view_turn",
+   "symbol": "phrase_fxv_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.fxv_view_turn",
+   "symbol": "loop_fxv_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.fxv_view_turn",
+   "symbol": "fxv_stock_turn",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.fxv_encoder_interface",
+   "symbol": ".sec..text.fxv_view_turn",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4feffff048d703032f2f00782f2f00784eb900000000508f4a8066164cd703034fef0010242f0068246f00644ef9000000004fef00104cd77cfc4fef006070014e75",
+   "kind": "text",
+   "name": ".text",
+   "size": 66
+  },
+  {
+   "align": 2,
+   "hex": "2f2f00082f2f00084eb900000000508f41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c41f9000000004a88671042a72f2f000c2f2f000c4e904fef000c4e75",
+   "kind": "text",
+   "name": ".text.fxv_view_draw",
+   "size": 70
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7040c246f00147415202a000c222a0010b480661c41f9000000004a8867062f014e90588f42804cd7040c4fef000c4e752400760f0682ffffffe7b68264587616b68066e041f9000000004a8867d62f012f004eb900000000508f4a806704700160c4e88a66be41f9000000004a88661a41f9000000004a8867aa2f0a4e90588f4a8056c071004480609c2f0a4e90588f4a8067dc60c841f9000000004a8866ae60c4",
+   "kind": "text",
+   "name": ".text.fxv_key_filter",
+   "size": 168
+  },
+  {
+   "align": 2,
+   "hex": "4feffff0721748d7001c242f00182002262f001c0680ffffffe6282f00202f6f0014000cb280651441f9000000004a88662a41f9000000004a8866302f4400202f43001c2f4200184cd7001c2f6f000c00144fef00104ef9000000002f024e90588f4a806dcc2800760260d02f024e90588f4a806cf060c4",
+   "kind": "text",
+   "name": ".text.fxv_panel_led",
+   "size": 120
+  },
+  {
+   "align": 2,
+   "hex": "206f000422502f480004226900884ed1",
+   "kind": "text",
+   "name": ".text.fxv_page",
+   "size": 16
+  },
+  {
+   "align": 2,
+   "hex": "4feffff448d7040c4eb9000000004a8067522f004eb900000000588f4a806744224024002069001c068200000014722042804a88672eb1c2672a226800084a89671a4a290030661424514a8a670e263c00000000b6aa001066022009205053814a8166ce4cd7040c4fef000c4e75",
+   "kind": "text",
+   "name": ".text.fxv_visible_view",
+   "size": 110
+  },
+  {
+   "align": 2,
+   "hex": "222f000408010004661444c16b147001c08108010000660808010001660870104e75700860fa700260f6",
+   "kind": "text",
+   "name": ".text.fxv_key_flags",
+   "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "598f2f02226f0018206f0010222f0014202f001c2f6f000c00044a896f344a806f3043f098ff743f94812f42001c2f4800102f6f0004000c2f490018327c004093c193c02f490014241f588f4ef900000000241f588f4e75",
+   "kind": "text",
+   "name": ".text.fxv_box",
+   "size": 88
+  },
+  {
+   "align": 1,
+   "hex": "257300",
+   "kind": "data",
+   "name": ".rodata.fxv_text.str1.1",
+   "size": 3
+  },
+  {
+   "align": 2,
+   "hex": "2f0b2f0a222f00182279000000004aaf001c6600009626690008204195ca101066784a8a56c07100d5c02f01703b48790000000042a742a74878000190af00282f002f2f00282f092f2f002c4eb9000000004fef00244aaf001c66384a8a6734200a6a0252804878ffff48780007486a0002206f00204868ffff206f0020e28091c04868ffff2f2f00204eb9000000004fef0018245f265f4e757180528871b3080045f208016000ff7695ca6000ff7c",
+   "kind": "text",
+   "name": ".text.fxv_text",
+   "size": 176
+  },
+  {
+   "align": 2,
+   "hex": "2f022f2f000c2f2f000c4eb9000000004eb900000000508f24004a80673441f9000000004a886710487800012f2f00102f004e904fef000c41f9000000004a886710487800012f2f00102f024e904fef000c241f4e75",
+   "kind": "text",
+   "name": ".text.fxv_help_draw",
+   "size": 86
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02242f000c262f001041f9000000004a88661c41f9000000004a8866262f4300102f42000c241f261f4ef9000000002f032f024e90508f4a8067d8241f7001261f4e752f032f024e90508f4a8067ce60ea",
+   "kind": "text",
+   "name": ".text.fxv_view_key",
+   "size": 84
+  },
+  {
+   "align": 2,
+   "hex": "2f032f02242f000c262f001041f9000000004a88661c41f9000000004a8866262f4300102f42000c241f261f4ef9000000002f032f024e90508f4a8067d8241f7001261f4e752f032f024e90508f4a8067ce60ea",
+   "kind": "text",
+   "name": ".text.fxv_view_turn",
+   "size": 84
+  },
+  {
+   "align": 2,
+   "hex": "59af00044ef900000000",
+   "kind": "text",
+   "name": ".text.fxv_encoder_interface",
+   "size": 10
+  }
+ ],
+ "source_sha256": "b014e6184eaacd98f30e58bcfa29dc80f5fbd1bc7f282db5a275fe33b733d14c",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..rodata.fxv_text.str1.1",
+   "section": ".rodata.fxv_text.str1.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_box",
+   "section": ".text.fxv_box",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_view_draw",
+   "section": ".text.fxv_view_draw",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_view_turn",
+   "section": ".text.fxv_view_turn",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.fxv_visible_view",
+   "section": ".text.fxv_visible_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.draw.fn.fill_rect",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.text.fn.draw_box",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.view.fn.brain.instance",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cf.view.fn.brain.view_manager",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_box",
+   "section": ".text.fxv_box",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_encoder_interface",
+   "section": ".text.fxv_encoder_interface",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_help_draw",
+   "section": ".text.fxv_help_draw",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_key_filter",
+   "section": ".text.fxv_key_filter",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_key_flags",
+   "section": ".text.fxv_key_flags",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_label_font",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_page",
+   "section": ".text.fxv_page",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_panel_led",
+   "section": ".text.fxv_panel_led",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_help_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_led",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_stock_turn",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_text",
+   "section": ".text.fxv_text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_draw",
+   "section": ".text.fxv_view_draw",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_key",
+   "section": ".text.fxv_view_key",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_view_turn",
+   "section": ".text.fxv_view_turn",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_visible_view",
+   "section": ".text.fxv_visible_view",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_walk_back",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_walk_hook",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "loop_fxv_turn",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_dispatch_trig",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_fxv_turn",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "phrase_led_claim",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_trig",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_stop_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_picker_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_picker_led",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "379",
+  "isa_check": "ae5cfd8234cc09281a25b3d2bb8889f3142e1795cf968c0e7ad6a02d39accdf4",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

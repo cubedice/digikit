@@ -1,0 +1,9 @@
+diff --git a/modules/core/apps/digikit-menu/module.toml b/modules/core/apps/digikit-menu/module.toml
+index 2a9df8ec2..e2efa98ec 100644
+--- a/modules/core/apps/digikit-menu/module.toml
++++ b/modules/core/apps/digikit-menu/module.toml
+@@ -24,3 +24,4 @@ conflicts = []
+ path = "build/digikit-menu.dko.json"
+ sources = ["src/menu.c"]
+ place = "cf.expansion"
++optional = ["dk_app_instrument_settings_rows", "dk_app_instrument_module_settings"]

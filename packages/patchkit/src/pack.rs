@@ -92,7 +92,7 @@ pub fn pack_all(
     }
 }
 
-/// The object of a service with its firmware references renamed to the import names `patchkit bind` resolves. An undefined symbol that has an entry in
+/// The object of a service with its firmware references renamed to the import names the port file resolves. An undefined symbol that has an entry in
 /// `externs` takes the name of its target (`cf.<name>`, `hook.<hook>.tail|stock|ret|exit|exit.<n>`); an undefined symbol named like a firmware name (`cf.*`: what the
 /// `dkfw` crate links) takes `dk_fw_<hash>`. Every other undefined symbol stays an import of the runtime.
 pub fn firmware_imports(
@@ -112,12 +112,12 @@ pub fn firmware_imports(
             return Ok(None);
         }
         match externs.get(n) {
-            Some(t) => crate::bind::import_for_target(t).map(Some).ok_or_else(|| {
+            Some(t) => crate::fwnames::import_for_target(t).map(Some).ok_or_else(|| {
                 Error(format!(
                     "extern {n} = {t:?}: a service names `cf.<name>` or `hook.<hook>.tail|stock|ret|exit|exit.<n>`"
                 ))
             }),
-            None if n.starts_with("cf.") => Ok(Some(crate::bind::fw_import(n))),
+            None if n.starts_with("cf.") => Ok(Some(crate::fwnames::fw_import(n))),
             None => Ok(None),
         }
     };
@@ -170,8 +170,9 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
         stereo: false,
         gate: false,
         service: crate::module::service_of(m)?,
+        served: lib.served_needs(id)?,
     };
-    // a fill for a slot that only some devices have is left out of the file of the others
+    // a DSP fill is built from the DSP object of this device and is left out of the file of the others; a ColdFire fill keeps its device mask
     if let Some(dev) = &o.device {
         opts.service = opts.service.take().map(|s| s.for_device(dev));
     }
@@ -261,7 +262,7 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
             }
         }
     }
-    // a service file names firmware through import names that `patchkit bind` resolves (`bind::import_for_target`)
+    // a service file names firmware through import names that the runtime resolves from the port file (`fwnames::import_for_target`)
     let service_obj = match cf.first() {
         Some((dko, r)) if m.manifest.module.role == Some(crate::module::ModuleRole::Service) => {
             Some(firmware_imports(dko, &r.externs)?)
@@ -277,11 +278,12 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
             .filter(|d| m.manifest.module.builds_for(&d.short));
         crate::protect::check(id, dko, &crate::protect::windows_of(devs))?;
     }
-    let bytes = crate::dkm::pack_keys(
+    let bytes = crate::dkm::pack_keys_with_service_imports(
         service_obj.as_ref().or(cf.first().map(|c| c.0)),
         &reg,
         &dsp,
         &opts,
+        &m.manifest.service_imports,
     )?;
     let dkm = crate::dkm::Dkm::parse(&bytes)?;
     Ok(Packed {

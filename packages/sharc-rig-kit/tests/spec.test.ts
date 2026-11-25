@@ -1,9 +1,20 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { f2w } from '../src/context.ts';
-import { fxSpec, fxSpecs, frameHw, fxWord, galleryGaps, machineSpec, machineSpecs, paramMid } from '../src/spec.ts';
+import { conformanceKind } from '../src/conformance-manifest.mjs';
+import {
+  fxSpec,
+  fxSpecs,
+  frameHw,
+  fxWord,
+  galleryGaps,
+  machineLabel,
+  machineSpec,
+  machineSpecs,
+  paramMid,
+} from '../src/spec.ts';
 import { param } from './fakes.ts';
 
 let root: string;
@@ -175,11 +186,45 @@ describe('machineSpec', () => {
     expect(machineSpecs().map((s) => s.module)).not.toContain('zzt/inst');
   });
 
+  it('gives no conformance kind to a module the rig does not run, so Nx makes no fixed conformance target that finds none', () => {
+    const machine = { module: { id: 'zzt/m', type: 'machine' }, machine: [{ id: 'a' }] };
+    expect(conformanceKind(machine)).toBe('machine');
+    expect(conformanceKind({ ...machine, machine: [{ id: 'a' }, { id: 'b', instrument: true }] })).toBeNull();
+    expect(conformanceKind({ ...machine, conformance: { rig_skip: 'reads data of a core module' } })).toBeNull();
+    const fx = { module: { id: 'zzt/f', type: 'fx' }, fx: [{ id: 'x' }] };
+    expect(conformanceKind(fx)).toBe('fx');
+    expect(conformanceKind({ ...fx, conformance: { rig_skip: 'reads data of a core module' } })).toBeNull();
+    expect(() => conformanceKind({ ...fx, conformance: { rig_skip: ' ' } })).toThrow('rig_skip names why');
+  });
+
   it('lists the machines of the module roots, the negative fixtures apart', () => {
     expect(machineSpecs().map((s) => `${s.module}@${s.device}`)).toContain('zzt/mach@dt2');
     expect(machineSpecs(true).map((s) => s.module)).not.toContain('zzt/mach');
     expect(machineSpecs(true).map((s) => s.module)).toContain('test/dyn-guard-nan#overrun');
   });
+});
+
+it('scopes fixed conformance to one module, including its negative variants', () => {
+  const standalone = path.join(root, 'zz');
+  const allMachines = machineSpecs();
+  const negative = machineSpecs(true).find((spec) => spec.module === 'test/dyn-guard-nan')!;
+  const allNegatives = machineSpecs(true);
+  try {
+    vi.stubEnv('DIGI_CONFORM_ROOT', standalone);
+    expect(machineSpecs().map(machineLabel)).toEqual(
+      allMachines.filter((spec) => spec.moddir === standalone).map(machineLabel),
+    );
+    expect(machineSpecs(true)).toEqual([]);
+    expect(fxSpecs()).toEqual([]);
+
+    vi.stubEnv('DIGI_CONFORM_ROOT', negative.moddir);
+    expect(machineSpecs()).toEqual([]);
+    expect(machineSpecs(true).map(machineLabel)).toEqual(
+      allNegatives.filter((spec) => spec.moddir === negative.moddir).map(machineLabel),
+    );
+  } finally {
+    vi.unstubAllEnvs();
+  }
 });
 
 describe('galleryGaps', () => {

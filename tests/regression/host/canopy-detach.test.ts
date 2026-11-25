@@ -8,7 +8,7 @@ test('in-place Sound overwrite captures, quarantines, restores, and readmits', (
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-detach-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
     const executable = path.join(directory, 'detach');
     execFileSync(
       'cc',

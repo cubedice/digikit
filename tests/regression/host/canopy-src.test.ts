@@ -8,7 +8,7 @@ let directory: string, binary: string;
 beforeAll(() => {
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-src-'));
   binary = path.join(directory, 'src');
-  const source = path.resolve(import.meta.dirname, '../../../modules/core/adapters/instrument-play/src/cf');
+  const source = path.resolve(import.meta.dirname, '../../../image-modules/adapters/instrument-play/src/cf');
   execFileSync(
     'cc',
     [
@@ -23,7 +23,7 @@ beforeAll(() => {
       path.join(source, 'status.c'),
       path.join(source, 'src-display.c'),
       path.join(source, 'src-lock-packed.c'),
-      path.join(source, 'src-clock.c'),
+      path.resolve(import.meta.dirname, '../../../image-modules/adapters/keyboard-panel/src/cf/src-clock.c'),
       '-o',
       binary,
     ],

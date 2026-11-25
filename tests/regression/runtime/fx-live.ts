@@ -13,18 +13,20 @@ import {
   runUntilFramesWithProgress,
   stepWithProgress,
   waitClock,
-  withinRuntimeDeadline,
   type Device,
   type RuntimeBaseline,
 } from '@digi/test-support';
 import { expect } from 'vitest';
 import { expectNoGuardHits, withReusablePatchedSession, type PatchedSession, type TestRuntime } from '../support.ts';
 import { record } from './artifacts.ts';
+import { comparePcmAligned } from './pcm-compare.ts';
+import { bounded, rpc, word } from './guest-access.ts';
 import { plusdriveBinary } from './card-kit.ts';
+import { installSystemPackage } from './system-package.ts';
 import { cachedCard, cardKey, fileSha } from './card-cache.ts';
 import { daemonBinary, FIRMWARE, claimRunDir } from './devices.ts';
 import { moduleArtifact } from './install.ts';
-import { boundService, neededServices } from './service-files.ts';
+import { neededServices, portFile } from './service-files.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { deviceProfile } from './device-data.ts';
 import type { FxExpectations } from './dkm-parse.ts';
@@ -37,6 +39,9 @@ import { drainInputs } from './fx-session.ts';
 import { moduleResultsNote } from './runtime-menu.ts';
 import { pollEmulated } from './waits.ts';
 
+/** `bounded`, `rpc` and `word` live in guest-access.ts (card-kit reads them without this file's session fixtures); tests import them from here. */
+export { bounded, rpc, word };
+
 const exec = promisify(execFile);
 const root = repoRoot();
 /** What the panel helpers need of a runtime: the session, the wait API's `ui` and its clock. */
@@ -45,12 +50,9 @@ export type Rt = Pick<TestRuntime, 'session' | 'ui' | 'clock'>;
 export const REDRAW = 'firmware redraw after a panel input (no page-change event)';
 /** The reason of a fixed wait for the firmware to act on its own (a timer, a retry, a save): nothing observable yet. */
 export const SETTLE = 'emulated time for the firmware to act (no observable state)';
-// core/fx's published registry row: modules/core/adapters/fx/module.toml.
+// core/fx's published registry row: image-modules/points/fx/module.toml.
 export const ROW_WORDS = 24;
 export const FREE_PC = 0xffffffff;
-export const bounded = <T>(operation: () => Promise<T>) => withinRuntimeDeadline(Date.now() + 30_000, operation);
-export const rpc = <T>(session: Session, method: string, params?: Record<string, unknown>) =>
-  bounded(() => session.client.call<T>(method, params));
 
 export function options(device: Device) {
   return { device, firmware: FIRMWARE[device], binary: daemonBinary(device), autoNo: true };
@@ -83,17 +85,17 @@ async function baseline(
     }
   });
   const selection = ['modules/sine.dkm', ...(wet ? ['modules/dyn-fx-gain.dkm'] : [])];
-  // the services the gain effect needs (fx.dks), bound to the stock firmware, go to digikit/services
-  const services = await Promise.all(
-    neededServices(files.map((f) => f.file)).map(async (needed) => ({
-      name: (cardServices.add(needed.service), `${needed.service}.dks`),
-      file: await boundService(device, needed, moduleArtifact(device, needed.moduleId)),
-    })),
-  );
+  // the services the gain effect needs (fx.dks), go to digikit/services as packed, with the port file in digikit/ports
+  const services = neededServices(files.map((f) => f.file)).map((needed) => ({
+    name: (cardServices.add(needed.service), `${needed.service}.dks`),
+    file: moduleArtifact(device, needed.moduleId),
+  }));
+  const port = services.length ? portFile(device) : undefined;
   const key = cardKey(device, {
     kind: 'fx-live-reuse',
     modules: files.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
     services: services.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
+    port: port ? fileSha(port.file) : undefined,
     selection,
   });
   const cardImage = await cachedCard(key, async (work) => {
@@ -101,10 +103,16 @@ async function baseline(
     const seed = path.join(work, 'card', 'seed');
     const modules = path.join(seed, 'digikit', 'modules');
     fs.mkdirSync(modules, { recursive: true });
+    installSystemPackage(seed);
     for (const f of files) fs.copyFileSync(f.file, path.join(modules, f.name));
     const serviceDir = path.join(seed, 'digikit', 'services');
     fs.mkdirSync(serviceDir, { recursive: true });
     for (const f of services) fs.copyFileSync(f.file, path.join(serviceDir, f.name));
+    if (port) {
+      const portDir = path.join(seed, 'digikit', 'ports');
+      fs.mkdirSync(portDir, { recursive: true });
+      fs.copyFileSync(port.file, path.join(portDir, path.basename(port.name)));
+    }
     fs.writeFileSync(path.join(seed, 'digikit', 'selection.txt'), selection.join('\n') + '\n');
     const out = path.join(work, 'card', 'card.img');
     fs.mkdirSync(path.dirname(out), { recursive: true });
@@ -176,12 +184,6 @@ export function expectGainRow(row: number[], oracle: FxExpectations): void {
   expect(row[12], 'adapter ran the effect').toBe(1);
   expect(row[14], 'effect is not disabled').toBe(0);
   expect(row[17], 'no effect fault').toBe(0);
-}
-
-export async function word(session: Session, address: number): Promise<number> {
-  const value = await bounded(() => session.client.memPeek(address));
-  if (value === null) throw new Error(`unmapped CF word at ${address.toString(16)}`);
-  return value >>> 0;
 }
 
 export async function dspBytes(session: Session, address: number, length: number): Promise<Buffer> {
@@ -309,7 +311,7 @@ export interface PcmMetrics {
   rms_base: number;
   shift: number | null;
 }
-/** The `hook_ab compare` metrics of a render against the reference scaled by `gain`, from the onset on. The CLI exits 1 on a failed verdict; its JSON on stdout is still read. */
+/** The metrics of a render against the reference scaled by `gain`, from the onset on (see `comparePcmAligned`). */
 export async function pcmMetrics(
   base: string,
   sample: string,
@@ -318,29 +320,15 @@ export async function pcmMetrics(
   tag: string,
   relBound?: number,
 ): Promise<PcmMetrics> {
-  const args = ['run', '--no-sync', 'python', '-m', 'tools.patchkit.hook_ab', 'compare', base, sample];
-  args.push('--gain', String(gain), '--align-onset', '--json');
-  if (relBound !== undefined) args.push('--rel-bound', String(relBound));
-  let stdout: string;
-  try {
-    stdout = (await exec('uv', args, { cwd: root, timeout: 30_000 })).stdout;
-  } catch (error) {
-    const output = error as { stdout?: string; stderr?: string };
-    if (!output.stdout) {
-      record(artifacts, `pcm-${tag}`, { error: String(error), stderr: output.stderr });
-      throw error;
-    }
-    stdout = output.stdout;
-  }
-  const metrics = JSON.parse(stdout) as PcmMetrics;
+  const metrics = comparePcmAligned(readFloatWav(base), readFloatWav(sample), gain, relBound) as unknown as PcmMetrics;
   record(artifacts, `pcm-${tag}`, metrics);
   return metrics;
 }
 
 /**
- * Asserts that a render equals the reference scaled by `gain`. The CLI verdict (`ok`: the largest error within
+ * Asserts that a render equals the reference scaled by `gain`. The verdict (`ok` of `comparePcmAligned`: the largest error within
  * `relBound` of the scaled reference peak, 2**-20 when unset) is the only error rule; this adds audibility, the gain
- * in dB and the onset shift (hook_ab counts interleaved samples; the tolerance is 128 audio frames).
+ * in dB and the onset shift (shifts count interleaved samples; the tolerance is 128 audio frames).
  */
 export async function compare(
   base: string,
@@ -477,7 +465,7 @@ export async function inspect(
   await rpc(session, 'run.mode', { mode: 'paused' });
   const boot = planSymbol(plan, 'DKRT_BOOT');
   const fields = await Promise.all(Array.from({ length: 10 + names.length }, (_, i) => word(session, boot + i * 4)));
-  // modules/core/runtime/abi.toml DkrtBootInfo: magic/version/safe/reason, count/loaded/UI, results.
+  // runtime/core/abi.toml DkrtBootInfo: magic/version/safe/reason, count/loaded/UI, results.
   expect(fields.slice(0, 4)).toEqual([0x444b4254, 1, 0, 0]);
   expect(fields.slice(7, 10)).toEqual([names.length, names.length, 1]);
   expect(fields.slice(10)).toEqual(names.map(() => 0));

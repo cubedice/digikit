@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import type { DkModule } from '@digi/dk-session';
+import { PROVIDER_MAX, type DkModule } from '@digi/dk-session';
 import { repoRoot, type Device, type Session } from '@digi/test-support';
 import { parse } from 'smol-toml';
 import { freeRegions, type TestRuntime } from '../support.ts';
@@ -13,7 +13,7 @@ import {
   sweepMachineList,
   type PanelMachine,
 } from './project-kit.ts';
-import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
+import { packageSymbol, planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 /**
  * The ColdFire memory audit (port of tools/patchkit/pk_digikit_memaudit.py).
@@ -77,11 +77,13 @@ export function guardPlan(
   plan: RuntimePlan,
   modules: Pick<DkModule, 'cf_base' | 'cf_size'>[],
   arena: [number, number],
+  /** Code that may write like the runtime's own: the system package's block. */
+  extraCode: Owned[] = [],
 ): GuardPlan {
   let protect: Range[] = freeRegions(device, firmware).map((r) => ({ label: r.name, lo: r.lo, hi: r.hi }));
   protect = cutRanges(protect, arena[0], arena[1], 'arena');
   for (const m of modules) protect = cutRanges(protect, m.cf_base, m.cf_base + m.cf_size);
-  return { protect: protect.filter((r) => r.hi > r.lo), code: patchCode(plan, arena[0]) };
+  return { protect: protect.filter((r) => r.hi > r.lo), code: [...patchCode(plan, arena[0]), ...extraCode] };
 }
 
 /** The code a PC belongs to: a module's block, a patch object (the runtime included), else the stock firmware. */
@@ -95,6 +97,45 @@ export function whoWrote(pc: number, modules: Pick<DkModule, 'name' | 'cf_base' 
 export async function arenaBounds(session: Session, plan: RuntimePlan): Promise<[number, number]> {
   const state = planSymbol(plan, 'DKRT_STATE');
   return [await word(session, state + 28), await word(session, state + 32)];
+}
+
+/**
+ * The blocks of the loaded service files (providers). The loader keeps them in `DKRT_PROVIDERS`, records of the layout of `DKRT_STATE.modules` (used,
+ * name[32], version, base, size, fini), and MODULES does not list them. Their image (code, data, bss) is a block of the arena like a module's, so it is
+ * a module block for the audit: the code of a service may store in its own block, as the code of a module does.
+ */
+export async function providerBlocks(
+  session: Session,
+  plan: RuntimePlan,
+): Promise<Pick<DkModule, 'name' | 'cf_base' | 'cf_size'>[]> {
+  const table = await packageSymbol(session, plan, 'PROVIDERS');
+  const RECORD = 52; // bytes of one `Module` record
+  const out: Pick<DkModule, 'name' | 'cf_base' | 'cf_size'>[] = [];
+  for (let j = 0; j < PROVIDER_MAX; j++) {
+    const at = table + j * RECORD;
+    if ((await word(session, at)) === 0) continue; // `used`
+    const name = Buffer.alloc(32);
+    for (let i = 0; i < 32; i += 4) name.writeUInt32BE(await word(session, at + 4 + i), i);
+    out.push({
+      name: name.toString('latin1').split('\0')[0]!,
+      cf_base: await word(session, at + 40),
+      cf_size: await word(session, at + 44),
+    });
+  }
+  return out;
+}
+
+/**
+ * The block the core placed the system package in (its image, relocation table and bss) in `DKRT_PKG`, apart from the arena. The core publishes it in the host directory
+ * (`PACKAGE_LO`, `PACKAGE_HI`). The package is the runtime's own code, so its stores are allowed, and its statics lie in the block, which is not a stray target.
+ */
+export async function packageBlock(
+  session: Session,
+  plan: RuntimePlan,
+): Promise<Pick<DkModule, 'name' | 'cf_base' | 'cf_size'>> {
+  const lo = await packageSymbol(session, plan, 'PACKAGE_LO');
+  const hi = await packageSymbol(session, plan, 'PACKAGE_HI');
+  return { name: 'system package', cf_base: lo, cf_size: hi - lo };
 }
 
 /** The current bytes of every module's block, read from guest memory. */
@@ -122,7 +163,7 @@ export interface AuditHit {
 /** The guard's report with each hit attributed to its writer. */
 export async function guardHits(
   session: Session,
-  modules: DkModule[],
+  modules: Pick<DkModule, 'name' | 'cf_base' | 'cf_size'>[],
   code: Owned[],
 ): Promise<{ total: number; hits: AuditHit[] }> {
   const report = await session.client.guardReport();
@@ -181,12 +222,11 @@ interface Manifest {
   machine?: unknown;
 }
 
-/** Module id -> manifest over `modules/`, `tests/fixtures/modules/` and the `PATCHKIT_MODULES` roots (the ids of module.toml files). */
+/** Module id -> manifest over the shipped module roots, `tests/fixtures/modules/` and the `PATCHKIT_MODULES` roots (the ids of module.toml files). */
 export function moduleManifests(): Map<string, Manifest> {
   const root = repoRoot();
   const roots = [
-    path.join(root, 'modules'),
-    path.join(root, 'tests/fixtures/modules'),
+    ...['modules', 'runtime', 'services', 'image-modules', 'tests/fixtures/modules'].map((dir) => path.join(root, dir)),
     ...(process.env.PATCHKIT_MODULES ?? '').split(path.delimiter).filter(Boolean),
   ];
   const out = new Map<string, Manifest>();

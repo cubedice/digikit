@@ -18,7 +18,7 @@ test('immutable Sound handles deduplicate and fail closed at allocation or capac
         '-Werror',
         '-fsanitize=undefined',
         path.join(import.meta.dirname, 'canopy-sound-pool.c'),
-        path.join(root, 'modules/core/adapters/instrument-play/src/cf/sound-pool.c'),
+        path.join(root, 'image-modules/adapters/instrument-play/src/cf/sound-pool.c'),
         '-o',
         executable,
       ],

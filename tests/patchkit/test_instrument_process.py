@@ -8,7 +8,7 @@ from tools.patchkit import pk_sharc
 
 @pytest.fixture(scope="module")
 def process_object():
-    root = REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp"
+    root = REPO_ROOT / "image-modules/adapters/instrument-registry/src/dsp"
     source = "\n".join(
         (root / name).read_text() for name in ["process.s", "process-protected.s"]
     )

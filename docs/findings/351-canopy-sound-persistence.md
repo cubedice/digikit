@@ -28,7 +28,7 @@ extension. Byte 0 is `0xc0 | format` (format 1), bytes 1..37 pack 293 bits of
 preset fields, bytes 38..39 are a CRC-16/CCITT. Any `0xc_` format byte is
 carried unchanged; only format 1 decodes. The facts are pinned by
 `tests/patchkit/test_canopy_sound_record_sites.py`; the codec is
-`modules/core/adapters/instrument-play/src/cf/sound-record.c`.
+`image-modules/adapters/instrument-play/src/cf/sound-record.c`.
 
 ## Association store [D]
 
@@ -87,7 +87,7 @@ previous pattern's configuration.
 
 All runs use the production adapter (`core/instrument-play`, no test
 fixtures) on the disposable DTII 1.17 emulator. The three tests are registered
-in the `runtimeAcceptance` of `modules/machines/canopy/tests` (they ran first
+in the `runtimeAcceptance` of `modules/machine/digikit/canopy/tests` (they ran first
 behind opt-in variables, with the evidence below).
 
 - Project save and power cycle (`persistence.device.test.ts`): two tracks edited independently to

@@ -7,7 +7,7 @@ import { test } from 'vitest';
 test('tracks own chord notes independently and schedule direct and arpeggiated playback', () => {
   const directory = mkdtempSync(join(tmpdir(), 'digikit-track-keyboard-'));
   const root = resolve(import.meta.dirname, '../../..');
-  const module = join(root, 'modules/core/adapters/track-keyboard');
+  const module = join(root, 'image-modules/adapters/track-keyboard');
   const binary = join(directory, 'keys');
   try {
     execFileSync(
@@ -20,6 +20,7 @@ test('tracks own chord notes independently and schedule direct and arpeggiated p
         '-Werror',
         '-fsanitize=undefined',
         join(module, 'src/track-keyboard.c'),
+        join(module, 'src/track-valid.c'),
         join(module, 'src/track-config.c'),
         join(module, 'src/track-service.c'),
         join(module, 'src/track-pattern.c'),
@@ -44,7 +45,7 @@ test('tracks own chord notes independently and schedule direct and arpeggiated p
 test('native One Shot chords can reattack their helpers through sample tails', () => {
   const directory = mkdtempSync(join(tmpdir(), 'digikit-track-pool-admission-'));
   const root = resolve(import.meta.dirname, '../../..');
-  const module = join(root, 'modules/core/adapters/track-keyboard');
+  const module = join(root, 'image-modules/adapters/track-keyboard');
   const binary = join(directory, 'pool-admission');
   try {
     execFileSync(
@@ -57,10 +58,11 @@ test('native One Shot chords can reattack their helpers through sample tails', (
         '-Werror',
         '-fsanitize=undefined',
         '-I',
-        join(root, 'modules/core/runtime/include'),
+        join(root, 'runtime/core/include'),
         '-I',
         join(root, 'sdk/include'),
         join(module, 'src/track-keyboard.c'),
+        join(module, 'src/track-valid.c'),
         join(module, 'src/track-config.c'),
         join(module, 'src/track-native.c'),
         join(module, 'src/track-pool.c'),

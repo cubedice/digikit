@@ -42,7 +42,7 @@ in it: `cf.link.hook.block_isr` (core/health), `cf.link.hook.block_isr.frame_cal
 
 ## Measurement
 
-`DIGI_STACK_WATCH` on the thirteen firmware task stacks during `modules/fx/prism/tests/coexistence.device.test.ts` (CANOPY,
+`DIGI_STACK_WATCH` on the thirteen firmware task stacks during `modules/fx/digikit/prism/tests/coexistence.device.test.ts` (CANOPY,
 Overloop, PRISM and remote on the `canopy-overloop-prism` set, about two minutes of emulated use; the test passes in every run):
 
 | | before the change | after |

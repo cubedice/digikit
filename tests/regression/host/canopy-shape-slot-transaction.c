@@ -17,8 +17,8 @@
 #undef src_status
 #include <assert.h>
 #include <limits.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
 
 /* Keep production keyboard.c linked; these unrelated selector-proof methods
  * must never be invoked by a SHAPE SLOT callback. */

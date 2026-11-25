@@ -2,7 +2,7 @@
  * that a boot copy is applied once. */
 #include <assert.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/work-copy.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/work-copy.h"
 
 int main(void)
 {

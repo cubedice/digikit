@@ -1,16 +1,19 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { describe, test } from 'vitest';
-import { cardCacheRoot, repoRoot, type Device } from '@digi/test-support';
+import { cardCacheRoot, hasDsp, noDspDaemon, repoRoot, type Device } from '@digi/test-support';
 import { claimDir, newestFirst, pruneKeyDirs, type RunDirClaim } from './run-claim.ts';
 
+/** What a file without `devices` runs on: the devices with a ready snapshot. A device with a cold boot only (`st`) is named by the file. */
 const ALL_DEVICES: readonly Device[] = ['dt2', 'dn2'];
+const KNOWN_DEVICES: readonly Device[] = ['dt2', 'dn2', 'st'];
 
 /** `list` (default: both devices) narrowed to `DIGI_DEVICE` (`dt2` or `dn2`) when it is set. Every device loop of a device test goes through here. */
 export function selectDevices(list: readonly Device[] = ALL_DEVICES): Device[] {
   const only = process.env.DIGI_DEVICE;
   if (only === undefined || only === '') return [...list];
-  if (!ALL_DEVICES.includes(only as Device)) throw new Error(`DIGI_DEVICE must be dt2 or dn2, got '${only}'`);
+  if (!KNOWN_DEVICES.includes(only as Device))
+    throw new Error(`DIGI_DEVICE must be one of ${KNOWN_DEVICES.join(', ')}, got '${only}'`);
   return list.filter((device) => device === only);
 }
 
@@ -34,7 +37,7 @@ export function describeOn(device: Device, name: string, define: () => void, ski
   }
 }
 
-export const FIRMWARE = { dt2: '1.17', dn2: '1.12' } as const;
+export const FIRMWARE = { dt2: '1.17', dn2: '1.12', st: '1.42' } as const;
 
 const claimedRunDirs = new Map<Device, { dir: string; snapshotDir: string }>();
 
@@ -126,6 +129,7 @@ export function daemonBinary(device: Device): string {
   const key = `DIGI_EMUD_${device.toUpperCase()}`;
   const fromEnv = process.env[key];
   if (fromEnv) return fromEnv;
+  if (!hasDsp(device)) return noDspDaemon(device);
   const file = path.join(repoRoot(), 'dist/daemons.json');
   if (fs.existsSync(file)) {
     const value = (JSON.parse(fs.readFileSync(file, 'utf8')) as Record<string, string>)[key];
@@ -135,28 +139,6 @@ export function daemonBinary(device: Device): string {
     );
   }
   throw new Error(`${key} unset and dist/daemons.json missing: run pnpm nx:pilot run digi-control:daemons`);
-}
-
-/** Mirror sessions and `fresh: true` keep a fresh run dir (the mirror folder must start empty). */
-export function liveOptions(device: Device, extra: { patchSet?: string; mirror?: boolean; fresh?: boolean } = {}) {
-  const binary = daemonBinary(device);
-  const card = device === 'dt2' ? path.join(repoRoot(), 'out/runs/patchkit/samples') : undefined;
-  if (card && !fs.existsSync(card)) {
-    throw new Error(
-      `DT2 sample card missing: generate ${card} (tools.emulator.card_check.make_samples, run by pk_harness)`,
-    );
-  }
-  const { fresh, ...rest } = extra;
-  const claim = extra.mirror || fresh ? undefined : cachedRunDir(device);
-  return {
-    device,
-    firmware: FIRMWARE[device],
-    binary,
-    card,
-    ...rest,
-    runDir: claim?.dir,
-    snapshotDir: claim?.snapshotDir,
-  };
 }
 
 /** Full-tier scenarios run only under `DIGIKIT_TIER=full` (`verify --full`), as the Python tiers do. */

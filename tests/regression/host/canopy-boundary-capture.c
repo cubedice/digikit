@@ -9,7 +9,7 @@
 #undef keyboard
 #include <assert.h>
 #include <stdlib.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
 
 enum { SOUND_BYTES = 0x450, HANDLE = 0x13a, COUNT = 2, ARENA_BYTES = 0x1000 };
 typedef struct {

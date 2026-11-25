@@ -1,6 +1,6 @@
 /* ColdFire component probe; not a device module. */
 #include "copy-guard.h"
-#include "../../../../modules/core/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
 extern uint32_t cg_probe_mask(void *);
 extern void cg_probe_restore(void *, uint32_t);
 extern void *cg_probe_stock_memcpy(void *, const void *, uint32_t);

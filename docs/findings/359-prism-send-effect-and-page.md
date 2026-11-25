@@ -16,7 +16,7 @@ and on the host. Nothing ran on hardware and nobody has listened. Marks as in `d
 | Image of the fork (`canopy-overloop-prism`) | `cf.expansion` 1,327,524 of 1,396,736 bytes; `dsp.l2` 574,276 of 922,756 | `cf.expansion` 1,314,992 (12,532 fewer, 81,744 free); `dsp.l2` 565,804 (8,472 fewer) |
 | `prism.dkm` | 12,330 bytes | 8,938 bytes |
 
-Removed: the module `core/phrase-route` with its guard copy, `devices/fw/phrase-route.toml` (five anchors, four hooks), the
+Removed: the module `core/phrase-route` with its guard copy, `ports/fw/phrase-route.toml` (five anchors, four hooks), the
 LED and key-dispatch anchors and hooks of `core/phrase-ui`, their 13 entries in `devices/ports/dt2-1.17.toml`, the
 `_phrase_route_info` import of `core/dyndsp`, the subsystem name `phrase`, the Python rig's phrase provider (only its own
 tests used it) and the router half of the probe tool (now `tools/patchkit/pk_phrase_transport_probe.py`). Patch sets
@@ -49,7 +49,7 @@ settings. The framework's row MIX stays at unity. Reason: the page is native and
 MIX is a kit value and PRISM's values are global, and the engine's MIX is already smoothed and proven on the rig.
 
 **One home for the layout.** `sdk/dsp/contract/dk_phrase.inc` (version 3). The provider and the page include it through
-`<dk/phrase.h>`, the engine through `dk_phrase_imports.inc`; `modules/fx/prism/src/prism.h` keeps only the engine's own
+`<dk/phrase.h>`, the engine through `dk_phrase_imports.inc`; `modules/fx/digikit/prism/src/prism.h` keeps only the engine's own
 constants and state. The device tests read the same file. The words `PH_C_INPUT`, `PH_C_XFADE`, `PH_C_ARM_SEQ` and
 `PH_S_INPUT`, `PH_S_LOOP`, `PH_S_ARMED` have their places and are zero, and the raw values `PH_P_INPT` and `PH_P_XFAD`
 exist and refuse a set, so that step 4 changes no layout.
@@ -106,7 +106,7 @@ this is the stock firmware's decoder or the emulator's panel input, and whether 
 
 - A kit saved while PRISM was the old effect holds, for PRISM, only the page values of an effect row (its MIX; PRISM never
   had knobs). The fx service keeps the phrase row's MIX at unity whatever it is given
-  (`the_phrase_row_takes_its_route_and_keeps_its_mix_at_unity`, `modules/core/services/fx/tests/records.rs`), and its poll
+  (`the_phrase_row_takes_its_route_and_keeps_its_mix_at_unity`, `services/fx/tests/records.rs`), and its poll
   of the kit's values skips the phrase row (`fxpage.rs`, read, not tested here). The kit loads as any kit does and changes
   nothing in PRISM.
 - A stored master route for PRISM is not used, because the record no longer allows it

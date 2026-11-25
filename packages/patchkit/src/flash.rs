@@ -18,6 +18,7 @@ use crate::syx;
 use crate::verify;
 use dt2_firmware_loader as loader;
 use std::ops::Range;
+use std::path::PathBuf;
 
 /// The reply-driven route through the MidiRpc requests (the default); this file's `Sender` is the menu route.
 pub use crate::flash_rpc::{
@@ -67,6 +68,18 @@ pub struct ShipMap {
 }
 
 impl Prepared {
+    /// Whether the flashed image carries the digikit runtime (and so answers INFO after the restart): not a restore, and the patch has an image id.
+    /// A patch without the runtime (the Syntakt's `device` set) is confirmed by the stock identity instead.
+    pub fn leaves_runtime(&self) -> bool {
+        !self.restore && self.image_id.is_some()
+    }
+
+    /// The runtime version of the image as its INFO reports it after the flash (`dkm::runtime_version`, the SDK version built into the runtime
+    /// object), as `major.minor.patch`; `None` when the image has no runtime. The flash question, the summary and the check after the restart use this one value.
+    pub fn runtime_text(&self) -> Option<String> {
+        self.leaves_runtime()
+            .then(|| crate::dkm::fmt_runtime(crate::dkm::runtime_version()))
+    }
     /// Every check passed (and there is something to send).
     pub fn ok(&self) -> bool {
         !self.messages.is_empty() && self.checks.iter().all(|c| c.ok)
@@ -96,7 +109,7 @@ impl Prepared {
             "sha_image": self.sha_image,
             "image_id": self.image_id_hex(),
             // the runtime version the patch carries (a restore has none)
-            "runtime": (!self.restore).then(|| crate::dkm::fmt_runtime(crate::dkm::runtime_version())),
+            "runtime": self.runtime_text(),
             "pace_ms": PACE_MS,
             "bytes": self.image.len(),
             "ends": self.messages.iter().map(|m| m.end).collect::<Vec<_>>(),
@@ -149,6 +162,15 @@ fn info_of(short: &str) -> Result<&'static DeviceInfo> {
 
 /// Patch the stock image with the device file's patch set `set` and check the result for sending.
 pub fn prepare(stock: &[u8], reg: &Registry, lib: &Library, set: &str) -> Result<Prepared> {
+    prepare_with_package(stock, reg, lib, set).map(|(prepared, _)| prepared)
+}
+
+fn prepare_with_package(
+    stock: &[u8],
+    reg: &Registry,
+    lib: &Library,
+    set: &str,
+) -> Result<(Prepared, Option<PathBuf>)> {
     let sfw = Firmware::parse(stock)?;
     let port = known_port(&sfw, stock, reg)?;
     let (device, os) = (port.port.device.clone(), port.port.version.clone());
@@ -231,7 +253,7 @@ pub fn prepare(stock: &[u8], reg: &Registry, lib: &Library, set: &str) -> Result
             ),
         }),
     }
-    Ok(p)
+    Ok((p, lib.system_package_object(&ids)))
 }
 
 /// `prepare` or `restore` for a checkout: the registry, the module library and the device files are read from `root` (the desktop app).
@@ -242,17 +264,49 @@ pub fn prepare_in_repo(
     restore_stock: bool,
     set: &str,
 ) -> Result<Prepared> {
-    let reg = Registry::from_dir(&root.join("devices/ports"))?;
+    prepare_with_library(root, stock, restore_stock, set, |roots| {
+        let mut lib = Library::scan_repo_for(root, false, Some(roots))?;
+        lib.lower(&crate::typed::Models::from_dir(&root.join("devices"))?)?;
+        Ok(lib)
+    })
+    .map(|(prepared, _)| prepared)
+}
+
+/// Prepare a flash using the CLI's library sources and build only the selected closure.
+/// Also return the selected runtime's companion object path, when it declares one.
+#[cfg(not(target_arch = "wasm32"))]
+pub fn prepare_in_repo_with_source(
+    root: &std::path::Path,
+    stock: &[u8],
+    restore_stock: bool,
+    set: &str,
+    source: &crate::module::LibrarySource,
+) -> Result<(Prepared, Option<PathBuf>)> {
+    prepare_with_library(root, stock, restore_stock, set, |roots| {
+        use crate::module::selected_library;
+        let manifests = selected_library(root, source, false, &[], roots)?;
+        let (ids, _) = manifests.with_requires(roots)?;
+        selected_library(root, source, false, &ids, roots)
+    })
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn prepare_with_library(
+    root: &std::path::Path,
+    stock: &[u8],
+    restore_stock: bool,
+    set: &str,
+    library: impl FnOnce(&[String]) -> Result<Library>,
+) -> Result<(Prepared, Option<PathBuf>)> {
+    let reg = Registry::from_dir(&root.join("ports"))?;
     if restore_stock {
-        return restore(stock, &reg);
+        return restore(stock, &reg).map(|prepared| (prepared, None));
     }
-    // the patch set is `core/*` modules: their objects are committed, no content module is built
     let fw = Firmware::parse(stock)?;
-    let device = known_port(&fw, stock, &reg)?.port.device.clone();
-    let roots = info_of(&device)?.patch_set(set)?.to_vec();
-    let mut lib = Library::scan_repo_for(root, false, Some(&roots))?;
-    lib.lower(&crate::typed::Models::from_dir(&root.join("devices"))?)?;
-    prepare(stock, &reg, &lib, set)
+    let port = known_port(&fw, stock, &reg)?;
+    let roots = info_of(&port.port.device)?.patch_set(set)?;
+    let lib = library(roots)?;
+    prepare_with_package(stock, &reg, &lib, set)
 }
 
 /// The stock file itself, through the same checks (a way back from a patched image). It needs no patch and carries no record.
@@ -279,7 +333,7 @@ fn known_port<'a>(fw: &Firmware, raw: &[u8], reg: &'a Registry) -> Result<&'a cr
             err!("this file is a patched image; give the stock file it was made from (sha256 {})", fw.syx_sha256)
         } else {
             err!(
-                "this file ({}) is not a stock firmware patchkit knows (no port in devices/ports/ has its sha256 {})",
+                "this file ({}) is not a stock firmware patchkit knows (no port in ports/ has its sha256 {})",
                 fw.device.short(),
                 fw.syx_sha256
             )
@@ -320,9 +374,18 @@ fn finish(
                 Ok(r)
             })
             .map(|r| {
+                // the bootstrap budget first: the detail is cut when it is shown
+                let budget = r.budget.map(|b| b.to_string());
+                let rest: Vec<&str> = r
+                    .checks
+                    .iter()
+                    .map(String::as_str)
+                    .filter(|c| Some(*c) != budget.as_deref())
+                    .collect();
                 let d = format!(
-                    "{}; container {} bytes, {} data messages",
-                    r.checks.join("; "),
+                    "{}{}; container {} bytes, {} data messages",
+                    budget.map_or(String::new(), |b| format!("{b}; ")),
+                    rest.join("; "),
                     r.container_bytes,
                     r.data_messages
                 );

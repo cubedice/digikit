@@ -12,7 +12,7 @@ from tools.patchkit import pk_cfunit
 
 def _machines_fw():
     """The firmware fixtures of core/machines' own test (it moved into the module), loaded by path."""
-    path = REPO_ROOT / "modules/core/adapters/machines/tests/test_pk_machines_fw.py"
+    path = REPO_ROOT / "image-modules/points/machines/tests/test_pk_machines_fw.py"
     spec = importlib.util.spec_from_file_location("machines_fw_fixtures", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -29,7 +29,7 @@ COUNT, FIRST, ROWS, SRC, STOCK_LIST = (
     _fw.STOCK_LIST,
 )
 STUBS, SYX, TYPE_FN, tables = _fw.STUBS, _fw.SYX, _fw.TYPE_FN, _fw.tables
-# `mf_typearg` is a routine of the machines service file; it reads the image tables `MF_TAB` and `MF_EXT` (here: the fixtures, with
+# `mf_typearg` is a routine of the machines service file; it reads the image tables `DKRT_MF_TAB` and `DKRT_MF_EXT` (here: the fixtures, with
 # `instrument_mod_param` of src-mod.c in the unit)
 HOOKS, TAB, EXT, NATIVE_CALLS = _fw.HOOKS, _fw.TAB, _fw.EXT, _fw.NATIVE_CALLS
 pytestmark = _fw.pytestmark
@@ -84,8 +84,8 @@ int instrument_sound_admitted(uint32_t track) {{
             REPO_ROOT / "tests/fixtures/native-page-absent.s",
             src_allocator,
             stub,
-            REPO_ROOT / "modules/core/adapters/instrument-play/src/cf/src-mod.c",
-            REPO_ROOT / "modules/core/adapters/instrument-play/src/cf/src-mod.s",
+            REPO_ROOT / "image-modules/adapters/instrument-play/src/cf/src-mod.c",
+            REPO_ROOT / "image-modules/adapters/instrument-play/src/cf/src-mod.s",
         ],
         [
             *STUBS,

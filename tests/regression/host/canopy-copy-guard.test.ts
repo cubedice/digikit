@@ -8,7 +8,7 @@ test('Sound and kit copies defer MIDI selector edits at each copy chunk', () => 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-copy-guard-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'modules/core/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
     const fixture = path.join(root, 'tests/regression/fixtures/canopy-copy-guard');
     const executable = path.join(directory, 'copy-guard');
     execFileSync(

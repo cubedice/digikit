@@ -42,7 +42,9 @@ fn find_objects(dir: &Path, out: &mut Vec<PathBuf>) {
 #[test]
 fn committed_objects_are_in_the_canonical_form() {
     let mut files = vec![];
-    find_objects(&root().join("modules/core"), &mut files);
+    for dir in patchkit::module::CORE_MODULE_ROOTS {
+        find_objects(&root().join(dir), &mut files);
+    }
     assert!(files.len() > 20, "{} objects", files.len());
     for f in files {
         let text = std::fs::read_to_string(&f).unwrap();
@@ -439,6 +441,66 @@ fn a_header_change_changes_the_source_hash() {
     let _ = std::fs::remove_dir_all(&d);
 }
 
+/// The source hash of a Rust object with C and assembler sources: the crate's hash alone without them; with them it follows the crate, each source, each
+/// header a C source includes from the object's include directories, and a header it includes only in the service build (`DK_SERVICE`).
+#[test]
+fn the_c_sources_of_a_rust_object_and_their_headers_are_in_its_source_hash() {
+    let Some(env) = toolchain() else { return };
+    let d = build_dir("rust-c-hash");
+    let write = |rel: &str, text: &str| {
+        std::fs::create_dir_all(d.join(rel).parent().unwrap()).unwrap();
+        std::fs::write(d.join(rel), text).unwrap();
+    };
+    write(
+        "Cargo.toml",
+        "[package]\nname = \"x\"\nversion = \"0.1.0\"\n",
+    );
+    write("src/lib.rs", "#![no_std]\n");
+    write(
+        "c/a.c",
+        "#include \"a.h\"\n#if DK_SERVICE\n#include \"svc.h\"\n#endif\nint f(void) { return N + M; }\n",
+    );
+    write("c/b.s", ".text\nnop\n");
+    write("inc/a.h", "#define N 1\n");
+    write("inc/svc.h", "#define M 2\n");
+    let manifest = d.join("Cargo.toml");
+    let hash = |c: &rust::CSources| rust::object_sha256(&env, &manifest, &[], c).unwrap();
+    let crate_sha = rust::source_sha256(&manifest, &[]).unwrap();
+    assert_eq!(hash(&rust::CSources::default()), crate_sha);
+    let c = rust::CSources {
+        files: vec![d.join("c/a.c"), d.join("c/b.s")],
+        include_dirs: vec![d.join("inc")],
+    };
+    let with = hash(&c);
+    assert_ne!(with, crate_sha);
+    assert_eq!(hash(&c), with);
+    for file in ["src/lib.rs", "c/a.c", "c/b.s", "inc/a.h", "inc/svc.h"] {
+        let old = std::fs::read_to_string(d.join(file)).unwrap();
+        write(file, &format!("{old}\n"));
+        assert_ne!(hash(&c), with, "{file}");
+        write(file, &old);
+        assert_eq!(hash(&c), with, "{file}");
+    }
+    // the C build defines DK_SERVICE: without it, svc.h would not be read and so would not be in the hash
+    assert!(
+        cf::deps(&env, &d.join("c/a.c"), &c.include_dirs)
+            .unwrap()
+            .iter()
+            .all(|p| !p.ends_with("svc.h"))
+    );
+    assert!(
+        cf::deps(
+            &env.plus_define(rust::SERVICE_DEFINE),
+            &d.join("c/a.c"),
+            &c.include_dirs
+        )
+        .unwrap()
+        .iter()
+        .any(|p| p.ends_with("svc.h"))
+    );
+    let _ = std::fs::remove_dir_all(&d);
+}
+
 #[test]
 fn a_module_builds_once_and_then_is_unchanged() {
     let Some(_) = toolchain() else { return };
@@ -753,7 +815,7 @@ pub unsafe extern "C" fn endian_write(value: u32, p: *mut u32) {
 "#,
     )
     .unwrap();
-    let (proto, hash, info) = rust::object_proto(&env, &manifest).unwrap();
+    let (proto, hash, info) = rust::object_proto(&env, &manifest, &[]).unwrap();
     let helper = proto
         .symbols
         .iter()
@@ -885,13 +947,17 @@ fn the_source_hash_of_a_crate_covers_the_sources_of_its_path_dependencies() {
     write("abi/src/service.rs", "pub const A: u32 = 1;\n");
     write("abi/src/gen_svc_abi.rs", "pub const FILES_HASH: u32 = 1;\n");
     let manifest = d.join("svc/Cargo.toml");
-    let before = rust::source_sha256(&manifest).unwrap();
+    let before = rust::source_sha256(&manifest, &[]).unwrap();
     for file in ["abi/src/service.rs", "abi/src/gen_svc_abi.rs"] {
         let old = std::fs::read_to_string(d.join(file)).unwrap();
         write(file, &old.replace('1', "2"));
-        assert_ne!(rust::source_sha256(&manifest).unwrap(), before, "{file}");
+        assert_ne!(
+            rust::source_sha256(&manifest, &[]).unwrap(),
+            before,
+            "{file}"
+        );
         write(file, &old);
-        assert_eq!(rust::source_sha256(&manifest).unwrap(), before);
+        assert_eq!(rust::source_sha256(&manifest, &[]).unwrap(), before);
     }
 }
 
@@ -901,10 +967,10 @@ fn the_source_hash_of_a_crate_covers_the_sources_of_its_path_dependencies() {
 fn every_service_and_the_runtime_object_is_built_from_the_abi_boundary_files() {
     let r = root();
     let manifests = [
-        "modules/core/services/fx/dks/Cargo.toml",
-        "modules/core/services/machines/dks/Cargo.toml",
-        "modules/core/services/lfo/dks/Cargo.toml",
-        "modules/core/runtime/src/rs/Cargo.toml",
+        "services/fx/dks/Cargo.toml",
+        "services/machines/dks/Cargo.toml",
+        "services/lfo/dks/Cargo.toml",
+        "runtime/core/src/rs/Cargo.toml",
     ];
     for m in manifests {
         let files: Vec<PathBuf> = rust::crate_files(&r.join(m))
@@ -927,9 +993,9 @@ fn every_service_and_the_runtime_object_is_built_from_the_abi_boundary_files() {
     }
     // (the runtime module also has assembly objects, whose hash needs the toolchain: `objects-check` covers them)
     for dir in [
-        "modules/core/services/fx/dks",
-        "modules/core/services/machines/dks",
-        "modules/core/services/lfo/dks",
+        "services/fx/dks",
+        "services/machines/dks",
+        "services/lfo/dks",
     ] {
         for (object, current) in build::module_status(&r, &r.join(dir)).unwrap() {
             assert!(

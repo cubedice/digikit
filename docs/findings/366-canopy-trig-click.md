@@ -2,7 +2,7 @@
 
 What the owner reported on the Digitakt II with image `8278188469b2dc9f` (2026-11-20): CANOPY's arp clicks now and then
 while the transport plays, with RST at TRIG. Digitakt II OS 1.17; measured on the SHARC core with CANOPY's DSP harness
-(`modules/machines/canopy/tests/test_canopy_arp_click.py`, the native core of `pk_sharc`). Nothing here ran on hardware.
+(`modules/machine/digikit/canopy/tests/test_canopy_arp_click.py`, the native core of `pk_sharc`). Nothing here ran on hardware.
 Marks as in `docs/FINDINGS.md`; every result here is **[D]** unless it is marked **[O]**.
 
 ## The measure
@@ -69,7 +69,7 @@ steal's first block (it holds the ramp). The rest of CANOPY's DSP suites pass un
 
 ## For listening
 
-`CANOPY_CLICK_WAV=DIR uv run pytest -q modules/machines/canopy/tests/test_canopy_arp_click.py -k write` writes
+`CANOPY_CLICK_WAV=DIR uv run pytest -q modules/machine/digikit/canopy/tests/test_canopy_arp_click.py -k write` writes
 `chord-trigs-arp.wav`, `chord-trigs-arp-and-pad.wav` and `chord-trigs-pad.wav` (3 s, a chord trig every 131 blocks, the
 same +14 dB for every take). Before and after are in `firmware/hardware/canopy-arp-click-audio/` of the WSL worktree
 (`before/`, `after/`, `README.txt`); renders of the harness, not recordings of a device, never committed.

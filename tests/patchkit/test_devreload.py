@@ -142,7 +142,7 @@ def store_build(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "stock", Mock(return_value=tmp_path / "stock.syx"))
     # the services of the card come from `patchkit services` (needs the stock firmware): none here
     monkeypatch.setattr(pk_services, "is_service", Mock(return_value=False))
-    monkeypatch.setattr(pk_services, "bound_services", Mock(return_value=[]))
+    monkeypatch.setattr(pk_services, "card_services", Mock(return_value=[]))
     card_build = Mock(side_effect=build_card)
     selection = Mock()
     stop = Mock()
@@ -692,7 +692,8 @@ def test_upload_store_waits_for_boot_and_module_without_debug_log(
     else:
         assert elapsed < 22
     if failure in ("boot", "no_boot"):
-        up.modules.assert_not_called()
+        # One ask before the boot (is the module loaded, can it reload); none after a failed boot.
+        assert up.modules.call_count == 1
     assert [c[0] for c in events.mock_calls] == [
         "upload",
         "verify",
@@ -732,7 +733,7 @@ def test_runtime_cache_key_tracks_patch_inputs(monkeypatch, tmp_path, changed):
         "manifest": manifest,
         "object": folder / "object.json",
         "sdk": tmp_path / "sdk/sdk.toml",
-        "port": tmp_path / "devices/ports/current.toml",
+        "port": tmp_path / "ports/current.toml",
         "packer": tmp_path / "patchkit-bin",
         "stock": tmp_path / "stock.syx",
     }

@@ -162,7 +162,7 @@ gets its normal ACK. Admission and reuse require a fresh valid quiet reply.
 The draining route remains tied to its owner while a
 matched physical note-off is delivered and the voice becomes quiet.
 
-The compiled panel test `pool.manual.device.test.ts` selected T1, enabled
+The compiled panel test `pool.device.test.ts` selected T1, enabled
 POLY, chose an empty helper in POOL and waited for the native lease to publish.
 Two held keyboard pitches produced accepted native events on T1 and the
 helper. The reserve mask survived PLAY on the same pattern, and two new held

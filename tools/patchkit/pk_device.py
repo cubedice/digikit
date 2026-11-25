@@ -154,25 +154,17 @@ def limits(short: str) -> Limits:
     )
 
 
-@dataclass(frozen=True)
-class SharedLimits:
-    """Limits shared by the runtime; device-owned capacities require `limits(short)`."""
-
-    modules: int
-    machine_rows: int
-    arena_bytes: int
-    param_rows: int
-
-
-def shared_limits() -> SharedLimits:
-    """The limits every digikit device must agree on, taken from the first DSP device. Staging, DSP space and FX/page capacities belong
-    to the device object and are deliberately not returned here. The module count and the arena size are the runtime's static arrays
-    and are checked on every runtime target; the machine and parameter rows exist only where there is a DSP, and are checked on those."""
+def shared_limits() -> Limits:
+    """The limits every digikit device agrees on, except the per-device ones (`dsp_area_bytes`, `fx_slots`, `page_rows`), which are
+    taken from the first DSP device. Raises when a shared limit differs: the runtime is one image for all devices. The module count and
+    the arena and staging sizes are the runtime's static arrays and are checked on every runtime target; the machine and parameter rows
+    exist only where there is a DSP, and are checked on those."""
     dsp = dsp_devices()
     first = limits(dsp[0])
     for key, devs in (
         ("modules", runtime_devices()),
         ("arena_bytes", runtime_devices()),
+        ("stage_bytes", runtime_devices()),
         ("machine_rows", dsp),
         ("param_rows", dsp),
     ):
@@ -183,9 +175,7 @@ def shared_limits() -> SharedLimits:
                 raise RuntimeError(
                     f"[limits] {key} differs between {dsp[0]} and {d}; the runtime is one image for all devices"
                 )
-    return SharedLimits(
-        **{k: getattr(first, k) for k in SharedLimits.__dataclass_fields__}
-    )
+    return first
 
 
 def peek_ranges(short: str) -> list[tuple[int, int]]:

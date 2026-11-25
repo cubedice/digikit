@@ -9,16 +9,23 @@ export const RPC_PING = 0x01;
 export const RPC_SOFTWARE_VERSION = 0x02;
 
 /**
- * The model name in the reply of Ping. The payload is `u8 blobLen`, the blob of request types the device answers, then NUL-ended strings; the first
- * string is the name. The blob and what follows the name are not read. Undefined when the reply is empty, cut short or has an empty name.
+ * The model name in the reply of Ping. Two layouts, told apart by the framing and not by their content:
+ * - plain: `u8 blobLen`, the blob of request types, NUL-ended strings (the first is the name);
+ * - length-prefixed: `u8 rest`, then the plain layout, where `rest` is the number of bytes after the `blobLen` byte (the Syntakt 1.42 reply,
+ *   `1e 16 <22 types> "Syntakt" 00`, finding 144). A payload whose first byte is two less than its length is this one.
+ * Undefined when the payload is empty, cut short, or the first string is not printable ASCII. The vectors are `tests/fixtures/ping-vectors.json`, shared with `parse_ping` of
+ * `packages/patchkit/src/flash_rpc.rs`.
  */
 export function parsePing(payload: Uint8Array): string | undefined {
-  const first = payload[0];
+  const body = payload.length >= 2 && payload[0] === payload.length - 2 ? payload.subarray(1) : payload;
+  const first = body[0];
   if (first === undefined) return undefined;
   const start = 1 + first;
-  const end = payload.indexOf(0, start);
-  if (start >= payload.length || end < 0 || end === start) return undefined;
-  return new TextDecoder('latin1').decode(payload.subarray(start, end));
+  const end = body.indexOf(0, start);
+  if (start >= body.length || end < 0 || end === start) return undefined;
+  const name = body.subarray(start, end);
+  // a name is printable text: an unknown or damaged reply gives no name, not junk
+  return name.every((b) => b >= 0x20 && b < 0x7f) ? new TextDecoder('latin1').decode(name) : undefined;
 }
 
 /** The OS version in the reply of SoftwareVersion (`"00"`, `"79"`, `"1.17"`: the string that looks like a version), or undefined. */
@@ -49,6 +56,19 @@ export interface DeviceIdentity {
 const RPC_MS = 1500;
 const kindOf = (e: unknown): string | undefined => (e as { kind?: string } | null)?.kind;
 
+async function probeRuntime(s: Pick<DkSession, 'info'>): Promise<DkInfoFull | null> {
+  try {
+    return await s.info({ timeoutMs: INFO_PROBE_TIMEOUT_MS, retries: 1 });
+  } catch (e) {
+    if (kindOf(e) !== 'timeout') throw e;
+    return null;
+  }
+}
+
+function runtimeDevice(info: DkInfoFull | null, registry: IdentityRegistry) {
+  return registry.devices.find((d) => info?.port === d.id || info?.port.startsWith(d.id + '-'));
+}
+
 /**
  * Identify the device on `s`: Ping names the model (an exact match with a registry name), SoftwareVersion gives the OS, and one INFO tells whether
  * the runtime is there. INFO retries E_BUSY like any INFO and has one retry after a lost reply; only a lost reply means no runtime. Any other INFO
@@ -58,7 +78,13 @@ const kindOf = (e: unknown): string | undefined => (e as { kind?: string } | nul
 export async function identifyDevice(
   s: Pick<DkSession, 'rpc' | 'info'>,
   registry: IdentityRegistry,
+  options: { preferRuntimeInfo?: boolean } = {},
 ): Promise<DeviceIdentity> {
+  // A runtime panel only needs the model and runtime. INFO alone supplies both.
+  const probed = options.preferRuntimeInfo ? await probeRuntime(s) : undefined;
+  const known = probed && runtimeDevice(probed, registry);
+  if (known && probed)
+    return { id: known.id, name: known.name, info: probed, runtime: fmtVersion(probed.runtime), os: undefined };
   let name: string | undefined;
   let pingSilent = false;
   try {
@@ -67,12 +93,7 @@ export async function identifyDevice(
     if (kindOf(e) !== 'timeout') throw e;
     pingSilent = true;
   }
-  let info: DkInfoFull | null = null;
-  try {
-    info = await s.info({ timeoutMs: INFO_PROBE_TIMEOUT_MS, retries: 1 });
-  } catch (e) {
-    if (kindOf(e) !== 'timeout') throw e;
-  }
+  const info = probed === undefined ? await probeRuntime(s) : probed;
   if (pingSilent && !info) throw new Error('the device does not answer Ping, so it cannot be identified');
   const os = pingSilent
     ? undefined
@@ -80,9 +101,7 @@ export async function identifyDevice(
         if (kindOf(e) === 'cancelled') throw e;
         return undefined;
       });
-  const device = pingSilent
-    ? registry.devices.find((d) => d.id === info?.port)
-    : registry.devices.find((d) => d.name === name);
+  const device = pingSilent ? runtimeDevice(info, registry) : registry.devices.find((d) => d.name === name);
   if (!device) {
     const known = registry.devices.map((d) => d.name).join(', ');
     const what = pingSilent

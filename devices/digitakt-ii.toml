@@ -64,7 +64,7 @@ readiness_contract = "main-panel-fs-check-v1"
 # The softfloat ABI shortcuts (packages/emulator/boot softfloat) are verified on this MAIN OS.
 softfloat_abi = true
 # Section 7 (the SHARC+ blob) is byte-identical to 1.16, so the idle loop addresses carry over.
-# Has a port lockfile (devices/ports/): tools/patchkit/port_resolve.py resolves every firmware with `port = true`.
+# Has a port lockfile (ports/): tools/patchkit/port_resolve.py resolves every firmware with `port = true`.
 port = true
 dsp = { image = "dt2-1.17", idle_start = 0xb8636d, idle_end = 0xb863df, idle_head = 0xb863cf, sample_link = "lp0" }
 
@@ -87,6 +87,31 @@ card = "path-fs"
 main = 3
 dsp = 7
 readonly = [2, 4, 8]
+
+# MIDI map the calibration runner and the tests use (packages/dk-session `midi-out.ts`, `@digi/devices` `midi`). Source: Digitakt II manual (OS 1.03A) Appendix B, pp. 104-107; track channels: section 8.4 (default channels 1-8).
+# `track_channels[n]` is the factory MIDI channel (1-16) of track n+1 (SETTINGS > MIDI CONFIG > CHANNELS); a user can change it, so a runner reads or sets it.
+# The device also needs INPUT FROM = USB (or MIDI+USB), RECEIVE NOTES on and RECEIVE CC/NRPN on (SETTINGS > MIDI CONFIG > PORT CONFIG); the menu is the only place to read them.
+# A parameter has `cc` (7-bit, value 0-127) and `nrpn = [msb, lsb]` (14-bit).
+# DT2 has 16 tracks, each audio or MIDI. The manual (section 8.4) states the default channels 1-8 only for tracks 1-8, so only those are listed; a runner reads or sets the channel of a track above 8 in SETTINGS > MIDI CONFIG > CHANNELS. The manual lists `filter_env_depth` and an "Env. Delay" with the same NRPN 1/23 (a manual error); CC 77 is unambiguous.
+[midi]
+track_channels = [1, 2, 3, 4, 5, 6, 7, 8]
+
+[midi.params]
+track_mute = { cc = 94, nrpn = [1, 101] }
+track_level = { cc = 95, nrpn = [1, 100] }
+filter_attack = { cc = 70, nrpn = [1, 16] }
+filter_decay = { cc = 71, nrpn = [1, 17] }
+filter_sustain = { cc = 72, nrpn = [1, 18] }
+filter_release = { cc = 73, nrpn = [1, 19] }
+filter_freq = { cc = 74, nrpn = [1, 20] }
+filter_reso = { cc = 75, nrpn = [1, 21] }
+filter_env_depth = { cc = 77, nrpn = [1, 23] }
+filter_base = { cc = 26, nrpn = [1, 51] }
+filter_width = { cc = 27, nrpn = [1, 52] }
+amp_release = { cc = 83, nrpn = [1, 34] }
+send_delay = { cc = 84, nrpn = [1, 36] }
+send_reverb = { cc = 85, nrpn = [1, 37] }
+send_chorus = { cc = 12, nrpn = [1, 35] }
 
 # The device's test cell: the firmware the acceptance tests run, the ready-snapshot directory and whether a sample card is
 # part of its inputs (tools/nx/device-inputs.mjs, packages/test-support/src/inputs.ts, tests/regression/runtime/devices.ts).
@@ -119,7 +144,7 @@ windows = [
 
 # Board and CPU facts the digikit runtime and the core modules use (docs/design/device-data.md). `patchkit gen` writes them into the
 # constants and includes of the modules (`[[gen]]` in a module.toml). The runtime is one image for all devices: it reads these facts at
-# run time from the device object `dkrt_dev` (DkrtDevice in modules/core/runtime/abi.toml). Register offsets inside a peripheral
+# run time from the device object `dkrt_dev` (DkrtDevice in runtime/core/abi.toml). Register offsets inside a peripheral
 # are CPU facts (MCF5441x) and stay in the code, named as such.
 [board]
 # The console UART (UART8): the firmware drains it before its own soft reset (finding 36 section 3). The status register is at +4.
@@ -141,6 +166,8 @@ dsp_blocks_per_second = 1500
 [digikit]
 id = 1
 name = "dt2"
+# The tracks of the device: what a module that draws or counts tracks reads through `dk_device_track_count()` (a Syntakt file gives its own number later; absent: 0).
+tracks = 16
 # Run-time modules (ids) that the workbench installs and enables together with the firmware, on a device after its flash and in the emulator
 # after it loads the patched image. Each is ticked by default in the Firmware pane and next to the emulator's firmware file; the user can untick it.
 # The list is data: add an id here (for example digikit/debug) and the workbench offers it. Desktop workbench only; the site does not install modules.
@@ -172,7 +199,7 @@ span_clock_hz = 132000000
 modules = 8
 machine_rows = 8
 arena_bytes = 524288
-stage_bytes = 151552 # 148 KiB: CANOPY with its 16-bit factory wavetables (147352 bytes) fits with 4200 to spare. With the machine, effect and sample services loaded from the card, the hardware image (`canopy-overloop-prism`) leaves about 80 KiB of cf.expansion. Native card reads remain capped at 64 KiB
+stage_bytes = 131072 # the largest file of the fork's hardware set is CANOPY with its half tables (102,344 bytes); services/instrument.dks is 96,508 (docs/plans/fork-image-diet.md section 9)
 fx_slots = 3   # effects in the chain; core/dynfx reserves this many free effect rows for run-time effects (at most DK_FX_MAX = 4)
 send_slots = 2 # of them effects that run on a send bus (core/fx send route, the send page of the FX key: one knob each; at most the entries of [fx] send_indices)
 param_rows = 16
@@ -234,7 +261,7 @@ mark_index = 70
 tail_off = 0x8e
 
 # The firmware's view stack, read by the device tests (finding 71 section 2, finding 03): the UI state that shows which window takes the panel keys. All **[D]** (read from the 1.17 image).
-# `brain_ptr` is the global that the Brain getter tests (the port anchor cf.view.value.brain, checked against devices/ports by tests/regression/host/device-facts.test.ts). The view manager is at brain +
+# `brain_ptr` is the global that the Brain getter tests (the port anchor cf.view.value.brain, checked against ports by tests/regression/host/device-facts.test.ts). The view manager is at brain +
 # `view_manager_off` (the offset of the manager member in Brain, from the getter cf.view.fn.brain.view_manager); its std::list of views has the sentinel node at manager + `list_off` (+0 next, +`list_prev_off`
 # prev; libstdc++ node layout); a node holds the View pointer at `node_view_off` (the shared_ptr stored after the links), and the key dispatcher starts at the last node, the top view.
 # The first u32 of a View is its vtable pointer (see [ui.boot_window]).
@@ -266,7 +293,7 @@ fs_state_ptr = 0x46f4dcb4
 fs_state_check = 3
 fs_checked_ptr = 0x46f4dce4
 
-# What patchkit needs of this device: the container and section limits of a port (written into devices/ports/*.toml by
+# What patchkit needs of this device: the container and section limits of a port (written into ports/*.toml by
 # tools/patchkit/port_resolve.py; docs/findings/01 "NOR flash map") and the DSP L2 range the free-region search runs in.
 [patch]
 # The container (the OS image) is staged in RAM by the OS-upgrade receiver: 0x200000 bytes, copied in 101-byte messages with no size check
@@ -282,6 +309,11 @@ stream_id = 0x0f
 build_floor = "0060"
 # Where the MAIN OS image is loaded (the built-in anchor `cf.main`).
 main_dest = 0x40000400
+# Where the bootstrap stages the packed MAIN OS (section 3) before it unpacks it in place to main_dest (finding 01; the stage constant is in five places of section 2, 1.16 and 1.17 / 1.11 and 1.12).
+# patchkit refuses an image whose in-place unpack margin at this stage is below main_margin_min (finding 152). Default of main_margin_min: 8192.
+# Where the bootstrap (section 2) is loaded: tools that run its own depacker (tools/firmware/aplib_check.py) need it.
+boot_load = 0x80000400
+main_stage = 0x40400000
 dsp_l2_lo = 0x20000000
 dsp_l2_hi = 0x20100000
 
@@ -293,32 +325,96 @@ dsp_l2_excludes = [[0x200FA000, 0x200FE000]]
 # another). Both are the flash-image roots of the rt021 images for now. The two sets are the same
 # today (core/input and core/sample-pool, the stock sample pool adapter, are in both); a module such as digikit/remote is on exactly when its check mark in DIGIKIT > MODULES is set.
 [patch_sets]
-relay-track = ["core/relay-track", "core/digikit-menu", "core/health", "core/input"]
-emulator = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/lfo", "core/sample-pool"]
+relay-track = ["core/relay-track", "core/health", "core/input"]
+emulator = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool"]
 # Real-device image. core/usb-bulk (inert until the usb-fast module is selected) and core/plusdrive-write (the +Drive writes usb-fast uses) are in: usb-fast requires both. core/usb-bulk-audio is in too: the bulk OUT interface in USB AUDIO/MIDI, so usb-fast works without changing USB CONFIG.
-device = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/lfo", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/sdhc-large"]
+device = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/sdhc-large"]
 # `device` plus the optional black intro (core/introblank): the Workbench Firmware page picks it with its "Custom boot screen" toggle.
-device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/lfo", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/introblank", "core/sdhc-large"]
+device-introblank = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool", "core/usb-bulk", "core/usb-bulk-audio", "core/plusdrive-write", "core/introblank", "core/sdhc-large"]
 # Same roots as `emulator`; the name stays for the per-track sample tests (API 1.5).
-sample-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/lfo", "core/sample-pool"]
-# `emulator` plus core/overdrive (the OVR TYPE device test).
-overdrive-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/lfo", "core/sample-pool", "core/overdrive"]
-# Experimental exclusive phrase-FX image. Same base as emulator, plus the
+sample-tracks = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/sample-pool"]
+# Experimental exclusive phrase-FX image (PRISM's device tests). The base of emulator without core/sample-pool (about 55 KB of cf.expansion,
+# which the image does not have room for since the upstream merge of 2026-11-24; PRISM's tests load no samples), plus the
 # phrase page (core/phrase-ui), which brings the controls (core/phrase-control) and their storage (core/loop-storage).
-phrase = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/sample-pool", "core/phrase-ui"]
+phrase = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/phrase-ui"]
 
 # Overloop alone: its storage (core/loop-storage), the pattern position its engine follows (core/pattern-position) and its page (core/loop-display; it brings
 # the control home core/loop-control and the FX view dispatcher core/fxview). No phrase adapter is needed.
-overloop = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/digikit-menu", "core/health", "core/input", "core/loop-storage", "core/pattern-position", "core/loop-display"]
+overloop = ["core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui", "core/health", "core/input", "core/loop-storage", "core/pattern-position", "core/loop-display"]
 # Experimental CANOPY + Overloop qualification image; install both DKMs separately.
-canopy-overloop = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display"]
-# The hardware image of the fork: `canopy-overloop` with the phrase adapters of PRISM (core/phrase-ui; it brings core/phrase-control).
-canopy-overloop-prism = ["core/digikit-menu", "core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display", "core/phrase-ui"]
+canopy-overloop = ["core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display"]
+# The hardware image of the fork: `canopy-overloop` with the phrase adapters of PRISM (core/phrase-ui; it brings core/phrase-control) and the track keyboard
+# (core/track-keyboard: ARP and KEYS on every audio and MIDI track; it brings core/keyboard-panel). The DIGIKIT menu is part of the system package on the card.
+canopy-overloop-prism = ["core/health", "core/input", "core/instrument-play", "core/loop-storage", "core/pattern-position", "core/loop-display", "core/phrase-ui", "core/track-keyboard"]
 
 # The input backend core/input uses to press keys and turn encoders from software (docs/plans/remote-control.md). The profile chooses; `panel-uart`: the panel
 # MCU's UART packets are decoded by the firmware's own key and encoder decoders, which core/input calls (anchors by hash in the port files).
 [input]
 backend = "panel-uart"
+
+# Logical key names: name = the key's id in the firmware's key events (the id at +0xc of the event): the firmware's key index. It equals the panel code on this
+# device (the decoder tables are the identity, finding 58) and differs on the Syntakt (finding 153); it is not the wire code (channel, bit) that `dk_input_key` injects.
+# The names are the keys of the panel as the firmware labels them (tools/patchkit/pk_harness.py BUTTONS; the groups below arrange the same codes). `patchkit gen` writes the
+# C names (`dk_key`, sdk/include/dk/gen/keys.h) and, for each device, the logical name to id map of the profile and of `dkrt_dev`. A name a device lacks maps to 0.
+# Names come from `[keys] order` of sdk/sdk.toml. core/ui needs YES, NO, RIGHT and LEVEL_PUSH (the second YES key, id 49 here) by name.
+[input.keys]
+PAGE_TRIG = 1
+SRC = 2
+FLTR = 3
+AMP = 4
+FX = 5
+MOD = 6
+PRESET = 7
+SETTINGS = 8
+TEMPO = 9
+YES = 10
+UP = 11
+NO = 12
+LEFT = 13
+DOWN = 14
+RIGHT = 15
+TRK = 16
+FUNC = 17
+KEYBOARD = 18
+RECORD = 19
+PLAY = 20
+STOP = 21
+PAGE = 22
+PTN = 23
+SONG = 24
+TRIG1 = 25
+TRIG2 = 26
+TRIG3 = 27
+TRIG4 = 28
+TRIG5 = 29
+TRIG6 = 30
+TRIG7 = 31
+TRIG8 = 32
+TRIG9 = 33
+TRIG10 = 34
+TRIG11 = 35
+TRIG12 = 36
+TRIG13 = 37
+TRIG14 = 38
+TRIG15 = 39
+TRIG16 = 40
+ENC1 = 41
+ENC2 = 42
+ENC3 = 43
+ENC4 = 44
+ENC5 = 45
+ENC6 = 46
+ENC7 = 47
+ENC8 = 48
+LEVEL_PUSH = 49
+
+# The bits of the flags word (+0x10) of a key event, by meaning: set on a press (clear on a release), set while FUNC is held, set on the repeat of a held key, set on a
+# release. Read from the compact menu view's key handler (finding 71: bit 0 moves, bit 4 acts) and the key walker (finding 155) **[D]**.
+[input.key_flags]
+press = 0
+func = 1
+repeat = 3
+release = 4
 
 [panel]
 # The wire carries (channel, bit); the firmware reports a control code.
@@ -489,6 +585,11 @@ end_sector = 0x2df0180      # superblock + the erase of FUN_4015a440 (0x2818180 
 # Module and sample store (docs/design/digikit-store.md, version 3): sectors [first_sector, end_sector). DT2: after the +Drive (it ends at 0x2DF0180: finding 59), 82 MiB.
 # The last selection_sectors sectors hold the runtime's selection record; before them the settings record (settings_sectors: two copies of
 # sdk/sdk.toml [settings] sectors, 8 KiB each); header copy B is the sector before the settings record; the store's files end before it.
+# The eMMC write guard (core/card-guard) is off on this device for now: the rows are the defaults (stock = [0, store.first), runtime = the store), checked by `patchkit gen`.
+# Turning it on needs core/card-guard in every patch set that holds core/runtime and a port of the module for this device.
+[card.guard]
+enabled = false
+
 [card.store]
 first_sector = 0x2df1000
 end_sector = 0x2e1a000

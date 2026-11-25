@@ -1,7 +1,7 @@
 /* Execute real UI callbacks with a failing/in-memory card and minimal UI host. */
 #include <stdio.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/control.c"
+#include "../../../image-modules/adapters/instrument-play/src/cf/control.c"
 /* The driver plays the instance admitted on track 0 (instance 0); these names
  * keep its commands readable against the per-instance bridge. */
 #define keyboard (cur->keyboard)

@@ -15,8 +15,10 @@ export function fakeDkm(o: {
   size?: number;
   imageSize?: number;
   bssSize?: number;
+  table?: Uint8Array;
 }): Uint8Array {
-  const size = Math.max(o.size ?? 4096, 0xa0);
+  const imageOffset = 0xa0 + Math.ceil((o.table?.length ?? 0) / 16) * 16;
+  const size = Math.max(o.size ?? 4096, imageOffset);
   const b = new Uint8Array(size);
   const v = new DataView(b.buffer);
   b.set([0x44, 0x4b, 0x4d, 0x46], 0);
@@ -27,10 +29,15 @@ export function fakeDkm(o: {
   v.setUint32(0x34, o.version ?? 0);
   v.setUint32(0x38, o.role ?? 0);
   b.set(new TextEncoder().encode(o.name).subarray(0, 32), 0x40);
-  v.setUint32(0x60, 0xa0);
+  v.setUint32(0x60, imageOffset);
   v.setUint32(0x64, o.imageSize ?? 0);
   v.setUint32(0x68, o.bssSize ?? 0);
   v.setUint32(0x6c, 4);
+  if (o.table) {
+    v.setUint32(0x90, 0xa0);
+    v.setUint32(0x94, o.table.length);
+    b.set(o.table, 0xa0);
+  }
   // the hash slot: the file hash of the file with the slot left at zero
   const hash = fileHashHex(b);
   for (let i = 0; i < 32; i++) b[0x10 + i] = parseInt(hash.slice(2 * i, 2 * i + 2), 16);
@@ -130,7 +137,14 @@ export function demoStore(): StoreOps {
     mod('em/scope', 8 * KIB),
     {
       path: 'services/lfo.dks',
-      bytes: fakeDkm({ name: 'core/lfo', role: 1, version: ver(0, 4, 1), runtime, size: 6 * KIB, imageSize: 5 * KIB }),
+      bytes: fakeDkm({
+        name: 'dkrt-svc-lfo',
+        role: 1,
+        version: ver(0, 4, 1),
+        runtime,
+        size: 6 * KIB,
+        imageSize: 5 * KIB,
+      }),
     },
     { path: 'data/em/pluck/settings.bin', bytes: fill(256, 1) },
     { path: 'data/em/chorus/presets.bin', bytes: fill(1200, 2) },
@@ -149,10 +163,12 @@ export function demoStore(): StoreOps {
     cf_size: 24 * KIB,
     dsp_off: 0,
     dsp_len: 0,
+    sections: {},
     rows: 1,
     types: [1],
     faults,
     guard_off: false,
+    effects: [],
   });
   return fakeStoreOps(files, {
     free: 1440 * KIB,

@@ -2,9 +2,9 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-state.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/status.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-display.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-state.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/status.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-display.h"
 static IsStatus status;
 static uint32_t fast[12], detail[64], now = 100;
 static uint32_t detail_schema = 1;

@@ -42,7 +42,7 @@ Never commit these files.
 Check the setup after you create your first module (section 3):
 
 ```sh
-mise run module:build -- modules/machines/NAME --check     # fails when the built object in out/cache/dko is stale
+mise run module:build -- modules/machine/AUTHOR/NAME --check     # fails when the built object in out/cache/dko is stale
 ```
 
 ## 3. Start a module
@@ -53,7 +53,7 @@ mise run module:new -- KIND AUTHOR/NAME [--dir DIR] [--title T] [--short S] [--n
 
 | Part | Meaning |
 | --- | --- |
-| `KIND` | `machine`, `fx` or `tool`. |
+| `KIND` | `machine`, `fx`, `tool` or `lfo-shape` (an LFO shape module; it goes to `modules/lfo-shape/AUTHOR/NAME`). |
 | `AUTHOR/NAME` | The module id. The author has lowercase letters, digits and dashes. The name is lower snake case. `core` and `framework` are refused. |
 | `--dir DIR` | Write `DIR/NAME` instead of the repository folder. |
 | `--title T` | Display name, 1 to 23 characters. Default: the name in Title Case. |
@@ -72,9 +72,9 @@ The command copies the template, replaces the names and builds it. You start fro
 
 | Kind | Folder | Files you get |
 | --- | --- | --- |
-| machine | `modules/machines/NAME` | `module.toml`, `README.md`, `src/module.c` (the declaration), `src/dsp/NAME.s` (a sine voice with one level parameter) |
-| effect | `modules/fx/NAME` | `module.toml`, `README.md`, `src/module.c` (the declaration), `src/NAME.h` (the parameter words), `src/dsp/NAME.s` (a gain effect with one knob and a page) |
-| tool | `modules/tools/NAME` | `module.toml`, `README.md`, `src/c/NAME.c` (`init` logs a line, `fini` is empty) |
+| machine | `modules/machine/AUTHOR/NAME` | `module.toml`, `README.md`, `src/module.c` (the declaration), `src/dsp/NAME.s` (a sine voice with one level parameter) |
+| effect | `modules/fx/AUTHOR/NAME` | `module.toml`, `README.md`, `src/module.c` (the declaration), `src/NAME.h` (the parameter words), `src/dsp/NAME.s` (a gain effect with one knob and a page) |
+| tool | `modules/tool/AUTHOR/NAME` | `module.toml`, `README.md`, `src/c/NAME.c` (`init` logs a line, `fini` is empty) |
 
 The command ends with the next commands: `module:check`, `module:pack` and `dk:run -- AUTHOR/NAME --emu --seconds 10` (section 8).
 `dk:run --emu` needs a running emulator: start `mise run workbench` in another shell first. To change a module and see it on the screen in a few
@@ -149,7 +149,7 @@ release. A tool has neither list.
 
 `[[record]]` lists a record of a generic kind that `init` emits with `dk_record_add` (a kind that a service owns and that has no builder, such as `lfo_shape`): `kind` is the kind's lower-case name from `sdk/sdk.toml` `[records.kinds]` and `id` a local name for the record (the shape of an `lfo_shape`). Its key is `hash24(<module id>:<id>) << 8`: `patchkit gen` writes it to `build/gen/module_ids.h` as `DK_KEY_<ID>`, and `init` writes that constant as the first word of the record body. The packer writes the keys into the header table, so the boot planner refuses a kind no service owns and a key that another module of the selection has before the module loads. Machines and effects are builder calls, not `[[record]]`.
 
-An `lfo_shape` record is an LFO waveform: the body is the key (`DK_KEY_<ID>`), a 4-character name (space to tilde; the Digitone II shows the first 3) and 32 samples of `int16` (Q15), 72 bytes after the 8-byte record header (80 bytes). The `lfo` service gives the shape a value of the LFO WAVE parameter from 7 up (kept across boots in the settings key `lfo.shapes`, never 0x80 or more), and the LFO tick reads the samples with linear interpolation, 32-bit phase to Q31. A shape with no negative sample is unipolar. The service refuses a record whose key the module's header table (`[[record]]`) does not list. A sound that holds the number shows ERR and runs like RAND without the service, and runs as the triangle when the module is not loaded. Start from `module:new -- lfo AUTHOR/NAME` (`sdk/templates/lfo`).
+An `lfo_shape` record is an LFO waveform: the body is the key (`DK_KEY_<ID>`), a 4-character name (space to tilde; the Digitone II shows the first 3) and 32 samples of `int16` (Q15), 72 bytes after the 8-byte record header (80 bytes). The `lfo` service gives the shape a value of the LFO WAVE parameter from 7 up (kept across boots in the settings key `lfo.shapes`, never 0x80 or more), and the LFO tick reads the samples with linear interpolation, 32-bit phase to Q31. A shape with no negative sample is unipolar. The service refuses a record whose key the module's header table (`[[record]]`) does not list. A sound that holds the number shows ERR and runs like RAND without the service, and runs as the triangle when the module is not loaded. Start from `module:new -- lfo-shape AUTHOR/NAME` (`sdk/templates/lfo-shape`, section 5.10).
 
 `[uses.dt2]` and `[uses.dn2]` hold the rows the module takes on each device: `machine_rows`, `param_rows`, `page_rows`, `record_bytes`, and the DSP cost
 (`dsp_cost_voice` for a machine, `dsp_cost_fx` for an effect: instructions per block). `module:check` runs `init` in the emulator and the conformance
@@ -171,7 +171,7 @@ A manifest with `[[voice]]`, `[[param]]` or `[[page]]` is refused: parameters an
 
 ### 5.2 Declaring a machine
 
-A machine is declared in `init`. This is `modules/machines/analog/src/module.c`:
+A machine is declared in `init`. This is `modules/machine/fadedlimes/analog/src/module.c`:
 
 ```c
 #include <dk/core/module.h>
@@ -262,7 +262,7 @@ The glyph constants are in `<dk/gen/page_consts.h>`:
 Glyphs on effect parameters are not supported yet.
 
 Scaling the word: the stock DSP converts a word to a float with the scale 1/32512 (0x7f00 = 1.0). Your routine may use any scale. Document
-it in the source header, as `modules/machines/pluck/src/dsp/pluck.s` does.
+it in the source header, as `modules/machine/digikit/pluck/src/dsp/pluck.s` does.
 
 Put the word numbers in a header in the module's `src/` when C and assembly both need them (`shot_params.h` of SHOT). Use only decimal
 `#define`s and `//` comments on their own line: the SHARC+ assembler keeps a trailing comment in the macro text and upper-cases macro text.
@@ -288,7 +288,7 @@ Rules that follow:
 
 ### 5.4 Declaring an effect
 
-An effect is declared in `init` too. This is `modules/fx/freqshift/src/module.c`:
+An effect is declared in `init` too. This is `modules/fx/digikit/freqshift/src/module.c`:
 
 ```c
 #include <dk/core/module.h>
@@ -320,7 +320,7 @@ With the module id, the effect `id` makes the effect ID of saved kits. Never ren
 | Call | Meaning |
 | --- | --- |
 | `dk_module_ctx_add_fx(ctx, index, name, short_name)` | Declares the effect. `index` is `DK_FX_ID_<ID>`. |
-| `dk_fx_routes(fx, allowed, def)` | The routes the user may choose in SETTINGS > DIGIKIT > FX ROUTES (`DK_ROUTE_MASTER`, `DK_ROUTE_SEND`, or-ed) and the route at the start. Without this call: master only. |
+| `dk_fx_routes(fx, allowed, def)` | The routes the user may choose in SETTINGS > FX ROUTING (`DK_ROUTE_MASTER`, `DK_ROUTE_SEND`, or-ed) and the route at the start. Without this call: master only. |
 | `dk_fx_mix(fx, def)` | The default of the framework's MIX knob, 0 to 127. Default: 127. |
 | `dk_fx_add_page(fx, name, short_name)` | The effect's page. `name` is the title, 1 to 23 characters (mixed case: "Freq Shifter"). `short_name` is the tab label, 1 to 3 characters. An effect with a page has its own page after CHO in FUNC + FX. A send route needs a page. |
 | `dk_page_add_fx_param(page, name, short_name, kind, min, max, def)` | A float parameter on the next knob of the page. |
@@ -345,7 +345,7 @@ it, because the build searches `src/` for both (same rules for `#define` as in s
 
 ### 5.5 Canvas pages
 
-A machine page may be drawn by the module instead of the stock knob display. SHOT is the example (`modules/machines/shot/src/module.c`):
+A machine page may be drawn by the module instead of the stock knob display. SHOT is the example (`modules/machine/digikit/shot/src/module.c`):
 
 ```c
 dk_page *controls = dk_machine_add_page(m, "SHOT", "SHT");
@@ -429,6 +429,45 @@ A run-time module keeps its own values with the settings imports of `<dk/platfor
 - The module owns the layout and the version of its values: write a version byte first and read older values or reset them. The runtime never interprets them.
 - The settings popup is the module's `menu` function with the `dk_ui_menu_add_*` rows: a row changes a value and its callback calls `dk_settings_put`; `init` reads it at the next boot.
 
+#### Public settings in Workbench
+
+Add `workbench.toml` beside `module.toml` to declare the settings Workbench can edit.
+
+```toml
+[workbench]
+version = 1
+
+[[setting]]
+id = "boot"
+label = "Boot value"
+type = "text"
+max_bytes = 16
+
+[[setting]]
+id = "active"
+label = "Boot screen"
+type = "file-name"
+max_bytes = 47
+apply = "next-restart"
+extension = "dkbs"
+reset_label = "Stock"
+```
+
+Each `id` is a unique key in the module's settings namespace. A `text` setting stores UTF-8 text up to `max_bytes` (1 to 64).
+A `file-name` setting stores a file's leaf name in the module's data directory. The `extension` uses 1 to 16 lowercase ASCII letters or digits
+without a leading dot. Choose a `max_bytes` that fits a stem, dot and extension, up to 47 bytes. The optional
+`reset_label` names the choice that removes the setting and defaults to `None`.
+Set `apply = "next-restart"` when the module reads the value at boot. The default is `"immediate"`.
+The descriptor uses `[module].name` and the field labels as UTF-8 display text. Each name or label uses 1 to 255 bytes, and the complete
+descriptor fits in 512 bytes.
+
+Include `<dk/gen/imports.h>` and `<workbench_descriptor.h>` in the ColdFire C source. Call
+`dk_workbench_register(ctx, dk_workbench_descriptor, sizeof dk_workbench_descriptor)` during `init` after setup. The import requires
+runtime 0.11.4. The runtime publishes the descriptor once the module is loaded.
+Read the stored bytes with `dk_settings_get` using the declared `id`.
+Patchkit provides the generated header during `module:build` and on demand during `module:pack`. An exported module carries `workbench.toml`
+and regenerates the header on build.
+
 ### 5.9 Module files and `dk_intro_take`
 
 A module's own files live under `data/<module id>/` in the store, not next to the `.dkm`: the `modules/` list holds at most 32 entries. `dk_data_path` (`<dk/platform/data.h>`)
@@ -445,8 +484,25 @@ in `init`, then call it.
 - A fault in `frame` reaches the firmware's handler. The boot counter stays raised, so repeated failed boots end in safe mode.
 - In a safe boot no module loads, so `dk_intro_take` is never called. The runtime itself replaces the stock intro with a fixed safe-mode screen for 4 s: `SAFE MODE`, the reason (`REC HELD`, `2 FAILED BOOTS`, `SAFE ONCE`, `DSP FAULT`, `CRASH` or `SELECTION UNREADABLE`) and `NO MODULES LOADED`.
 
-See `modules/tools/bootscreen`.
+See `modules/tool/tools/bootscreen`.
 
+
+### 5.10 An LFO shape module
+
+```sh
+mise run module:new -- lfo-shape alice/wobble     # modules/lfo-shape/alice/wobble
+mise run module:check -- alice/wobble
+```
+
+A module of kind `lfo-shape` adds LFO waveforms to the WAVE parameter of the three LFOs of every track. It declares one `[[record]]` with `kind = "lfo_shape"` for each shape; `src/module.c` holds a table `SHAPES` (a 4-character name and 32 literal `int16` samples, Q15, one period) and a table `KEYS` (the `DK_KEY_<ID>` of each record, same order), and `init` adds one record per shape with `dk_record_add`. The README of the module lists each shape's name, its 3-character form and the formula of its samples.
+
+Limits:
+
+- A module has 1 to 8 shapes (the service's table of keys per module). All modules together have 8 shapes loaded; a ninth is refused at load (`E_TABLE_FULL`).
+- A name has 4 characters, space to tilde, and is used once in the module. No two names of a module share their first 3 characters (the Digitone II shows 3).
+- A shape is not flat (all samples equal) and not all zero.
+
+`module:check` runs `init` in the emulator, reads the records the module committed and checks them with `validate_records` of the `lfo` service, the rule the service runs at load (`patchkit records --check`). It prints each problem and fails. The same command is `patchkit records --check FILE|-` for a block of records. The check needs the emulator, like the check of a machine or an effect.
 
 ## 6. Generated files
 
@@ -584,10 +640,10 @@ The template `src/dsp/NAME.s` shows all of this in about 90 lines. Read it first
   `core/fxpages` in its module list (they are in its `device` patch set).
 - Text is printable ASCII. Write titles in mixed case. The firmware font draws a capital Q like an O.
 - Routes: a send effect gets the sum of the tracks' send amounts as its input block. Its wet output times MIX is added to the FX return. The
-  user chooses the route in SETTINGS > DIGIKIT > FX ROUTES (the setting `fx/route/<module id>`). A stored route that the effect no longer allows is
+  user chooses the route in SETTINGS > FX ROUTING (the setting `fx/route/<module id>`; a pick reloads the module, so the effect keeps no state across it). A stored route that the effect no longer allows is
   ignored. Pass `DK_ROUTE_MASTER` only for a gain or limiter or any effect with a dry path of its own, `DK_ROUTE_SEND` only for a pure return such as a reverb, and
   both for the rest. The send amounts live in the settings store and the DSP row, never in your state or in a kit file. FUNC + FX lists DEL, REV,
-  CHO, the send effects, then the master effects. A changed route takes effect after a restart. The runtime refuses an unknown route, empty
+  CHO, the send effects, then the master effects. A changed route takes effect at once through a reload of the module; while the transport plays, at stop. The runtime refuses an unknown route, empty
   `allowed` routes, a default route that `allowed` does not list, and any send route without a page (`dk_fx_routes`).
 - A centred knob: `DK_BIPOLAR`, `min = -64`, `max = 63`, `def = 0`. A mapping with `2^x - 1` and no constant term gives exactly 0.
   A send effect with MIX default 127 changes nothing until a track has a send amount. On the master the same default means fully wet, so say in the
@@ -595,7 +651,7 @@ The template `src/dsp/NAME.s` shows all of this in about 90 lines. Read it first
 - Clamp the output to +-7.9. An input at the level bound times a filter's overshoot would otherwise refuse the block. Use an integer phase
   accumulator for anything that must not drift.
 - Fixtures: `dyn-fx-gain` (insert), `dyn-fx-gain-send`, `-both`, `-sendonly`, `-bipolar` ([fixture table](TESTING.md#fixture-table)). A real effect with a
-  float32 reference model: `modules/fx/freqshift`.
+  float32 reference model: `modules/fx/digikit/freqshift`.
 - The instruction budget of the conformance suite is `patchkit budget` (about 31,000 for the effect today, 900 for the adapter). Read it
   from the report in `dist/conformance-rig`. The worst call it measures is written as `dsp_cost_fx`.
 
@@ -661,13 +717,12 @@ the DSP section. `dk_sample_pool_open(ctx, &pool)` gives the handle in `init`;
 root-relative path of a `DK_FILES_SAMPLES` listing row (`KICKS/K1`); the runtime adds the device root (DT2 `/`, DN2 `samples/`), and a DT2 path
 that already starts with `/` stays as it is. `dk_sample_pool_set(pool, index, path)` loads a file into that entry and replaces what was there (the old file is released; a file another entry holds is shared). `dk_sample_pool_clear(pool, index)` leaves a hole: indexes are stable, nothing moves. A machine picks
 the entry of a note in its DSP, usually from a parameter (SHOT: SMP, word 0, `word >> 8`); an entry that is not READY is silent.
-`dk_sample_pool_path(pool, index, buf, cap)` gives the path back in the same form, in every state but UNUSED. The pool list is kept per
-project. The runtime closes an entry's old generation before it publishes a new record.
+`dk_sample_pool_path(pool, index, buf, cap)` gives the path back in the same form, in every state but UNUSED. The pool list is not kept by the runtime: a sampler that uses the picker below gets it in its settings, per project while the `project` service is loaded. The runtime closes an entry's old generation before it publishes a new record.
 
-A sampler machine can add the on-device sample picker with `<dk/sample/picker.h>`: include the header and call `dk_sample_picker_init(pool, files, ui)` in `init` (with the handles from `dk_sample_pool_open`, `dk_files_open` and `dk_ui_open`) and `dk_sample_picker_fini()` in
+A sampler machine can add the on-device sample picker with `<dk/sample/picker.h>`: include the header and call `dk_sample_picker_init(pool, files, ui, settings)` in `init` (with the handles from `dk_sample_pool_open`, `dk_files_open`, `dk_ui_open` and `dk_settings_open`; the picker keeps the 16 paths under the settings keys `pool.0` to `pool.15` and sets them again at the next init) and `dk_sample_picker_fini()` in
 `fini`, and call `dk_sample_picker_open_pool(current, pick, arg)` from the click action of the SMP parameter. The picker shows the 16
 slots; YES on a slot opens the file browser for that slot, and YES on a file loads it there (`dk_sample_pool_set`). `pick(arg, index)` runs after a file was loaded, and the machine sets its SMP value to `index`.
-`modules/machines/shot` is the example (design: [sample picker](design/sample-picker.md)). Without `core/ui` the picker does nothing.
+`modules/machine/digikit/shot` is the example (design: [sample picker](design/sample-picker.md)). Without `core/ui` the picker does nothing.
 
 For reusable browsing, include `<dk/platform/files.h>` and open the `dk_files` handle in `init` (`dk_chooser_*` of `<dk/chooser/chooser.h>` is the ready-made list).
 `dk_files_list(files, root, path, notify, arg)` copies a canonical root-relative NUL-terminated path and returns a positive request ticket;
@@ -717,13 +772,68 @@ Another range is a change to `sdk/sdk.toml`. Run `mise run gen:modules` after it
 wait. The request body is at most 160 bytes. The reply body is at most 879 bytes. Return the reply length, or a negative status.
 
 
+#### Card services with a local API
+
+[Freqshift](../modules/fx/digikit/freqshift/src/module.c) uses the SDK's FX builders, whose implementation lives in the FX provider. A service can publish its own API when its author owns the function contracts and their compatibility. See [Choosing an API](ARCHITECTURE.md#choosing-an-api) for the public SDK, provider-defined imports and optional resident app queries.
+
+The provider uses
+`role = "service"` and `service = "my-service"` in `[module]`. Its module ID ends in
+`/my-service`, and it installs as `services/my-service.dks`. Choose an unreserved name of at
+most 50 lowercase ASCII letters, digits, hyphens or underscores. The module version is the version
+of the API it provides.
+
+The provider lists each exported global ColdFire function in its manifest and declares the same
+exports from `init`. For Rust providers using `dkrt_svc_rt::service!`, use its
+`exports = [("my_service_ping", api::my_service_ping)]` form. A provider that owns state is an owner
+object that implements `Provider` (and the traits of the parts it adopts); its `service!` call names
+them: `service!(MyService, "my-service", &[], parts = [Tick], hooks = [], fills = [], exports = [...])`.
+
+A hook name may appear once per disjoint device set (`devices` in `[[hook]]`): the loader takes the entry for its own device and refuses a duplicate.
+
+```toml
+[[export]]
+name = "my_service_ping"
+```
+
+The consumer declares the provider and minimum compatible version in its manifest. Its ColdFire
+object must link every listed symbol. Put the ABI declaration in a header or Rust module shared
+with consumers. The packer writes a hard service dependency and the loader binds the function
+to that provider. A compatible provider has the same major version and is at least the declared
+minimum. Loading the consumer selects the service. Merely placing the provider on the card does
+not load it.
+
+```toml
+[[service_import]]
+service = "my-service"
+min_version = "1.2.0"
+names = ["my_service_ping"]
+```
+
+The optional `callback_order` in the provider's `[module]` is an unsigned integer. The core
+walks registered service rows after its in-image rows, in ascending order, breaking ties by service
+name. It does not use this order to initialize packages or resolve dependencies. A service without
+an order follows the explicitly ordered services. The six shipped services carry orders 100
+through 600. Metadata-less copies of those six retain their previous positions.
+
+Pack the service with `patchkit pack test/local-ping --device dn2 -o /tmp/local-ping.dks`.
+See the working [local-ping provider](../tests/fixtures/modules/local-ping/module.toml)
+and [consumer](../tests/fixtures/modules/local-ping-user/module.toml). Use `patchkit services --device dn2 FILE.dkm`
+to show the providers a packed consumer needs. Add `--pack-dir DIR` to pack those providers and
+their dependencies for a fresh card. For a repo service under `services/`,
+`mise run module:check service/NAME` checks the crate and its declarations.
+
+Runtime 0.11.1 adds the callback-order and local API metadata. Build these files with its
+patchkit. Transfer checks that runtime minimum before uploading a selection with those
+dependencies. Older metadata-less SDK packages still load on 0.11.1, and SDK-provided imports
+retain their usual declarations and inference.
+
 ## 8. Build, check, pack, run
 
 | Task | Command | What it does |
 | --- | --- | --- |
 | Build | `mise run module:build -- PATH [--check]` | Compiles the sources to objects in `out/cache/dko/<id>/` (`patchkit build`). `PATH` is the module folder or the module id; no path builds every module. An object whose sources did not change is skipped. `--check` fails when the objects are stale; `--force` compiles anyway. `patchkit dko show FILE` prints what an object holds. |
 | Check | `mise run module:check -- ID [--device dt2\|dn2]` | See below. |
-| Memory audit | `mise run module:audit -- NAME [--device dt2\|dn2]` | Packs the module and the run-time modules it requires, loads them on a ColdFire-only emulator, drives the UI and reports ColdFire stores outside the module's blocks (pc, address, the code it belongs to). It runs the Vitest device test `modules/core/runtime/tests/memaudit-module.device.test.ts` through `tools/devtools/module_audit.sh`, which first builds the patchkit CLI and the daemons when they are stale. About 1 to 2 minutes per device. |
+| Memory audit | `mise run module:audit -- NAME [--device dt2\|dn2]` | Packs the module and the run-time modules it requires, loads them on a ColdFire-only emulator, drives the UI and reports ColdFire stores outside the module's blocks (pc, address, the code it belongs to). It runs the Vitest device test `runtime/core/tests/memaudit-module.manual.device.test.ts` through `tools/devtools/module_audit.sh`, which first builds the patchkit CLI and the daemons when they are stale. About 1 to 2 minutes per device. |
 | Pack | `mise run module:pack -- ID --device dt2\|dn2 [-o FILE]` | Builds the objects that are stale and makes the `.dkm` from them in one command (no separate build step). Default: `out/patch/NAME-DEVICE.dkm`. It refuses a module that cannot be packed, for example one with no `dk_module`. |
 | Pack all | the workbench app | Builds and packs the run-time modules of a device in-process when its library is read (the Transfer page, the memory panel, the default modules), into `out/modules/<device>/<id>.dkm`. |
 | Emulator | `mise run workbench` | Starts the emulator. Run it in another shell. |
@@ -767,7 +877,7 @@ After the tests pass, `module:check` packs the module for each device. It prints
 | Limit | Digitakt II | Digitone II |
 | --- | --- | --- |
 | Modules at once | 8 | 8 |
-| Module file | 64 KiB | 64 KiB |
+| Module file | 128 KiB | 128 KiB |
 | ColdFire memory, all modules | 512 KiB | 512 KiB |
 | DSP area, all modules | 512 KiB | 320 KiB |
 | Machine types and voice rows | 8 | 8 |
@@ -793,7 +903,7 @@ At boot the runtime gives each selected module a state: SELECTED, then PLANNED o
 - `E_INIT`: `init` returned non-zero. `E_DECL_KIND`: the header table has record kinds, slots, hooks or exports that `init` did not declare. Both end FAILED.
 - other codes (`E_NOMEM`, `E_DSP_*`): the load failed after the plan accepted the module.
 
-In safe mode no module loads and every one is SKIPPED. The table of every code with the tests that prove it is `modules/core/runtime/tests/refusal/refusal-table.ts`.
+In safe mode no module loads and every one is SKIPPED. The table of every code with the tests that prove it is `runtime/core/tests/refusal/refusal-table.ts`.
 
 ## 10. Versions and compatibility
 

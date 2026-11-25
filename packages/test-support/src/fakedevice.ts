@@ -1,7 +1,7 @@
 // A fake digikit device that speaks the SysEx protocol of docs/design/digikit-upload.md byte for byte (framing included), as a `DkTransport` for
 // `DkSession`: files, a selection, a log, modules, and a RESTART that is silent for a while and then boots again. Shared by the site's dktransfer.test.ts and
 // the screenshot runs of the site's Transfer page (tools/devtools/web_transfer_shots.mjs).
-import { decode8in7, encode8in7, fileHash, type DkTransport } from '@digi/dk-session';
+import { decode8in7, encode8in7, fileHash, serviceHash, type DkTransport } from '@digi/dk-session';
 import { CAP, CAPACITY_KINDS, CMD, LOG_KIND, SERVICE_CMD } from '@digi/dk-session/gen_proto';
 
 /** The store's hash slot of a file (the host's `fileHash`: what the real runtime keeps in its table). */
@@ -42,6 +42,8 @@ export class FakeDevice implements DkTransport {
   caps: number | null = null; // INFO's capability word (null: every capability)
   loadFailures: { name: string; result: number; needs?: string; state?: number; detail?: [number, number] }[] = []; // LOADS: the modules of the boot selection that did not load (state: [load.state], default FAILED; version 2 record)
   imageId: string | null = null; // INFO's image id as 16 hex digits (null: the runtime before 0.5.2, which sends none)
+  svcAbi: number | null = null; // INFO's service ABI fingerprint after the image id (null: none; needs `imageId`)
+  fwId: string | null = null; // INFO's firmware identity as 16 hex digits after `svcAbi` (null: none; needs `svcAbi`)
   arenaLimit = 1000; // CAPACITY's ARENA and DSP_AREA limits (bytes)
   dspLimit = 1000;
   arenaLargest = 300; // the largest free block of each
@@ -124,6 +126,8 @@ export class FakeDevice implements DkTransport {
             be32(0x000204),
             be32(this.caps ?? Object.values(CAP).reduce((a: number, bit) => a | (1 << bit), 0)),
             this.imageId ? Uint8Array.from(Buffer.from(this.imageId, 'hex')) : [],
+            this.imageId && this.svcAbi !== null ? be32(this.svcAbi) : [],
+            this.imageId && this.svcAbi !== null && this.fwId ? Uint8Array.from(Buffer.from(this.fwId, 'hex')) : [],
           ),
         );
       }
@@ -185,6 +189,16 @@ export class FakeDevice implements DkTransport {
         const [path] = this.pathOf(body);
         return this.files.delete(path) || this.dirs.delete(path) ? ok() : err(ST.E_NOFILE);
       }
+      case CMD.RENAME: {
+        const [from, at] = this.pathOf(body);
+        const [to] = this.pathOf(body.subarray(at));
+        const f = this.files.get(from);
+        if (!f) return err(ST.E_NOFILE);
+        if (this.files.has(to)) return err(-51);
+        this.files.delete(from);
+        this.files.set(to, f);
+        return ok();
+      }
       case CMD.READ: {
         const [path, at] = this.pathOf(body);
         const f = this.files.get(path);
@@ -226,6 +240,8 @@ export class FakeDevice implements DkTransport {
         this.loaded = this.selection.map((p) => `mod:${p}`);
         return ok();
       case CMD.MODULES: {
+        // the record of runtime 0.13.0 (`MODULE_SECTIONS`, packages/dk-session/src/modules-reply.ts): the fixed part to dsp_len, then the sections; one machine
+        // type, 17, in the `machines` section (rows, faults, the type count with the guard flag in bit 8, types 0 to 3, types 4 to 7)
         const entry = (name: string, i: number) => {
           const nm = new Uint8Array(32);
           nm.set(Buffer.from(name));
@@ -234,15 +250,19 @@ export class FakeDevice implements DkTransport {
             nm,
             be32(0x10000),
             be32(0x204), // needs: the runtime version
-            [0, 0, 0, 0],
+            [0, 0, 0, 0], // no UI instance token
             be32(0x47e8b000),
             be32(256),
             be32(0),
             be32(0),
-            be32(1),
-            [1, 17],
-            be32(0),
-            [0],
+            [1], // one section
+            be32(serviceHash('machines')),
+            [5],
+            be32(1), // rows
+            be32(0), // faults
+            be32(1), // one type, guard on
+            be32(17), // types 0 to 3
+            be32(0), // types 4 to 7
           );
         };
         return ok(

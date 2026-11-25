@@ -15,7 +15,7 @@ PINNED = (
 @pytest.fixture(scope="module")
 def protected_object():
     source = (
-        REPO_ROOT / "modules/core/adapters/instrument-registry/src/dsp/protected.s"
+        REPO_ROOT / "image-modules/adapters/instrument-registry/src/dsp/protected.s"
     ).read_text()
     source += "\n.SECTION/PM seg_pmco;\n.GLOBAL _test_entry;\n_test_entry:\n"
     for name, value in zip(MRS, MR_WORDS, strict=True):

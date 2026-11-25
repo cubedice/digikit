@@ -51,7 +51,7 @@ columns the FX view's page indicator owns; this is from before this change (find
 
 ## The fx service: no PRS cell, and what it means for other send effects
 
-The smallest change found, in `modules/core/services/fx/src/fxsend.rs` and `phrase.rs`:
+The smallest change found, in `services/fx/src/fxsend.rs` and `phrase.rs`:
 
 - `fxsend::apply`: when the row is the phrase effect's and the image has `phrase_sends`, a send route (`route` 1) is given
   without a cell of the send page; no parameter row is written, `used` (the send slots) is not counted, `fx/send/<id>` is
@@ -80,7 +80,7 @@ they were (the windows, hashes, addresses and modes of git `98409b9ad`), now own
 | `cf.page.hook.phrase_key_dispatch`, before | `cf.page.site.phrase_key_dispatch`, the primary ViewController key dispatcher (`0x4011c79c`) | `phrase_key_dispatch`: a TRIG event goes to the model while G holds the selection on the page on top, or when it is the release of a TRIG key the model took; everything else goes on unchanged |
 | `cf.page.hook.phrase_led_set`, before | `cf.page.site.phrase_led_set`, the LedManager setter (`0x400308e0`) | `phrase_led_set`: while G holds the selection, logical LEDs 26 to 41 get the page's value at layer 2; the next LED frame clears every claim |
 
-`devices/fw/phrase-ui.toml` has the two sites and the two hooks again; the DT2 1.17 port file the four entries, by hand
+`ports/fw/phrase-ui.toml` has the two sites and the two hooks again; the DT2 1.17 port file the four entries, by hand
 (two anchors, two hooks), since `mise run patch:port` stops at an unrelated anchor in this checkout (finding 359; not run
 here). The image applies, passes preflight and verify, and boots in every device test below. No hook into audio code was
 added.

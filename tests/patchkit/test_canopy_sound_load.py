@@ -24,7 +24,7 @@ def test_sound_loader_window_matches_image():
         hashlib.sha256(main).hexdigest()
         == "a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964"
     )
-    decl = tomllib.loads((ROOT / "devices/fw/machine.toml").read_text())
+    decl = tomllib.loads((ROOT / "ports/fw/machine.toml").read_text())
     site = next(
         s for s in decl["site"] if s["name"] == "cf.machine.site.sound_deserialize"
     )

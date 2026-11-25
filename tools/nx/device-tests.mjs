@@ -2,16 +2,17 @@
 // conformance, test-only and regression nodes. The cache keys are in device-test-keys.mjs; build and pack targets are in module-build.mjs.
 import { globSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { noDspShorts } from './device-files.mjs';
 import { checkAcceptanceTags } from './acceptance-tags.mjs';
-import { mergeTests, manifestClosure, read, records } from './module-manifests.mjs';
+import { isUploadable, mergeTests, manifestClosure, read, records } from './module-manifests.mjs';
 import {
   DEVICE_INPUTS,
   VITEST_SETUP,
-  bindableIds,
-  builtSourceExclusions,
+  serviceIds,
   deviceInputs,
   forDevice,
   serviceLeaves,
+  withoutDriver,
 } from './device-test-keys.mjs';
 
 export const IMAGE_BUILD = { target: 'build-objects', projects: ['tag:acceptance-image'] };
@@ -22,11 +23,16 @@ export const DEVICE_BYTES = 'patchkit:device-bytes';
 export const DEVICE_IMAGES = 'patchkit:device-images';
 // Writes the `needs` verdict of the packs in tests/regression/runtime/needs-packs.json (tools/nx/pack-verdicts.mjs).
 export const PACK_VERDICTS = 'patchkit:pack-verdicts';
-// The host assembly tests of the runtime (modules/core/runtime): the seams between the real packed outputs. No device task starts while they fail.
+// The system package every harness card carries (tests/regression/runtime/system-package.ts).
+export const SYSTEM_PACKAGE = 'core/runtime:package';
+// The host assembly tests of the runtime (runtime/core): the seams between the real packed outputs. No device task starts while they fail.
 export const TEST_ASSEMBLY = 'core/runtime:test-assembly';
 // Tasks every device task depends on: the patchkit binary, the daemons and the runtime assembly tests. Their projects are the
 // shared inputs of every device test (`test:subset --base` cannot select by path for them).
 export const SHARED_TASKS = ['patchkit:cli', 'digi-control:daemons', TEST_ASSEMBLY];
+// The daemon of the devices without a SHARC DSP (cargo.mjs `daemon-nodsp`, dist/bin/digi-emud-nodsp).
+export const DAEMON_NODSP = 'digi-control:daemon-nodsp';
+const NO_DSP = noDspShorts();
 export const SHARED_PROJECTS = SHARED_TASKS.map((task) => task.split(':')[0]);
 // Device and conformance tasks run behind this wrapper: it takes one machine-wide emulator slot. It only schedules and is
 // no input: it cannot change a result, and Nx does not cache failures.
@@ -52,12 +58,15 @@ export const deviceTarget = (
   uploadable = false,
   opts = {},
 ) => {
-  const dependsOn = [...SHARED_TASKS, IMAGE_BUILD, DEVICE_BYTES, DEVICE_IMAGES, PACK_VERDICTS];
+  const dependsOn = [...SHARED_TASKS, IMAGE_BUILD, DEVICE_BYTES, DEVICE_IMAGES, PACK_VERDICTS, SYSTEM_PACKAGE];
   if (uploadable) dependsOn.push('pack');
   for (const rec of recs) {
     for (const id of rec.modules ?? []) {
       dependsOn.push(`${id}:pack`);
-      if (opts.bindable?.has(id)) dependsOn.push(`${id}:bind`); // a service with hooks: the bound file the tests copy to the card
+      // a service: the port file that goes on the card with it; the test fixture service takes the port file of the test image (it lists the fixture's hook, which a
+      // production port file does not)
+      const portTask = id === 'test/svc-test' ? 'patchkit:ports-test' : 'patchkit:ports';
+      if (opts.serviceIds?.has(id) && !dependsOn.includes(portTask)) dependsOn.push(portTask);
     }
     if (Object.keys(rec.aliases ?? {}).length) dependsOn.push('pack-aliases');
     if (rec.plusdrive) dependsOn.push('plusdrive-format:cli');
@@ -134,6 +143,10 @@ export const deviceTargets = (
     devices.forEach((device, i) => {
       split[halves[i]] = {
         ...target,
+        // a device outside the acceptance devices has no daemon key, image hashes or patchkit key in dist/bytes, so a cached result could not follow its inputs
+        ...(ALL_DEVICES.includes(device) ? {} : { cache: false }),
+        // a device without a SHARC DSP has no entry in dist/daemons.json: its daemon is the build without a core
+        ...(NO_DSP.includes(device) ? { dependsOn: [...target.dependsOn, DAEMON_NODSP] } : {}),
         inputs: [...forDevice(target.inputs, device), { env: 'DIGI_DEVICE' }],
         options: { ...target.options, env: { ...target.options.env, DIGI_DEVICE: device } },
       };
@@ -142,8 +155,10 @@ export const deviceTargets = (
   return split;
 };
 
+// What a file without `devices` runs on: the devices with a ready snapshot. A device that boots cold (`st`) is named by the file.
 const ALL_DEVICES = ['dt2', 'dn2'];
-const unionDevices = (lists) => ALL_DEVICES.filter((d) => lists.some((list) => list.includes(d)));
+const KNOWN_DEVICES = ['dt2', 'dn2', 'st'];
+const unionDevices = (lists) => KNOWN_DEVICES.filter((d) => lists.some((list) => list.includes(d)));
 
 // The devices a device test file runs on (docs/TESTING.md "Nx gate"): the `devices` of the runtimeAcceptance records that
 // list the file, else `projectDevices` (the pack devices of a module project), else both. A file that the records do not list
@@ -152,8 +167,8 @@ export const fileDevices = (file, recs, projectDevices) => {
   const own = recs.filter((rec) => rec.files?.includes(file));
   const declared = own.filter((rec) => rec.devices !== undefined);
   for (const rec of declared)
-    if (!Array.isArray(rec.devices) || !rec.devices.length || rec.devices.some((d) => !ALL_DEVICES.includes(d)))
-      throw new Error(`metadata.runtimeAcceptance devices of ${file} must be a list of dt2 and dn2`);
+    if (!Array.isArray(rec.devices) || !rec.devices.length || rec.devices.some((d) => !KNOWN_DEVICES.includes(d)))
+      throw new Error(`metadata.runtimeAcceptance devices of ${file} must be a list of ${KNOWN_DEVICES.join(', ')}`);
   const list = declared.length ? unionDevices(declared.map((rec) => rec.devices)) : (projectDevices ?? ALL_DEVICES);
   if (!list.length) throw new Error(`${file} has no device to run on`);
   return list;
@@ -174,12 +189,13 @@ const fileTargets = (
   const merge = opts.mergeTests ?? [];
   const isMerge = (test) => !opts.twin || merge.includes(test);
   // `merge`: the key of the merge target (the target everything selects); the `-all` twins keep the full key.
-  const build = (list, narrow, recList = recs, merge = false, fullTier = false) =>
+  const build = (list, narrow, recList = recs, merge = false, fullTier = false, siblingTests = []) =>
     deviceTarget(root, list, recList, imageInput, importInputs, pythonInputs, uploadable, {
       ...opts,
       narrow,
       merge,
       fullTier,
+      siblingTests,
     });
   if (tests.length === 1) {
     const [test] = tests;
@@ -196,22 +212,28 @@ const fileTargets = (
     const own = recs.filter((rec) => rec.files?.includes(test));
     const narrow = !isMerge(test);
     // A sibling test file is not an input. This file's own closure comes from importInputs.
-    const make = (isNarrow, merge = false, fullTier = false) => {
-      const target = build([test], isNarrow, own.length ? own : recs, merge, fullTier);
-      target.inputs.push('!{projectRoot}/**/*.device.test.ts');
-      return target;
-    };
+    const make = (isNarrow, merge = false, fullTier = false) =>
+      build(
+        [test],
+        isNarrow,
+        own.length ? own : recs,
+        merge,
+        fullTier,
+        tests.filter((t) => t !== test),
+      );
     targets[child] = make(narrow, Boolean(opts.twin));
     if (opts.twin) all[`${allName}--${suffix}`] = make(false, false, true);
   }
-  // Nx selects a target by its inputs, so the parents keep the inputs of the whole project.
+  // Nx selects a target by its inputs, so the parents keep the inputs of the whole project: the merge parent the merge key
+  // (without the driver packages), the `-all` parent the full key.
   const { inputs } = build(tests, false);
+  const mergeInputs = opts.twin ? build(tests, false, recs, true).inputs : inputs;
   const children = Object.keys(targets);
   if (opts.twin) {
     for (const [key, value] of Object.entries(all)) if (typeof value !== 'string') targets[key] = value;
     targets[allName] = { executor: 'nx:noop', inputs, dependsOn: Object.keys(all) };
   }
-  targets[name] = { executor: 'nx:noop', inputs, dependsOn: children };
+  targets[name] = { executor: 'nx:noop', inputs: mergeInputs, dependsOn: children };
   return targets;
 };
 
@@ -228,29 +250,48 @@ export const checkMergeTests = (workspaceRoot, root, deviceTests, fullTier) => {
 };
 
 // The shared conformance suite loads every uploadable module (`isUploadable` in module-manifests.mjs).
-export const conformanceTarget = (workspaceRoot, root, m, f, importInputs) => ({
-  executor: 'nx:run-commands',
-  cache: true,
-  inputs: [
-    ...DEVICE_INPUTS,
-    'production',
-    ...builtSourceExclusions(root, workspaceRoot),
-    ...importInputs([...globSync('tests/conformance/**/*.device.test.ts', { cwd: workspaceRoot }), VITEST_SETUP]),
-  ],
-  dependsOn: ['pack', 'digikit/debug:pack', 'digi-control:daemons', IMAGE_BUILD, DEVICE_BYTES, TEST_ASSEMBLY],
-  outputs: [],
-  options: {
-    command: `${EMU_SLOT} pnpm --filter @digi/regression test:conformance`,
-    env: {
-      DIGI_CONFORMANCE_MODULES: m.id,
-      DIGI_CONFORMANCE_MANIFEST: f,
-      DIGI_PATCHKIT_LIVE: '1',
-      // as tests/conformance/manifests.ts: a dynamic module that is no service runs with the SHARC
-      DIGI_EMU_DSP: m.dynamic === true && m.type !== 'service' ? 'sharc' : 'zero',
+// `full`: the `-all` twin keeps the driver packages in its key; the merge target leaves them out.
+export const conformanceTarget = (workspaceRoot, root, m, f, importInputs, full = false) => {
+  // the run loads the packs of every uploadable module and runs patchkit live (DIGI_PATCHKIT_LIVE): the merge key follows the
+  // packs, the image hashes, the daemon key and the patchkit key of the devices, not the binaries (`-all`: the full key).
+  // Its files: the conformance tests and the manifest it reads, not the module's sources.
+  const { inputs } = deviceInputs(root, [], [{ sources: [f] }], undefined, importInputs, () => [], false, {
+    merge: !full,
+    patchkitLive: true,
+    own: [],
+    base: workspaceRoot,
+    testPaths: globSync('tests/conformance/**/*.device.test.ts', { cwd: workspaceRoot }),
+  });
+  return {
+    executor: 'nx:run-commands',
+    cache: true,
+    inputs: [...forDevice(inputs, null), { env: 'DIGI_DEVICE' }],
+    // DEVICE_IMAGES and patchkit:cli write the image hashes and the patchkit key that the merge key holds
+    dependsOn: [
+      'pack',
+      'digikit/debug:pack',
+      'digi-control:daemons',
+      'patchkit:cli',
+      IMAGE_BUILD,
+      DEVICE_BYTES,
+      DEVICE_IMAGES,
+      TEST_ASSEMBLY,
+      SYSTEM_PACKAGE,
+    ],
+    outputs: [],
+    options: {
+      command: `${EMU_SLOT} pnpm --filter @digi/regression test:conformance`,
+      env: {
+        DIGI_CONFORMANCE_MODULES: m.id,
+        DIGI_CONFORMANCE_MANIFEST: f,
+        DIGI_PATCHKIT_LIVE: '1',
+        // as tests/conformance/manifests.ts: a dynamic module that is no service runs with the SHARC
+        DIGI_EMU_DSP: m.dynamic === true && m.type !== 'service' ? 'sharc' : 'zero',
+      },
+      cwd: '.',
     },
-    cwd: '.',
-  },
-});
+  };
+};
 
 // Nodes of the test-only projects (their device targets); appended to `nodes`.
 export const testOnlyNodes = (
@@ -262,6 +303,7 @@ export const testOnlyNodes = (
   importInputs,
   pythonInputs,
   nodes,
+  imageModules,
 ) => {
   for (const [file, config] of testOwners) {
     const root = dirname(file);
@@ -288,6 +330,9 @@ export const testOnlyNodes = (
       throw new Error(
         `Test-only project ${config.name}: the narrow merge key needs the subject module; name it in implicitDependencies`,
       );
+    // a module that goes on the card as a pack: a service (`role`) or an uploadable module
+    const services = serviceIds(byId);
+    const packed = (id, manifest) => isUploadable(manifest) || services.has(id);
     const targets = deviceTargets(
       targetName,
       root,
@@ -300,10 +345,21 @@ export const testOnlyNodes = (
       {
         twin: targetName === 'test-device',
         subjects: config.implicitDependencies,
+        // subjects that are built to objects: their root, to leave the built sources out of the key. Their bytes reach the run
+        // through the image hashes (`devices`: the devices whose image holds the subject) or, for a subject that is packed
+        // (`pack`: a service or content module), through its pack output. A subject with neither keeps `production`.
+        subjectRoots: Object.fromEntries(
+          (config.implicitDependencies ?? [])
+            .filter((id) => byId.has(id))
+            .map((id) => [id, { manifest: byId.get(id).manifest, devices: [...(imageModules.get(id) ?? [])].sort() }])
+            .filter(([id, { manifest, devices }]) => (coreBuilds.has(id) && devices.length) || packed(id, manifest))
+            .map(([id, { manifest, devices }]) => [
+              id,
+              { root: dirname(byId.get(id).file), devices, pack: packed(id, manifest) },
+            ]),
+        ),
         services: serviceLeaves(byId),
-        // a test-only project depends on the bind of the services its records list, as a module's own tests do (without it the bound
-        // file exists only when another project's test ran the bind first)
-        bindable: bindableIds(byId),
+        serviceIds: services,
         base: workspaceRoot,
         mergeTests: mergeTests(join(workspaceRoot, root)),
       },
@@ -323,25 +379,26 @@ export const testOnlyNodes = (
 };
 
 // The node that adds the emulator tests to tests/regression.
-export const regressionNode = (workspaceRoot, importInputs) => [
-  'tests/regression/project.json',
-  {
-    projects: {
-      'tests/regression': {
-        targets: {
-          'test-device': {
-            inputs: [
-              ...DEVICE_INPUTS,
-              '{projectRoot}/project.json',
-              ...importInputs([
-                ...globSync('tests/regression/emulator/**/*.test.ts', { cwd: workspaceRoot }),
-                VITEST_SETUP,
-              ]),
-            ],
+export const regressionNode = (workspaceRoot, importInputs) => {
+  const imports = importInputs([
+    ...globSync('tests/regression/emulator/**/*.test.ts', { cwd: workspaceRoot }),
+    VITEST_SETUP,
+  ]);
+  return [
+    'tests/regression/project.json',
+    {
+      projects: {
+        'tests/regression': {
+          targets: {
+            'test-device': {
+              inputs: [...DEVICE_INPUTS, '{projectRoot}/project.json', ...withoutDriver(imports)],
+            },
+            'test-device-all': {
+              inputs: [...DEVICE_INPUTS, '{projectRoot}/project.json', ...imports],
+            },
           },
-          'test-device-all': { executor: 'nx:noop', dependsOn: ['test-device'] },
         },
       },
     },
-  },
-];
+  ];
+};

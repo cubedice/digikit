@@ -3,7 +3,7 @@
 //! ports and modules, and a comma-separated module list, and reads the results back by pointer and length.
 //!
 //! Bundle: `{"ports": ["<port toml>", ...], "modules": [{"manifest": "<module.toml>", "files": {"build/x.dko.json": "<json>"}}]}`.
-//! (`tools/patchkit/patchkit.py bundle` and the gallery's build step, `apps/web/scripts/gen-modules.mjs`, make it from `devices/ports/` and `modules/`.)
+//! (`tools/patchkit/patchkit.py bundle` and the gallery's build step, `apps/web/scripts/gen-modules.mjs`, make it from `ports/` and the committed module roots.)
 
 use crate::apply;
 use crate::error::{Error, Result, sha256_hex};
@@ -112,47 +112,6 @@ pub fn check_bundle(fw: &[u8], bundle: &[u8]) -> Result<String> {
         "modules": modules,
     })
     .to_string())
-}
-
-/// What `pk_bind` takes: the ports (for the firmware's hash and hook sites) and the `devices/fw/` declaration texts (the argument plan of each hook).
-/// No modules and no firmware: the page ships it beside the bundle (`apps/web/scripts/gen-modules.mjs`, `modules/bind.json`).
-#[derive(Deserialize)]
-struct BindBundle {
-    ports: Vec<String>,
-    fw: Vec<String>,
-}
-
-/// `bind::bind` for the page: the bound `.dks` and the report JSON (`bind::bind_json`). The file holds firmware bytes: it stays in the page.
-pub fn bind_bundle(dks: &[u8], stock: &[u8], bundle: &[u8]) -> Result<(Vec<u8>, String)> {
-    let b: BindBundle = serde_json::from_slice(bundle)?;
-    let reg = Registry::from_texts(b.ports.iter().map(|s| s.as_str()))?;
-    let decls: Vec<&str> = b.fw.iter().map(String::as_str).collect();
-    let (file, hooks) = crate::bind::bind(dks, stock, &reg, &decls)?;
-    Ok((file, crate::bind::bind_json(&hooks)))
-}
-
-/// Bind a service file to the user's stock image (`patchkit bind`): the bound file is in `pk_out_*`, the report JSON in `pk_plan_*`, or the
-/// reason in `pk_err_*` (1: no known stock image, a file that is no service, a hook that does not exist on this image).
-///
-/// # Safety
-/// The three ranges must be readable.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn pk_bind(
-    dks: *const u8,
-    dks_len: usize,
-    stock: *const u8,
-    stock_len: usize,
-    bundle: *const u8,
-    bundle_len: usize,
-) -> i32 {
-    let (dks, stock, bundle) = unsafe {
-        (
-            slice(dks, dks_len),
-            slice(stock, stock_len),
-            slice(bundle, bundle_len),
-        )
-    };
-    set(bind_bundle(dks, stock, bundle))
 }
 
 /// What `pk_sharc_object` takes: the SHARC+ sources of one object as texts, the files their `#include "name"` lines name (the page has no
@@ -309,6 +268,22 @@ pub unsafe extern "C" fn pk_check(
 pub unsafe extern "C" fn pk_needs(dkm: *const u8, dkm_len: usize) -> i32 {
     let dkm = unsafe { slice(dkm, dkm_len) };
     set(crate::dkm::needs_json(dkm).map(|j| (vec![], j.to_string())))
+}
+
+/// The key rules of a `.dkm` (`keys_check_json` in dkm.rs): JSON `{repeat, shared, missing}` in `pk_plan_*`, or the reason in `pk_err_*` (1). `other_len` 0 means no other file
+/// (`shared` and `missing` are null).
+///
+/// # Safety
+/// The ranges must be readable.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn pk_keys_check(
+    new: *const u8,
+    new_len: usize,
+    other: *const u8,
+    other_len: usize,
+) -> i32 {
+    let (new, other) = unsafe { (slice(new, new_len), slice(other, other_len)) };
+    set(crate::dkm::keys_check_json(new, other).map(|j| (vec![], j.to_string())))
 }
 
 /// The fit rule (`dkrt-fit`, the code the DIGIKIT menu runs; packages/patchkit/src/fit.rs): JSON `{caps, needs, empty?}` in; `{each, set, line}` in

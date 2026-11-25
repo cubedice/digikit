@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
 
 static int fail_alloc;
 static int allocations_until_failure = -1;

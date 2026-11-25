@@ -9,7 +9,7 @@ import { parse } from 'smol-toml';
 import { test } from 'vitest';
 import { buildModuleData, shipModules } from '../scripts/gen-modules.mjs';
 import { isShipped, shippedDevices } from '../src/data/shipped.mjs';
-import { loadDevices } from '@digi/devices/node';
+import { SITE_DEVICES } from '../src/data/site-devices.mjs';
 import { PatchKit } from '@digi/workbench-core/patch/patchkit-core.ts';
 import {
   firmwareDir,
@@ -30,7 +30,7 @@ test('bundle lists the committed modules and ports', () => {
     manifestFiles().length + manifestFiles(join(root, 'tests/fixtures/modules')).length,
   );
   assert.ok(bundle.modules.some((m) => m.manifest.includes('id = "core/fx"')));
-  assert.equal(bundle.ports.length, readdirSync(join(root, 'devices/ports')).length);
+  assert.equal(bundle.ports.length, readdirSync(join(root, 'ports')).filter((f) => f.endsWith('.toml')).length);
   // Module content only: no firmware blobs or out/modules oracles.
   assert.ok(!JSON.stringify(bundle).includes('out/modules'));
 });
@@ -64,14 +64,13 @@ test.skipIf(!existsSync(join(root, '.venv')))('bundle equals tools/patchkit/patc
 test('the shipped modules: the index describes them, the sources hold no build output', () => {
   const out = workDir('ship-');
   const { modules } = shipModules(out, root);
-  // what ships is the rule of isShipped over the manifests of modules/{machines,fx,tools} (a device-less module is left out)
-  const expected = ['machines', 'fx', 'tools']
+  // what ships is the rule of isShipped over the manifests of modules/{machine,fx,tool} (a device-less module is left out)
+  const expected = ['machine', 'fx', 'tool']
     .flatMap((r) => manifestFiles(join(root, 'modules', r)))
     .map((file) => ({ file, d: parse(readFileSync(file, 'utf8')) as { module: { id: string } } }))
     .filter(
       ({ file, d }) =>
-        isShipped(d, relative(root, dirname(file)).split(sep).join('/')) &&
-        shippedDevices(d, loadDevices().runtimeIds).length,
+        isShipped(d, relative(root, dirname(file)).split(sep).join('/')) && shippedDevices(d, SITE_DEVICES).length,
     )
     .map(({ d }) => d.module.id)
     .sort();
@@ -157,4 +156,14 @@ test.skipIf(!have)('worker core: a firmware of the other device, and garbage, ar
     assert.equal(c.port, null);
     assert.ok(c.modules.every((m) => !m.ok && /no port/.test(m.error ?? '')));
   }
+});
+
+test('the site bundle holds the ports and modules of the site list only; the device files stay whole', () => {
+  const all = buildModuleData(root).bundle;
+  const site = buildModuleData(root, SITE_DEVICES).bundle;
+  assert.ok(site.ports.length > 0 && site.ports.length < all.ports.length, 'the Syntakt port is left out');
+  assert.ok(site.modules.length < all.modules.length, 'a module for the Syntakt only is left out');
+  assert.ok(site.modules.some((m) => m.manifest.includes('"core/runtime"')));
+  assert.ok(!site.modules.some((m) => m.manifest.includes('id = "core/peer-image"')));
+  assert.deepEqual(site.devices, all.devices);
 });

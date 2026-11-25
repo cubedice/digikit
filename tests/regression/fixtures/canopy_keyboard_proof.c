@@ -1,5 +1,5 @@
 /* Isolated persistence experiment: production uses the unmodified keyboard.c. */
-#include "../../../modules/core/adapters/instrument-play/src/cf/keyboard.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/keyboard.h"
 
 static void zero(void *p, uint32_t n)
 {

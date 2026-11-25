@@ -13,7 +13,7 @@ from support.paths import REPO_ROOT
 from tools.patchkit import pk_sharc
 
 ROOT = REPO_ROOT
-MOD = ROOT / "modules/core/adapters/midi-events"
+MOD = ROOT / "image-modules/adapters/midi-events"
 MODES = (0x1011800, 0x1013800, 0x1213800)
 
 
@@ -36,7 +36,7 @@ def composed_frame(
     """CONSUMER: an instrument's DSP sources (none: no consumer). CARRIER: its carrier
     sources; when given, the adapter's carrier and the instrument registry are linked too."""
     position = (
-        ROOT / "modules/core/adapters/pattern-position/src/dsp/pattern_position.s"
+        ROOT / "image-modules/adapters/pattern-position/src/dsp/pattern_position.s"
     )
     source = position.read_text()
     for name in ("packet", "receiver", "config", "consumer", "reply", "block"):
@@ -52,7 +52,8 @@ def composed_frame(
             source += (
                 "\n"
                 + (
-                    ROOT / f"modules/core/adapters/instrument-registry/src/dsp/{name}.s"
+                    ROOT
+                    / f"image-modules/adapters/instrument-registry/src/dsp/{name}.s"
                 ).read_text()
             )
     obj = pk_sharc.assemble(source)

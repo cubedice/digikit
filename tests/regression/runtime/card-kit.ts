@@ -7,7 +7,9 @@ import { DkError, fileHashHex } from '@digi/dk-session';
 import { LOAD_STATUS, STATUS } from '../../../packages/dk-session/src/gen_proto.ts';
 import { emulatorClock, repoRoot, waitClock, type Device, type Session } from '@digi/test-support';
 import { cardStore } from './device-data.ts';
-import { rpc, word } from './fx-live.ts';
+import { rpc, word } from './guest-access.ts';
+import { installSystemPackage } from './system-package.ts';
+import { stateName } from './load-states.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { cardOverlay, encodeOverlay, layOver, linkCard, mergeOverlays, overlayFile } from './write-safety.ts';
 
@@ -138,6 +140,10 @@ export interface CardOptions extends Partial<Omit<SelRecord, 'paths'>> {
   modules?: { name: string; file: string }[];
   /** Files of the DT2 +Drive path filesystem (`name` is the path below the root, e.g. `Samples/a.bin`; `file` the bytes). */
   drive?: { name: string; file: string }[];
+  /** A plus_drive folder that `plusdrive build` scans as it is (the daemon's `card.load` scans a folder the same way); not with `modules` or `drive`. */
+  folder?: string;
+  /** `false`: leave `digikit/system.dksp` off the card (a test of a card without the package). Default: the built package is on it, also on a `folder` card. */
+  systemPackage?: false;
   /** Verified DT2 firmware (.syx) that seeds the boot project; omit for none. */
   syx?: string;
   /** Selected store paths, written to both copies. Undefined or null: no record. */
@@ -155,10 +161,15 @@ export async function buildCard(device: Device, o: CardOptions): Promise<string>
   const dir = path.join(o.dir, o.name ?? 'card');
   const out = path.join(dir, 'card.img');
   fs.rmSync(dir, { recursive: true, force: true });
+  if (o.folder && (o.modules?.length || o.drive?.length))
+    throw new Error('buildCard: `folder` excludes `modules` and `drive`');
   if (!o.base) {
     const seed = path.join(o.dir, `seed-${o.name ?? 'card'}`);
     fs.rmSync(seed, { recursive: true, force: true });
-    fs.mkdirSync(path.join(seed, 'digikit'), { recursive: true });
+    // a folder card is the folder's copy plus the package: the caller's folder stays as it is
+    if (o.folder) fs.cpSync(o.folder, seed, { recursive: true });
+    else fs.mkdirSync(path.join(seed, 'digikit'), { recursive: true });
+    if (o.systemPackage !== false) installSystemPackage(seed);
     fs.mkdirSync(dir, { recursive: true });
     for (const m of o.modules ?? []) {
       fs.mkdirSync(path.dirname(path.join(seed, 'digikit', m.name)), { recursive: true });
@@ -214,7 +225,7 @@ export interface StoreEntry {
   hash: string;
 }
 
-/** `plusdrive store ls`: the header line (used sectors, version, seq, header copy) and the files with their hash slot. Fails on a card with no store. */
+/** `plusdrive store ls`: the header line (used sectors, version, seq, header copy) and every entry with its hash slot, the system package of a card that carries it included. Fails on a card with no store. */
 export async function storeList(cardImage: string, device: Device): Promise<{ head: string; entries: StoreEntry[] }> {
   const { stdout } = await exec(
     plusdriveBinary(),
@@ -252,6 +263,8 @@ const BI_FIELDS = [
   'loaded',
   'uiReached',
 ] as const;
+/** `DkrtBootInfo.magic`: 'DKBT'. */
+const BI_MAGIC = 0x444b4254;
 const SAFE_NAMES = ['none', 'counter', 'key', 'flag', 'dsp', 'panic', 'read'];
 const CARD_FIELDS = [
   'state',
@@ -297,13 +310,13 @@ async function words<const F extends readonly string[]>(
   return Object.fromEntries(fields.map((k, i) => [k, values[i]!])) as Record<F[number], number>;
 }
 
-/** `DKRT_BOOT`: the boot's fields, per-module results (signed, `results` has `count` of them), `dspWait` and `stable`. */
+/** `DKRT_BOOT`: the boot's fields, per-module results (signed, `results` has `count` of them), `coreCause` (CORE_*, 0 when the boot is not core-only; the word that was `dsp_wait`) and `stable`. */
 export async function bootInfo(session: Session, plan: RuntimePlan) {
   const d = await words(session, plan, 'DKRT_BOOT', BI_FIELDS);
   const base = planSymbol(plan, 'DKRT_BOOT') + 4 * BI_FIELDS.length;
   const tail = await Promise.all(Array.from({ length: SEL_MAX + 2 }, (_, i) => word(session, base + 4 * i)));
   const allResults = tail.slice(0, SEL_MAX).map((v) => v | 0);
-  // after `needs` (SEL_MAX * NEEDS_LEN bytes at offset 80 of DkrtBootInfo, modules/core/runtime/abi.toml): `states[SEL_MAX]` (bytes), `detail[SEL_MAX][2]`
+  // after `needs` (SEL_MAX * NEEDS_LEN bytes at offset 80 of DkrtBootInfo, runtime/core/abi.toml): `states[SEL_MAX]` (bytes), `detail[SEL_MAX][2]`
   const statesAt = planSymbol(plan, 'DKRT_BOOT') + BI_STATES_AT;
   const stateWords = await Promise.all([0, 1].map((i) => word(session, statesAt + 4 * i)));
   const states = Array.from({ length: SEL_MAX }, (_, i) => (stateWords[i >> 2]! >>> (24 - 8 * (i & 3))) & 255);
@@ -322,26 +335,41 @@ export async function bootInfo(session: Session, plan: RuntimePlan) {
     states: states.slice(0, d.count),
     /** What the plan refused each module on (`DkrtBootInfo.detail`). */
     detail: detail.slice(0, d.count),
-    dspWait: tail[SEL_MAX]!,
+    coreCause: tail[SEL_MAX]!,
     stable: tail[SEL_MAX + 1]!,
     reasonName: SAFE_NAMES[d.reason] ?? '?',
   };
 }
 
-/** The offset of `DkrtBootInfo.states` (after the 10 words before `results`, the results, dsp_wait, stable and `needs`; asserted by `abi.toml`'s layout check). */
+/** The offset of `DkrtBootInfo.states` (after the 10 words before `results`, the results, core_cause, stable and `needs`; asserted by `abi.toml`'s layout check). */
 const BI_STATES_AT = 176;
 
+/** The states of a module that has not finished its load: not planned, planned, `init` running, or the DSP part still going (`[load.state]`). */
+const UNSETTLED_STATES = new Set(['SELECTED', 'PLANNED', 'INIT', 'DSP_LOADING']);
+
 /**
- * `bootInfo` once no selected module is still LOADING (1): the DSP part of a module follows its ColdFire part over the first UI-loop
- * passes. Steps 100 emulated ms at a time, up to `ms` (Python `wait_dsp`); the session must be paused.
+ * `bootInfo` once this boot has written its info and every selected module has a final state (`DkrtBootInfo.states`: ACTIVE, REFUSED, FAILED, SKIPPED or UNLOADED):
+ * the boot has finished loading its selection. The result words do not tell this: 0 is also the unwritten initial value, so a module not yet started reads 0 like a
+ * loaded one. Written means `magic` is valid (the boot sets it first) and `count` is set (the boot copies it from the selection record before any load, and `states`
+ * is cut to it, so a zero `count` before that would pass for an empty list); a boot with an empty selection has no later word, so there `uiReached` stands in.
+ * `expected` is the number of modules the caller selected, when it knows it. The DSP part of a module follows its ColdFire part over the first UI-loop passes. Steps 100
+ * emulated ms at a time, up to `ms`; the session must be paused. Throws, naming the states seen, when the boot is not settled by then.
  */
-export async function bootInfoLoaded(session: Session, plan: RuntimePlan, ms = 5000) {
-  for (let i = 0; i < ms / 100; i++) {
-    const info = await bootInfo(session, plan);
-    if (!info.results.includes(1)) return info;
+export async function bootInfoLoaded(session: Session, plan: RuntimePlan, ms = 5000, expected?: number) {
+  let info = await bootInfo(session, plan);
+  for (let i = 0; ; i++) {
+    const written = info.magic === BI_MAGIC && info.version !== 0 && (info.count > 0 || info.uiReached !== 0);
+    const counted = expected === undefined || info.count >= expected;
+    if (written && counted && !info.states.some((n) => UNSETTLED_STATES.has(stateName(n)))) return info;
+    if (i >= ms / 100) break;
     await waitClock(emulatorClock(session), 100);
+    info = await bootInfo(session, plan);
   }
-  return bootInfo(session, plan);
+  const seen = info.states.map((n) => stateName(n)).join(',') || 'none';
+  throw new Error(
+    `boot info not settled after ${ms} emulated ms: magic 0x${(info.magic >>> 0).toString(16)}, count ${info.count}` +
+      `${expected === undefined ? '' : ` (expected ${expected})`}, uiReached ${info.uiReached}, states [${seen}]`,
+  );
 }
 
 /** `DKRT_CARD`: state, the first non-blank sector, its crc32, writes refused and done. */

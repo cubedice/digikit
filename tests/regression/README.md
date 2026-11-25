@@ -24,10 +24,10 @@ commands within a shared session remain ordered. See [test concurrency and contr
 | `runtime/canopy-transport.test.ts` | `canopy-transport` | Emulator-only CANOPY MIDI/reset/configuration/event ACKs with real DSP |
 | `host/` | none (root `regression-host`) | Mocked helper tests, no daemon or firmware |
 
-Device tests for a module live in that module: `modules/**/tests/*.device.test.ts` (patched runtime on DT2 1.17
+Device tests for a module live in its `tests/` directory as `*.device.test.ts` (patched runtime on DT2 1.17
 and DN2 1.12). The owner's `project.json` lists them in `metadata.runtimeAcceptance`, with paths relative
 to that project. A record with `dksampleWasm: true` makes the target depend on `dksample:wasm`, which builds
-`apps/web/public/dksample.wasm`; `dkprofWasm: true` does the same with `dkprof:wasm` and `apps/web/public/dkprof.wasm`. A test whose imports reach `runtime/transfer-cli.ts` (it runs `wb transfer`) depends on `patchkit:wasm` and keys on `apps/web/public/patchkit.wasm` without a flag (`PATCHKIT_WASM_USERS` in `tools/nx/device-test-keys.mjs`). Python tools a record lists in `sources` are hashed with the `tools.*` files they import (`tools/nx/py-imports.mjs`); a test that runs a new Python tool must list it there. Runtime acceptance belongs to `modules/core/runtime/tests/project.json`
+`apps/web/public/dksample.wasm`; `dkprofWasm: true` does the same with `dkprof:wasm` and `apps/web/public/dkprof.wasm`. A test whose imports reach `runtime/transfer-cli.ts` (it runs `wb transfer`) depends on `patchkit:wasm` and keys on `apps/web/public/patchkit.wasm` without a flag (`PATCHKIT_WASM_USERS` in `tools/nx/device-test-keys.mjs`). Python tools a record lists in `sources` are hashed with the `tools.*` files they import (`tools/nx/py-imports.mjs`); a test that runs a new Python tool must list it there. Runtime acceptance belongs to `runtime/core/tests/project.json`
 (`core/runtime-tests`) except CF-only service commands and settings, owned by nested `service-commands/project.json`
 and `settings/project.json` (`core/runtime-service-tests` and `core/runtime-settings-tests`). Run an owner's
 `test-device` directly; `module:check core/runtime` discovers all owners. Checks that run over
@@ -84,7 +84,7 @@ the ordinary stock golden suite and never builds its artifact implicitly.
 
 Each test checks no guest fault, DSP halt or stall (`Session.expectNoFault`), and that the stock firmware writes
 nothing into the patchkit free regions: `guard.set` is armed with the `cpu = "cf"` `[[region]]` blocks of
-`devices/ports/<device>-<fw>.toml` (`cf.flash_cave`, `cf.expansion`, minus `excludes`) with an empty
+`ports/<device>-<fw>.toml` (`cf.flash_cave`, `cf.expansion`, minus `excludes`) with an empty
 `allow_pc`, and `guard.report` must total 0.
 
 Frame (SHA-256) and LED goldens: `dt2/rec-play` (scenario `dt2-rec-play` of `tests/scenarios/dt2.json`, exact
@@ -96,12 +96,12 @@ UI scenarios"). A golden changes only with a reason; review the diff.
 
 Module device tests: `core/runtime` (`service-commands`, `transfer-live`, `samples-live` on DT2,
 `samples-store-live` on DN2, `modules-capacity`, upload, settings and crash tests), `core/input`
-(`input-adapter`), `modules/tools/remote` (`remote-input`), `modules/tools/debug` and `modules/tools/probe`. Those workflows use a
+(`input-adapter`), `modules/tool/digikit/remote` (`remote-input`), `modules/tool/digikit/debug` and `modules/tool/digikit/probe`. Those workflows use a
 fresh runtime daemon for each device case.
 
-FX route acceptance on both devices lives in `modules/core/adapters/fx/tests/fx-routes-panel.device.test.ts`
-(route choices, defaults, capacity and pending changes), `modules/core/adapters/fx/tests/fx-routes-persist.device.test.ts`
-(apply/restart persistence and PCM), and `modules/core/adapters/fxpages/tests/fx-track-route-*.device.test.ts`
+FX route acceptance on both devices lives in `image-modules/points/fx/tests/fx-routing.device.test.ts`
+(the SETTINGS row, the stock choice popups, a pick without a restart and the full send bus), `image-modules/points/fx/tests/fx-routes-persist.device.test.ts`
+(a pick, its persistence across a restart and PCM), and `image-modules/points/fxpages/tests/fx-track-route-*.device.test.ts`
 (track SEND pages, amounts, kit loads and project-byte controls). These replace the Python `fxroute` and
 `fxroutes` scenarios. Independent cases reload clean card baselines in an owned daemon; apply/restart cases
 preserve the guest's writes. Track SEND's image without the page hook closes before its image with the hook
@@ -115,10 +115,10 @@ prepared artifacts, the plusdrive builder and the native patchkit CLI used by st
 runs the SHARC probe modules and compares RECIPS, RSQRTS and the dsp-facts values with the device measurements
 in `tests/fixtures/sharc/`.
 
-Helpers in `runtime/devices.ts`, `ready.ts`, `waits.ts`, `install.ts`, `artifacts.ts`, `protocol.ts`:
+Helpers in `runtime/devices.ts`, `live-options.ts`, `ready.ts`, `waits.ts`, `install.ts`, `artifacts.ts`, `protocol.ts`:
 
 - `runtimeTests(name, body, opts)`: one test per device, after `expectRuntimeBoot`.
-- `liveOptions(device, extra)`: daemon binary, firmware version and card for `withPatchedSession`.
+- `liveOptions(device, extra)`: daemon binary, firmware version and the cached card of `live-card.ts` for `withPatchedSession` (`blankCard: true` leaves the card to the daemon).
 - `expectRuntimeReady`: wait for the runtime's normal UI hook on a fresh free-running daemon.
 - `rt.ui`, `rt.listen()`, `pollUntil`: panel inputs with their waits, runtime-log waits and polls, all in emulated time; wall time is only a hang guard; `dk.waitForBoot()` of a harness session ends at FW_READY.
 - `installModule`, `moduleArtifact`: install a prepared `.dkm` and locate it.
@@ -149,7 +149,7 @@ protocol restart, then checks the store (modules and `services/*.dks`), the mirr
 
 `input-adapter` and `remote-input` check semantic KEY navigation, TURN delivery and decoder acceptance, not
 vendor parameter changes. Exact remote pacing is checked by the host C unit
-`modules/tools/remote/tests/pacing.test.ts` (it compiles `remote-pacing.c` with `cc`).
+`modules/tool/digikit/remote/tests/pacing.test.ts` (it compiles `remote-pacing.c` with `cc`).
 
 ## Module load cells
 

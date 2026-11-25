@@ -99,6 +99,19 @@ impl Env {
         self
     }
 
+    /// A copy of this environment with one more build define (`NAME` or `NAME=VALUE`) after its own.
+    pub fn plus_define(&self, define: &str) -> Env {
+        let mut defines = self.defines.clone();
+        defines.push(define.to_string());
+        Env {
+            root: self.root.clone(),
+            tools: self.tools.clone(),
+            defines,
+            codegen: self.codegen.clone(),
+            version: self.version.clone(),
+        }
+    }
+
     pub fn m68k_prefix(&self) -> PathBuf {
         self.tools.join("m68k-elf")
     }

@@ -1,0 +1,54 @@
+//! `LinkRows`: the addresses of the other image modules' functions that the package uses. The package links to nothing by symbol, so what the resident object links by
+//! name (patchkit's `[object] optional`, 0 when the module is not in the image) comes to it as rows: the imports another module provides (`core/ui`, `core/input`,
+//! `core/usb-bulk`, `core/dsp-link`, `core/sdhc-large`) in the order of `optional::table` of `dkrt_sdk::optional_imports!`, and the symbols of `core/dsp-link` and
+//! `core/dyndsp` the DSP loader calls. A row is 0 when its module is not in the image; a host test has null rows except the two it provides itself.
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct LinkRows {
+    /// The imports another module provides, in the order of `dkrt_sdk::optional_imports!`'s table.
+    pub optional: [*const (); dkrt_sdk::OPTIONAL_COUNT],
+    /// `core/dsp-link`: `i32 dl_send(u32 dst, const u8 *buf, u32 len)`.
+    pub dl_send: *const (),
+    /// `core/dsp-link`: `i32 dl_send_win(u32 win, u32 dst, const u32 *buf, u32 len)`.
+    pub dl_send_win: *const (),
+    /// `core/dsp-link`: `i32 dl_poll(DlStatus *)`.
+    pub dl_poll: *const (),
+    /// `core/dyndsp`: the info table of the DSP side (`dyndsp_info` is a table, not a function: its address is the table).
+    pub dyndsp_info: *const (),
+    /// `core/dsp-link`: `void dl_stats_hook(usize feed)`, the feed of the stats pages from `dl_tick`.
+    pub dl_stats_hook: *const (),
+    /// `core/dsp-link`: `void dl_tick_cb_drop(u32 start, u32 end)`, clears the per-block callback that points into a range.
+    pub dl_tick_cb_drop: *const (),
+    /// The fork's persistent V2 instrument host (appended, minor 5): the providers its coordinator binds once (`instrument_provider::Binding`) and the
+    /// trusted firmware adapter's entries. Each is 0 when its module is not in the image.
+    pub instrument: InstrumentLinks,
+}
+
+/// The image functions of the V2 instrument host (`package/instrument.rs`): `core/dsp-link`'s lease and tagged transfers, `core/midi-events`' registry
+/// replies, `core/instrument-play`'s policy and fault report, and the optional emulator probes.
+#[repr(C)]
+#[derive(Clone, Copy)]
+pub struct InstrumentLinks {
+    pub dl_claim: *const (),
+    pub dl_release: *const (),
+    pub dl_send_owned: *const (),
+    pub dl_poll_tagged: *const (),
+    pub mi_registry_reply: *const (),
+    pub mi_registry_expect_session: *const (),
+    /// `u32 instrument_session_probe(void)` (test/instrument-session only).
+    pub instrument_session_probe: *const (),
+    /// `const u32 *instrument_load_probe(void)` (test/instrument-load only).
+    pub instrument_load_probe: *const (),
+    /// `const u32 *instrument_runtime_policy(void)`: the eight policy words of core/instrument-play.
+    pub instrument_runtime_policy: *const (),
+    /// `i32 instrument_play_faulted(u32 generation)`.
+    pub instrument_play_faulted: *const (),
+    /// `void dk_app_instrument_settings_rows(dk_ui_menu *)` and `int dk_app_instrument_module_settings(const u8 *name, dk_ui_menu *)`: the DIGIKIT menu's
+    /// rows of the instrument host (the menu is the package's: `menu_link.rs`).
+    pub dk_app_instrument_settings_rows: *const (),
+    pub dk_app_instrument_module_settings: *const (),
+}
+
+// The addresses name functions and tables of the image for the whole run of the system; the rows are built once and only read.
+unsafe impl Sync for LinkRows {}

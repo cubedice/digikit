@@ -1,0 +1,52 @@
+diff --git a/modules/core/services/machines/src/records.rs b/modules/core/services/machines/src/records.rs
+index a365df52c..97fdd766a 100644
+--- a/modules/core/services/machines/src/records.rs
++++ b/modules/core/services/machines/src/records.rs
+@@ -75,6 +75,27 @@ const MAX_PARAM: usize = limits::PARAM_ROWS;
+ const MAX_PAGE: usize = limits::PAGE_ROWS;
+ const KNOBS: usize = limits::PAGE_KNOBS;
+ 
++/// Is machine type `t` a free row of the run-time range: no module owns it and the image's row has no name. Without a registry no type is free.
++pub unsafe fn type_is_free<C: CoreApi>(core: &C, t: u32) -> bool {
++    let inf = dkrt_svc_params::dynreg(core);
++    if inf.is_null() {
++        return false;
++    }
++    let first = iw(inf, w::M_DYN0);
++    let Some(k) = t.checked_sub(first) else {
++        return false;
++    };
++    if k >= iw(inf, w::M_DYN_N) || k as usize >= MAX_MACH || t < iw(inf, w::M_FIRST) {
++        return false;
++    }
++    if rstate().mach_owner[k as usize] != 0 {
++        return false;
++    }
++    let row = iw(inf, w::M_ROWS) + (t - iw(inf, w::M_FIRST)) * iw(inf, w::M_ROW_SIZE);
++    let name = core.rd(row + iw(inf, w::O_NAME));
++    name == 0 || core.rd8(name) == 0
++}
++
+ /// The machines service.
+ pub struct Machines;
+ 
+@@ -91,6 +112,19 @@ pub fn owned_ids<C: CoreApi>(core: &C, owner: u8, out: &mut [u8; 8]) -> u32 {
+     types_of(core, owner, out) as u32
+ }
+ 
++/// The plan's `[key, number]` pairs of the module at index `selection` of the boot's selection, in plan order, into `out`; how many (the export
++/// `dk_machines_planned_ids`). A number of 0: the plan gave that key none (a key that names its number itself is one). The loader resolves a persistent
++/// instrument's file from this copy, so no table pointer crosses the boundary.
++pub fn planned_ids(selection: u32, out: &mut [[u32; 2]; 8]) -> u32 {
++    crate::assign::planned(selection, out)
++}
++
++/// Whether machine type `id` is taken in the machine rows: a module owns the row, or the image has filled it (the export `dk_machines_id_taken`). A type the
++/// service cannot place (out of its range, or its registry is absent) counts as taken.
++pub unsafe fn id_taken<C: CoreApi>(core: &C, id: u32) -> bool {
++    !type_is_free(core, id)
++}
++
+ impl<C: CoreApi> Service<C> for Machines {
+     unsafe fn declare(d: &mut Declare) {
+         d.kind(KIND_PARAM, LEN_PARAM);

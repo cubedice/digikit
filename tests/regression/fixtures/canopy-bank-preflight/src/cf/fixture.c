@@ -1,7 +1,7 @@
 /* SYNTHETIC WORKER-ONLY EMULATOR EXPERIMENT: never install on a device. */
 #include <stdint.h>
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.h"
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/sound-state.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-state.h"
 extern int32_t dkrt_job_post(uintptr_t, uintptr_t, uint8_t *);
 extern uint8_t *fw_alloc(uint32_t);
 extern void fw_free(uint8_t *);

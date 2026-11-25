@@ -15,6 +15,7 @@
 //!   and `[modules.frame]` of the device file (docs/design/module-sdk.md 5.2). Only those names, no other constant.
 //! - `gas-sample-pool`: `.equ SP_*` lines for the sample pool adapter's ColdFire assembly, one file per device, from
 //!   `[adapter.sample_pool]` (slot floor and the reserved DDR range; docs/design/sample-api-1.5.md 2.3). Only those names.
+//! - `gas-card-guard`: `.equ CG_*` lines for the card guard's ColdFire assembly, one file per device, from `[card.guard]` (the allow-list rows; docs/plans/card-write-guard.md). Only those names.
 //! - `sharc-sample-pool`: `#define SP_DDR_BASE_NW32` and `SP_DDR_PAGES` for the sample pool's SHARC+ receiver, one file per device that owns a
 //!   DDR range (a device that borrows the stock pool gets no file), from the same fields (docs/design/dn2-sample-pool.md 2.7).
 //!
@@ -42,6 +43,8 @@ struct Doc {
     input: Option<InputDoc>,
     panel: Option<PanelDoc>,
     fx: Option<FxDoc>,
+    #[serde(default)]
+    patch_sets: BTreeMap<String, Vec<String>>,
 }
 /// `[fx]`: the facts of the effect pages of run-time effects (core/fxpages, docs/design/digikit-registry.md "Effect pages"): where the kit keeps its
 /// effect values, which of them the firmware does not use (effect row k owns `value_indices[8k .. 8k + 8]`), the page numbering and the stock
@@ -88,7 +91,40 @@ struct FxDoc {
 #[derive(Deserialize)]
 struct InputDoc {
     backend: String,
+    /// `[input.keys]`: logical key name = the key's id in the firmware's key events (the id at +0xc of the event). The one source of the C names (`dk_key`), the
+    /// profile's key map and `DkrtDevice.key_codes`. These are firmware key indices: they equal the panel code on some devices and differ
+    /// on others (finding 153), and they are not the wire codes (channel, bit) that `dk_input_key` injects.
+    #[serde(default)]
+    keys: BTreeMap<String, u64>,
+    /// `[input.key_flags]`: the bits of the key event's flags word (+0x10), named by meaning.
+    #[serde(default)]
+    key_flags: Option<KeyFlagsDoc>,
 }
+/// `[input.key_flags]`: bit numbers (0 to 31) of the flags word of a key event: `press` is set on a press and clear on a release, `func` is set while FUNC is held,
+/// `repeat` marks a held key repeating, `release` is set on a release (the stock list handler acts on it).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KeyFlagsDoc {
+    press: u64,
+    func: u64,
+    repeat: u64,
+    release: u64,
+}
+/// The value of `UI_KEY_YES2` is the id of `LEVEL_PUSH`: a second key that acts as YES (the stock handler treats it like YES).
+/// core/ui's four keys, by the names of `[input.keys]`: the constant they generate, and the key name. A device file without one of them is refused.
+const UI_KEY_NOTES: [&str; 4] = [
+    "[input.keys] YES (the key id of YES in a key event)",
+    "[input.keys] LEVEL_PUSH (a second YES key)",
+    "[input.keys] NO (the key id of NO)",
+    "[input.keys] RIGHT (the key id of RIGHT)",
+];
+const UI_KEYS: [(&str, &str); 4] = [
+    ("UI_KEY_YES", "YES"),
+    ("UI_KEY_YES2", "LEVEL_PUSH"),
+    ("UI_KEY_NO", "NO"),
+    ("UI_KEY_RIGHT", "RIGHT"),
+];
+
 /// `[panel]`: the key codes: codes 1 to 8 * `linear_channels` are linear (code = channel * 8 + bit + 1), `[panel.exceptions]` lists the others as
 /// code = [channel, bit]. Only these numbers are generated; the groups are for hosts that draw the panel.
 #[derive(Deserialize)]
@@ -193,6 +229,9 @@ struct Digikit {
     keep_bytes: u64,
     sample_path_max: u64,
     peek: Vec<[u64; 2]>,
+    /// The tracks of the device (0: not given).
+    #[serde(default)]
+    tracks: u64,
     #[serde(default)]
     span_clock: u64,
     #[serde(default)]
@@ -201,6 +240,46 @@ struct Digikit {
 #[derive(Deserialize)]
 struct Card {
     store: Option<Store>,
+    guard: Option<GuardDoc>,
+    header_sector: Option<u64>,
+    table_sector: Option<u64>,
+    #[serde(default)]
+    pools: BTreeMap<String, PoolDoc>,
+    #[serde(default)]
+    regions: Vec<RegionDoc>,
+    path_fs: Option<PathFsDoc>,
+}
+/// `[card.guard]`: the eMMC write guard (core/card-guard). `enabled` is the switch. `row`: which sectors each class of writer may write or erase, as
+/// `{ who, first, end }` in sectors (`end` exclusive); absent, the rows are the defaults `stock = [0, store.first)` and `runtime = [store.first, store.end)`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GuardDoc {
+    enabled: bool,
+    #[serde(default)]
+    row: Vec<GuardRowDoc>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GuardRowDoc {
+    who: String,
+    first: u64,
+    end: u64,
+}
+#[derive(Deserialize)]
+struct PoolDoc {
+    base_sector: u64,
+    stride_sectors: u64,
+    slots: u64,
+}
+#[derive(Deserialize)]
+struct RegionDoc {
+    sector: u64,
+    sectors: u64,
+}
+#[derive(Deserialize)]
+struct PathFsDoc {
+    superblock_sector: u64,
+    end_sector: u64,
 }
 #[derive(Deserialize)]
 struct Store {
@@ -215,6 +294,18 @@ struct Store {
 #[derive(Debug, Default)]
 pub struct Facts {
     docs: BTreeMap<String, Entry>,
+    /// Every device file (a runtime target or not): the tables a module's `needs_device` can name, and the patch sets.
+    devices: BTreeMap<String, DeviceTables>,
+}
+
+#[derive(Debug)]
+struct DeviceTables {
+    /// The tables of the device file as dotted paths (`input`, `input.keys`).
+    tables: std::collections::BTreeSet<String>,
+    /// `[patch_sets]`: the root modules of each named set.
+    patch_sets: BTreeMap<String, Vec<String>>,
+    /// The booleans of the file's nested tables (`card.guard.enabled`): what a module's `needed_when` reads.
+    switches: BTreeMap<String, bool>,
 }
 
 #[derive(Debug)]
@@ -228,7 +319,11 @@ struct Entry {
     limits: LimitsF,
     adapter: Option<AdapterF>,
     sample_pool: Option<SamplePoolF>,
+    /// `None`: no `[card.guard]`.
+    guard: Option<GuardF>,
     input: InputF,
+    /// `[input.keys]`: logical key name to the key's id in the firmware's key events (empty: the device has no key names).
+    keys: BTreeMap<String, u64>,
     fx: FxF,
     profile: ProfileF,
     /// DSP instructions per block left for modules (`dkprof::budget`: the block at the default margin, less the stock firmware's load). 0 where `devices/cycle-factors.json`
@@ -338,6 +433,10 @@ struct InputF {
     encoders: u64,
     /// (code, channel, bit)
     exceptions: Vec<[u64; 3]>,
+    /// The ids of the keys core/ui compares (`UI_KEYS` order: yes, yes2, no, right), from `[input.keys]`.
+    ui_keys: [u64; 4],
+    /// The flag bits of a key event (`[input.key_flags]`: press, func, repeat, release).
+    key_flags: [u64; 4],
 }
 #[derive(Debug)]
 struct SamplePoolF {
@@ -400,6 +499,7 @@ struct DigikitF {
     sample_path_max: u64,
     samples_in_store: bool,
     peek: Vec<[u64; 2]>,
+    tracks: u64,
     span_clock: u64,
     span_clock_hz: u64,
 }
@@ -413,16 +513,9 @@ struct StoreF {
 }
 
 impl Facts {
-    /// The selected device's file staging limit, already checked against the SDK maximum.
-    pub fn stage_bytes(&self, short: &str) -> Result<usize> {
-        self.docs
-            .get(short)
-            .map(|d| d.limits.stage_bytes as usize)
-            .ok_or_else(|| err!("no runtime device facts for {short}"))
-    }
-
     pub fn from_texts<'a>(texts: impl IntoIterator<Item = &'a str>) -> Result<Facts> {
         let mut docs = BTreeMap::new();
+        let mut devices = BTreeMap::new();
         let texts: Vec<&str> = texts.into_iter().collect();
         let models = crate::typed::Models::from_texts(texts.iter().copied())?;
         for t in texts {
@@ -433,6 +526,19 @@ impl Facts {
             }
             let d: Doc = toml::from_str(t)?;
             let short = d.device.short.clone();
+            if devices
+                .insert(
+                    short.clone(),
+                    DeviceTables {
+                        tables: table_paths(&table),
+                        patch_sets: d.patch_sets.clone(),
+                        switches: crate::devdata::bool_switches(&table),
+                    },
+                )
+                .is_some()
+            {
+                return Err(err!("two device files describe {short}"));
+            }
             // only a runtime target (a file with [digikit]) has shared constants; an identity-only or patch-only device is skipped
             let Some(k) = d.digikit else {
                 continue;
@@ -442,6 +548,12 @@ impl Facts {
                     "{short}: [digikit] needs [board], [limits] and [capabilities] (a runtime target)"
                 ));
             };
+            let guard = d
+                .card
+                .as_ref()
+                .map(|c| guard_facts(&short, c))
+                .transpose()?
+                .flatten();
             let s = d.card.and_then(|c| c.store);
             let dsp = cap.dsp == "sharc";
             let dsp_facts = [
@@ -506,7 +618,8 @@ impl Facts {
                 k.dsp_area_bytes.unwrap_or(0),
                 &crate::sdkgen::limits_max(),
             )?;
-            let input = input_facts(&short, d.input, d.panel)?;
+            let keys = key_facts(&short, d.input.as_ref().map(|i| &i.keys))?;
+            let input = input_facts(&short, d.input, d.panel, &keys)?;
             let fx = fx_facts(&short, d.fx, l.fx_slots, l.send_slots)?;
             let (adapter_machine, sample_pool) = match d.adapter {
                 Some(a) => (a.machine, a.sample_pool),
@@ -541,6 +654,7 @@ impl Facts {
                             sample_path_max: k.sample_path_max,
                             samples_in_store,
                             peek: k.peek,
+                            tracks: k.tracks,
                             span_clock: k.span_clock,
                             span_clock_hz: k.span_clock_hz,
                         },
@@ -564,7 +678,9 @@ impl Facts {
                         },
                         adapter,
                         sample_pool,
+                        guard,
                         input,
+                        keys,
                         fx,
                         profile: profile_facts(&short, models.by_device.get(&short))?,
                         dsp_headroom,
@@ -575,7 +691,40 @@ impl Facts {
                 return Err(err!("two device files describe {short}"));
             }
         }
-        Ok(Facts { docs })
+        Ok(Facts { docs, devices })
+    }
+
+    /// The logical key names in the order of their numbers: `[keys] order` of sdk/sdk.toml (`DK_KEY_NONE` is 0, the names follow from 1). A device file may use only
+    /// these names; the list is the ABI and never renumbers.
+    pub fn key_names(&self) -> Result<Vec<String>> {
+        let names = crate::sdkgen::key_order();
+        for (dev, e) in &self.docs {
+            if let Some(n) = e.keys.keys().find(|n| !names.contains(n)) {
+                return Err(err!(
+                    "{dev}: [input.keys] {n}: not a name of [keys] order in sdk/sdk.toml (add it at the end of that list)"
+                ));
+            }
+        }
+        let slots = key_slots()?;
+        if names.len() >= slots {
+            return Err(err!(
+                "[keys] order of sdk/sdk.toml lists {} names, the tables hold {} (DEV_KEYS of core/runtime/abi.toml)",
+                names.len(),
+                slots - 1
+            ));
+        }
+        Ok(names)
+    }
+
+    /// The panel code of each logical key of `dev`, indexed by the key's number (`DEV_KEYS` entries; a key the device lacks is 0).
+    fn key_codes(&self, dev: &str) -> Result<Vec<u64>> {
+        let mut out = vec![0; key_slots()?];
+        if let Some(e) = self.docs.get(dev) {
+            for (i, n) in self.key_names()?.iter().enumerate() {
+                out[i + 1] = e.keys.get(n).copied().unwrap_or(0);
+            }
+        }
+        Ok(out)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -731,7 +880,50 @@ fn fx_facts(short: &str, f: Option<FxDoc>, fx_slots: u64, send_slots: u64) -> Re
     })
 }
 
-fn input_facts(short: &str, i: Option<InputDoc>, p: Option<PanelDoc>) -> Result<InputF> {
+/// The logical keys of `[input.keys]`: a name is capital letters, digits and `_` (it becomes `DK_KEY_<name>`), a code is 1 to 255 and names one key.
+fn key_facts(short: &str, keys: Option<&BTreeMap<String, u64>>) -> Result<BTreeMap<String, u64>> {
+    let Some(keys) = keys else {
+        return Ok(BTreeMap::new());
+    };
+    let mut seen: BTreeMap<u64, &str> = BTreeMap::new();
+    for (name, code) in keys {
+        let ok = name.starts_with(|c: char| c.is_ascii_uppercase())
+            && name
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_');
+        if !ok {
+            return Err(err!(
+                "{short}: [input.keys] {name:?}: a name is capital letters, digits and _, starting with a letter"
+            ));
+        }
+        if !(1..=255).contains(code) {
+            return Err(err!(
+                "{short}: [input.keys] {name} = {code}: a code is 1 to 255"
+            ));
+        }
+        if let Some(other) = seen.insert(*code, name) {
+            return Err(err!(
+                "{short}: [input.keys] {other} and {name} have the same code {code}"
+            ));
+        }
+    }
+    Ok(keys.clone())
+}
+
+/// The entries of the key table: index 0 is `DK_KEY_NONE`, then one for each logical key name (`DEV_KEYS` of core/runtime/abi.toml: the one definition).
+fn key_slots() -> Result<usize> {
+    abi_consts()?
+        .get("DEV_KEYS")
+        .map(|v| *v as usize)
+        .ok_or_else(|| err!("core/runtime/abi.toml has no DEV_KEYS"))
+}
+
+fn input_facts(
+    short: &str,
+    i: Option<InputDoc>,
+    p: Option<PanelDoc>,
+    keys: &BTreeMap<String, u64>,
+) -> Result<InputF> {
     let Some(i) = i else {
         return Ok(InputF::default());
     };
@@ -774,7 +966,44 @@ fn input_facts(short: &str, i: Option<InputDoc>, p: Option<PanelDoc>) -> Result<
         }
         exceptions.push([code, *ch, *bit]);
     }
+    let Some(f) = &i.key_flags else {
+        return Err(err!(
+            "{short}: [input] needs [input.key_flags] (press, func, repeat and release: bit numbers of the key event's flags word)"
+        ));
+    };
+    let key_flags = [f.press, f.func, f.repeat, f.release];
+    for (n, (what, bit)) in ["press", "func", "repeat", "release"]
+        .iter()
+        .zip(key_flags)
+        .enumerate()
+    {
+        if bit >= 32 {
+            return Err(err!(
+                "{short}: [input.key_flags] {what} = {bit}: a bit number of the 32-bit flags word, 0 to 31"
+            ));
+        }
+        if let Some(other) = key_flags[..n].iter().position(|b| *b == bit) {
+            return Err(err!(
+                "{short}: [input.key_flags] {what} and {} are both bit {bit}",
+                ["press", "func", "repeat", "release"][other]
+            ));
+        }
+    }
+    let mut ui_keys = [0u64; 4];
+    // A device that names keys names the four that core/ui needs: it compares the ids of the key events with them.
+    if !keys.is_empty() {
+        for (slot, (_, name)) in UI_KEYS.iter().enumerate() {
+            let Some(id) = keys.get(*name) else {
+                return Err(err!(
+                    "{short}: [input.keys] has no {name}: core/ui needs YES, NO, RIGHT and LEVEL_PUSH (the second YES key)"
+                ));
+            };
+            ui_keys[slot] = *id;
+        }
+    }
     Ok(InputF {
+        ui_keys,
+        key_flags,
         backend: backend as u64 + 1,
         linear_channels: p.linear_channels,
         button_channels: p.button_channels,
@@ -969,6 +1198,200 @@ fn sample_pool_constants(p: &SamplePoolF) -> Vec<C> {
     ]
 }
 
+/// The most rows of the card guard's allow-list (the generated table has this many slots).
+pub const GUARD_MAX: usize = 8;
+const GUARD_FIRST: [&str; GUARD_MAX] = [
+    "CG_FIRST_0",
+    "CG_FIRST_1",
+    "CG_FIRST_2",
+    "CG_FIRST_3",
+    "CG_FIRST_4",
+    "CG_FIRST_5",
+    "CG_FIRST_6",
+    "CG_FIRST_7",
+];
+const GUARD_END: [&str; GUARD_MAX] = [
+    "CG_END_0", "CG_END_1", "CG_END_2", "CG_END_3", "CG_END_4", "CG_END_5", "CG_END_6", "CG_END_7",
+];
+const GUARD_WHO: [&str; GUARD_MAX] = [
+    "CG_WHO_0", "CG_WHO_1", "CG_WHO_2", "CG_WHO_3", "CG_WHO_4", "CG_WHO_5", "CG_WHO_6", "CG_WHO_7",
+];
+
+/// The class of a writer. `Stock`: every caller of the eMMC write and erase but the runtime's raw card write. `Runtime`: that raw write.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+enum Who {
+    Stock = 0,
+    Runtime = 1,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct GuardRow {
+    who: Who,
+    first: u64,
+    end: u64,
+}
+
+#[derive(Debug)]
+struct GuardF {
+    enabled: bool,
+    /// Sorted by start, touching rows of one class merged.
+    rows: Vec<GuardRow>,
+}
+
+/// The allow-list of a device and its checks (a failing check is an error of `patchkit gen`, not of a test):
+/// - at most [`GUARD_MAX`] rows, each `first < end`, `who` is `stock` or `runtime`;
+/// - the `runtime` rows lie inside `[card.store]` and together are the whole store; no `stock` row touches the store or a `runtime` row;
+/// - every `[card]` item (header, table, each pool, each region, the path filesystem) lies inside one `stock` row: a row that is too tight would
+///   make a stock save or a FORMAT fail.
+fn guard_facts(short: &str, card: &Card) -> Result<Option<GuardF>> {
+    let Some(g) = &card.guard else {
+        return Ok(None);
+    };
+    let bad = |m: String| Err(err!("{short}: [card.guard] {m}"));
+    let Some(store) = &card.store else {
+        return bad("needs [card.store]: the guard protects the store".into());
+    };
+    let mut rows: Vec<GuardRow> = if g.row.is_empty() {
+        vec![
+            GuardRow {
+                who: Who::Stock,
+                first: 0,
+                end: store.first_sector,
+            },
+            GuardRow {
+                who: Who::Runtime,
+                first: store.first_sector,
+                end: store.end_sector,
+            },
+        ]
+    } else {
+        let mut v = vec![];
+        for r in &g.row {
+            let who = match r.who.as_str() {
+                "stock" => Who::Stock,
+                "runtime" => Who::Runtime,
+                other => return bad(format!("row who = {other:?} is \"stock\" or \"runtime\"")),
+            };
+            v.push(GuardRow {
+                who,
+                first: r.first,
+                end: r.end,
+            });
+        }
+        v
+    };
+    if rows.iter().any(|r| r.first >= r.end || r.end > 0xFFFF_FFFF) {
+        return bad(
+            "every row needs first < end <= 0xFFFFFFFF (rows are 32-bit sector numbers)".into(),
+        );
+    }
+    rows.sort_by_key(|r| (r.first, r.end));
+    // merge touching or overlapping rows of one class
+    let mut merged: Vec<GuardRow> = vec![];
+    for r in rows {
+        match merged
+            .iter_mut()
+            .find(|m| m.who == r.who && r.first <= m.end && m.first <= r.end)
+        {
+            Some(m) => {
+                m.first = m.first.min(r.first);
+                m.end = m.end.max(r.end);
+            }
+            None => merged.push(r),
+        }
+    }
+    merged.sort_by_key(|r| (r.first, r.end));
+    if merged.len() > GUARD_MAX {
+        return bad(format!(
+            "at most {GUARD_MAX} rows (after merging touching rows of one class)"
+        ));
+    }
+    let (store_first, store_end) = (store.first_sector, store.end_sector);
+    let runtime: Vec<&GuardRow> = merged.iter().filter(|r| r.who == Who::Runtime).collect();
+    if runtime.len() != 1 || runtime[0].first != store_first || runtime[0].end != store_end {
+        return bad(format!(
+            "the runtime rows must together be the store [{store_first:#x}, {store_end:#x})"
+        ));
+    }
+    for (i, a) in merged.iter().enumerate() {
+        for b in &merged[i + 1..] {
+            if a.end > b.first && a.first < b.end {
+                return bad(format!(
+                    "rows [{:#x}, {:#x}) and [{:#x}, {:#x}) overlap",
+                    a.first, a.end, b.first, b.end
+                ));
+            }
+        }
+        if a.who == Who::Stock && a.end > store_first && a.first < store_end {
+            return bad(format!(
+                "the stock row [{:#x}, {:#x}) reaches the store",
+                a.first, a.end
+            ));
+        }
+    }
+    let stock: Vec<&GuardRow> = merged.iter().filter(|r| r.who == Who::Stock).collect();
+    let inside = |first: u64, end: u64| stock.iter().any(|r| r.first <= first && end <= r.end);
+    let mut items: Vec<(String, u64, u64)> = vec![];
+    if let Some(h) = card.header_sector {
+        items.push(("header_sector".into(), h, h + 1));
+    }
+    if let Some(t) = card.table_sector {
+        items.push(("table_sector".into(), t, t + 1));
+    }
+    for (name, p) in &card.pools {
+        items.push((
+            format!("pools.{name}"),
+            p.base_sector,
+            p.base_sector + p.slots * p.stride_sectors,
+        ));
+    }
+    for (i, r) in card.regions.iter().enumerate() {
+        items.push((format!("regions[{i}]"), r.sector, r.sector + r.sectors));
+    }
+    if let Some(f) = &card.path_fs {
+        items.push(("path_fs".into(), f.superblock_sector, f.end_sector));
+    }
+    for (name, first, end) in items {
+        if !inside(first, end) {
+            return bad(format!(
+                "[card] {name} [{first:#x}, {end:#x}) is not inside one stock row: a stock save or FORMAT would be refused"
+            ));
+        }
+    }
+    Ok(Some(GuardF {
+        enabled: g.enabled,
+        rows: merged,
+    }))
+}
+
+/// The `CG_*` constants of one device (core/card-guard): the rows, 0 in the slots that are not used.
+fn guard_constants(g: &GuardF) -> Vec<C> {
+    let mut v = vec![c(
+        "CG_N",
+        g.rows.len() as u64,
+        "[card.guard] rows after merging",
+    )];
+    for i in 0..GUARD_MAX {
+        let r = g.rows.get(i);
+        v.push(c(
+            GUARD_FIRST[i],
+            r.map_or(0, |r| r.first),
+            "row first sector",
+        ));
+        v.push(c(
+            GUARD_END[i],
+            r.map_or(0, |r| r.end),
+            "row end sector (exclusive)",
+        ));
+        v.push(c(
+            GUARD_WHO[i],
+            r.map_or(0, |r| r.who as u64),
+            "row writer class: 0 stock, 1 runtime",
+        ));
+    }
+    v
+}
+
 /// The DSP's view of the same range: the NW32 word address of its first byte and its size in 4 KiB pages.
 fn sample_pool_dsp_constants(p: &SamplePoolF) -> Vec<C> {
     let v = |name, value: u64, note| c(name, value, note);
@@ -1120,6 +1543,15 @@ pub fn dyn_range(lib: &Library, dev: &str) -> Result<(i64, i64)> {
     Ok((first, d.last))
 }
 
+/// The number of stock machine types of a device: `stock_types` of `core/machines` types.toml.
+pub fn stock_types(lib: &Library, dev: &str) -> Result<i64> {
+    lib.get("core/machines")
+        .and_then(|m| m.alloc.get("machines"))
+        .and_then(|a| a.devices.get(dev))
+        .and_then(|d| d.stock_types)
+        .ok_or_else(|| err!("{dev}: types.toml has no stock_types"))
+}
+
 /// The constants of one device.
 fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
     let has_dsp = e.caps & DEV_HAS_DSP != 0;
@@ -1129,6 +1561,7 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
     } else {
         (0, -1)
     };
+    let stock = if has_dsp { stock_types(lib, dev)? } else { 0 };
     let (store_first, store_sectors) = match &e.store {
         Some(s) => {
             if s.selection_sectors != 2 {
@@ -1158,9 +1591,10 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
     let k = &e.digikit;
     let n = (last - first + 1) as u64;
     let abi = abi_consts()?;
-    // The staging buffer is no static array of the runtime: each device object reserves its own ([limits] stage_bytes, bounded by
-    // [limits.max] stage_bytes of sdk/sdk.toml), so only the arena is compared here.
-    for (what, have, key) in [("arena_bytes", e.limits.arena_bytes, "ARENA_BYTES")] {
+    for (what, have, key) in [
+        ("arena_bytes", e.limits.arena_bytes, "ARENA_BYTES"),
+        ("stage_bytes", e.limits.stage_bytes, "STAGE_BYTES"),
+    ] {
         if have != abi[key] {
             return Err(err!(
                 "{dev}: [limits] {what} is {have}, but the runtime's static array ({key} of core/runtime/abi.toml) is {}",
@@ -1203,6 +1637,7 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
             k.sample_path_max,
             "[digikit] sample_path_max",
         ),
+        c("TRACKS", k.tracks, "[digikit] tracks (0: not given)"),
         c(
             "STORE_FIRST",
             store_first,
@@ -1212,6 +1647,11 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
             "STORE_SECTORS",
             store_sectors,
             "[card.store] end_sector - first_sector (0: no store)",
+        ),
+        c(
+            "STOCK_MACHINE_TYPES",
+            stock as u64,
+            "core/machines types.toml stock_types (0: no DSP)",
         ),
         c(
             "DYN_TYPE_FIRST",
@@ -1355,6 +1795,38 @@ fn constants(lib: &Library, dev: &str, e: &Entry) -> Result<Vec<C>> {
         "[panel] button_channels (the button decoder's tables: a key channel is below it)",
     ));
     v.push(c("PANEL_ENCODERS", inp.encoders, "[panel] encoders"));
+    for (slot, (name, key)) in UI_KEYS.iter().enumerate() {
+        v.push(C {
+            name,
+            value: inp.ui_keys[slot] as i64,
+            note: UI_KEY_NOTES[slot],
+        });
+        let _ = key;
+    }
+    for (name, value, note) in [
+        (
+            "KEY_FLAG_PRESS",
+            inp.key_flags[0],
+            "[input.key_flags] press (set on a press, clear on a release)",
+        ),
+        (
+            "KEY_FLAG_FUNC",
+            inp.key_flags[1],
+            "[input.key_flags] func (set while FUNC is held)",
+        ),
+        (
+            "KEY_FLAG_REPEAT",
+            inp.key_flags[2],
+            "[input.key_flags] repeat (a held key repeating)",
+        ),
+        (
+            "KEY_FLAG_RELEASE",
+            inp.key_flags[3],
+            "[input.key_flags] release (set on a release)",
+        ),
+    ] {
+        v.push(c(name, value, note));
+    }
     v.push(c(
         "PANEL_EXC_N",
         inp.exceptions.len() as u64,
@@ -1645,8 +2117,46 @@ fn block_cycles(clock_hz: u64, blocks_per_second: u64) -> Option<u64> {
     (blocks_per_second != 0).then(|| (clock_hz + blocks_per_second / 2) / blocks_per_second)
 }
 
+/// `sdk/include/dk/gen/keys.h`: the logical key names of the device files (`[input.keys]`) as `dk_key` numbers. A module names a key with these and holds no
+/// panel code; the profile and `dkrt_dev` map the number to the device's code. `DK_KEY_NONE` is 0 and a name that a device lacks maps to 0 there.
+pub fn keys_h(facts: &Facts) -> Result<String> {
+    let names = facts.key_names()?;
+    let mut s = format!(
+        "/* {NOTE_SDK} */\n/* sdk/include/dk/gen/keys.h -- the logical keys: panel key names of the device files ([input.keys]), numbered in the order below. */\n#ifndef DK_GEN_KEYS_H\n#define DK_GEN_KEYS_H\n\n#include <stdint.h>\n\n/* A logical key: DK_KEY_NONE or a DK_KEY_* number. */\ntypedef uint32_t dk_key;\n\n#define DK_KEY_NONE 0\n"
+    );
+    for (i, n) in names.iter().enumerate() {
+        let _ = writeln!(s, "#define DK_KEY_{n} {}", i + 1);
+    }
+    let _ = writeln!(
+        s,
+        "#define DK_KEY_COUNT {} /* the names above, without DK_KEY_NONE */",
+        names.len()
+    );
+    for (macro_, stem) in [("TRIG", "TRIG"), ("ENC", "ENC")] {
+        let first = format!("{stem}1");
+        if let Some(i) = names.iter().position(|n| *n == first) {
+            let run = (1..)
+                .take_while(|k| {
+                    names
+                        .get(i + k - 1)
+                        .is_some_and(|n| *n == format!("{stem}{k}"))
+                })
+                .count();
+            let _ = writeln!(
+                s,
+                "/* DK_KEY_{macro_}(n), n = 1 to {run}: the numbered keys are consecutive. */\n#define DK_KEY_{macro_}(n) ((dk_key)(DK_KEY_{stem}1 + (n) - 1))"
+            );
+        }
+    }
+    s.push_str("\n#endif /* DK_GEN_KEYS_H */\n");
+    Ok(s)
+}
+
+const NOTE_SDK: &str =
+    "Generated by `patchkit gen` from the device files ([input.keys]). Do not edit.";
+
 /// The runtime's ABI file: the constants and the `DkrtDevice` struct that this generator writes the device object from.
-const ABI_TEXT: &str = include_str!("../../../modules/core/runtime/abi.toml");
+const ABI_TEXT: &str = include_str!("../../../runtime/core/abi.toml");
 
 /// The integer constants of `core/runtime/abi.toml` by name.
 fn abi_consts() -> Result<BTreeMap<String, u64>> {
@@ -1660,8 +2170,10 @@ fn abi_consts() -> Result<BTreeMap<String, u64>> {
     Ok(out)
 }
 
-/// `DkrtDevice`: its field names in order (every field is a u32), from `core/runtime/abi.toml`.
-fn dkdv_fields() -> Result<Vec<String>> {
+/// `DkrtDevice`: its field names in order with their length in words (1, or the length of an array field `u32 name[N]`; every field is a u32), from
+/// `core/runtime/abi.toml`.
+fn dkdv_fields() -> Result<Vec<(String, usize)>> {
+    let abi = abi_consts()?;
     let t: toml::Table = toml::from_str(ABI_TEXT)?;
     let st = t["struct"]
         .as_array()
@@ -1676,13 +2188,30 @@ fn dkdv_fields() -> Result<Vec<String>> {
         if w.next() != Some("u32") {
             return Err(err!("DkrtDevice: every field must be a u32: {decl:?}"));
         }
-        out.push(w.next().unwrap_or("").to_string());
+        let name = w.next().unwrap_or("");
+        let (name, len) = match name.split_once('[') {
+            Some((n, rest)) => {
+                let l = rest.trim_end_matches(']');
+                let len = l
+                    .parse::<usize>()
+                    .ok()
+                    .or_else(|| abi.get(l).map(|v| *v as usize))
+                    .ok_or_else(|| {
+                        err!(
+                            "DkrtDevice: field {n}: array length {l:?} is not a number or constant"
+                        )
+                    })?;
+                (n, len)
+            }
+            None => (name, 1),
+        };
+        out.push((name.to_string(), len));
     }
     Ok(out)
 }
 
 /// The constant that fills a `DkrtDevice` field (the four header words are not in this table).
-const DKDV_VALUE: [(&str, &str); 11] = [
+const DKDV_VALUE: [(&str, &str); 16] = [
     ("console_uart_base", "CONSOLE_UART_BASE"),
     ("ddr_uncached_alias", "DDR_UNCACHED_ALIAS"),
     ("ddr_cached_base", "DDR_CACHED_BASE"),
@@ -1694,10 +2223,18 @@ const DKDV_VALUE: [(&str, &str); 11] = [
     ("dsp_block_cycles", "DSP_BLOCK_CYCLES"),
     ("dyn_type_first", "DYN_TYPE_FIRST"),
     ("dyn_types", "DYN_TYPES"),
+    ("tracks", "TRACKS"),
+    ("key_flag_press", "KEY_FLAG_PRESS"),
+    ("key_flag_func", "KEY_FLAG_FUNC"),
+    ("key_flag_repeat", "KEY_FLAG_REPEAT"),
+    ("key_flag_release", "KEY_FLAG_RELEASE"),
 ];
 
+/// The array field of `DkrtDevice` that holds the panel code of each logical key (index = the key's number).
+const DKDV_KEY_CODES: &str = "key_codes";
+
 /// The device object of one device (`gas-dkdv`): `dkrt_dev`, the struct `DkrtDevice` as `.long` words.
-fn gas_dkdv(module: &str, dev: &str, cs: &[C]) -> Result<String> {
+fn gas_dkdv(module: &str, dev: &str, cs: &[C], key_codes: &[u64]) -> Result<String> {
     let abi = abi_consts()?;
     let fields = dkdv_fields()?;
     let value = |name: &str| {
@@ -1710,12 +2247,28 @@ fn gas_dkdv(module: &str, dev: &str, cs: &[C]) -> Result<String> {
         "/* {module} on {dev}: {NOTE}. The struct DkrtDevice of core/runtime/abi.toml. */\n"
     );
     s.push_str("    .balign 4\n    .globl dkrt_dev\ndkrt_dev:\n");
-    for f in &fields {
+    for (f, len) in &fields {
+        if f == DKDV_KEY_CODES {
+            if *len != key_codes.len() {
+                return Err(err!(
+                    "{module}: DkrtDevice.{f} has {len} words, the key table has {}",
+                    key_codes.len()
+                ));
+            }
+            for (i, code) in key_codes.iter().enumerate() {
+                let _ = writeln!(
+                    s,
+                    "    .long {}    /* {f}[{i}]: the panel code of logical key {i} (0: none) */",
+                    hex(*code as i64)
+                );
+            }
+            continue;
+        }
         let (v, note) = match f.as_str() {
             "magic" => (abi["DEV_MAGIC"] as i64, "DEV_MAGIC".to_string()),
             "version" => (abi["DEV_VERSION"] as i64, "DEV_VERSION".to_string()),
             "size" => (
-                (fields.len() * 4) as i64,
+                (fields.iter().map(|f| f.1).sum::<usize>() * 4) as i64,
                 "the bytes of the struct".to_string(),
             ),
             "caps" => (value("DKDV_CAPS")?, "DEV_HAS_* bits".to_string()),
@@ -1736,8 +2289,10 @@ fn gas_dkdv_offsets(module: &str) -> String {
     let mut s = format!(
         "/* {module}: {NOTE}. Byte offsets of the fields of struct DkrtDevice (core/runtime/abi.toml). */\n"
     );
-    for (i, f) in dkdv_fields().unwrap_or_default().iter().enumerate() {
-        let _ = writeln!(s, "    .equ DKDV_{}, {}", f.to_uppercase(), i * 4);
+    let mut word = 0;
+    for (f, len) in dkdv_fields().unwrap_or_default() {
+        let _ = writeln!(s, "    .equ DKDV_{}, {}", f.to_uppercase(), word * 4);
+        word += len;
     }
     s
 }
@@ -1751,12 +2306,12 @@ const NOTE: &str =
 
 /// `DeviceProfile` constants of every device (the type is `dkrt_abi::platform::DeviceProfile`): what the real platform reads from the device object
 /// (`device.s`, `dkrt_dev`) and what the host tests' `FakePlatform` and a service (through the device id) take their facts from, so they cannot differ.
-fn rust_profiles(module: &str, lib: &Library, docs: &BTreeMap<String, Entry>) -> Result<String> {
+fn rust_profiles(module: &str, lib: &Library, facts: &Facts) -> Result<String> {
     let mut s = format!(
-        "// {module}: {NOTE}.\n// One DeviceProfile for each device file, from the same facts as the device objects' words.\n\nuse crate::platform::DeviceProfile;\n"
+        "// {module}: {NOTE}.\n// One DeviceProfile for each device file, from the same facts as the device objects' words.\n\nuse crate::platform::{{DeviceProfile, KeyFlagBits}};\n"
     );
     let mut names = vec![];
-    for (dev, e) in docs {
+    for (dev, e) in &facts.docs {
         let cs = constants(lib, dev, e)?;
         let v = |name: &str| -> Result<u64> {
             cs.iter()
@@ -1766,6 +2321,26 @@ fn rust_profiles(module: &str, lib: &Library, docs: &BTreeMap<String, Entry>) ->
         };
         let k = &e.digikit;
         let up = dev.to_uppercase();
+        let key_codes = {
+            let all = facts.key_codes(dev)?;
+            // filled to 100 columns, as rustfmt lays out a long list of numbers
+            let mut rows = String::from("[\n");
+            let mut line = String::new();
+            for c in all {
+                let cell = format!("{c},");
+                if !line.is_empty() && 8 + line.len() + 1 + cell.len() > 99 {
+                    let _ = writeln!(rows, "        {line}");
+                    line.clear();
+                }
+                if !line.is_empty() {
+                    line.push(' ');
+                }
+                line.push_str(&cell);
+            }
+            let _ = writeln!(rows, "        {line}");
+            rows.push_str("    ]");
+            rows
+        };
         let safe_key = if e.caps & DEV_HAS_SAFE_KEY != 0 {
             format!("Some({})", k.safe_key)
         } else {
@@ -1773,7 +2348,7 @@ fn rust_profiles(module: &str, lib: &Library, docs: &BTreeMap<String, Entry>) ->
         };
         let _ = writeln!(
             s,
-            "\n/// `{dev}`: the device files' facts: [digikit] id, name, sample_path_max, keep_*, safe_key, [board], [capabilities], [card.store] and the DSP headroom and voices.\npub const {up}: DeviceProfile = DeviceProfile {{\n    id: {},\n    name: {},\n    samples_in_store: {},\n    sample_path_max: {},\n    dsp_headroom: {},\n    dsp_voices: {},\n    has_dsp: {},\n    has_store: {},\n    has_sdhc: {},\n    safe_key: {safe_key},\n    ddr_base: {},\n    ddr_bytes: {},\n    keep_base: {},\n    keep_bytes: {},\n    esdhc_base: {},\n    dsp_block_cycles: {},\n    dyn_type_first: {},\n    dyn_types: {},\n}};",
+            "\n/// `{dev}`: the device files' facts: [digikit] id, name, sample_path_max, keep_*, safe_key, [board], [capabilities], [card.store] and the DSP headroom and voices.\npub const {up}: DeviceProfile = DeviceProfile {{\n    id: {},\n    name: {},\n    samples_in_store: {},\n    sample_path_max: {},\n    dsp_headroom: {},\n    dsp_voices: {},\n    has_dsp: {},\n    has_store: {},\n    has_sdhc: {},\n    safe_key: {safe_key},\n    ddr_base: {},\n    ddr_bytes: {},\n    keep_base: {},\n    keep_bytes: {},\n    esdhc_base: {},\n    dsp_block_cycles: {},\n    stock_machine_types: {},\n    dyn_type_first: {},\n    dyn_types: {},\n    tracks: {},\n    key_codes: {key_codes},\n    key_flags: KeyFlagBits {{\n        press: {},\n        func: {},\n        repeat: {},\n        release: {},\n    }},\n}};",
             v("DEVICE_ID")?,
             hex(v("DEVICE_NAME_WORD")? as i64),
             e.digikit.samples_in_store,
@@ -1789,8 +2364,14 @@ fn rust_profiles(module: &str, lib: &Library, docs: &BTreeMap<String, Entry>) ->
             hex(v("KEEP_BYTES")? as i64),
             hex(v("ESDHC_BASE")? as i64),
             v("DSP_BLOCK_CYCLES")?,
+            v("STOCK_MACHINE_TYPES")?,
             v("DYN_TYPE_FIRST")?,
             v("DYN_TYPES")?,
+            v("TRACKS")?,
+            v("KEY_FLAG_PRESS")?,
+            v("KEY_FLAG_FUNC")?,
+            v("KEY_FLAG_REPEAT")?,
+            v("KEY_FLAG_RELEASE")?,
         );
         names.push(up);
     }
@@ -1816,6 +2397,26 @@ fn c_shared(module: &str) -> String {
         max.dsp_area_bytes / 4,
         crate::sdkgen::dsp_slot_words()
     )
+}
+
+/// The `[[repack]]` entries of a module as C macros (`REPACK_<ROLE>_DEST`, `_STAGE_END`, `_LEN` and `_SHA256`, an initializer list of 32 bytes): the layout
+/// that patchkit checks the stored stream against is the one the module's code uses, from one source.
+fn c_repack(module: &str, repacks: &[crate::module::RepackDef]) -> Result<String> {
+    if repacks.is_empty() {
+        return Err(err!("{module}: a `c-repack` gen needs a [[repack]]"));
+    }
+    let mut s = format!("/* {module}: {NOTE}. The [[repack]] of module.toml. */\n");
+    for r in repacks {
+        let role = r.role.to_ascii_uppercase();
+        let sha = crate::error::unhex(&r.sha256)
+            .map_err(|_| err!("{module}: [[repack]] sha256 is not hex"))?;
+        let bytes: Vec<String> = sha.iter().map(|b| format!("{b:#04x}")).collect();
+        let _ = writeln!(s, "#define REPACK_{role}_DEST {:#x}u", r.dest);
+        let _ = writeln!(s, "#define REPACK_{role}_STAGE_END {:#x}u", r.stage_end);
+        let _ = writeln!(s, "#define REPACK_{role}_LEN {}u", r.len);
+        let _ = writeln!(s, "#define REPACK_{role}_SHA256 {{ {} }}", bytes.join(", "));
+    }
+    Ok(s)
 }
 
 fn gas(module: &str, dev: &str, cs: &[C], emit: Option<&[&str]>) -> String {
@@ -1945,7 +2546,7 @@ fn check_sources(
     ))
 }
 
-/// Is the module built for the device: a `[targets]` key or a `ports` entry that starts with `<short>-`; a module that lists neither is for every device.
+/// Is the module built for the device: a `[targets]` key or a `ports` entry that starts with `<short>-` (TODO: the port file format, ports/, has no device field; the prefix is the identity, as in apps/web/src/data/modules.ts; finding 153); a module that lists neither is for every device.
 fn targets_device(m: &crate::module::Manifest, short: &str) -> bool {
     let prefix = format!("{short}-");
     let listed = m.module.ports.iter().chain(m.targets.keys());
@@ -1959,11 +2560,129 @@ fn targets_device(m: &crate::module::Manifest, short: &str) -> bool {
     !any
 }
 
-/// The files a module asks for with `[[gen]]` (empty: it asks for none).
+/// The tables of a device file as dotted paths (`input`, `input.keys`).
+fn table_paths(t: &toml::Table) -> std::collections::BTreeSet<String> {
+    fn walk(t: &toml::Table, prefix: &str, out: &mut std::collections::BTreeSet<String>) {
+        for (k, v) in t {
+            if let toml::Value::Table(sub) = v {
+                let path = if prefix.is_empty() {
+                    k.clone()
+                } else {
+                    format!("{prefix}.{k}")
+                };
+                out.insert(path.clone());
+                walk(sub, &path, out);
+            }
+        }
+    }
+    let mut out = std::collections::BTreeSet::new();
+    walk(t, "", &mut out);
+    out
+}
+
+fn ids_of(lib: &Library, roots: &[String]) -> Result<Vec<String>> {
+    lib.with_requires(roots).map(|(ids, _)| ids)
+}
+
+/// A module names the tables of the device file that it reads (`[module] needs_device`, for example `input.keys`): every device (runtime target or not)
+/// whose patch sets include the module (as a root or through `requires`) must have them. The generated constants of an absent table would be zeros, which no
+/// module should run on. This whole-library check (`patchkit gen`) also refuses a module id of a patch set that the library does not have.
+pub fn check_device_tables(lib: &Library, facts: &Facts) -> Result<()> {
+    for (dev, e) in &facts.devices {
+        for (set, roots) in &e.patch_sets {
+            let (ids, _) = lib
+                .with_requires(roots)
+                .map_err(|x| err!("{dev}: patch set {set}: {x}"))?;
+            for id in ids {
+                let m = lib
+                    .get(&id)
+                    .ok_or_else(|| err!("{dev}: patch set {set}: unknown module {id}"))?;
+                check_needs(dev, set, &id, &m.manifest.module.needs_device, e)?;
+            }
+            check_needed_when(
+                lib,
+                dev,
+                &e.switches,
+                &ids_of(lib, roots)?,
+                &format!("patch set {set}"),
+            )?;
+        }
+    }
+    Ok(())
+}
+
+/// The same check for one module and the tables it declares (`needs`), for the generator of the module, `build` and `pack`. A device is checked when a patch set
+/// lists the module; a set that cannot be resolved in this library (`pack --manifest`: no core modules) counts when the module is one of its roots, and is skipped
+/// otherwise. Other modules are not looked at, so a device without a table never stops the build of a module that does not need it.
+pub fn check_module_tables(lib: &Library, facts: &Facts, id: &str, needs: &[String]) -> Result<()> {
+    if needs.is_empty() {
+        return Ok(());
+    }
+    for (dev, e) in &facts.devices {
+        for (set, roots) in &e.patch_sets {
+            let includes = match lib.with_requires(roots) {
+                Ok((ids, _)) => ids.iter().any(|i| i == id),
+                Err(_) => roots.iter().any(|r| r == id),
+            };
+            if includes {
+                check_needs(dev, set, id, needs, e)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// The `needed_when` rule of the modules of `lib` for one device and one resolved module set (`ids`): on a device where a module's switch is true, a set that holds
+/// the module's `with` module must hold the module; a set that holds the module where the switch is not true is refused. A module that is not in `lib` is not checked.
+pub fn check_needed_when(
+    lib: &Library,
+    dev: &str,
+    switches: &BTreeMap<String, bool>,
+    ids: &[String],
+    what: &str,
+) -> Result<()> {
+    for m in &lib.modules {
+        let id = m.id();
+        for nw in &m.manifest.module.needed_when {
+            let on = switches.get(&nw.switch).copied().unwrap_or(false);
+            let has = ids.iter().any(|i| i == id);
+            let with = ids.iter().any(|i| i == &nw.with);
+            if on && with && !has {
+                return Err(err!(
+                    "{dev}: {what} includes {} but not {id}: the device file turns [{}] on, so every set with {} needs {id}",
+                    nw.with,
+                    nw.switch,
+                    nw.with
+                ));
+            }
+            if !on && has {
+                return Err(err!(
+                    "{dev}: {what} includes {id}, but the device file does not turn [{}] on",
+                    nw.switch
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
+fn check_needs(dev: &str, set: &str, id: &str, needs: &[String], e: &DeviceTables) -> Result<()> {
+    for need in needs {
+        if !e.tables.contains(need) {
+            return Err(err!(
+                "{dev}: patch set {set} includes {id}, which needs [{need}] in the device file"
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The files a module asks for with `[[gen]]` (empty: it asks for none). A module with `needs_device` is first checked against every device that patches it in.
 pub fn generate(lib: &Library, facts: &Facts, module: &str) -> Result<Vec<GenFile>> {
     let m = lib
         .get(module)
         .ok_or_else(|| err!("unknown module {module}"))?;
+    check_module_tables(lib, facts, module, &m.manifest.module.needs_device)?;
     if m.manifest.gens.is_empty() {
         return Ok(vec![]);
     }
@@ -2026,7 +2745,11 @@ pub fn generate(lib: &Library, facts: &Facts, module: &str) -> Result<Vec<GenFil
                     ));
                 }
                 for (dev, cs) in &per_dev {
-                    out.push((g.path.replace("{dev}", dev), gas_dkdv(module, dev, cs)?));
+                    let keys = facts.key_codes(dev)?;
+                    out.push((
+                        g.path.replace("{dev}", dev),
+                        gas_dkdv(module, dev, cs, &keys)?,
+                    ));
                 }
             }
             "gas-dkdv-offsets" => {
@@ -2043,7 +2766,15 @@ pub fn generate(lib: &Library, facts: &Facts, module: &str) -> Result<Vec<GenFil
                         "{module}: a `rust-profiles` gen is one file for all devices"
                     ));
                 }
-                out.push((g.path.clone(), rust_profiles(module, lib, &facts.docs)?));
+                out.push((g.path.clone(), rust_profiles(module, lib, facts)?));
+            }
+            "c-repack" => {
+                if g.path.contains("{dev}") {
+                    return Err(err!(
+                        "{module}: a `c-repack` gen is one file for all devices"
+                    ));
+                }
+                out.push((g.path.clone(), c_repack(module, &m.manifest.repack)?));
             }
             "c-shared" => {
                 if g.path.contains("{dev}") {
@@ -2110,6 +2841,23 @@ pub fn generate(lib: &Library, facts: &Facts, module: &str) -> Result<Vec<GenFil
                     out.push((
                         g.path.replace("{dev}", dev),
                         gas(module, dev, &sample_pool_constants(p), None),
+                    ));
+                }
+            }
+            "gas-card-guard" => {
+                if !g.path.contains("{dev}") {
+                    return Err(err!(
+                        "{module}: a `gas-card-guard` gen is one file per device: put {{dev}} in the path"
+                    ));
+                }
+                for dev in &devs {
+                    let e = &facts.docs[*dev];
+                    let gf = e.guard.as_ref().filter(|g| g.enabled).ok_or_else(|| {
+                        err!("{module}: {dev} has no [card.guard] with enabled = true")
+                    })?;
+                    out.push((
+                        g.path.replace("{dev}", dev),
+                        gas(module, dev, &guard_constants(gf), None),
                     ));
                 }
             }
@@ -2197,5 +2945,221 @@ mod sample_pool_tests {
         let c = sample_pool_dsp_constants(&p);
         assert_eq!((c[0].name, c[0].value), ("SP_DDR_BASE_NW32", 0x1014_c400));
         assert_eq!((c[1].name, c[1].value), ("SP_DDR_PAGES", 65536));
+    }
+}
+
+#[cfg(test)]
+mod guard_tests {
+    use super::*;
+
+    fn device_card(file: &str) -> Card {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../devices")
+            .join(file);
+        let text = std::fs::read_to_string(&path).unwrap();
+        let t: toml::Table = toml::from_str(&text).unwrap();
+        t["card"].clone().try_into().unwrap()
+    }
+
+    fn rows(g: &GuardF) -> Vec<(Who, u64, u64)> {
+        g.rows.iter().map(|r| (r.who, r.first, r.end)).collect()
+    }
+
+    fn row(who: &str, first: u64, end: u64) -> GuardRowDoc {
+        GuardRowDoc {
+            who: who.into(),
+            first,
+            end,
+        }
+    }
+
+    /// The Syntakt card with its guard rows replaced.
+    fn st_with(rows: Vec<GuardRowDoc>) -> Card {
+        let mut c = device_card("syntakt.toml");
+        c.guard = Some(GuardDoc {
+            enabled: true,
+            row: rows,
+        });
+        c
+    }
+
+    fn err_of(c: &Card) -> String {
+        guard_facts("st", c).err().expect("refused").0
+    }
+
+    #[test]
+    fn the_syntakt_rows_are_the_tight_stock_window_and_the_store() {
+        let g = guard_facts("st", &device_card("syntakt.toml"))
+            .unwrap()
+            .unwrap();
+        assert!(g.enabled);
+        assert_eq!(
+            rows(&g),
+            [
+                (Who::Stock, 0, 0x18_0000),
+                (Who::Runtime, 0x20_0000, 0x30_0000)
+            ]
+        );
+    }
+
+    #[test]
+    fn a_device_without_rows_gets_the_defaults_and_its_items_fit() {
+        // stock = [0, store.first), runtime = the store; the +Drive of the DT2 ends at path_fs.end_sector, below the store
+        let dt2 = guard_facts("dt2", &device_card("digitakt-ii.toml"))
+            .unwrap()
+            .unwrap();
+        assert!(!dt2.enabled);
+        assert_eq!(
+            rows(&dt2),
+            [
+                (Who::Stock, 0, 0x2df_1000),
+                (Who::Runtime, 0x2df_1000, 0x2e1_a000)
+            ]
+        );
+        let dn2 = guard_facts("dn2", &device_card("digitone-ii.toml"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            rows(&dn2),
+            [
+                (Who::Stock, 0, 0x80_0000),
+                (Who::Runtime, 0x80_0000, 0x2e1_a000)
+            ]
+        );
+    }
+
+    #[test]
+    fn a_card_without_the_table_has_no_guard() {
+        let mut c = device_card("syntakt.toml");
+        c.guard = None;
+        assert!(guard_facts("st", &c).unwrap().is_none());
+    }
+
+    #[test]
+    fn a_stock_row_that_is_too_tight_for_a_card_item_is_refused() {
+        // the project pool ends at 0x180000: one sector less and the last project slot is outside
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x17_ffff),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(
+            e.contains("pools.projects") && e.contains("not inside one stock row"),
+            "{e}"
+        );
+        // a row that starts above the header sector
+        let e = err_of(&st_with(vec![
+            row("stock", 1, 0x18_0000),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(e.contains("header_sector"), "{e}");
+    }
+
+    #[test]
+    fn rows_may_not_reach_the_store_overlap_or_leave_the_store_partly_open() {
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x20_0001),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(
+            e.contains("overlap") || e.contains("reaches the store"),
+            "{e}"
+        );
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x18_0000),
+            row("runtime", 0x20_0000, 0x2f_0000),
+        ]));
+        assert!(e.contains("runtime rows must together be the store"), "{e}");
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x18_0000),
+            row("runtime", 0x20_0000, 0x30_0001),
+        ]));
+        assert!(e.contains("runtime rows must together be the store"), "{e}");
+        let e = err_of(&st_with(vec![row("stock", 0, 0x18_0000)]));
+        assert!(e.contains("runtime rows must together be the store"), "{e}");
+        // a stock row inside the store
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x18_0000),
+            row("stock", 0x28_0000, 0x29_0000),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(
+            e.contains("overlap") || e.contains("reaches the store"),
+            "{e}"
+        );
+    }
+
+    #[test]
+    fn rows_are_checked_for_their_shape() {
+        let e = err_of(&st_with(vec![
+            row("host", 0, 0x18_0000),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(e.contains("\"stock\" or \"runtime\""), "{e}");
+        let e = err_of(&st_with(vec![
+            row("stock", 0x18_0000, 0x18_0000),
+            row("runtime", 0x20_0000, 0x30_0000),
+        ]));
+        assert!(e.contains("first < end"), "{e}");
+        // rows are u32 in the generated table: an end above 0xFFFFFFFF is refused
+        let e = err_of(&st_with(vec![
+            row("stock", 0, 0x18_0000),
+            row("runtime", 0x20_0000, 0x30_0000),
+            row("stock", 0x4000_0000, 0x1_0000_0000),
+        ]));
+        assert!(e.contains("0xFFFFFFFF"), "{e}");
+        let mut c = device_card("syntakt.toml");
+        c.store = None;
+        let e = err_of(&c);
+        assert!(e.contains("needs [card.store]"), "{e}");
+        // nine stock rows that do not touch
+        let mut many: Vec<GuardRowDoc> = (0..9)
+            .map(|i| row("stock", i * 0x1_0000, i * 0x1_0000 + 0x8000))
+            .collect();
+        many.push(row("runtime", 0x20_0000, 0x30_0000));
+        let e = err_of(&st_with(many));
+        assert!(e.contains("at most 8 rows"), "{e}");
+    }
+
+    #[test]
+    fn touching_rows_of_one_class_are_merged() {
+        let g = guard_facts(
+            "st",
+            &st_with(vec![
+                row("stock", 0x8_0000, 0x18_0000),
+                row("stock", 0, 0x8_0000),
+                row("runtime", 0x20_0000, 0x30_0000),
+            ]),
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(
+            rows(&g),
+            [
+                (Who::Stock, 0, 0x18_0000),
+                (Who::Runtime, 0x20_0000, 0x30_0000)
+            ]
+        );
+    }
+
+    #[test]
+    fn the_constants_hold_the_rows_and_zero_the_unused_slots() {
+        let g = guard_facts("st", &device_card("syntakt.toml"))
+            .unwrap()
+            .unwrap();
+        let v: BTreeMap<&str, i64> = guard_constants(&g)
+            .into_iter()
+            .map(|k| (k.name, k.value))
+            .collect();
+        assert_eq!(v["CG_N"], 2);
+        assert_eq!(
+            (v["CG_FIRST_0"], v["CG_END_0"], v["CG_WHO_0"]),
+            (0, 0x18_0000, 0)
+        );
+        assert_eq!(
+            (v["CG_FIRST_1"], v["CG_END_1"], v["CG_WHO_1"]),
+            (0x20_0000, 0x30_0000, 1)
+        );
+        assert_eq!((v["CG_FIRST_2"], v["CG_END_2"], v["CG_WHO_7"]), (0, 0, 0));
+        assert_eq!(v.len(), 1 + 3 * GUARD_MAX);
     }
 }

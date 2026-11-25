@@ -1,0 +1,12 @@
+diff --git a/modules/core/runtime/owners.toml b/modules/core/runtime/owners.toml
+index ba319a973..9cdc9d16b 100644
+--- a/modules/core/runtime/owners.toml
++++ b/modules/core/runtime/owners.toml
+@@ -42,6 +42,7 @@ shared = [
+ "C:boot" = ["dkrt::boot", "dkrt::intro", "dkrt::safe_mode", "dkrt::safe_screen"]
+ "C:loading" = [
+   "dkrt::loader",
++  "dkrt::instrument",  # the V2 owner of persistent instruments (core/instrument-play): admission, upload, publication
+   "dkrt::svc_rows",
+   "dkrt::plan",
+   "dkrt::scan",

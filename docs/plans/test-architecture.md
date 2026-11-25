@@ -32,7 +32,7 @@ Principle: every item leaves its test area in pyramid shape. Host tests per laye
 | --- | --- | --- | --- |
 | Host unit tests per layer | Logic of one layer (packing, manifests, routing, tables) against fakes | Rust and TS, no emulator | Every change that reaches the layer |
 | Contract tests per interface | Same suite on the fake and the real implementation | Fake: host. Real: emulator, once per device | Fake: with the layer. Real: when the interface or its implementation changes |
-| Assembly tests | The seams between separately built real artifacts: the packed fixtures, the service files, the bound files, the runtime object and the info table of the image, through the plan, role checks and installs of the boot | Rust on the host (`FakePlatform`), no emulator, no ColdFire code | Before every device test: `test-device` depends on `core/runtime:test-assembly` |
+| Assembly tests | The seams between separately built real artifacts: the packed fixtures, the service files, the port files, the runtime object and the info table of the image, through the plan, role checks and installs of the boot | Rust on the host (`FakePlatform`), no emulator, no ColdFire code | Before every device test: `test-device` depends on `core/runtime:test-assembly` |
 | Device smoke per service | Boot, load, play, edit for one service. Checks the firmware handles it (menus, parameters, save and load, upload, memory audit) | ColdFire emulator; DSP only when the test needs audio | When the service or a layer below it changes |
 | Module DSP tests | Is the machine or FX right, and does it sound right? Pitch, decay, RMS, DC, parameter response, pinned PCM hash | The module routine alone, through its contract, on the native SHARC engine | When the module or its DSP code changes |
 | Coupled device tests | Does it sound right inside the device (stock filter, envelope, FX, master, hook glue)? One per module type per device | Both CPUs | When the module, the hook glue or a layer below changes |
@@ -150,7 +150,7 @@ Reading the table:
 
 Runs alongside R12.
 
-**Rule: real modules model the fixtures.** A real module needs no device test of its own when all of these hold: its imports and descriptor features are covered by the fixture contract suite (patchkit coverage plus descriptor coverage, to add); it passes `test-conformance-rig`; its `tests/rig` sound checks pass; the device conformance load passes. A missing feature goes into a fixture, not into a device test.
+**Rule: real modules model the fixtures.** A real module needs no device test of its own when all of these hold: its imports and descriptor features are covered by the fixture contract suite (patchkit coverage plus descriptor coverage, to add); it passes `test-dsp-conformance`; its `tests/rig` sound checks pass; the device conformance load passes. A missing feature goes into a fixture, not into a device test.
 
 **Target layout per layer.**
 

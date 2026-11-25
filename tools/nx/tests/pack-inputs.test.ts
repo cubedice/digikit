@@ -55,3 +55,52 @@ it('makes the SDK sources an input of a module with C sources, which link them a
     '{workspaceRoot}/sdk/src/**/*',
   ]);
 });
+
+it('makes the C and assembler sources of a Rust object and the headers of its include_dirs inputs', () => {
+  const dks = 'modules/svc/dks/module.toml';
+  write('modules/svc/dks/Cargo.toml', '[package]\nname = "svc-dks"\n');
+  write('adapters/play/src/cf/control.c', '#include "play.h"\n#include "local.h"\n');
+  write('adapters/play/src/cf/hooks.s', '.include "hooks.inc"\n');
+  write('adapters/play/src/cf/local.h', '');
+  write('adapters/play/include/play.h', '#include "deep.h"\n');
+  write('adapters/play/include/deep.h', '');
+  write('adapters/play/include/hooks.inc', '');
+  const object = (include_dirs?: string[]) =>
+    new Map([
+      [
+        'core/svc',
+        {
+          file: dks,
+          manifest: { category: 'test' },
+          objects: [
+            {
+              sources: [
+                'Cargo.toml',
+                '../../../adapters/play/src/cf/control.c',
+                '../../../adapters/play/src/cf/hooks.s',
+              ],
+              ...(include_dirs && { include_dirs }),
+            },
+          ],
+        },
+      ],
+    ]);
+  const sources = [
+    { input: 'production', projects: ['core/svc'] },
+    '{workspaceRoot}/adapters/play/src/cf/**/*.{h,hh,hpp,hxx}',
+    '{workspaceRoot}/adapters/play/src/cf/control.c',
+    '{workspaceRoot}/adapters/play/src/cf/hooks.s',
+    '{workspaceRoot}/sdk/include/**/*',
+  ];
+  // the headers of the include directories, and what they include, are inputs; a Rust object links no SDK library (no sdk/src)
+  expect(packSourceInputs(root, object(['../../../adapters/play/include']), [dks])).toEqual([
+    ...sources,
+    '{workspaceRoot}/adapters/play/include/deep.h',
+    '{workspaceRoot}/adapters/play/include/hooks.inc',
+    '{workspaceRoot}/adapters/play/include/play.h',
+    '{workspaceRoot}/adapters/play/src/cf/local.h',
+  ]);
+  // without the key the build looks in the module's own directories, and so does the scan
+  expect(packSourceInputs(root, object(), [dks])).toEqual([...sources, '{workspaceRoot}/adapters/play/src/cf/local.h']);
+  expect(() => packSourceInputs(root, object(['../../../../outside']), [dks])).toThrow('outside the workspace');
+});

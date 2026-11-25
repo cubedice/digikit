@@ -1,0 +1,128 @@
+{
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "digikit/prism",
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "tests/ui.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/prism",
+          "core/services/fx"
+        ],
+        "patchModules": [
+          "core/phrase-ui",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/phrase-ui",
+          "A:core/fxview"
+        ]
+      },
+      {
+        "files": [
+          "tests/send.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/prism",
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
+        ],
+        "patchModules": [
+          "core/phrase-ui",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/phrase-ui",
+          "A:core/fxview"
+        ]
+      },
+      {
+        "files": [
+          "tests/coexistence.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "digikit/overloop",
+          "digikit/prism",
+          "digikit/remote",
+          "core/services/fx",
+          "core/services/machines",
+          "core/services/instrument"
+        ],
+        "patchModules": [
+          "core/input",
+          "core/instrument-play",
+          "core/loop-storage",
+          "core/loop-display",
+          "core/phrase-ui",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/phrase-ui",
+          "A:core/fxview",
+          "S:instrument"
+        ]
+      },
+      {
+        "files": [
+          "tests/transition.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/prism",
+          "digikit/overloop",
+          "test/sine",
+          "core/services/fx",
+          "core/services/machines"
+        ],
+        "patchModules": [
+          "core/loop-storage",
+          "core/pattern-position",
+          "core/loop-display",
+          "core/phrase-ui",
+          "core/health"
+        ],
+        "plusdrive": true,
+        "tags": [
+          "A:core/dynfx",
+          "A:core/fxpages",
+          "A:core/phrase-ui",
+          "A:core/loop-display",
+          "A:core/fxview"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

@@ -16,7 +16,7 @@ from tools.patchkit import patchkit, port_resolve
 ROOT = Path(__file__).resolve().parents[2]
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 FIXTURE = ROOT / "tests/regression/fixtures/canopy-copy-guard"
-ADAPTER = ROOT / "modules/core/adapters/instrument-play/src/cf"
+ADAPTER = ROOT / "image-modules/adapters/instrument-play/src/cf"
 
 
 def test_copy_guard_uses_pinned_stock_memcpy_with_bounded_guest_instructions(tmp_path):

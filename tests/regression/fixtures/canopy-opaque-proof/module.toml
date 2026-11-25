@@ -16,7 +16,7 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/opaque-proof.dko.json"
-sources = ["src/cf/proof.c", "src/cf/proof.s", "../canopy-raw-store/raw-store.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c"]
+sources = ["src/cf/proof.c", "src/cf/proof.s", "../canopy-raw-store/raw-store.c", "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.c"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]

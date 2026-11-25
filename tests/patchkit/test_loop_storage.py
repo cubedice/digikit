@@ -10,7 +10,7 @@ import pytest
 from tools.patchkit import pk_loop_storage_proof as proof
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE = ROOT / "modules/core/adapters/loop-storage"
+MODULE = ROOT / "image-modules/adapters/loop-storage"
 
 
 @pytest.fixture(scope="module")
@@ -71,12 +71,16 @@ def test_manifest_changes_only_reviewed_six_operands(stock_main):
 
 
 def test_relay_lease_abuts_existing_phrase_storage(stock_main):
-    proof.audit_main(stock_main, patched_from_manifest(stock_main, relay=True), relay=True)
-    module = ROOT / "modules/core/adapters/relay-storage"
+    proof.audit_main(
+        stock_main, patched_from_manifest(stock_main, relay=True), relay=True
+    )
+    module = ROOT / "image-modules/adapters/relay-storage"
     obj = json.loads((module / "build/relay-storage-dsp.dko.json").read_text())
     symbol = next(s for s in obj["symbols"] if s["name"] == "_relay_storage_info")
     section = next(s for s in obj["sections"] if s["name"] == symbol["section"])
-    magic, version, base, size = struct.unpack_from("<4I", bytes.fromhex(section["hex"]), symbol["value"])
+    magic, version, base, size = struct.unpack_from(
+        "<4I", bytes.fromhex(section["hex"]), symbol["value"]
+    )
     assert (magic, version, size) == (0x524C5931, 1, proof.RELAY_BYTES)
     assert base == proof.cf_offset_to_dsp(proof.CF_BIAS + proof.POOL_BYTES - size)
     assert base + size == proof.PHRASE_BANK0
@@ -132,7 +136,7 @@ def test_optional_storage_export_uses_direct_global_name():
     # object.externs aliases resolve primitives/anchors, not another module's
     # global symbol. An optional alias silently became zero even with the
     # provider selected, causing the real runtime to return E_DSP_IMPORT.
-    folder = ROOT / "modules/core/adapters/dyndsp"
+    folder = ROOT / "runtime/platform/dyndsp"
     manifest = tomllib.loads((folder / "module.toml").read_text(encoding="utf-8"))
     obj = next(item for item in manifest["object"] if item["devices"] == ["dt2"])
     assert "_loop_buffer_info" in obj["optional"]
@@ -144,7 +148,7 @@ def test_optional_storage_export_uses_direct_global_name():
 
 
 def test_built_optional_export_relocates_the_actual_provider_symbol():
-    folder = ROOT / "modules/core/adapters/dyndsp"
+    folder = ROOT / "runtime/platform/dyndsp"
     path = folder / "build/dyndsp-dt2.dko.json"
     provider_path = provider_object()
     if not path.exists() or not provider_path.exists():

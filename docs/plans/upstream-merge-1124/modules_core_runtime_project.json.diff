@@ -1,0 +1,13 @@
+diff --git a/modules/core/runtime/project.json b/modules/core/runtime/project.json
+index aaafccb01..ce5ef6e27 100644
+--- a/modules/core/runtime/project.json
++++ b/modules/core/runtime/project.json
+@@ -47,6 +47,8 @@
+         "{workspaceRoot}/mise.toml",
+         "{workspaceRoot}/tools/nx/rust-env.mjs",
+         "{workspaceRoot}/modules/core/runtime/build/runtime.dko.json",
++        "{workspaceRoot}/modules/core/adapters/dyndsp/src/cf/dyndsp-{dt2,dn2}.s",
++        "{workspaceRoot}/modules/core/adapters/dyndsp/build/dyndsp-{dt2,dn2}.dko.json",
+         "{workspaceRoot}/modules/core/services/fx/dks/build/fx.dko.json",
+         "{workspaceRoot}/modules/core/services/machines/dks/build/machines.dko.json",
+         "{workspaceRoot}/modules/core/services/lfo/dks/build/lfo.dko.json",

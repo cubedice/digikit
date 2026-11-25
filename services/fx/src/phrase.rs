@@ -1,0 +1,318 @@
+//! Optional exclusive phrase FX capability. The import, never a module name,
+//! selects it. Claiming it twice fails before allocating or publishing.
+//! It is a part of the fx service: the phrase effect is one effect row whose controls and page the image's phrase
+//! adapters own (core/phrase-control, core/phrase-ui). Its route is the one of any effect (`fxsend`: the routes its record
+//! allows; PRISM is a send effect); its row MIX stays at unity, since its level is one of the adapters' controls, and the
+//! kit's page values are not read for it (`fxpage`). On a send bus its amounts are the adapters' too (`sends`: the tracks
+//! the page selects), so it has no cell of the send page and takes no send slot. The parts of the owner `Fx` call it: `DspPart`
+//! (`dsp/part.rs`: `check` in `check_sections`, `admit`, `remove` in `release`; `dsp::claim` reserves the row), `Ticker` (`tick`),
+//! `Provider::start` (`setup`), and the effect pages bind and revoke the adapters' page (`fxpage::apply`, `fxpage::remove`).
+//! The service is a file of its own (`fx.dks`), so it has no link to the image: the three functions of the adapters it calls
+//! are `[[info]]` entries of their modules, found by name through `CoreApi::info` (`setup`, from `Fx::start`).
+//! The claim and the addresses are statics of this file, like the tables of `fxpage` and `fxsend`: the code of the effect pages
+//! and of the send route reads them with no owner object in hand (`is_row`, `sends_row`, `row`).
+use core::ptr::addr_of_mut;
+use dkrt_abi::core_api::CoreApi;
+use dkrt_abi::dsp::{DspSec, Job, DSP_IMPORT_LEN};
+use dkrt_abi::mem::cstr_eq;
+use dkrt_sdk::*;
+
+/// The DSP import that makes a module's one effect the phrase effect.
+const CONTROL: &[u8] = b"_phrase_control_info\0";
+/// `phrase_bind(owner, row, page, module, title)` of core/phrase-control.
+type BindFn = unsafe extern "C" fn(u32, u32, u32, *const u8, *const u8);
+type TickFn = unsafe extern "C" fn();
+/// `phrase_sends(amounts)` of core/phrase-control: the 16 send amounts (0 to 127) into `amounts`; 1, or 0 (nothing written) without an owner.
+type SendsFn = unsafe extern "C" fn(*mut u8) -> u32;
+
+/// The names of the `[[info]]` entries: each is the function itself (core/phrase-control: `phrase_bind`, `phrase_sends`; core/phrase-ui: `phrase_ui_tick`).
+pub const BIND_HASH: u32 = crate::fxpage::fnv1a(b"phrase_bind");
+pub const UI_TICK_HASH: u32 = crate::fxpage::fnv1a(b"phrase_ui_tick");
+pub const SENDS_HASH: u32 = crate::fxpage::fnv1a(b"phrase_sends");
+
+/// The image's phrase functions as `setup` found them: an address, or 0 when its module is not in the image.
+struct Image {
+    bind: usize,
+    ui_tick: usize,
+    sends: usize,
+}
+static mut IMAGE: Image = Image {
+    bind: 0,
+    ui_tick: 0,
+    sends: 0,
+};
+fn image() -> &'static mut Image {
+    unsafe { &mut *addr_of_mut!(IMAGE) }
+}
+
+/// Find the phrase functions of the image (`Fx::start`, once the table of the effect pages is bound; a host test that gives its `FakeCore` the entries calls it too).
+/// An image without the phrase adapters leaves every address 0: a phrase effect is then refused by `check`.
+pub unsafe fn setup<C: CoreApi>(core: &C) {
+    let i = image();
+    i.bind = core.info(BIND_HASH) as usize;
+    i.ui_tick = core.info(UI_TICK_HASH) as usize;
+    i.sends = core.info(SENDS_HASH) as usize;
+}
+
+/// Back to the start: no claim and no function of the image (`rows::reset`, the host tests' reset between two cores).
+pub fn reset() {
+    *owner() = Owner::EMPTY;
+    *image() = Image {
+        bind: 0,
+        ui_tick: 0,
+        sends: 0,
+    };
+}
+
+/// Set the address of `phrase_sends` (`setup`; a host test gives a function of its own, 0 for none).
+pub unsafe fn set_sends(f: usize) {
+    image().sends = f;
+}
+
+/// Set the address of `phrase_bind` (`setup`; a host test gives a function of its own, 0 for none: no phrase effect is then accepted).
+pub unsafe fn set_bind(f: usize) {
+    image().bind = f;
+}
+
+/// The phrase effect's row, while one is claimed.
+pub fn row() -> Option<usize> {
+    let o = owner();
+    if o.free() {
+        None
+    } else {
+        Some(o.row)
+    }
+}
+
+/// Effect row `k` takes its send amounts from the phrase adapters: it is the phrase effect's, and the image has `phrase_sends`.
+pub fn sends_row(k: usize) -> bool {
+    is_row(k) && image().sends != 0
+}
+
+/// The send amounts the phrase adapters give (one byte a track, at most 127), or `None` without an owner or without the function.
+pub unsafe fn sends() -> Option<[u8; 16]> {
+    let f = image().sends;
+    if f == 0 {
+        return None;
+    }
+    let call: SendsFn = core::mem::transmute(f);
+    let mut a = [0u8; 16];
+    if call(a.as_mut_ptr()) != 1 {
+        return None;
+    }
+    let mut t = 0;
+    while t < a.len() {
+        if a[t] > 127 {
+            a[t] = 127;
+        }
+        t += 1;
+    }
+    Some(a)
+}
+unsafe fn phrase_bind(owner: u32, row: u32, page: u32, module: *const u8, title: *const u8) {
+    let f: BindFn = core::mem::transmute(image().bind);
+    f(owner, row, page, module, title)
+}
+#[derive(Clone, Copy)]
+struct Owner {
+    module: u8,
+    row: usize,
+}
+impl Owner {
+    const EMPTY: Self = Self { module: 0, row: 0 };
+
+    fn free(&self) -> bool {
+        self.module == 0
+    }
+
+    fn is_row(&self, row: usize) -> bool {
+        !self.free() && self.row == row
+    }
+
+    fn bind(&self, row: usize, publish: impl FnOnce(u8)) {
+        if self.is_row(row) {
+            publish(self.module);
+        }
+    }
+
+    fn remove(&mut self, module: u8, revoke: impl FnOnce(&Self)) {
+        if !self.free() && self.module == module {
+            // Keep the owner live until the native adapter has revoked its
+            // control page. A new module may claim the slot afterward.
+            revoke(self);
+            *self = Self::EMPTY;
+        }
+    }
+}
+static mut OWNER: Owner = Owner::EMPTY;
+fn owner() -> &'static mut Owner {
+    unsafe { &mut *addr_of_mut!(OWNER) }
+}
+pub unsafe fn available() -> bool {
+    image().bind != 0
+}
+pub fn free() -> bool {
+    owner().free()
+}
+pub fn is_row(row: usize) -> bool {
+    owner().is_row(row)
+}
+pub fn reserve(module: u8, row: usize) {
+    *owner() = Owner { module, row };
+}
+pub unsafe fn bind<C: CoreApi>(core: &C, row: usize, physical: u32, page: u32, title: *const u8) {
+    let o = *owner();
+    o.bind(row, |module| {
+        if available() {
+            phrase_bind(
+                module as u32,
+                physical,
+                page,
+                core.module_name(module),
+                title,
+            );
+        }
+    });
+}
+pub unsafe fn remove(module: u8) {
+    owner().remove(module, |_| {
+        if available() {
+            phrase_bind(0, 0, 0, core::ptr::null(), core::ptr::null());
+        }
+    });
+}
+/// Whether the import table `imports` (`n` entries of `DSP_IMPORT_LEN` bytes, a name first) names the phrase control.
+unsafe fn imports_control(imports: *const u8, n: u32) -> bool {
+    let mut i = 0;
+    while i < n {
+        if cstr_eq(
+            imports.add(DSP_IMPORT_LEN as usize * i as usize),
+            CONTROL.as_ptr(),
+        ) {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
+
+/// The section check: a module that imports the phrase control is one effect and no voice, in an image with the phrase provider.
+pub unsafe fn check(sec: &DspSec) -> i32 {
+    if !imports_control(sec.s.add(sec.import_off as usize), sec.nimport) {
+        return OK;
+    }
+    if sec.nfx != 1 || sec.nvoice != 0 || !available() {
+        return E_DSP_IMPORT;
+    }
+    OK
+}
+
+/// Whether `job` is a phrase effect (its import table was checked by `check`).
+pub unsafe fn wanted(job: &Job) -> bool {
+    imports_control(job.imports, job.nimport)
+}
+
+/// Before anything is reserved: a second phrase effect is refused.
+pub unsafe fn admit(job: &Job) -> i32 {
+    if wanted(job) && !free() {
+        return E_BUSY;
+    }
+    OK
+}
+
+pub unsafe fn tick() {
+    let i = image();
+    if i.ui_tick != 0 {
+        let f: TickFn = core::mem::transmute(i.ui_tick);
+        f();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Owner;
+
+    /// The service looks the adapters' functions up by the hash of their names in the image's info table (the assembly test reads the table).
+    #[test]
+    fn the_functions_of_the_adapters_are_looked_up_by_their_names() {
+        assert_eq!(super::BIND_HASH, dkneeds::keys::name_hash("phrase_bind"));
+        assert_eq!(
+            super::UI_TICK_HASH,
+            dkneeds::keys::name_hash("phrase_ui_tick")
+        );
+        assert_eq!(super::SENDS_HASH, dkneeds::keys::name_hash("phrase_sends"));
+    }
+
+    // Local owner instances exercise the same transition code as the runtime
+    // without racing unrelated loader tests' global module/transport fixtures.
+    // The DSP loader checks free() before allocating the second phrase module;
+    // these tests cover the lifetime of that exclusive claim, not DSP ACKs.
+    #[test]
+    fn empty_owner_cannot_publish_or_revoke_a_page() {
+        let mut o = Owner::EMPTY;
+        assert!(o.free());
+        assert!(!o.is_row(0));
+        o.bind(0, |_| panic!("empty owner published"));
+        o.remove(0, |_| panic!("empty owner revoked"));
+        o.remove(1, |_| panic!("unrelated owner revoked"));
+        assert!(o.free());
+    }
+
+    #[test]
+    fn a_claim_locks_only_its_own_fx_row() {
+        let o = Owner { module: 3, row: 2 };
+        assert!(!o.free()); // the loader must reject a second phrase claim
+        assert!(o.is_row(2));
+        assert!(!o.is_row(0));
+        assert!(!o.is_row(3));
+        let mut published = None;
+        o.bind(2, |module| published = Some(module));
+        assert_eq!(published, Some(3));
+        o.bind(1, |_| panic!("another FX row published the phrase page"));
+    }
+
+    #[test]
+    fn removing_another_module_keeps_the_page_and_claim() {
+        let mut o = Owner { module: 2, row: 1 };
+        o.remove(1, |_| panic!("unrelated module revoked the page"));
+        o.remove(0, |_| panic!("zero owner revoked the page"));
+        assert!(!o.free());
+        assert!(o.is_row(1));
+        let mut module = 0;
+        o.bind(1, |owner| module = owner);
+        assert_eq!(module, 2);
+    }
+
+    #[test]
+    fn unload_revokes_before_freeing_and_repeated_cleanup_is_inert() {
+        let mut o = Owner { module: 2, row: 4 };
+        let mut revocations = 0;
+        o.remove(2, |held| {
+            assert!(!held.free());
+            assert_eq!(held.module, 2);
+            assert!(held.is_row(4));
+            revocations += 1;
+        });
+        assert_eq!(revocations, 1);
+        assert!(o.free());
+        assert!(!o.is_row(4));
+        o.bind(4, |_| panic!("unloaded page republished"));
+        o.remove(2, |_| panic!("FX page and DSP cleanup revoked twice"));
+    }
+
+    #[test]
+    fn a_new_module_can_bind_after_the_previous_owner_unloads() {
+        let mut o = Owner { module: 1, row: 0 };
+        o.remove(1, |_| {});
+        assert!(o.free());
+        o = Owner { module: 5, row: 3 };
+        let mut published = 0;
+        o.bind(3, |module| published = module);
+        assert_eq!(published, 5);
+        o.bind(0, |_| panic!("previous owner's row remained bound"));
+        o.remove(1, |_| panic!("previous owner revoked the replacement"));
+        assert!(o.is_row(3));
+        o.remove(5, |_| {});
+        assert!(o.free());
+    }
+}

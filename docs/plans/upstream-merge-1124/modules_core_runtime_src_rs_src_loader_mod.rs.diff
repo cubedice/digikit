@@ -1,0 +1,298 @@
+diff --git a/modules/core/runtime/src/rs/src/loader/mod.rs b/modules/core/runtime/src/rs/src/loader/mod.rs
+index 26b49fa4b..66763a56d 100644
+--- a/modules/core/runtime/src/rs/src/loader/mod.rs
++++ b/modules/core/runtime/src/rs/src/loader/mod.rs
+@@ -39,7 +39,7 @@ mod seams;
+ #[cfg(test)]
+ mod tests;
+ use image::in_file;
+-pub use seams::{Block, Images, RealImages, RealRegistry, Registry, Staged};
++pub use seams::{Block, Images, InstrumentLoad, RealImages, RealRegistry, Registry, Staged};
+ 
+ /// The index the log shows for a provider file (`MOD_LOAD` and the events of its load): not a selection index, and not `u32::MAX` (no load running).
+ pub const PROVIDER_IDX: u32 = 0xffff_fffe;
+@@ -153,6 +153,12 @@ pub unsafe fn set_safe() {
+     loader().installer.set_armed(false)
+ }
+ 
++/// Publish the CF side of the V2 instrument in record `rec` (`Loader::publish_v2`).
++#[allow(clippy::too_many_arguments)]
++pub(crate) unsafe fn publish_v2(rec: usize, keys: *const u8, keys_size: u32, init: u32, tick: u32, image_size: u32, selection: u32) -> i32 {
++    loader().publish_v2(rec, keys, keys_size, init, tick, image_size, selection)
++}
++
+ /// The DSP part of a module published at boot failed: take it down again.
+ pub unsafe fn undo_early(rec: usize) -> i32 {
+     loader().undo_early(rec)
+@@ -306,6 +312,10 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         if self.phase != Phase::Boot {
+             return E_BOOT_ONLY;
+         }
++        // a V2 instrument transaction drains or owns the DSP link (instrument.rs): no other load starts until it is done
++        if !self.m.instruments_idle() {
++            return E_DSP_XFER;
++        }
+         let staged = match self.m.stage(path) {
+             Ok(s) => s,
+             Err(e) => return e,
+@@ -383,7 +393,21 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         // the DSP section, if any
+         let (dsp_off, dsp_size) = (rd32(f.add(H_DSP_OFF)), rd32(f.add(H_DSP_SIZE)));
+         let mut job = dsp::Job::empty();
+-        if dsp_size != 0 {
++        // A version 7 or 8 section holds persistent V2 instruments (core/instrument-play): their owner admits and loads it
++        // (`Images::admit_instruments`, instrument/pending.rs on the device); the CF side is published only after the DSP acknowledges
++        // the instance. A service file has none (`service_check` refuses a DSP section).
++        let v2 = dsp_size >= 8
++            && in_file(dsp_off, dsp_size, size)
++            && rd32(f.add(dsp_off as usize + dkneeds::DSP_H_MAGIC as usize)) == dkneeds::DSP_MAGIC
++            && dkneeds::instrument::is_instrument_version(rd32(f.add(dsp_off as usize + dkneeds::DSP_H_VERSION as usize)));
++        let mut output_size = 0;
++        if v2 {
++            let bytes = core::slice::from_raw_parts(f.add(dsp_off as usize), dsp_size as usize);
++            output_size = match self.m.admit_instruments(bytes, read_volatile(addr_of!(BOOT_IDX))) {
++                Ok(n) => n,
++                Err(e) => return e,
++            };
++        } else if dsp_size != 0 {
+             let r = dsp::check(f, dsp_off, dsp_size, size, &mut job);
+             if r != OK {
+                 return r;
+@@ -410,22 +434,32 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+ 
+         // ---- allocate, copy, relocate, zero bss ----
+         // The DSP range, the relocated DSP image and the voice rows come first: nothing else is allocated yet if they fail.
+-        if dsp_size != 0 {
++        // A V2 load keeps copies of its keys table and DSP section, and the output buffer of its relocated image, in its own
++        // CF allocation: the staging buffer is reused by the next selected module before the V2 owner finishes.
++        let keys_at = (total + 15) & !15;
++        let section_at = keys_at + ((reg_size + 15) & !15);
++        let output_at = section_at + ((dsp_size + 15) & !15);
++        let allocation = if v2 { output_at.checked_add(output_size).unwrap_or(u32::MAX) } else { total };
++        if dsp_size != 0 && !v2 {
+             let r = dsp::reserve(rec, &job);
+             if r != OK {
+                 return r;
+             }
+         }
+-        let blk = match self.m.alloc(total) {
++        let blk = match self.m.alloc(allocation) {
+             Some(b) => b,
+             None => {
+-                if dsp_size != 0 {
++                if dsp_size != 0 && !v2 {
+                     dsp::cancel(rec);
+                 }
+                 return E_NOMEM;
+             }
+         };
+         let (mem, base) = (blk.ptr, blk.addr);
++        if v2 {
++            core::ptr::copy_nonoverlapping(reg, mem.add(keys_at as usize), reg_size as usize);
++            core::ptr::copy_nonoverlapping(f.add(dsp_off as usize), mem.add(section_at as usize), dsp_size as usize);
++        }
+         i = 0;
+         while i < image_size as usize {
+             *mem.add(i) = *f.add(image_off as usize + i);
+@@ -476,18 +510,38 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         m.version = rd32(f.add(H_VERSION));
+         records::set_runtime(rec, needs & !crate::FLAG_TRACE);
+         m.base = base;
+-        m.size = total;
++        m.size = allocation;
+         m.fini = if fini == NONE { 0 } else { base + fini };
+         crate::entry::bind(rec);
+-        records::set_menu(rec, if menu == NONE { 0 } else { base + menu });
++        let menuaddr = if menu == NONE { 0 } else { base + menu };
++        // a V2 instrument's menu is published with its CF side (`publish_v2`)
++        records::set_menu(rec, if v2 { 0 } else { menuaddr });
+         let place = PlaceArgs { file: f, keys_off: reg_off, keys_len: reg_size, image_size, dsp_image: if dsp_size != 0 { job.image_size } else { 0 } };
+         let initaddr = if init == NONE { 0 } else { base + init };
+         let tickaddr = if tick == NONE { 0 } else { base + tick };
++        if v2 {
++            m.used = 2; // occupied, not published
++            self.m.queue_instruments(InstrumentLoad {
++                rec,
++                selection: read_volatile(addr_of!(BOOT_IDX)),
++                image_size,
++                keys: base + keys_at,
++                keys_size: reg_size,
++                section: base + section_at,
++                section_size: dsp_size,
++                output: base + output_at,
++                output_size,
++                init: initaddr,
++                tick: tickaddr,
++                menu: menuaddr,
++            });
++            return LOADING;
++        }
+         if dsp_size != 0 {
+             // the CF part goes live now (rows in place before the machine view is built); the DSP code and the voice rows follow
+             // when the frames flow
+             m.used = 1;
+-            let r = self.complete(rec, &keys, initaddr, tickaddr, image_size, steps, place);
++            let r = self.complete(rec, &keys, initaddr, tickaddr, image_size, steps, place, true);
+             if r != OK {
+                 if dsp::retained() { return E_BUSY; }
+                 dsp::cancel(rec);
+@@ -510,7 +564,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+             });
+             return LOADING;
+         }
+-        let r = self.complete(rec, &keys, initaddr, tickaddr, image_size, steps, place);
++        let r = self.complete(rec, &keys, initaddr, tickaddr, image_size, steps, place, true);
+         if r != OK {
+             if self.cannot_retire(rec) { return E_BUSY; }
+             self.m.free(base);
+@@ -523,21 +577,23 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+ 
+     /// The end of a load, shared by the immediate and the DSP path (both run in the boot hook; docs/plans/sdk.md 6.3): `init` runs first and its builder calls are collected; then the commit checks them, fills the
+     /// voice rows' ranges, writes the registry rows and keeps the record block. Anything that fails undoes what `init` did and writes no row.
++    ///
++    /// `release_dsp`: whether a failure releases the record's DSP rows. The V2 owner keeps its own storage (`publish_v2`).
+     #[allow(clippy::too_many_arguments)]
+-    unsafe fn complete(&mut self, rec: usize, keys: &crate::collect::KeysCopy, init: u32, tick: u32, image_size: u32, steps: RoleSteps<P, M, R>, place: PlaceArgs) -> i32 {
++    unsafe fn complete(&mut self, rec: usize, keys: &crate::collect::KeysCopy, init: u32, tick: u32, image_size: u32, steps: RoleSteps<P, M, R>, place: PlaceArgs, release_dsp: bool) -> i32 {
+         let s = st();
+         let module = rec < MAX_MODULES;
+         // the role's part of the file that `init` could overwrite in the staging buffer
+         let r = (steps.place)(self, rec, &place);
+         if r != OK {
+-            return self.fail(rec, r);
++            return self.fail(rec, r, release_dsp);
+         }
+         if module {
+             crate::files::init_begin(rec);
+         }
+         let blk = match self.m.alloc(core::mem::size_of::<crate::collect::Collect>() as u32) {
+             Some(b) => b,
+-            None => return self.fail(rec, E_NOMEM),
++            None => return self.fail(rec, E_NOMEM, release_dsp),
+         };
+         let block = blk.ptr;
+         crate::collect::begin(block as *mut crate::collect::Collect);
+@@ -553,7 +609,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+                 if missing && self.missing[0] == 0 {
+                     self.missing = CALLED_NEED;
+                 }
+-                let e = self.fail(rec, if missing { E_IMPORT } else { E_INIT });
++                let e = self.fail(rec, if missing { E_IMPORT } else { E_INIT }, release_dsp);
+                 return if e == E_BUSY { e } else if missing { E_IMPORT } else { E_INIT };
+             }
+         }
+@@ -561,11 +617,11 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         let r = self.commit(rec, &*(block as *const crate::collect::Collect), keys, image_size);
+         self.m.free(blk.addr);
+         if r != OK {
+-            return self.fail(rec, r);
++            return self.fail(rec, r, release_dsp);
+         }
+         let r = (steps.activate)(self, rec);
+         if r != OK {
+-            return self.fail(rec, r);
++            return self.fail(rec, r, release_dsp);
+         }
+         let m: &mut Module = records::module(rec);
+         m.used = 1;
+@@ -583,8 +639,29 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+ 
+ 
+ 
++    /// Publish a V2 instrument's CF side (instrument/pending.rs, after the DSP acknowledged the instance): `init` and the commit of
++    /// [`Self::complete`], from the keys table the load kept, for the selection it was loaded for. Storage belongs to the V2 owner: a
++    /// failure undoes what `init` did but releases no DSP or module memory (the owner detaches before it reclaims them).
++    #[allow(clippy::too_many_arguments)]
++    unsafe fn publish_v2(&mut self, rec: usize, keys: *const u8, keys_size: u32, init: u32, tick: u32, image_size: u32, selection: u32) -> i32 {
++        let keys = match crate::collect::KeysCopy::from_bytes(core::slice::from_raw_parts(keys, keys_size as usize)) {
++            Ok(k) => k,
++            Err(e) => return e,
++        };
++        // deferred publication can follow other selected modules: the machine keys resolve for the selection of this load
++        let old = read_volatile(addr_of!(BOOT_IDX));
++        *addr_of_mut!(BOOT_IDX) = selection;
++        // a module's role has no step of its own, so the staged file (gone by now) is not read
++        // no DSP image of a provider here: a V2 instrument's DSP memory is its owner's
++        let place = PlaceArgs { file: core::ptr::null(), keys_off: 0, keys_len: keys_size, image_size, dsp_image: 0 };
++        let r = self.complete(rec, &keys, init, tick, image_size, RoleSteps::MODULE, place, false);
++        *addr_of_mut!(BOOT_IDX) = old;
++        r
++    }
++
+     /// Undo what `init` and the checks before the commit did for record `rec`; `r` is the result to return (`E_BUSY` when a step of the module is still running).
+-    unsafe fn fail(&mut self, rec: usize, r: i32) -> i32 {
++    /// `release_dsp` false leaves the record's DSP rows to their owner.
++    unsafe fn fail(&mut self, rec: usize, r: i32, release_dsp: bool) -> i32 {
+         let module = rec < MAX_MODULES;
+         let mut held = false;
+         if module {
+@@ -595,7 +672,7 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         crate::dlog::release_sinks(rec);
+         (RoleSteps::<P, M, R>::of(self.roles[rec] as u32).undo)(self, rec);
+         self.r.remove(rec);
+-        if module && !dsp::release(rec) || held {
++        if module && release_dsp && !dsp::release(rec) || held {
+             return E_BUSY;
+         }
+         r
+@@ -942,7 +1019,9 @@ impl<P: Platform, M: Images, R: Registry> Loader<P, M, R> {
+         // the hard needs that no service of the runtime meets
+         self.found.n = 0;
+         let mut want = [0u32; WANT_MAX];
+-        let nw = unmet_needs(&mods[..n], &mut want);
++        let mut nw = unmet_needs(&mods[..n], &mut want);
++        // the services the image asks for itself: an adapter whose code a service file serves without a module that needs it
++        nw = boot_needs(&self.p, &mut want, nw);
+         if nw != 0 {
+             discover::find(&mut self.m, &services(), &want[..nw], &mut self.found);
+         }
+@@ -1097,6 +1176,49 @@ fn unmet_needs(mods: &[Option<Keys>], out: &mut [u32; WANT_MAX]) -> usize {
+     n
+ }
+ 
++/// The prefix of the image's info entry that asks the boot for a service: `boot_need_<service>` (an `[[info]]` of an image adapter; its address is not read),
++/// with each `-` of the service's name written `_` (an info name is `[a-z][a-z0-9_]*`: `boot_need_track_keyboard`).
++pub const BOOT_NEED_PREFIX: &[u8] = b"boot_need_";
++
++/// The name hash of `boot_need_<name>` with `-` as `_`, as the image's info table keys it (FNV-1a over the whole name).
++fn boot_need_hash(name: &[u8]) -> Option<u32> {
++    let mut b = [0u8; 48];
++    let len = BOOT_NEED_PREFIX.len() + name.len();
++    if len > b.len() {
++        return None;
++    }
++    b[..BOOT_NEED_PREFIX.len()].copy_from_slice(BOOT_NEED_PREFIX);
++    let mut i = 0;
++    while i < name.len() {
++        b[BOOT_NEED_PREFIX.len() + i] = if name[i] == b'-' { b'_' } else { name[i] };
++        i += 1;
++    }
++    Some(dkneeds::keys::name_hash_bytes(&b[..len]))
++}
++
++/// Add to `out[..n]` each service of the SDK's list (`gen_services::ORDER`) that the image asks for with an info entry `boot_need_<name>` and the runtime does
++/// not provide, once; the new count. An image adapter whose code runs from a service file declares it when an image feature uses that code without a module
++/// that needs the file (docs/plans/fork-image-diet.md section 9: the track keyboard and services/instrument.dks). The boot then plans and loads the file
++/// whether or not the selection names a module, as it does for a module's hard need; a safe boot loads none.
++#[inline(never)]
++unsafe fn boot_needs<P: Platform>(p: &P, out: &mut [u32; WANT_MAX], mut n: usize) -> usize {
++    for name in crate::gen_services::ORDER.iter() {
++        let Some(h) = boot_need_hash(name.as_bytes()) else {
++            continue;
++        };
++        if p.info(h).is_null() {
++            continue;
++        }
++        let svc = dkneeds::keys::name_hash_bytes(name.as_bytes());
++        if plan::is_runtime_service(svc, &services()) || out[..n].contains(&svc) || n >= WANT_MAX {
++            continue;
++        }
++        out[n] = svc;
++        n += 1;
++    }
++    n
++}
++
+ /// The provider of the last `_open` stub that answered DK_E_MISSING since the clear before `init` (`stub_missing`), NUL padded; empty when none.
+ /// When `init` returns DK_E_MISSING, `Loader::missing` takes it and the load fails with E_IMPORT, as for an unresolved import.
+ static mut CALLED_NEED: [u8; NEEDS_LEN] = [0; NEEDS_LEN];

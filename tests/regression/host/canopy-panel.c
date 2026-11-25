@@ -1,6 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/panel.c"
+#include "../../../image-modules/adapters/keyboard-panel/src/cf/panel.c"
 static uint8_t view[0x200], other[0x200], object[4];
 static uint32_t machine = 9, selected, downs, ups, cancels, original_on, original_off, detaches,
                 last_down_key, last_down_note;
@@ -100,14 +100,14 @@ static void heads_empty(void)
         pattern[0x12a50 + 2 * i] = pattern[0x12a51 + 2 * i] = 0xff;
 }
 static int plays_keys = 1;
-int instrument_track_plays_keys(uint32_t t)
+int kbp_track_plays_keys(uint32_t t)
 {
     (void)t;
     return plays_keys;
 }
 static uint32_t chord_steps[4], chord_count, chord_calls, mutes;
 static int8_t chord[3];
-int instrument_record_chord(const uint32_t steps[4], const int8_t *intervals, uint32_t count)
+int kbp_record_chord(const uint32_t steps[4], const int8_t *intervals, uint32_t count)
 {
     for (int i = 0; i < 4; ++i)
         chord_steps[i] = steps[i];
@@ -117,21 +117,21 @@ int instrument_record_chord(const uint32_t steps[4], const int8_t *intervals, ui
     ++chord_calls;
     return 1;
 }
-void mi_seq_mute(uint32_t track, int on)
+void kbp_seq_mute(uint32_t track, int on)
 {
     assert(track < 16);
     mutes = on ? mutes | (1u << track) : mutes & ~(1u << track);
 }
 volatile uint32_t ip_track;
-int instrument_track_owned(uint32_t t)
+int kbp_track_owned(uint32_t t)
 {
     return t == ip_track;
 }
-int instrument_track_keyboard_routed(uint32_t track)
+int kbp_track_keyboard_routed(uint32_t track)
 {
-    return shared_route && instrument_track_owned(track);
+    return shared_route && kbp_track_owned(track);
 }
-void instrument_select_track(uint32_t t)
+void kbp_select_track(uint32_t t)
 {
     (void)t;
 }
@@ -236,7 +236,7 @@ void ip_panel_stock_detach(uint8_t *v, uint8_t *m)
     assert(v == view || v == other);
     ++detaches;
 }
-int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track)
+int kbp_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint32_t track)
 {
     (void)track;
     assert(key < 16);
@@ -249,13 +249,13 @@ int mi_panel_key(uint32_t key, uint32_t note, uint32_t velocity, int down, uint3
         ++ups;
     return 1;
 }
-void mi_panel_release(void)
+void kbp_panel_release(void)
 {
     ++cancels;
 }
 int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    if (!instrument_track_keyboard_routed(track))
+    if (!kbp_track_keyboard_routed(track))
         return 0;
     assert(key < 16 && pitch < 128 && (velocity == 88 || velocity == 100));
     uint32_t bit = 1u << key;
@@ -755,7 +755,8 @@ int main(void)
     uint32_t native_release[8] = {[3] = 0x19 + 10, [4] = 0x10};
     assert(ip_panel_key_event(view, (uint8_t *)native_release) == 17);
     assert(filtered_off == 2 && original_off == stock_off + 2 && shared_ups == up + 2);
-    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] && guarded_track == 16);
+    assert(!shared_notes && !shared_live_record[8] && !shared_live_record[10] &&
+           guarded_track == 16);
     puts("ok");
     return 0;
 }

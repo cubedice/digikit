@@ -6,18 +6,22 @@ import { read } from './module-manifests.mjs';
 
 // Headers that a build reads. A textual scan of `#include` and `.include` over the build's sources and the
 // headers they reach (conditional includes count: the scan is wider than the preprocessor). A name is looked up in the
-// directories of the patchkit include list (cf_include_dirs in packages/patchkit/src/build/mod.rs:249 and include_dirs in
-// build/sharc.rs:14): the module's build/gen and src directories, then the pinned include directories
-// (tools/patchkit/toolchain/pins.toml), and beside the including file. Every directory that holds the name counts.
+// directories of the patchkit include list (cf_include_dirs and object_include_dirs in packages/patchkit/src/build/mod.rs,
+// include_dirs in build/sharc.rs:14): the module's build/gen and src directories, the `include_dirs` of its objects
+// (relative to the module directory), then the pinned include directories (tools/patchkit/toolchain/pins.toml), and beside
+// the including file. Every directory that holds the name counts.
 // A name that no directory holds is not an input. Every header found is an input, whatever its directory.
 // Limit: a computed include (`#include MACRO`) is not seen.
 const INCLUDE = /^[ \t]*(?:#[ \t]*include|\.include)[ \t]*[<"]([^>"\n]+)[>"]/gm;
-const sdkHeaders = (workspaceRoot, sources, moduleDirs) => {
-  const pins = read(workspaceRoot, 'tools/patchkit/toolchain/pins.toml').include;
-  const dirs = [
-    ...moduleDirs.flatMap((dir) => [`${dir}/build/gen`, `${dir}/src`]),
-    ...new Set([...pins.cf, ...pins.sharc]),
-  ];
+const buildHeaders = (workspaceRoot, sources, moduleDirs, privateOnly, objectDirs = []) => {
+  const pins = privateOnly
+    ? []
+    : Object.values(read(workspaceRoot, 'tools/patchkit/toolchain/pins.toml').include).flat();
+  const dirs = [...moduleDirs.flatMap((dir) => [`${dir}/build/gen`, `${dir}/src`]), ...objectDirs, ...new Set(pins)];
+  return sourceIncludeInputs(workspaceRoot, sources, dirs);
+};
+
+export const sourceIncludeInputs = (workspaceRoot, sources, dirs) => {
   const seen = new Set();
   const found = new Set();
   const visit = (file) => {
@@ -39,7 +43,9 @@ const sdkHeaders = (workspaceRoot, sources, moduleDirs) => {
   return [...found].sort().map((file) => `{workspaceRoot}/${file}`);
 };
 
-export const packSourceInputs = (workspaceRoot, byId, manifests) => {
+// The merge load selector follows the module's own and explicitly borrowed build inputs. Shared compiler
+// surfaces still feed pack and the real conformance run, and are exercised in the gate by the runtime fixtures.
+export const packSourceInputs = (workspaceRoot, byId, manifests, { privateOnly = false } = {}) => {
   const bounded = (path) => {
     const normalized = normalize(path);
     if (isAbsolute(normalized) || normalized === '..' || normalized.startsWith('../'))
@@ -54,7 +60,7 @@ export const packSourceInputs = (workspaceRoot, byId, manifests) => {
         throw new Error(`Ambiguous Cargo workspace member ${root}`);
       owners.push({ name: read(workspaceRoot, join(root, 'Cargo.toml')).package.name, root });
     }
-  const projects = new Set();
+  const projects = new Set([...byId].filter(([, module]) => manifests.includes(module.file)).map(([id]) => id));
   const paths = new Set();
   const include = (path, directory = false) => {
     path = bounded(path);
@@ -73,12 +79,12 @@ export const packSourceInputs = (workspaceRoot, byId, manifests) => {
     const owner = candidates[0];
     if (owner && candidates.some((other) => other.root === owner.root && other.name !== owner.name))
       throw new Error(`Ambiguous pack source owner: ${path}`);
-    if (owner) projects.add(owner.name);
+    if (owner && (!privateOnly || directory)) projects.add(owner.name);
     else {
       paths.add(`{workspaceRoot}/${path}${directory ? '/**/*' : ''}`);
-      // External C/C++ objects read private headers beside their explicit sources. Public
-      // include roots are shared build inputs; a project owner must not widen these sources.
-      if (!directory && /\.(?:c|cc|cpp|cxx)$/.test(path))
+      // Borrowed C/C++ sources read private headers beside them, including computed includes.
+      // In a private selection the borrowing module does not get the source owner's other inputs.
+      if (!directory && !projects.has(owner?.name) && /\.(?:c|cc|cpp|cxx)$/.test(path))
         paths.add(`{workspaceRoot}/${dirname(path)}/**/*.{h,hh,hpp,hxx}`);
     }
   };
@@ -100,11 +106,18 @@ export const packSourceInputs = (workspaceRoot, byId, manifests) => {
   };
   const buildSources = new Set();
   const buildDirs = new Set();
-  for (const [id, module] of byId) {
+  const objectDirs = new Set();
+  for (const module of byId.values()) {
     if (!manifests.includes(module.file)) continue;
-    projects.add(id);
     buildDirs.add(dirname(module.file));
-    for (const object of module.objects)
+    for (const object of module.objects) {
+      // A Rust object lists its Cargo.toml first; the C and assembler sources after it (paths that may lead into another
+      // module) are compiled with the object's `include_dirs` and linked with the crate, without the SDK library.
+      const rust = (object.sources ?? [])[0]?.split('/').at(-1) === 'Cargo.toml';
+      for (const dir of object.include_dirs ?? []) {
+        if (isAbsolute(dir) || /[?*[]/.test(dir)) throw new Error(`Ambiguous include directory: ${dir}`);
+        objectDirs.add(bounded(join(dirname(module.file), dir)));
+      }
       for (const source of object.sources ?? []) {
         if (isAbsolute(source) || /[?*[]/.test(source)) throw new Error(`Ambiguous pack source path: ${source}`);
         const path = bounded(join(dirname(module.file), source));
@@ -112,17 +125,19 @@ export const packSourceInputs = (workspaceRoot, byId, manifests) => {
         buildSources.add(path);
         if (path.endsWith('/Cargo.toml')) includeCrate(dirname(path));
         // Rust sources are not scanned for includes: a Rust object keeps all SDK headers as inputs
-        if (path.endsWith('/Cargo.toml') || path.endsWith('.rs')) paths.add('{workspaceRoot}/sdk/include/**/*');
+        if (!privateOnly && (path.endsWith('/Cargo.toml') || path.endsWith('.rs')))
+          paths.add('{workspaceRoot}/sdk/include/**/*');
         // a content module's C object links the SDK components it uses (patchkit build, sdk_lib): all of sdk/src is an input
-        if (path.endsWith('.c') && module.manifest?.category !== 'core') {
+        if (!privateOnly && path.endsWith('.c') && !rust && module.manifest?.category !== 'core') {
           paths.add('{workspaceRoot}/sdk/src/**/*');
           for (const file of globSync('sdk/src/**/*', { cwd: workspaceRoot })) buildSources.add(file);
         }
       }
+    }
   }
   return [
     { input: 'production', projects: [...projects].sort() },
     ...[...paths].sort(),
-    ...sdkHeaders(workspaceRoot, buildSources, [...buildDirs].sort()),
+    ...buildHeaders(workspaceRoot, buildSources, [...buildDirs].sort(), privateOnly, [...objectDirs].sort()),
   ];
 };

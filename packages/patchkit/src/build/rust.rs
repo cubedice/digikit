@@ -5,8 +5,13 @@
 //! feature: `core`, the integer helpers (`__muldi3`, `__udivdi3`, ...) and `memcpy`/`memset`/`memcmp` come from Rust sources compiled
 //! for the ColdFire, not from the m68k-elf libgcc (68020 code). The staticlib is combined with `ld -r --gc-sections`, keeping the
 //! crate's own global symbols, so only what they reach stays (docs/findings/26-rust-on-coldfire.md).
+//!
+//! The object may also list ColdFire C and assembler sources after the manifest ([`CSources`]): each is compiled as `cf.rs` compiles an
+//! adapter source (with [`SERVICE_DEFINE`] for C) and goes into the same `ld -r --gc-sections`, so the crate's exports stay the only roots.
 
+use super::cf;
 use super::elf::{self, Proto};
+use super::test_source::TestSources;
 use super::toolchain::{self as tc, Env, TempDir};
 use crate::error::*;
 use serde::Deserialize;
@@ -29,6 +34,24 @@ const EF_M68K_CF_ISA_C: u32 = 6;
 const EF_M68K_CF_MAC_MASK: u32 = 0x30;
 const EF_M68K_CF_EMAC: u32 = 0x20;
 
+/// The define of the C sources of a Rust object (`-DDK_SERVICE=1`): a source shared with an image adapter tells the service build from the image build.
+pub const SERVICE_DEFINE: &str = "DK_SERVICE=1";
+
+/// The ColdFire C (`.c`) and assembler (`.s`) sources of a Rust object, the `sources` after its `Cargo.toml`, and the include directories they are
+/// compiled with (the object's `include_dirs`, or the module's `build/gen` and `src`, then the global directories of pins.toml).
+#[derive(Clone, Debug, Default)]
+pub struct CSources {
+    pub files: Vec<PathBuf>,
+    pub include_dirs: Vec<PathBuf>,
+}
+
+impl CSources {
+    /// The environment the sources are compiled in: `env` with [`SERVICE_DEFINE`] after its own defines (C only; the assembler takes no `-D`).
+    fn env(env: &Env) -> Env {
+        env.plus_define(SERVICE_DEFINE)
+    }
+}
+
 #[derive(Deserialize)]
 struct Cargo {
     package: Package,
@@ -42,6 +65,18 @@ struct Cargo {
 #[derive(Deserialize)]
 struct Package {
     name: String,
+    metadata: Option<PackageMetadata>,
+}
+
+#[derive(Deserialize)]
+struct PackageMetadata {
+    patchkit: Option<PatchkitMetadata>,
+}
+
+#[derive(Deserialize)]
+struct PatchkitMetadata {
+    #[serde(rename = "staged-dir")]
+    staged_dir: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -95,9 +130,14 @@ fn rs_files(dir: &Path, out: &mut Vec<PathBuf>) {
     for e in rd.flatten() {
         let p = e.path();
         let Ok(ft) = e.file_type() else { continue };
+        let name = e.file_name().to_string_lossy().into_owned();
         if ft.is_dir() {
-            rs_files(&p, out);
-        } else if p.extension().is_some_and(|x| x == "rs") {
+            if !TestSources::get().is_test_dir(&name) {
+                rs_files(&p, out);
+            }
+        } else if p.extension().is_some_and(|x| x == "rs")
+            && !TestSources::get().is_test_file(&name)
+        {
             out.push(p);
         }
     }
@@ -147,7 +187,7 @@ pub fn crate_files(manifest: &Path) -> Result<Vec<PathBuf>> {
 }
 
 /// The crate's sources (relative names and bytes) and the toolchain pins: what a build depends on.
-pub fn source_sha256(manifest: &Path) -> Result<String> {
+pub fn source_sha256(manifest: &Path, cargo_flags: &[String]) -> Result<String> {
     let manifest = tc::canon(manifest);
     let base = manifest.parent().unwrap_or(Path::new("."));
     let mut h = Sha256::new();
@@ -169,6 +209,33 @@ pub fn source_sha256(manifest: &Path) -> Result<String> {
     );
     h.update(tc::RUST_TARGET_JSON);
     h.update(CF_HELPERS.as_bytes());
+    // The features of the build are part of what it makes (none: the hash of a build without flags is the same as before).
+    for f in cargo_flags {
+        h.update(f.as_bytes());
+        h.update([0u8]);
+    }
+    Ok(hex(&h.finalize()))
+}
+
+/// The `source_sha256` of a Rust object. Without C or assembler sources it is [`source_sha256`] of the crate, unchanged. With them it is the hash of
+/// that, then the `cf::source_digest` of the sources: their bytes, the headers and `.include` files they read (path and bytes, as listed with the
+/// object's include directories and defines), the C toolchain record (the gcc, as and ld versions and the CFLAGS) and the defines ([`SERVICE_DEFINE`]
+/// and the build's own).
+pub fn object_sha256(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    c: &CSources,
+) -> Result<String> {
+    let crate_sha = source_sha256(manifest, cargo_flags)?;
+    if c.files.is_empty() {
+        return Ok(crate_sha);
+    }
+    let digest = cf::source_digest(&CSources::env(env), &c.files, &c.include_dirs, false)?;
+    let mut h = Sha256::new();
+    h.update(crate_sha.as_bytes());
+    h.update(b"\0cf-sources\0");
+    h.update(digest.as_bytes());
     Ok(hex(&h.finalize()))
 }
 
@@ -260,6 +327,34 @@ fn without_workspace_root(text: &str) -> String {
     out
 }
 
+/// Cargo includes the relative dependency path in its crate disambiguator. Keep the staged name stable when a source directory moves.
+fn staged_dir_name(manifest: &Path) -> Result<String> {
+    let package = parse_cargo(&tc::read_text(manifest)?, manifest)?.package;
+    if let Some(name) = package
+        .metadata
+        .and_then(|metadata| metadata.patchkit)
+        .and_then(|patchkit| patchkit.staged_dir)
+    {
+        if name.is_empty()
+            || !name
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_'))
+        {
+            return Err(err!(
+                "{}: package.metadata.patchkit.staged-dir must contain only ASCII letters, digits, '-' or '_' and cannot be empty",
+                manifest.display()
+            ));
+        }
+        return Ok(name);
+    }
+    Ok(manifest
+        .parent()
+        .and_then(|p| p.file_name())
+        .unwrap()
+        .to_string_lossy()
+        .into_owned())
+}
+
 /// Copy a crate to `dest` and its path dependencies to `deps_dir/<n>-<name>`, rewriting the `path = ".."` of the copies. A dependency stages without its own
 /// `[workspace]` line.
 fn stage(
@@ -275,13 +370,8 @@ fn stage(
         let sd = match seen.iter().find(|(k, _)| *k == sub) {
             Some((_, sd)) => sd.clone(),
             None => {
-                let name = sub
-                    .parent()
-                    .and_then(|p| p.file_name())
-                    .unwrap()
-                    .to_string_lossy()
-                    .into_owned();
-                let sd = deps_dir.join(format!("{}-{}", seen.len(), name));
+                let name = staged_dir_name(&sub)?;
+                let sd = deps_dir.join(format!("{}-{name}", seen.len()));
                 seen.push((sub.clone(), sd.clone()));
                 stage(&sub, &sd, deps_dir, seen)?;
                 let dep_manifest = sd.join("Cargo.toml");
@@ -309,7 +399,12 @@ pub fn target_dir(env: &Env) -> PathBuf {
 
 /// Build the crate and copy its static library into `out_dir`. A lock on the shared target dir covers the cargo run and the copy, so a
 /// build of the same crate from another worktree cannot replace the library in between.
-fn build_staticlib(env: &Env, manifest: &Path, out_dir: &Path) -> Result<PathBuf> {
+fn build_staticlib(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    out_dir: &Path,
+) -> Result<PathBuf> {
     if !env.codegen_gcc_ready() {
         return Err(err!(
             "Rust-for-ColdFire toolchain not installed (uv run python -m tools.patchkit.pk_toolchains codegen-gcc)"
@@ -375,6 +470,7 @@ fn build_staticlib(env: &Env, manifest: &Path, out_dir: &Path) -> Result<PathBuf
         .arg(&tc::pins().rust_nightly)
         .args(["cargo", "rustc", "--release"])
         .args(CARGO_ARGS)
+        .args(cargo_flags)
         .arg("--target")
         .arg(&target)
         .arg("--target-dir")
@@ -466,6 +562,24 @@ pub fn is_helper(n: &str) -> bool {
         && (b[n - 3..n - 1] == *b"ti" || b[n - 3..n - 1] == *b"di")
 }
 
+/// The local symbols the C and assembler objects define (`nm` types t, d, b, r: statics and named file-local labels), sorted,
+/// without the assembler's `.L` labels.
+fn c_locals(env: &Env, objs: &[PathBuf]) -> Result<Vec<String>> {
+    let mut out = vec![];
+    for obj in objs {
+        let r = tc::run(&env.m68k("nm")?, &[obj.display().to_string()], None)?;
+        for line in r.stdout.lines() {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() == 3 && "tdbr".contains(parts[1]) && !parts[2].starts_with('.') {
+                out.push(parts[2].to_string());
+            }
+        }
+    }
+    out.sort();
+    out.dedup();
+    Ok(out)
+}
+
 /// (defined global symbols, undefined symbols) of an object, by `nm`.
 fn globals(env: &Env, obj: &Path) -> Result<(Vec<String>, Vec<String>)> {
     let args = vec!["--no-demangle".to_string(), obj.display().to_string()];
@@ -493,14 +607,65 @@ fn check_flags(blob: &[u8], what: &str) -> Result<()> {
     Ok(())
 }
 
-/// Crate -> one relocatable ELF at `out`. Returns the exported symbols.
-fn build_object(env: &Env, manifest: &Path, out: &Path) -> Result<Vec<String>> {
+/// The relocations of one C or assembler source of the object that are not `R_68K_32`, as (section, type): for naming the source of a refused one.
+struct Part {
+    source: String,
+    relocs: Vec<(String, &'static str)>,
+}
+
+fn target_name(to: &elf::RelocTo) -> String {
+    match to {
+        elf::RelocTo::Symbol(n) | elf::RelocTo::Section(n) => n.clone(),
+    }
+}
+
+/// Compile the C and assembler sources of the object into `dir` (as `cf.rs` compiles an adapter source), check their ELF flags and note their
+/// relocations that are not `R_68K_32`. Returns the objects, in the order of the sources.
+fn compile_c_sources(env: &Env, c: &CSources, dir: &Path) -> Result<(Vec<PathBuf>, Vec<Part>)> {
+    let cenv = CSources::env(env);
+    let (mut objs, mut parts) = (vec![], vec![]);
+    for (i, src) in c.files.iter().enumerate() {
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let o = dir.join(format!("c{i}_{stem}.o"));
+        cf::compile_source(&cenv, src, &o, &c.include_dirs)?;
+        let label = cf::rel(env, &tc::canon(src));
+        let blob = tc::read(&o)?;
+        if elf::has_code(&blob)? {
+            check_flags(&blob, &label)?;
+        }
+        let relocs = elf::proto_from_elf(&blob)?
+            .relocs
+            .iter()
+            .filter(|r| r.rtype != "32")
+            .map(|r| (r.section.clone(), r.rtype))
+            .collect();
+        parts.push(Part {
+            source: label,
+            relocs,
+        });
+        objs.push(o);
+    }
+    Ok((objs, parts))
+}
+
+/// Crate (and the object's C and assembler sources) -> one relocatable ELF at `out`. Returns the exported symbols of the crate and what each C or
+/// assembler source brought.
+fn build_object(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    c: &CSources,
+    out: &Path,
+) -> Result<(Vec<String>, Vec<Part>)> {
     let crate_name = parse_cargo(&tc::read_text(manifest)?, manifest)?
         .package
         .name
         .replace('-', "_");
     let work = TempDir::new("pk-rust-")?;
-    let lib = build_staticlib(env, manifest, work.path())?;
+    let lib = build_staticlib(env, manifest, cargo_flags, work.path())?;
     tc::run(
         &env.m68k("ar")?,
         &["x".to_string(), tc::canon(&lib).display().to_string()],
@@ -550,6 +715,10 @@ fn build_object(env: &Env, manifest: &Path, out: &Path) -> Result<Vec<String>> {
         args.push("-u".into());
         args.push(e.clone());
     }
+    // The C and assembler objects are no roots: what the crate's exports reach of them stays (an entry the crate names, a function a Rust static
+    // takes the address of), the rest is dropped. They come before the library, so the compiler helpers they call come from compiler_builtins.
+    let (c_objs, parts) = compile_c_sources(env, c, work.path())?;
+    args.extend(c_objs.iter().map(|o| o.display().to_string()));
     // Strong ISA_C implementations override compiler_builtins' weak helpers.
     // They are not export roots: --gc-sections retains only referenced helpers,
     // and the usual localization pass below keeps them private to this object.
@@ -589,11 +758,14 @@ fn build_object(env: &Env, manifest: &Path, out: &Path) -> Result<Vec<String>> {
         args.push(o.clone());
         tc::run(&objcopy, &args, None)?;
     }
-    tc::run(
-        &env.m68k("strip")?,
-        &tc::strs(&["--strip-unneeded", &o]),
-        None,
-    )?;
+    // The statics of the C and assembler sources keep their names (the address map of the bound file names them, for a crash
+    // report or a test that reads the state); the crate's own locals go, as before.
+    let mut strip = vec!["--strip-unneeded".to_string()];
+    for k in c_locals(env, &c_objs)? {
+        strip.push(format!("--keep-symbol={k}"));
+    }
+    strip.push(o.clone());
+    tc::run(&env.m68k("strip")?, &strip, None)?;
     check_flags(&tc::read(out)?, &o)?;
     let mut missing: Vec<String> = globals(env, out)?
         .1
@@ -608,36 +780,124 @@ fn build_object(env: &Env, manifest: &Path, out: &Path) -> Result<Vec<String>> {
             missing.join(", ")
         ));
     }
-    Ok(exports)
+    Ok((exports, parts))
+}
+
+/// The C or assembler sources that hold a relocation like `r` that is not `R_68K_32`: those with one of its type in a section of its name, else those
+/// with one of its type. Empty: it came from the crate.
+fn sources_of(r: &elf::PReloc, parts: &[Part]) -> Vec<String> {
+    let with = |same_section: bool| -> Vec<String> {
+        parts
+            .iter()
+            .filter(|p| {
+                p.relocs
+                    .iter()
+                    .any(|(s, t)| *t == r.rtype && (!same_section || *s == r.section))
+            })
+            .map(|p| p.source.clone())
+            .collect()
+    };
+    let exact = with(true);
+    if exact.is_empty() { with(false) } else { exact }
 }
 
 /// The prototype, source hash and toolchain record of a crate.
 pub fn object_proto(
     env: &Env,
     manifest: &Path,
+    cargo_flags: &[String],
+) -> Result<(Proto, String, BTreeMap<String, String>)> {
+    object_proto_with(env, manifest, cargo_flags, &CSources::default())
+}
+
+/// The prototype, source hash and toolchain record of a crate and the C and assembler sources `c` of its object (none: the crate alone).
+pub fn object_proto_with(
+    env: &Env,
+    manifest: &Path,
+    cargo_flags: &[String],
+    c: &CSources,
 ) -> Result<(Proto, String, BTreeMap<String, String>)> {
     let manifest = tc::canon(manifest);
     let tmp = TempDir::new("pk-rust-o-")?;
     let o = tmp.path().join("crate.o");
-    let exports = build_object(env, &manifest, &o)?;
+    let (exports, parts) = build_object(env, &manifest, cargo_flags, c, &o)?;
     let proto = elf::proto_from_elf(&tc::read(&o)?)?;
     for r in &proto.relocs {
         if r.rtype != "32" {
-            return Err(err!(
-                "relocation type R_68K_{} in {} is not supported in Rust modules (only R_68K_32; a PC-relative reference came from a codegen change)",
+            let what = format!(
+                "relocation type R_68K_{} in {} (to {})",
                 r.rtype,
-                r.section
+                r.section,
+                target_name(&r.to)
+            );
+            let from = sources_of(r, &parts);
+            if from.is_empty() {
+                return Err(err!(
+                    "{what} is not supported in Rust modules (only R_68K_32; a PC-relative reference came from a codegen change)"
+                ));
+            }
+            return Err(err!(
+                "{what} from {} is not supported in a Rust object (only R_68K_32: reach a symbol outside the section with `jsr`/`jmp` or a 32-bit address, not with `bsr`, `bra` or `(pc)`)",
+                from.join(", ")
             ));
         }
     }
     let mut toolchain = toolchain_info(env);
     toolchain.insert("exports".into(), exports.join(" "));
-    Ok((proto, source_sha256(&manifest)?, toolchain))
+    if !c.files.is_empty() {
+        // the record of a C object (gcc, as and ld versions and the CFLAGS), with the defines the C sources were compiled with
+        let cenv = CSources::env(env);
+        toolchain.extend(cenv.toolchain_version()?);
+        let defines: Vec<String> = cenv.defines.iter().map(|d| format!("-D{d}")).collect();
+        let cflags = toolchain.get("cflags").cloned().unwrap_or_default();
+        toolchain.insert("cflags".into(), format!("{cflags} {}", defines.join(" ")));
+    }
+    Ok((
+        proto,
+        object_sha256(env, &manifest, cargo_flags, c)?,
+        toolchain,
+    ))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_source_hash_ignores_unit_test_files_only() {
+        let work = TempDir::new("pk-hash-").unwrap();
+        let src = work.path().join("src");
+        std::fs::create_dir_all(src.join("a/tests")).unwrap();
+        std::fs::write(work.path().join("Cargo.toml"), "[package]\nname = \"c\"\n").unwrap();
+        for f in [
+            "lib.rs",
+            "a/mod.rs",
+            "a/tests.rs",
+            "a/tests/x.rs",
+            "b_tests.rs",
+            "tests_b.rs",
+            "fake_p.rs",
+        ] {
+            std::fs::write(src.join(f), "// 1\n").unwrap();
+        }
+        let manifest = work.path().join("Cargo.toml");
+        let before = source_sha256(&manifest, &[]).unwrap();
+        for f in [
+            "a/tests.rs",
+            "a/tests/x.rs",
+            "b_tests.rs",
+            "tests_b.rs",
+            "fake_p.rs",
+        ] {
+            std::fs::write(src.join(f), "// 2\n").unwrap();
+        }
+        assert_eq!(source_sha256(&manifest, &[]).unwrap(), before);
+        for f in ["lib.rs", "a/mod.rs"] {
+            std::fs::write(src.join(f), "// 2\n").unwrap();
+            assert_ne!(source_sha256(&manifest, &[]).unwrap(), before, "{f}");
+            std::fs::write(src.join(f), "// 1\n").unwrap();
+        }
+    }
 
     #[test]
     fn a_staged_dependency_loses_its_workspace_root() {
@@ -647,6 +907,53 @@ mod tests {
             without_workspace_root(text),
             "[package]\nname = \"a\"\n\n\n[profile.release]\npanic = \"abort\"\n"
         );
+    }
+
+    #[test]
+    fn staging_keeps_a_dependency_name_after_its_source_directory_moves() {
+        let work = TempDir::new("pk-stage-").unwrap();
+        let src = work.path().join("source");
+        let dep = work.path().join("moved");
+        std::fs::create_dir(&src).unwrap();
+        std::fs::create_dir(&dep).unwrap();
+        let manifest = src.join("Cargo.toml");
+        let dep_manifest = dep.join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"root\"\n[dependencies]\ndep = { path = \"../moved\" }\n",
+        )
+        .unwrap();
+        let dep_text = "[package]\nname = \"dep\"\n";
+        std::fs::write(&dep_manifest, dep_text).unwrap();
+        assert_eq!(staged_dir_name(&dep_manifest).unwrap(), "moved");
+        let before = source_sha256(&manifest, &[]).unwrap();
+        std::fs::write(
+            &dep_manifest,
+            format!("{dep_text}[package.metadata.patchkit]\nstaged-dir = \"original\"\n"),
+        )
+        .unwrap();
+        assert_ne!(source_sha256(&manifest, &[]).unwrap(), before);
+
+        let dest = work.path().join("staged");
+        let deps_dir = dest.join(".deps");
+        let staged = stage(&manifest, &dest, &deps_dir, &mut vec![]).unwrap();
+        assert_eq!(
+            path_deps(&tc::read_text(&staged).unwrap(), &staged, false).unwrap(),
+            [".deps/0-original"]
+        );
+        assert!(deps_dir.join("0-original/Cargo.toml").is_file());
+    }
+
+    #[test]
+    fn staging_rejects_a_name_with_a_path_separator() {
+        let work = TempDir::new("pk-stage-").unwrap();
+        let manifest = work.path().join("Cargo.toml");
+        std::fs::write(
+            &manifest,
+            "[package]\nname = \"dep\"\n[package.metadata.patchkit]\nstaged-dir = \"../other\"\n",
+        )
+        .unwrap();
+        assert!(staged_dir_name(&manifest).is_err());
     }
 
     #[test]

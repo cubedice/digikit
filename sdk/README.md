@@ -19,7 +19,7 @@ and the device profiles (`devices/*.toml`).
 | `dsp/` | SHARC+ code by concept (`osc/`, `filter/`, `dynamics/`, `delay/`, `util/`, `sample/`). See [dsp/README.md](dsp/README.md). `dsp/contract/` is on the SHARC+ include path and holds the call convention (`call.inc`), the includes generated from `sdk.toml` (`dk_fx.inc`, `dk_machine.inc`, `dk_sample_pool.inc`) and the hand-written `dk_trace.inc` (see Tracing). | yes |
 | `templates/` | Module templates for `mise run module:new`: `machine/`, `fx/`, `tool/`. | yes |
 | `tests/` | Host C tests, in the folders of `include/dk/` (`sdk:test-host`). | yes |
-| `../modules/core/runtime/vectors/` | Fit and settings expected results shared by the Rust, Python and web tests. They belong to the runtime, not to the SDK. | no |
+| `../runtime/core/vectors/` | Fit and settings expected results shared by the Rust, Python and web tests. They belong to the runtime, not to the SDK. | no |
 
 ### Where a new thing goes
 
@@ -53,7 +53,7 @@ A service that a service file (`.dks`) provides marks its imports `provided = tr
 `module.toml` has no `[[export]]`. A provided import takes one more optional field, `wrapper = "<module>"`: the module of the service's `dks/src`
 (`fw`, `builder`, `glue`) that holds the function written by hand, for a function that converts a callback or a handle. An import without `wrapper` is a pure
 wrapper over the service crate's `build::*` function (the name without `dk_` and a leading `module_ctx_`): `patchkit gen` writes it, with the type check against
-the import's signature and the export list `gen_exports::exports()`, to `modules/core/services/<service>/dks/src/gen_exports.rs`. A pure wrapper cannot take a
+the import's signature and the export list `gen_exports::exports()`, to `services/<service>/dks/src/gen_exports.rs`. A pure wrapper cannot take a
 callback argument. A new builder call is an `[[import]]` and the `build::*` function; the generated file follows.
 
 - [docs/MODULES.md](../docs/MODULES.md) says what a module is and why: the entry point, services and optional providers, the builder calls,
@@ -62,13 +62,14 @@ callback argument. A new builder call is an `[[import]]` and the `build::*` func
 - The naming rules (`dk_<area>_<verb>`, `ctx` and `arg`, `_fn` callback types) are in [docs/plans/sdk.md](../docs/plans/sdk.md) section 10.
 
 The headers of the services are `core/log.h`, `core/mem.h`, `core/time.h`, `platform/host.h`, `settings.h`, `files.h`, `io.h`, `hash32.h`,
-`intro.h`, `param.h`, `samples.h`, `ui.h`, `input.h`, `usb_bulk.h`, `dsp_link.h` and `debug.h`, and `page/page.h` for canvas pages.
+`intro.h`, `param.h`, `samples.h`, `shortcuts.h`, `ui.h`, `input.h`, `usb_bulk.h`, `dsp_link.h` and `debug.h`, and `page/page.h` for canvas pages. The logical key names
+(`DK_KEY_TRK`, `DK_KEY_TRIG(n)`, type `dk_key`) are in the generated `gen/keys.h`: `patchkit gen` writes them from `[input.keys]` of the device files.
 
 ## Include paths
 
 The build passes these search paths, in this order:
 
-- ColdFire C and assembly: the module's `build/gen/`, the module's `src/`, `modules/core/fw/inc`, then `sdk/include`.
+- ColdFire C and assembly: the module's `build/gen/`, the module's `src/`, `ports/bindings/inc`, then `sdk/include`.
 - SHARC+ assembly: the module's `build/gen/`, the module's `src/`, `sdk/dsp/contract`, `sdk` (for `#include "dsp/<concept>/<name>.inc"`), then the directories of the module's sources.
 
 A header in the module's `src/` is shared by C and SHARC+ sources. Use only decimal `#define`s and `//` comments on their own line: the SHARC+ assembler keeps a trailing comment in the macro text.
@@ -100,7 +101,7 @@ bank aliases the legacy loop lease.
 ## Declaring an effect
 
 An effect declares itself, its parameters and its page in a C file of the module, with `DK_FX`, `DK_FX_PARAM` and `DK_PAGE`
-from `<dk/fx.h>`. This is `modules/fx/freqshift/src/module.c`:
+from `<dk/fx.h>`. This is `modules/fx/digikit/freqshift/src/module.c`:
 
 ```c
 #include <dk/fx.h>
@@ -119,7 +120,7 @@ List the file as an `[[object]]` in `module.toml`. `patchkit pack` reads the rec
 ## Declaring a machine
 
 A machine is declared the same way, with `DK_MACHINE`, `DK_PARAM` and `DK_PAGE` from `<dk/machine.h>`.
-This is `modules/machines/pluck/src/module.c`:
+This is `modules/machine/digikit/pluck/src/module.c`:
 
 ```c
 #include <dk/machine.h>
@@ -156,6 +157,7 @@ Trace marks tell you where a module was when it faulted or hung. They are opt-in
 | --- | --- | --- | --- |
 | ColdFire C | `<dk/core/trace.h>` | `DK_TRACE_LOG("msg", value);` | Calls `dk_log(DK_LOG_TRACE, msg, value)`: the message (24 bytes kept) and a word go to the runtime's log ring (`dk:log`). |
 | SHARC+ | `#include "dk_trace.inc"` | `DK_STEP(3, R0);` | Loads the step number 3 into the scratch register `R0` and stores it in the word `_dk_step`. Pick a register that is free at that point: SHARC+ cannot store an immediate to memory. |
+| SHARC+ (a service's dispatch code only) | `#include "dk_trace.inc"`, `#include "dk_span.inc"` | `DK_SPAN_BEGIN(skip, _dv_diag + 124, R3, I1);` | The span of a module call for the DSP stats window (docs/plans/profiling.md 13.1): with stats off a load, a compare and a jump. R3 and I1 must be free at the site; `dk_span.inc` holds the routines and takes `DK_SPAN_PTR_WORD` and `DK_SPAN_ROW_CODE` from the including file. Content modules do not use it (`check:layers`, rule spans). |
 
 The C macro is `DK_TRACE_LOG` because the build define is `DK_TRACE` and a function-like macro of that name would clash with it.
 

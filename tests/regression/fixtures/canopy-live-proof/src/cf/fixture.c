@@ -3,9 +3,9 @@
  * existing UI tick trampoline and codec/pool symbols. This is not persistence. */
 #include <stdint.h>
 #include "../../../canopy-two-phase/credit-refill.h"
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/instances.h"
-#include "../../../../../../modules/core/adapters/instrument-play/src/cf/sound-state.h"
-#include "../../../../../../modules/core/adapters/midi-events/src/cf/bridge.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/instances.h"
+#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-state.h"
+#include "../../../../../../image-modules/adapters/midi-events/src/cf/bridge.h"
 extern int32_t dkrt_job_post(uintptr_t, uintptr_t, uint8_t *);
 extern uint8_t *fw_alloc(uint32_t);
 extern void fw_free(uint8_t *);

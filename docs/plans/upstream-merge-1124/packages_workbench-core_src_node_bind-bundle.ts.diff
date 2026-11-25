@@ -1,0 +1,31 @@
+diff --git a/packages/workbench-core/src/node/bind-bundle.ts b/packages/workbench-core/src/node/bind-bundle.ts
+index cea40defe..d55e4731f 100644
+--- a/packages/workbench-core/src/node/bind-bundle.ts
++++ b/packages/workbench-core/src/node/bind-bundle.ts
+@@ -1,6 +1,9 @@
+ import { readFileSync, readdirSync } from 'node:fs';
+ import { join } from 'node:path';
+ 
++// Match Python Path.read_text() in patchkit.bundle on LF and CRLF checkouts.
++const bundleText = (path: string): string => readFileSync(path, 'utf8').replace(/\r\n?/g, '\n');
++
+ /** The texts of the `devices/fw/` declaration files (`subsystems.toml` at the top left out), in the order `patchkit::fwgen::fw_texts` reads them. */
+ function fwTexts(root: string, dir = join(root, 'devices', 'fw'), top = true): string[] {
+   const out: string[] = [];
+@@ -8,7 +11,7 @@ function fwTexts(root: string, dir = join(root, 'devices', 'fw'), top = true): s
+   for (const e of readdirSync(dir, { withFileTypes: true }).sort(byName)) {
+     const full = join(dir, e.name);
+     if (e.isDirectory()) out.push(...fwTexts(root, full, false));
+-    else if (e.name.endsWith('.toml') && !(top && e.name === 'subsystems.toml')) out.push(readFileSync(full, 'utf8'));
++    else if (e.name.endsWith('.toml') && !(top && e.name === 'subsystems.toml')) out.push(bundleText(full));
+   }
+   return out;
+ }
+@@ -21,6 +24,6 @@ export function buildBindBundle(root: string): { ports: string[]; fw: string[] }
+   const ports = readdirSync(join(root, 'devices', 'ports'))
+     .filter((f) => f.endsWith('.toml'))
+     .sort()
+-    .map((f) => readFileSync(join(root, 'devices', 'ports', f), 'utf8'));
++    .map((f) => bundleText(join(root, 'devices', 'ports', f)));
+   return { ports, fw: fwTexts(root) };
+ }

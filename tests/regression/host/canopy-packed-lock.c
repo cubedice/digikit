@@ -1,12 +1,12 @@
 #include <assert.h>
 #include <stdint.h>
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-lock-packed.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-lock-event.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/src-lock-apply.h"
-#include "../../../modules/core/adapters/midi-events/src/cf/transport.h"
-#include "../../../modules/core/adapters/midi-events/src/cf/lock-wire.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/keyboard.h"
-#include "../../../modules/core/adapters/instrument-play/src/cf/shared-notes.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-lock-packed.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-lock-event.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/src-lock-apply.h"
+#include "../../../image-modules/adapters/midi-events/src/cf/transport.h"
+#include "../../../image-modules/adapters/midi-events/src/cf/lock-wire.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/keyboard.h"
+#include "../../../image-modules/adapters/instrument-play/src/cf/shared-notes.h"
 #include <stddef.h>
 
 static IsnQueue shared;

@@ -40,22 +40,36 @@ selinstr = { git = "https://github.com/ElekLabs/selache", rev = "967c1d1e4d02e41
 sharc-rt = { path = "../emulator/sharc-rt" }
 regex-lite = "0.1"
 # Readable names of Rust symbols in the address map (no_std features: builds for wasm32).
+proc-macro2 = { version = "1", default-features = false } # tokenize Rust for service-check
 rustc-demangle = "0.1"
 # The settings record's decoder (the code the runtime uses); no_std, builds for every target.
-dkrt-sdk = { path = "../../modules/core/runtime/sdk" }
+dkrt-sdk = { path = "../../runtime/core/sdk" }
 # The fit rule (the code the DIGIKIT menu runs); no_std, builds for every target.
-dkrt-fit = { path = "../../modules/core/runtime/fit" }
+dkrt-fit = { path = "../../runtime/core/fit" }
 
 # `patchkit store dump` reads card images, `patchkit flash` sends to a MIDI port: the binary only (not wasm32).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 midir = "0.11"
+tempfile = "3"
 plusdrive-format = { path = "../emulator/plusdrive" }
 emmc-card = { path = "../emulator/card" }
 # `patchkit budget` reads the rule of dkprof; dkprof has its own wasm, so patchkit.wasm leaves it out and stays small.
 dkprof = { path = "../dkprof" }
+# Native system package validation uses the resident ABI of this build.
+dkrt-abi = { path = "../../runtime/core/abi" }
+# `patchkit records --check` runs the inherent `validate` of the service that owns each record kind (src/record_rules.rs): no core, no host fake.
+# They are optional (feature `record-rules`): a library user (digi-control, the app) does not build them.
+dkrt-svc-lfo = { path = "../../services/lfo", optional = true }
+dkrt-svc-shortcuts = { path = "../../services/shortcuts", optional = true }
+dkrt-svc-fx = { path = "../../services/fx", optional = true }
+dkrt-svc-machines = { path = "../../services/machines", optional = true }
+
+[features]
+# `patchkit records --check`: the validators of the services. Enabled for the patchkit binary build and the patchkit tests (tools/nx/cargo.mjs), not for
+# library users (the daemons), so the services' sources are no build input of a daemon. Not for wasm32.
+record-rules = ["dep:dkrt-svc-lfo", "dep:dkrt-svc-shortcuts", "dep:dkrt-svc-fx", "dep:dkrt-svc-machines"]
 
 [dev-dependencies]
 machine = { path = "../emulator/machine" }
+# the canonical V2 instrument section of dkneeds (the packer tests of the fork's instrument sections)
 dkneeds = { path = "../dkneeds", features = ["fixtures"] }
-# `tests/lfo_graph.rs`: the shape graph's tiles against the stock image
-dkrt-svc-lfo = { path = "../../modules/core/services/lfo" }

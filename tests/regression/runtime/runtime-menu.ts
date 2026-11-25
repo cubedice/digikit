@@ -4,23 +4,25 @@ import {
   fmtVersion,
   hasCap,
   PROVIDER_IDX,
+  type Clock,
   type DkLogEvent,
   type DkSession,
 } from '@digi/dk-session';
 import { LOAD_STATUS, LOG_KIND } from '@digi/dk-session/gen_proto';
-import { emulatorClock, pollUntil, type Session } from '@digi/test-support';
+import { emulatorClock, pollUntil, waitClock, type Session } from '@digi/test-support';
 import type { PatchedSession } from '../support.ts';
 import { record } from './artifacts.ts';
-import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
+import { packageSymbol, planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 /** fill_about publishes incrementally: the runtime row alone precedes BOOT and the final RAM row. */
 export const aboutIsComplete = (rows: string[]): boolean =>
   rows.some((row) => /^BOOT: \d+ OF \d+ OK$/.test(row)) && /^RAM KEPT: (YES|NO)$/.test(rows.at(-1) ?? '');
 
+/** The ABOUT rows of the menu in the system package (`MENU_ABOUT`, `MENU_ABOUT_N` of the host directory: the plan has `DKRT_HOST_DIR`). */
 export async function readAboutRows(session: Session, plan: RuntimePlan): Promise<string[]> {
-  const base = planSymbol(plan, 'DK_ABOUT');
+  const base = await packageSymbol(session, plan, 'MENU_ABOUT');
   const peek = (address: number) => session.client.memPeek(address);
-  const count = await peek(planSymbol(plan, 'DK_ABOUT_N'));
+  const count = await peek(await packageSymbol(session, plan, 'MENU_ABOUT_N'));
   if (count === null || !Number.isInteger(count) || count < 1 || count > 24)
     throw new Error(`invalid ABOUT row count: ${count}`);
   const rows: string[] = [];
@@ -120,6 +122,52 @@ export async function moduleRingEvents(
   return (await ringEvents(session, plan, kind)).filter((e) => e.args[0] !== PROVIDER_IDX);
 }
 
+/**
+ * A cursor over the runtime's small ring for a test that waits on events without the debug module (a card rig's runtime has none: the log commands exist only while
+ * digikit/debug is loaded). `next` waits in emulated time (the memory reads step nothing; `clock` steps a paused daemon) for the next event of `kind` that `match` accepts
+ * after the ones the cursor has passed; `none` fails when such an event comes within `withinMs`. The ring keeps 32 events, so a wait polls every 100 ms. Needs `RING_SYMBOLS`
+ * in the runtime plan (`CARD_SYMBOLS` of card-rig.ts has them). Starts after the newest event unless `fromBoot`.
+ */
+export async function ringWatch(
+  rt: { session: Session; clock: Clock },
+  plan: RuntimePlan,
+  { fromBoot = false }: { fromBoot?: boolean } = {},
+) {
+  const { session, clock } = rt;
+  let after = fromBoot ? 0 : await word(session, planSymbol(plan, 'DKRT_LOG_COUNT'));
+  const find = async (kind: keyof typeof LOG_KIND, match: (e: DkLogEvent) => boolean) =>
+    (await readSmallRing(session, plan)).find((e) => e.seq > after && e.kind === LOG_KIND[kind] && match(e));
+  return {
+    async next(
+      kind: keyof typeof LOG_KIND,
+      match: (e: DkLogEvent) => boolean = () => true,
+      withinMs = 10_000,
+    ): Promise<DkLogEvent> {
+      const e = await pollUntil(
+        clock,
+        () => find(kind, match),
+        (found) => found !== undefined,
+        {
+          withinMs,
+          intervalMs: 100,
+          message: `the log event ${kind}`,
+        },
+      );
+      after = e!.seq;
+      return e!;
+    },
+    async none(
+      kind: keyof typeof LOG_KIND,
+      match: (e: DkLogEvent) => boolean = () => true,
+      withinMs = 300,
+    ): Promise<void> {
+      await waitClock(clock, withinMs);
+      const e = await find(kind, match);
+      if (e) throw new Error(`unexpected log event ${kind}: ${JSON.stringify(e)}`);
+    },
+  };
+}
+
 /** Every event the device's log holds: over SysEx while the debug module is loaded, else the runtime's own small ring from memory. */
 export async function logEvents({ session, dk }: PatchedSession, plan: RuntimePlan): Promise<DkLogEvent[]> {
   return hasCap(await dk.info(), 'LOG') ? dk.readLog() : readSmallRing(session, plan);
@@ -147,10 +195,22 @@ export function providerFailureLine(args: readonly number[]): string {
  * only says that its provider did not load: this says why.
  */
 export async function providerFailures(session: Session, plan: RuntimePlan): Promise<string> {
-  const lines = ofKind(await readSmallRing(session, plan), LOG_KIND.MOD_LOAD)
-    .filter((e) => e.args[0] === PROVIDER_INDEX && (e.args[1]! | 0) < 0)
-    .map((e) => providerFailureLine(e.args));
-  return lines.join('; ');
+  const failed = ofKind(await readSmallRing(session, plan), LOG_KIND.MOD_LOAD).filter(
+    (e) => e.args[0] === PROVIDER_INDEX && (e.args[1]! | 0) < 0,
+  );
+  return rootProviderFailures(failed)
+    .map((e) => providerFailureLine(e.args))
+    .join('; ');
+}
+
+/**
+ * The failed provider lines without the dependents: the boot also logs a provider that was refused only because a service it needs was refused (E_MISSING, and its service
+ * hash word is the hash of that need). That line repeats the cause, so it is dropped when a provider of that hash failed with a cause of its own (a result other than
+ * E_MISSING); an E_MISSING line whose need is not such a provider is itself the best answer and stays.
+ */
+export function rootProviderFailures<T extends { args: readonly number[] }>(failed: readonly T[]): T[] {
+  const withCause = new Set(failed.filter((e) => (e.args[1]! | 0) !== E_MISSING).map((e) => e.args[3]));
+  return failed.filter((e) => (e.args[1]! | 0) !== E_MISSING || !withCause.has(e.args[3]));
 }
 
 /**

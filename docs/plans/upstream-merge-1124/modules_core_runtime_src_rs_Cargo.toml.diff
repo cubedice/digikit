@@ -1,0 +1,12 @@
+diff --git a/modules/core/runtime/src/rs/Cargo.toml b/modules/core/runtime/src/rs/Cargo.toml
+index 8005f27c0..f36a1a823 100644
+--- a/modules/core/runtime/src/rs/Cargo.toml
++++ b/modules/core/runtime/src/rs/Cargo.toml
+@@ -17,6 +17,7 @@ dkfw = { path = "../../../fw/rs" }
+ 
+ [dev-dependencies]
+ dkrt-test-support = { path = "../../test-support" }
++dkneeds = { path = "../../../../../packages/dkneeds", features = ["fixtures"] }
+ dkrt-svc-rt = { path = "../../svc-rt" }
+ toml = "0.9.12"
+ dkrt-svc-lfo = { path = "../../../services/lfo" }

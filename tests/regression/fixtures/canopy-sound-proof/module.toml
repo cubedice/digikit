@@ -16,7 +16,7 @@ ports = ["dt2-1.17"]
 
 [[object]]
 path = "build/proof.dko.json"
-sources = ["src/cf/proof.c", "src/cf/proof.s", "../../../../modules/core/adapters/instrument-play/src/cf/sound-codec.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-pool.c", "../../../../modules/core/adapters/instrument-play/src/cf/sound-lifetime.s"]
+sources = ["src/cf/proof.c", "src/cf/proof.s", "../../../../image-modules/adapters/instrument-play/src/cf/sound-codec.c", "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.c", "../../../../image-modules/adapters/instrument-play/src/cf/sound-lifetime.s"]
 place = "cf.expansion"
 devices = ["dt2"]
 [object.externs]

@@ -14,6 +14,8 @@ pub struct Manifest {
     pub targets: BTreeMap<String, String>,
     #[serde(default)]
     pub object: Vec<ObjectRef>,
+    /// The external object paired with the resident runtime, when the manifest declares one.
+    pub system_package: Option<SystemPackageRef>,
     /// Resolution rules for `tools/patchkit/port_resolve.py`; patchkit does not read them.
     #[serde(default)]
     pub anchor_rule: Vec<toml::Value>,
@@ -28,6 +30,10 @@ pub struct Manifest {
     pub info: Vec<InfoDef>,
     #[serde(default)]
     pub claim: Vec<Claim>,
+    /// `[[repack]]`: container sections of a read-only role that this module unpacks before they are used, so that patchkit may store them packed
+    /// (`[container] repack` of the device file allows it per device).
+    #[serde(default)]
+    pub repack: Vec<RepackDef>,
     /// P1: sections copied from the user's image (and extended) at apply time.
     #[serde(default)]
     pub section: Vec<SectionDef>,
@@ -61,18 +67,23 @@ pub struct Manifest {
     /// first word of the record's body. The keys go in the KEYS entry of the header table, where the boot planner checks that the kind has an owner and that no other module has the key.
     #[serde(default, rename = "record")]
     pub records: Vec<RecordKey>,
-    /// `[[export]]` is no longer read (an error): the functions a service module (`role = "service"`) exports are the `provided` imports of its service in sdk/sdk.toml.
-    /// Their name hashes and entry offsets go in the `EXPORTS` entry of the header table.
+    /// A service outside sdk/sdk.toml declares its exported functions as `[[export]]`. Any service can declare a resident query. Their hashes and entry offsets go in `EXPORTS`.
     #[serde(default, rename = "export")]
     pub exports: Vec<ExportDef>,
+    /// A consumer declares the provider and minimum version of each locally defined service API it links.
+    #[serde(default, rename = "service_import")]
+    pub service_imports: Vec<ServiceImport>,
     /// `[[hook]] name = "cf.menu.hook.settings_list.tail"`, `entry = "my_handler"`: the hook sites a service module takes and the global function of the object
-    /// that handles each. Their name hashes and entry offsets go in the `HOOKS` entry of the header table; `patchkit bind` gives each a trampoline.
+    /// that handles each. Their name hashes and entry offsets go in the `HOOKS` entry of the header table; the port file gives each a trampoline.
     #[serde(default, rename = "hook")]
     pub hooks: Vec<ServiceHook>,
     /// `[[fill]] slot = "frametype"`, `entry = "mf_frametype"`: a pointer slot of an image adapter (`[[slot]]` of its module.toml) that a service module fills with the address
     /// of a global function of the object when it is loaded (the loader finds the slot word by the hash of the name in the image's info table).
     #[serde(default, rename = "fill")]
     pub fills: Vec<ServiceFill>,
+    /// `[[service.resource]]` and `[[service.record]]`: the capacities and record kinds a service declares. Parsed and validated, not packed yet (RC3).
+    #[serde(default)]
+    pub service: crate::service_decl::ServiceDecl,
     /// `[uses.dt2]`, `[uses.dn2]`: registry rows the module takes on each device (the keys table's three counts). Per device because the runtime
     /// builds different rows per device (DT2 has no page rows).
     #[serde(default)]
@@ -102,6 +113,36 @@ impl Manifest {
             ));
         }
         self.provided_service()?;
+        if !self.service.is_empty() {
+            if self.module.role != Some(ModuleRole::Service) {
+                return Err(err!(
+                    "{}: [[service.resource]] and [[service.record]] belong to a module with `role = \"service\"`",
+                    self.module.id
+                ));
+            }
+            self.service
+                .validate(&self.module.id, &crate::devdata::has_profile_key)?;
+        }
+        for r in &self.repack {
+            let who = &self.module.id;
+            if r.role.is_empty() || r.role.len() > 255 {
+                return Err(err!("{who}: [[repack]] role must be 1 to 255 bytes"));
+            }
+            if r.sha256.len() != 64 || !r.sha256.bytes().all(|c| c.is_ascii_hexdigit()) {
+                return Err(err!("{who}: [[repack]] sha256 must be 64 hex digits"));
+            }
+            if [r.dest, r.stage_end, r.len]
+                .iter()
+                .any(|n| *n > u32::MAX as u64)
+            {
+                return Err(err!(
+                    "{who}: [[repack]] dest, stage_end and len must fit 32 bits (the patch record stores them as words)"
+                ));
+            }
+            if r.stage_end < r.dest {
+                return Err(err!("{who}: [[repack]] stage_end is below dest"));
+            }
+        }
         for (table, ids) in [("machine", &self.machines), ("fx", &self.fxs)] {
             let mut seen = std::collections::BTreeSet::new();
             for r in ids {
@@ -162,18 +203,18 @@ impl Manifest {
         Ok(())
     }
 
-    /// What a `role = "service"` module provides (`None` for any other role). The service is a `[[service]]` of sdk/sdk.toml without `rust` (provided by a
-    /// `.dks`), and its exports are the `provided` imports of that service, in `sdk/sdk.toml` order.
+    /// What a `role = "service"` module provides (`None` for any other role). SDK services keep their generated exports.
     pub fn provided_service(&self) -> Result<Option<crate::dkm::Provided>> {
         let id = &self.module.id;
         if self.module.role != Some(ModuleRole::Service) {
             if self.module.service.is_some()
+                || self.module.callback_order.is_some()
                 || !self.exports.is_empty()
                 || !self.hooks.is_empty()
                 || !self.fills.is_empty()
             {
                 return Err(err!(
-                    "{id}: `service` in [module], [[export]], [[hook]] and [[fill]] belong to a module with `role = \"service\"`"
+                    "{id}: `service` or `callback_order` in [module], [[export]], [[hook]] and [[fill]] belong to a module with `role = \"service\"`"
                 ));
             }
             return Ok(None);
@@ -183,9 +224,10 @@ impl Manifest {
                 "{id}: a module with `role = \"service\"` needs `service = \"NAME\"` in [module]"
             ));
         };
-        if !crate::sdkgen::provider_services().contains(service) {
+        let sdk_service = crate::sdkgen::provider_services().contains(service);
+        if !sdk_service && !local_service_name(service) {
             return Err(err!(
-                "{id}: service {service:?} is not a [[service]] of sdk/sdk.toml without `rust` (a service provided by a .dks)"
+                "{id}: service {service:?} must be an unreserved service name"
             ));
         }
         // The runtime's find and Transfer name a provider by its file stem: `services/<service>.dks`, and the stem is the id's leaf.
@@ -201,13 +243,35 @@ impl Manifest {
                 "{id}: the id's last part {leaf:?} must equal the provided service {service:?} (the file is `{service}.dks`: the runtime finds a provider by its file name)"
             ));
         }
-        if let Some(e) = self.exports.first() {
-            return Err(err!(
-                "{id}: [[export]] {:?} is not read: the exports of a service file are the `provided = true` imports of its service in sdk/sdk.toml",
-                e.name
-            ));
+        let query_name = dkrt_sdk::RESIDENT_QUERY_ENTRY;
+        let query_count = self.exports.iter().filter(|e| e.name == query_name).count();
+        if query_count > 1 {
+            return Err(err!("{id}: the service declares {query_name} twice"));
         }
-        let exports = crate::sdkgen::provided_exports(service);
+        let mut exports = if sdk_service {
+            if let Some(e) = self.exports.iter().find(|e| e.name != query_name) {
+                return Err(err!(
+                    "{id}: [[export]] {:?} is not read: the exports of a service file are the `provided = true` imports of its service in sdk/sdk.toml",
+                    e.name
+                ));
+            }
+            crate::sdkgen::provided_exports(service)
+        } else {
+            if self.exports.is_empty() {
+                return Err(err!(
+                    "{id}: a service outside sdk/sdk.toml needs at least one [[export]]"
+                ));
+            }
+            let mut local = vec![];
+            for e in self.exports.iter().filter(|e| e.name != query_name) {
+                validate_local_import(id, &e.name)?;
+                local.push(e.name.clone());
+            }
+            local
+        };
+        if query_count != 0 {
+            exports.push(query_name.into());
+        }
         let mut hooks: Vec<(String, String, Vec<String>)> = vec![];
         for h in &self.hooks {
             if h.name.is_empty() || h.entry.is_empty() {
@@ -215,9 +279,15 @@ impl Manifest {
                     "{id}: [[hook]] needs a `name` and an `entry`, both not empty"
                 ));
             }
-            if hooks.iter().any(|(n, _, _)| *n == h.name) {
+            // one name may be declared once for each of disjoint devices (an entry without `devices` is for every device)
+            if hooks.iter().any(|(n, _, d)| {
+                *n == h.name
+                    && (d.is_empty()
+                        || h.devices.is_empty()
+                        || d.iter().any(|x| h.devices.contains(x)))
+            }) {
                 return Err(err!(
-                    "{id}: [[hook]] {:?} is declared twice (one name has one entry, so a hook for two devices is one entry without `devices`)",
+                    "{id}: [[hook]] {:?} is declared twice for a common device (one name has one entry for each device, `devices` apart)",
                     h.name
                 ));
             }
@@ -289,6 +359,7 @@ impl Manifest {
         }
         Ok(Some(crate::dkm::Provided {
             service: service.clone(),
+            callback_order: self.module.callback_order,
             exports,
             hooks,
             fills,
@@ -309,6 +380,41 @@ pub struct ExportDef {
     pub name: String,
 }
 
+/// The API of a service outside the SDK, declared in a consumer's manifest.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ServiceImport {
+    pub service: String,
+    pub min_version: String,
+    pub names: Vec<String>,
+}
+
+pub(crate) fn local_service_name(service: &str) -> bool {
+    !service.is_empty()
+        && service.len() <= 50
+        && service
+            .bytes()
+            .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-' || b == b'_')
+        && !crate::sdkgen::reserved_service(service)
+}
+
+pub(crate) fn validate_local_import(id: &str, name: &str) -> Result<()> {
+    if name.len() >= crate::dkm::IMPORT_LEN
+        || !name
+            .as_bytes()
+            .first()
+            .is_some_and(|b| b.is_ascii_alphabetic() || *b == b'_')
+        || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_')
+        || crate::sdkgen::reserved_service_import(name)
+    {
+        return Err(err!(
+            "{id}: service API symbol {name:?} must be an unreserved C identifier of at most {} bytes",
+            crate::dkm::IMPORT_LEN - 1
+        ));
+    }
+    Ok(())
+}
+
 /// An entry of `[[fill]]` of a service: the pointer slot of an image adapter and the global function of the object whose address the installer writes in it.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -324,7 +430,7 @@ pub struct ServiceFill {
     pub devices: Vec<String>,
 }
 
-/// An entry of `[[hook]]` of a service: the hook of the port files (`devices/ports/`) and the global function of the object that handles it.
+/// An entry of `[[hook]]` of a service: the hook of the port files (`ports/`) and the global function of the object that handles it.
 #[derive(Clone, Debug, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct ServiceHook {
@@ -554,6 +660,9 @@ pub struct DevAlloc {
     /// First number of the range reserved for run-time modules (`core/dynreg` reserves `dynamic_first ..= last`).
     #[serde(default)]
     pub dynamic_first: Option<i64>,
+    /// How many stock machine types the firmware has (types `0 .. stock_types`; the numbers up to `dynamic_first` that are not stock are built-in or gap rows).
+    #[serde(default)]
+    pub stock_types: Option<i64>,
 }
 
 impl AllocTable {
@@ -660,9 +769,12 @@ pub struct ModuleInfo {
     /// The layer of a `core` module (required for `category = "core"`, see `ModuleRole`)
     #[serde(default)]
     pub role: Option<ModuleRole>,
-    /// With `role = "service"`: the service the module provides (a `[[service]]` of sdk/sdk.toml without `rust`)
+    /// With `role = "service"`: the service the module provides.
     #[serde(default)]
     pub service: Option<String>,
+    /// With `role = "service"`: the order its row joins the runtime's callback table.
+    #[serde(default)]
+    pub callback_order: Option<u32>,
     /// What the module is; `framework` is internal (core modules)
     #[serde(rename = "type")]
     pub kind: ModuleKind,
@@ -685,6 +797,30 @@ pub struct ModuleInfo {
     /// are not lowered into registry rows; the packer lowers them into the `.dkm` `register` records.
     #[serde(default)]
     pub dynamic: bool,
+    /// An image adapter whose code runs from a service file (docs/plans/fork-image-diet.md): the service (a `[[service]]` of sdk/sdk.toml
+    /// without `rust`). The adapter forwards into it through a slot the file fills, so a module that requires the adapter, directly or
+    /// through another module, needs the file: the packer gives it a hard `NEEDS` entry for the service (`served_needs`).
+    #[serde(default)]
+    pub served_by: Option<String>,
+    /// Tables of the device file that the module reads, as dotted paths (`input.keys`). Every device whose patch sets include the module must have them
+    /// (`devgen::check_device_tables` for `patchkit gen`, `devgen::check_module_tables` for the generator of the module, `build` and `pack`); the module's `[[gen]]` constants come from them.
+    #[serde(default)]
+    pub needs_device: Vec<String>,
+    /// Device switches that make this module part of a patch set: `{ switch = "card.guard.enabled", with = "core/runtime" }` says that on a device whose file has that
+    /// boolean true, every module set that holds `with` must hold this module, and that a set that holds this module on a device where the boolean is not true is refused
+    /// (`devgen::check_needed_when`, run by `patchkit gen` on the named patch sets and by `apply` on the resolved set).
+    #[serde(default)]
+    pub needed_when: Vec<NeededWhen>,
+}
+
+/// One entry of `[module] needed_when`.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NeededWhen {
+    /// A boolean of a nested table of the device file, by dotted path.
+    pub switch: String,
+    /// The module whose presence makes this module required while the switch is on.
+    pub with: String,
 }
 
 impl ModuleInfo {
@@ -704,6 +840,11 @@ impl ModuleInfo {
                 .iter()
                 .any(|p| p.split('-').next() == Some(short))
     }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct SystemPackageRef {
+    pub path: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -789,6 +930,10 @@ pub struct InfoDef {
     pub symbol: Option<String>,
     #[serde(default)]
     pub devices: Vec<String>,
+    /// `tick = true`: `symbol` is a function `void f(void)` of the adapter that the runtime calls once per pass of its UI-loop tick
+    /// (an entry of kind `INFO_KIND_TICK`), for an image feature that must run without a module or service to start it.
+    #[serde(default)]
+    pub tick: bool,
 }
 
 /// `[[slot]] name = "frame_type", devices = ["dn2"]`: one 4-byte pointer slot in the module's data region, zero at build.
@@ -821,6 +966,23 @@ pub struct OpReloc {
     pub symbol: String,
     #[serde(default)]
     pub addend: i64,
+}
+
+/// `[[repack]] role = "cf2", dest = 0x.., stage_end = 0x.., len = N, sha256 = "..."`: the module unpacks the section of `role` in place. The packed stream is read so that it ends at
+/// `stage_end` and is unpacked from `dest` upward; patchkit refuses the build when the unpacked output would reach stream bytes that are not read yet
+/// (`aplib::inplace_margin` is not above 0). The module's code uses the same two addresses.
+#[derive(Clone, Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RepackDef {
+    pub role: String,
+    pub dest: u64,
+    pub stage_end: u64,
+    /// The length and SHA-256 (hex) of the section's decoded stock bytes, which the module checks after it unpacks them; patchkit refuses a stock
+    /// section that differs, because the module would refuse it at every boot.
+    pub len: u64,
+    pub sha256: String,
+    #[serde(default)]
+    pub devices: Vec<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -919,6 +1081,14 @@ impl Library {
         self.modules.iter().find(|m| m.id() == id)
     }
 
+    /// The system package object that accompanies this selection's resident runtime.
+    pub fn system_package_object(&self, ids: &[String]) -> Option<std::path::PathBuf> {
+        let id = ids.iter().find(|id| *id == "core/runtime")?;
+        let runtime = self.get(id)?;
+        let package = runtime.manifest.system_package.as_ref()?;
+        Some(runtime.dir.join(&package.path))
+    }
+
     /// Lower the typed sections of every module with the device models (`crate::typed`).
     pub fn lower(&mut self, models: &crate::typed::Models) -> Result<()> {
         for m in &mut self.modules {
@@ -931,6 +1101,30 @@ impl Library {
     /// The selection plus everything it requires, transitively. Returns the full list (the selection first, in the
     /// order given, then the added modules in the order found) and the added ones. Refuses a module that is not in
     /// the library, a requirement that is missing, and a `requires` cycle.
+    /// The services that serve the adapters in the requires closure of `id` (`served_by`), sorted, without repeats; the service the
+    /// module provides itself does not count.
+    pub fn served_needs(&self, id: &str) -> Result<Vec<String>> {
+        let (all, _) = self.with_requires(&[id.to_string()])?;
+        let own = self.get(id).and_then(|m| m.manifest.module.service.clone());
+        let mut out: Vec<String> = all
+            .iter()
+            .filter(|m| m.as_str() != id)
+            .filter_map(|m| self.get(m))
+            .filter_map(|m| m.manifest.module.served_by.clone())
+            .filter(|s| own.as_ref() != Some(s))
+            .collect();
+        out.sort();
+        out.dedup();
+        for s in &out {
+            if !crate::sdkgen::provider_services().contains(s.as_str()) {
+                return Err(err!(
+                    "served_by = {s:?}: not a [[service]] of sdk/sdk.toml without `rust` (a service provided by a .dks)"
+                ));
+            }
+        }
+        Ok(out)
+    }
+
     pub fn with_requires(&self, ids: &[String]) -> Result<(Vec<String>, Vec<String>)> {
         fn visit(
             lib: &Library,
@@ -987,6 +1181,18 @@ pub struct Build<'a> {
     pub defines: &'a [String],
 }
 
+/// The roots of the image modules and service files, whose objects are committed.
+pub const CORE_MODULE_ROOTS: &[&str] = &["runtime", "services", "image-modules"];
+
+/// The module library's committed roots, in the same order as tools/patchkit/modroots.py.
+pub const REPO_MODULE_ROOTS: &[&str] = &[
+    "modules",
+    "runtime",
+    "services",
+    "image-modules",
+    "tests/fixtures/modules",
+];
+
 /// Where a module library comes from, besides the repository's module roots and PATCHKIT_MODULES.
 #[cfg(not(target_arch = "wasm32"))]
 #[derive(Debug, Default, Clone)]
@@ -999,7 +1205,7 @@ pub struct LibrarySource {
     pub trace: bool,
 }
 
-/// `modules/` and `tests/fixtures/modules/` of the repository, then the extra roots of `src.modules_dirs` and the PATCHKIT_MODULES
+/// The committed module roots of the repository, then the extra roots of `src.modules_dirs` and the PATCHKIT_MODULES
 /// environment variable (a path list), in that order. Generated modules (derived from a firmware) live there. Content modules get their
 /// objects from the cache `out/cache/dko`; a stale object is built.
 /// With `lenient`, a module whose object files are missing still loads (for `gen`); with `only`, the objects of these
@@ -1027,8 +1233,16 @@ pub fn library_with(
         only,
         defines: &defines,
     };
+    // an extra root inside a repository root is scanned with that root: scanning it again would find each of its modules twice
+    let repo_roots: Vec<_> = REPO_MODULE_ROOTS
+        .iter()
+        .filter_map(|r| root.join(r).canonicalize().ok())
+        .collect();
     for d in extra {
-        if d.is_dir() {
+        let inside_repo = d
+            .canonicalize()
+            .is_ok_and(|c| repo_roots.iter().any(|r| c.starts_with(r)));
+        if d.is_dir() && !inside_repo {
             lib.extend_unique(Library::scan_in(Some(build), &d, lenient)?.modules)?;
         }
     }
@@ -1192,8 +1406,9 @@ impl Library {
             Ok(())
         }
         let mut paths = vec![];
-        walk(&root.join("modules"), &mut paths)?;
-        walk(&root.join("tests/fixtures/modules"), &mut paths)?;
+        for dir in REPO_MODULE_ROOTS {
+            walk(&root.join(dir), &mut paths)?;
+        }
         let headers = Self::read_headers(&paths)?;
         for m in &headers.modules {
             m.manifest
@@ -1251,7 +1466,7 @@ impl Library {
         Ok(())
     }
 
-    /// The default module roots of a repository: `modules/` and `tests/fixtures/modules/`, lowered with `devices/`. Content modules whose
+    /// The committed module roots of a repository, lowered with `devices/`. Content modules whose
     /// object is stale in the cache are built (it needs the toolchain: `uv run python -m tools.patchkit.pk_toolchains m68k`).
     pub fn scan_repo(root: &std::path::Path) -> Result<Library> {
         Self::scan_repo_with(root, false)
@@ -1302,16 +1517,9 @@ impl Library {
             defines,
         };
         let mut lib = Library::default();
-        lib.extend_unique(Self::read_root(
-            &root.join("modules"),
-            lenient,
-            Some((&env, b)),
-        )?)?;
-        lib.extend_unique(Self::read_root(
-            &root.join("tests/fixtures/modules"),
-            lenient,
-            Some((&env, b)),
-        )?)?;
+        for dir in REPO_MODULE_ROOTS {
+            lib.extend_unique(Self::read_root(&root.join(dir), lenient, Some((&env, b)))?)?;
+        }
         lib.lower(&crate::typed::Models::from_dir(&root.join("devices"))?)?;
         Ok(lib)
     }
@@ -1353,7 +1561,11 @@ mod cache_generation_tests {
         let core: Vec<_> = legacy
             .modules
             .iter()
-            .filter(|m| m.dir.starts_with(root.join("modules/core")))
+            .filter(|m| {
+                CORE_MODULE_ROOTS
+                    .iter()
+                    .any(|r| m.dir.starts_with(root.join(r)))
+            })
             .collect();
         assert!(!core.is_empty());
         let paths: Vec<_> = core.iter().map(|m| m.dir.join("module.toml")).collect();
@@ -1420,6 +1632,45 @@ mod manifest_tests {
         Ok(m)
     }
 
+    const SERVICE_HEAD: &str = "role = \"service\"\nservice = \"ledger\"\n";
+
+    fn load_service(extra: &str) -> Result<Manifest> {
+        let head = HEAD.replace("test/m", "test/ledger").replace(
+            "type = \"machine\"",
+            &format!("type = \"raw\"\n{SERVICE_HEAD}"),
+        );
+        let m: Manifest =
+            toml::from_str(&format!("{head}[[export]]\nname = \"ledger_op\"\n{extra}"))?;
+        m.validate_header()?;
+        Ok(m)
+    }
+
+    #[test]
+    fn a_service_declares_resources_and_records_that_are_checked() {
+        let m = load_service(
+            "[[service.resource]]\nname = \"slots\"\nlimit = \"profile:fx_slots\"\n[[service.record]]\nname = \"row\"\nkind = 1\nlen = 8\n",
+        )
+        .unwrap();
+        assert_eq!((m.service.resource.len(), m.service.record.len()), (1, 1));
+        let e = load_service(
+            "[[service.resource]]\nname = \"slots\"\nlimit = \"profile:no_such_key\"\n",
+        )
+        .unwrap_err()
+        .to_string();
+        assert!(
+            e.contains("test/ledger") && e.contains("no_such_key"),
+            "{e}"
+        );
+    }
+
+    #[test]
+    fn only_a_service_declares_resources_and_records() {
+        let e = load("[[service.record]]\nname = \"row\"\nkind = 1\nlen = 8\n")
+            .unwrap_err()
+            .to_string();
+        assert!(e.contains("role = \"service\""), "{e}");
+    }
+
     #[test]
     fn machine_fx_and_uses_are_read() {
         let m = load("[[machine]]\nid = \"analog\"\n[[machine]]\nid = \"b-2_x\"\n[[fx]]\nid = \"fshift\"\n[uses.dt2]\nmachine_rows = 2\npage_rows = 3\nrecord_bytes = 700\ndsp_cost_voice = 6239\ndsp_cost_fx = 4200\n[uses.dn2]\nmachine_rows = 2\npage_rows = 4\n").unwrap();
@@ -1455,6 +1706,13 @@ mod manifest_tests {
     }
 
     #[test]
+    fn an_info_entry_is_a_data_table_unless_it_is_a_tick() {
+        let m = load("[[info]]\nname = \"tick_x\"\nsymbol = \"x_tick\"\ntick = true\n[[info]]\nname = \"x_info\"\n").unwrap();
+        assert!(m.info[0].tick);
+        assert!(!m.info[1].tick);
+    }
+
+    #[test]
     fn no_tables_parse_as_before() {
         let m = load("").unwrap();
         assert!(m.machines.is_empty() && m.fxs.is_empty());
@@ -1483,6 +1741,58 @@ mod manifest_tests {
     }
 
     #[test]
+    fn one_hook_name_is_declared_once_for_each_of_disjoint_devices() {
+        let shorts: Vec<String> = crate::devdata::all()
+            .iter()
+            .filter(|d| d.digikit_id.is_some())
+            .map(|d| d.short.clone())
+            .collect();
+        assert!(shorts.len() >= 2, "two runtime devices");
+        let hook = |entry: &str, devices: &[&str]| {
+            let list: Vec<String> = devices.iter().map(|d| format!("{d:?}")).collect();
+            let on = if devices.is_empty() {
+                String::new()
+            } else {
+                format!("devices = [{}]\n", list.join(", "))
+            };
+            format!("[[hook]]\nname = \"cf.a.hook.x\"\nentry = \"{entry}\"\n{on}")
+        };
+        let (a, b) = (shorts[0].as_str(), shorts[1].as_str());
+        // disjoint device sets: accepted
+        let ok = format!("{}{}", hook("e1", &[a]), hook("e2", &[b]));
+        assert!(load_service(&ok).is_ok());
+        // the same device twice, an entry for every device with one for a device (either order), or every device twice: refused
+        for (what, extra) in [
+            (
+                "same device",
+                format!("{}{}", hook("e1", &[a]), hook("e2", &[a])),
+            ),
+            (
+                "a shared device",
+                format!("{}{}", hook("e1", &[a, b]), hook("e2", &[b])),
+            ),
+            (
+                "all then one",
+                format!("{}{}", hook("e1", &[]), hook("e2", &[b])),
+            ),
+            (
+                "one then all",
+                format!("{}{}", hook("e1", &[a]), hook("e2", &[])),
+            ),
+            (
+                "all twice",
+                format!("{}{}", hook("e1", &[]), hook("e2", &[])),
+            ),
+        ] {
+            let e = load_service(&extra).unwrap_err();
+            assert!(
+                e.to_string().contains("declared twice for a common device"),
+                "{what}: {e}"
+            );
+        }
+    }
+
+    #[test]
     fn a_record_has_a_local_id_and_no_key_field() {
         let e = load("[[record]]\nkind = \"lfo_shape\"\nkey = 7\n").unwrap_err();
         assert!(e.to_string().contains("unknown field"), "{e}");
@@ -1491,5 +1801,22 @@ mod manifest_tests {
         let e = load("[[record]]\nkind = \"lfo_shape\"\nid = \"a\"\n[[record]]\nkind = \"lfo_shape\"\nid = \"a\"\n").unwrap_err();
         assert!(e.to_string().contains("declared twice"), "{e}");
         assert!(load("[[record]]\nkind = \"lfo_shape\"\nid = \"ramp-up\"\n").is_ok());
+    }
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod runtime_version_tests {
+    /// The runtime has one version: the manifest of `core/runtime` says the SDK runtime version that INFO reports (`sdk/sdk.toml` [runtime]), so
+    /// the patch line (`core/runtime@x`), the flash question and the check after the restart name the same number.
+    #[test]
+    fn the_runtime_manifest_version_is_the_sdk_runtime_version() {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../runtime/core/module.toml");
+        let manifest: toml::Table = std::fs::read_to_string(path).unwrap().parse().unwrap();
+        let version = manifest["module"]["version"].as_str().unwrap();
+        assert_eq!(
+            version,
+            crate::dkm::fmt_runtime(crate::dkm::runtime_version())
+        );
     }
 }

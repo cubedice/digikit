@@ -1,7 +1,14 @@
 // LogCursor and RuntimeEvents on a fake log with a ring limit and a fake clock: no real time passes.
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
-import { LogCursor, RuntimeEvents, type Clock, type DkLogEvent, type WaitRecord } from '@digi/dk-session';
+import {
+  LogCursor,
+  ModuleLoadRefused,
+  RuntimeEvents,
+  type Clock,
+  type DkLogEvent,
+  type WaitRecord,
+} from '@digi/dk-session';
 import { LOG_KIND } from '@digi/dk-session/gen_proto';
 
 const word = (s: string, i: number) => {
@@ -42,7 +49,13 @@ class FakeLog {
     const newest = this.events[this.events.length - 1]?.seq ?? 0;
     return [oldest, newest, this.events.filter((e) => e.seq >= from).slice(0, this.pageSize)];
   }
+  /** Until true the debug module's commands answer E_PROTO and INFO shows no log sink. */
+  debugLoaded = true;
+  async info() {
+    return { log_sink: this.debugLoaded };
+  }
   async logConfig() {
+    if (!this.debugLoaded) throw new Error('logcfg: E_PROTO');
     return { level: 1, modules: [0, 0, 0, 0, 0, 0, 0, 0] };
   }
   async setLogConfig() {
@@ -78,6 +91,15 @@ test('an event after the cursor matches; events before listen() do not', async (
   log.add('SAFE', [3]);
   const e = await ev.until('SAFE');
   assert.equal(e.seq, 2);
+});
+
+test('tryUntil gives null when the event does not come and the event when it does', async () => {
+  const log = new FakeLog();
+  const { ev } = make(log);
+  await ev.listen();
+  assert.equal(await ev.tryUntil('SAFE', undefined, { withinMs: 200 }), null);
+  log.add('SAFE', [3]);
+  assert.equal((await ev.tryUntil('SAFE'))?.seq, 1);
 });
 
 test('fromBoot sees the early events of the boot', async () => {
@@ -250,4 +272,112 @@ test('onWait reports success and failure', async () => {
     ],
   );
   assert.ok(records[1]!.clockMs >= 100);
+});
+
+test('two identical boot logs: another boot record in BOOT_START is a new boot, the same one is not', async () => {
+  const boot = (seq: number) => {
+    const log = new FakeLog();
+    log.add('BOOT_START', [1, 2, 3, seq, 0], 0);
+    for (let i = 0; i < 6; i++) log.add('SAFE', [i], 10 + i);
+    return log;
+  };
+  // the cursor follows boot record seq 1; the log then holds the same events again, the same numbers and times, with the record seq 5
+  const log = boot(1);
+  const cur = new LogCursor(log);
+  cur.fromBoot();
+  await cur.read();
+  const again = boot(5);
+  log.events = again.events;
+  log.next = again.next;
+  const r = await cur.read();
+  assert.equal(r.newBoot, true);
+  assert.equal(cur.boots, 1);
+  assert.equal(r.events[0]!.kind, LOG_KIND.BOOT_START);
+  // nothing restarted: the same BOOT_START, more events
+  log.add('SAFE', [9], 30);
+  const same = await cur.read();
+  assert.equal(same.newBoot, false);
+  assert.deepEqual(
+    same.events.map((e) => e.seq),
+    [8],
+  );
+  // a restart with the same boot record and the same events cannot be told from the log (the wait then relies on the RESTART request event): no new boot is claimed
+  const identical = boot(5);
+  log.events = identical.events;
+  log.next = identical.next;
+  log.add('SAFE', [9], 30);
+  assert.equal((await cur.read()).newBoot, false);
+});
+
+test('untilModulesActive waits on MOD_LOAD and MOD_DSP of each module of the selection, and names a refusal with the module the image lacks', async () => {
+  const log = new FakeLog();
+  const { ev } = make(log);
+  await ev.listen({ fromBoot: true });
+  log.add('MOD_LOAD', [0xfffffffe, 0, 0, 0, 0]); // a service file: no index of the selection
+  log.add('MOD_LOAD', [0, 0, 0, 0, 0]);
+  log.add('MOD_LOAD', [1, 1, 0, 0, 0]); // its DSP part follows
+  log.add('MOD_DSP', [1, 0]);
+  await ev.untilModulesActive(2); // both are in
+  // the DSP part is awaited: result 1 alone is not enough
+  const partial = new FakeLog();
+  const p = make(partial);
+  await p.ev.listen({ fromBoot: true });
+  partial.add('MOD_LOAD', [0, 1, 0, 0, 0]);
+  await assert.rejects(p.ev.untilModulesActive(1, { withinMs: 300 }), /not seen within/);
+  // a refusal for an import: the MOD_NEEDS event (a name of 12 characters in three words) says which core module is not in the image
+  const bad = new FakeLog();
+  const b = make(bad);
+  await b.ev.listen({ fromBoot: true });
+  bad.add('MOD_LOAD', [0, 0, 0, 0, 0]);
+  bad.add('MOD_LOAD', [1, -7 >>> 0, 0, 0, 0]);
+  const word = (t: string) => [...t.padEnd(4, '\0')].reduce((a, c) => a * 256 + c.charCodeAt(0), 0);
+  bad.add('MOD_NEEDS', [1, word('samp'), word('le-p'), word('ool')]);
+  await assert.rejects(
+    b.ev.untilModulesActive(2),
+    (e: unknown) => e instanceof ModuleLoadRefused && e.index === 1 && e.result === -7 && e.needs === 'sample-pool',
+  );
+});
+
+test('untilModulesActive: an E_IMPORT without MOD_NEEDS is final with an empty name, a session without the DSP does not wait for MOD_DSP, and no module is an error naming the debug module', async () => {
+  const log = new FakeLog();
+  const { ev } = make(log);
+  await ev.listen({ fromBoot: true });
+  log.add('MOD_LOAD', [0, -7 >>> 0, 0, 0, 0]);
+  await assert.rejects(
+    ev.untilModulesActive(1),
+    (e: unknown) => e instanceof ModuleLoadRefused && e.result === -7 && e.needs === '',
+  );
+  const noDsp = new FakeLog();
+  const n = make(noDsp);
+  await n.ev.listen({ fromBoot: true });
+  noDsp.add('MOD_LOAD', [0, 1, 0, 0, 0]); // the DSP part never reports without the DSP
+  await n.ev.untilModulesActive(1, { dsp: false });
+  await assert.rejects(ev.untilModulesActive(0), /debug module file/);
+});
+
+test('listen sends no debug-module command until INFO shows the log sink', async () => {
+  const log = new FakeLog();
+  log.debugLoaded = false;
+  const clock = new FakeClock();
+  const info = log.info.bind(log);
+  let polls = 0;
+  log.info = async () => {
+    // the module loads (MOD_LOAD) after a few polls
+    if (++polls === 4) {
+      log.debugLoaded = true;
+      log.add('MOD_LOAD', [0, 0]);
+    }
+    return info();
+  };
+  const ev = new RuntimeEvents(log as never, clock);
+  await ev.listen({ fromBoot: true });
+  assert.equal(polls, 4);
+  assert.deepEqual(log.pages, []);
+});
+
+test('listen fails with the cause when the debug module never loads', async () => {
+  const log = new FakeLog();
+  log.debugLoaded = false;
+  const ev = new RuntimeEvents(log as never, new FakeClock());
+  await assert.rejects(ev.listen(), /did not set its log sink/);
 });

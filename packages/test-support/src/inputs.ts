@@ -4,13 +4,14 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   firmwareDir as stockFirmwareDir,
-  STOCK_SYX,
+  stockSyx,
   stockImage as stockImageOf,
 } from '@digi/workbench-core/node/stock-image.ts';
+import { registry } from '@digi/devices/node';
 import { parse as parseToml } from 'smol-toml';
 import { resolveTiers } from './emulator-config.ts';
 
-export type Device = 'dt2' | 'dn2';
+export type Device = 'dt2' | 'dn2' | 'st';
 
 // (device, version) -> base .syx and ready dir. The ready dirs are `[acceptance] ready_dir` of the device files,
 // like FIRMWARE in tools/patchkit/pk_harness.py.
@@ -28,8 +29,10 @@ function firmwareTable(): Record<string, { syx: string; ready: string }> {
   }
   const ready = (device: Device) => readyDirs.get(device) ?? '';
   return {
-    'dt2 1.17': { syx: STOCK_SYX.dt2, ready: ready('dt2') },
-    'dn2 1.12': { syx: STOCK_SYX.dn2, ready: ready('dn2') },
+    'dt2 1.17': { syx: stockSyx('dt2'), ready: ready('dt2') },
+    'dn2 1.12': { syx: stockSyx('dn2'), ready: ready('dn2') },
+    // a device with no `[acceptance]` has no ready snapshot: its sessions boot the stock image cold (`dsp: 'cold'`)
+    'st 1.42': { syx: stockSyx('st'), ready: ready('st') },
   };
 }
 
@@ -49,6 +52,22 @@ export function repoRoot(): string {
     if (up === dir) throw new Error('repo root (pnpm-workspace.yaml) not found');
     dir = up;
   }
+}
+
+/** Whether the device has a SHARC DSP: `[capabilities] dsp` of its device file is not "none" (the shared device registry). */
+export function hasDsp(device: Device): boolean {
+  return registry().get(device).capabilities.dsp !== 'none';
+}
+
+/**
+ * The daemon of a device without a DSP: the no-core build `dist/bin/digi-emud-nodsp` (`digi-control:daemon-nodsp`; such a device has
+ * no entry in dist/daemons.json). Throws, naming the Nx target, when it is not built; a test never spawns the build.
+ */
+export function noDspDaemon(device: Device): string {
+  const binary = path.join(repoRoot(), 'dist/bin/digi-emud-nodsp');
+  if (!fs.existsSync(binary))
+    throw new Error(`the ${device} daemon ${binary} is missing: run pnpm nx:pilot run digi-control:daemon-nodsp`);
+  return binary;
 }
 
 /** `DIGI_SHARC_CORE_LIB_<DEV>`: the core library a daemon of this device loads (`verify_build daemons|cores` writes it to
@@ -89,6 +108,11 @@ export function resolveInputs(device: Device, firmware: string): ReadyInputs {
     readyDir = env ?? path.join(root, spec.ready);
   } else {
     throw new Error(`no firmware entry for ${device} ${firmware}`);
+  }
+  // no ready dir (a device without `[acceptance]`): the stock image alone, for a cold boot
+  if (!spec.ready) {
+    if (!fs.existsSync(syx)) throw new Error(`${syx} is missing`);
+    return { syx, readyDir: '', cfSnapshot: '', dspImage: '', dspState: '' };
   }
   const ready = {
     syx,
@@ -132,6 +156,7 @@ export function validatePreparedRuntimeImage(image: PreparedRuntimeImage, stockS
 
 /** Runtime boots require ready inputs from this stock image, without forced interrupt state. */
 export function validateRuntimeInputs(inputs: ReadyInputs): void {
+  if (!inputs.readyDir) return; // a cold boot has no ready provenance
   const source = JSON.parse(fs.readFileSync(path.join(inputs.readyDir, 'SOURCE.json'), 'utf8'));
   const sha256 = createHash('sha256').update(fs.readFileSync(inputs.syx)).digest('hex');
   if (source.syx_sha256 !== sha256 || source.intc_force !== false) {
