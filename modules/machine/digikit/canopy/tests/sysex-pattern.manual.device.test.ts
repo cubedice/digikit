@@ -91,9 +91,9 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
     await expectRuntimeUi(session, plan, artifacts, { afterEpoch: firstEpoch, emulatedMs: 180_000 });
 
     await p.chooseCanopy(1);
-    const a = await p.edit(1, 20, 12, 16);
+    const a = await p.edit(1, 20, 12);
     await p.chooseCanopy(2);
-    const b = await p.edit(2, 12, 8, 8);
+    const b = await p.edit(2, -12, 8);
     expect(b).not.toEqual(a);
     log.sent = { a, b };
 
@@ -129,8 +129,8 @@ describeOn('dt2', 'CANOPY pattern SysEx on the DT2', () => {
     log.afterSend = await p.persistence();
 
     // Change both tracks, then receive the dump back into pattern A01.
-    const a2 = await p.edit(1, 0, 0, 10);
-    const b2 = await p.edit(2, 0, 4, 10);
+    const a2 = await p.edit(1, 0, 10);
+    const b2 = await p.edit(2, 4, 10);
     expect(a2).not.toEqual(a);
     expect(b2).not.toEqual(b);
     log.changed = { a2, b2 };

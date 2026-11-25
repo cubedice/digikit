@@ -247,7 +247,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     const color = async () => (await dsp('_iv_shared_controls', 72, 4))?.readUInt16LE(0);
     const baseColor = await color();
     expect(baseColor).toBe(64);
-    expect(await byte('tk_canopy_fallback', 1)).toBe(0);
+    expect(await byte('track_keyboard_lanes')).not.toBe(0);
     const cutoff = () => halfAt(0x80003362 + 2 * cutoffIndex);
     const baseCutoff = await cutoff();
     expect(baseCutoff).toBeGreaterThan(lockedCutoff);
@@ -330,7 +330,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
     // Keep the original Sound in slot 002 so it can be recalled exactly,
     // regardless of how many native TUNE turns the stock accumulator accepts.
     await panel.poolSave(1, 2);
-    await panel.keysPage(1);
+    await panel.voicePage(1);
     await turn(1, 8); // Velvet to the first wavetable, two WAVE increments.
     await pollEmulated(session, family, (value) => value === 2, {
       emulatedMs: 5000,
@@ -429,7 +429,7 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
         message: 'the generated CANOPY phrase uses the native Sound lock and stock cutoff lock',
       },
     );
-    expect(await byte('tk_canopy_fallback', 1)).toBe(0);
+    expect(await byte('track_keyboard_lanes')).not.toBe(0);
     await pollEmulated(
       session,
       async () => ({ family: await family(), tune: await tune(), hits: await cf('tk_sequence_audio_hits') }),
@@ -441,11 +441,33 @@ describeOn('dt2', 'CANOPY shared track keyboard', () => {
       },
     );
     await tap('STOP');
-    await write(soundLock, [127]); // Empty pool entry on this disposable project.
-    await pollEmulated(session, () => byte('tk_canopy_fallback', 1), (mask) => (mask & 1) !== 0, {
-      emulatedMs: 5000,
-      message: 'an unsupported Sound record leaves native performance routing active',
-    });
+    // A step locked to a Sound that is not CANOPY's (an empty pool entry on this disposable project) plays with the track's own Sound:
+    // the track keyboard keeps the track, and no sample of a full cycle shows another source or TUNE.
+    await write(soundLock, [127]);
+    const beforeForeign = await cf('tk_sequence_audio_hits');
+    const strays: unknown[] = [];
+    await tap('PLAY');
+    await pollEmulated(
+      session,
+      async () => {
+        const state = {
+          lanes: await byte('track_keyboard_lanes'),
+          family: await family(),
+          tune: await tune(),
+          hits: await cf('tk_sequence_audio_hits'),
+        };
+        if (state.lanes === 0 || state.family !== 0 || state.tune !== baseTune) strays.push(state);
+        return state;
+      },
+      (state) => state.hits >= beforeForeign + 4,
+      {
+        emulatedMs: 12000,
+        intervalMs: 10,
+        message: "the pattern with a step locked to a Sound that is not CANOPY's plays on",
+      },
+    );
+    await tap('STOP');
+    expect(strays, 'the track keyboard keeps the track and plays its own Sound on every step').toEqual([]);
     await write(soundLock, [0xff]);
     await session.expectNoFault('CANOPY track keyboard handoff');
   });

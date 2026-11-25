@@ -191,8 +191,7 @@ static bool can_prepare_track(uint8_t track, const TkPattern *destination,
         /* An early seed can use the active CANOPY Sound only when both
          * patterns share that Sound. The shared keyboard plays every CANOPY
          * track, so neither pattern needs an override of its own. */
-        return active_kit && target.kit == active_kit && tk_canopy_routed(track) &&
-               !tk_sequence_canopy_sound_fallback(target.address, track);
+        return active_kit && target.kit == active_kit && tk_canopy_routed(track);
     }
     if (kind[track] == TK_NATIVE_RELAY)
         return active_kit && target.kit == active_kit && !active->helpers && !next->helpers;
@@ -254,7 +253,7 @@ static void poll(void)
             tk_midi_cancel_track(track);
             tk_service_set_backend(track, NULL);
             if (kind[track] == TK_NATIVE_CANOPY)
-                tk_canopy_sync(track, false, 0);
+                tk_canopy_sync(track, false);
             registered &= (uint16_t)~mask;
         }
         if (!(registered & mask) && type != TK_NATIVE_UNSUPPORTED && tk_native_idle(track)) {
@@ -271,7 +270,7 @@ static void poll(void)
             }
         }
         if (type == TK_NATIVE_CANOPY)
-            tk_canopy_sync(track, true, pattern ? pattern : editing_pattern);
+            tk_canopy_sync(track, true);
         else if ((type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) && (registered & mask))
             tk_service_set_voice_capacity(track, tk_pool_fw_limit(track));
         tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);

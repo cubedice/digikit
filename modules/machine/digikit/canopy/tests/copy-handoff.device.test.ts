@@ -87,10 +87,9 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
         const index = await instance();
         if (index < 0) throw new Error('Track 1 is not admitted');
         const base = index * 48;
-        const [metadata, first, strum] = await Promise.all([
-          cf('src_state', base + 6), cf('src_state', base + 7), cf('src_state', base + 9),
-        ]);
-        return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+        // word 8 holds controls 2 and 3: COLOR and DRIFT, VOICE B and H with the track keyboard
+        const voice = await cf('src_state', base + 8);
+        return { color: voice >>> 16, drift: voice & 0xffff };
       };
       await selectMachine('DOWN');
       await expect.poll(instance, { timeout: 60_000 }).toBeGreaterThanOrEqual(0);
@@ -99,10 +98,9 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
       for (let i = 0; i < 4 && (await cf('ip_src_debug', 1)) !== 0; i++) await key('SRC');
       await expect.poll(() => cf('ip_src_debug', 2), { timeout: 30_000 }).toBeGreaterThan(0);
       evidence.defaults = await values();
-      await turn(2, 20);
-      await turn(3, 12);
-      await turn(4, 16);
-      await expect.poll(values, { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 3 });
+      await turn(2, 20); // COLOR
+      await turn(8, 12); // DRIFT
+      await expect.poll(values, { timeout: 30_000 }).not.toEqual(evidence.defaults);
       evidence.edited = await values();
       expect(evidence.edited).not.toEqual(evidence.defaults);
 
@@ -120,7 +118,7 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
       evidence.copyCount = await copies();
       // Change the source after copying; destination must receive the snapshot,
       // not the later live value or a pointer to mutable source state.
-      await turn(2, 4);
+      await turn(2, -4);
       evidence.afterCopyEdit = await values();
       expect(evidence.afterCopyEdit).not.toEqual(evidence.edited);
       await edge('TRK', true);
@@ -140,10 +138,9 @@ describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {
       const targetValues = async () => {
         const i = await targetInstance();
         if (i < 0) throw new Error('Track 2 is not admitted');
-        const [metadata, first, strum] = await Promise.all([
-          cf('src_state', i * 48 + 6), cf('src_state', i * 48 + 7), cf('src_state', i * 48 + 9),
-        ]);
-        return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+        // word 8 holds controls 2 and 3: COLOR and DRIFT, VOICE B and H with the track keyboard
+        const voice = await cf('src_state', i * 48 + 8);
+        return { color: voice >>> 16, drift: voice & 0xffff };
       };
       await expect.poll(targetValues, { timeout: 30_000 }).toEqual(evidence.edited);
       evidence.pasted = await targetValues();

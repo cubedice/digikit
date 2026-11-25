@@ -1523,56 +1523,63 @@
   },
   {
    "addend": 0,
-   "offset": 586,
+   "offset": 582,
    "section": ".text.prepare_seed",
    "symbol": "instrument_locked_sound",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 700,
+   "offset": 618,
+   "section": ".text.prepare_seed",
+   "symbol": "instrument_locked_sound",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 732,
    "section": ".text.prepare_seed",
    "symbol": "ilp_event_pair",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 728,
+   "offset": 760,
    "section": ".text.prepare_seed",
    "symbol": "__ashldi3",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1076,
+   "offset": 1108,
    "section": ".text.prepare_seed",
    "symbol": ".sec..rodata.rate",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1094,
+   "offset": 1126,
    "section": ".text.prepare_seed",
    "symbol": ".sec..rodata.order",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1214,
+   "offset": 1246,
    "section": ".text.prepare_seed",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1236,
+   "offset": 1268,
    "section": ".text.prepare_seed",
    "symbol": "instrument_lock_source",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1248,
+   "offset": 1280,
    "section": ".text.prepare_seed",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
@@ -1684,112 +1691,77 @@
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 30,
    "section": ".text.tk_canopy_sync",
    "symbol": "tk_service_active_settings",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 58,
-   "section": ".text.tk_canopy_sync",
-   "symbol": "tk_sequence_canopy_sound_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 70,
-   "section": ".text.tk_canopy_sync",
-   "symbol": ".sec..bss.tk_canopy_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 80,
-   "section": ".text.tk_canopy_sync",
-   "symbol": ".sec..bss.tk_canopy_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 106,
+   "offset": 68,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..bss.routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 114,
+   "offset": 76,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..bss.routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 120,
+   "offset": 82,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..text.canopy_linked",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 138,
+   "offset": 100,
    "section": ".text.tk_canopy_sync",
    "symbol": "instrument_src_track_keyboard",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 148,
+   "offset": 112,
    "section": ".text.tk_canopy_sync",
    "symbol": "instrument_track_keyboard_lanes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 172,
-   "section": ".text.tk_canopy_sync",
-   "symbol": ".sec..bss.tk_canopy_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 180,
-   "section": ".text.tk_canopy_sync",
-   "symbol": ".sec..bss.tk_canopy_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 186,
+   "offset": 134,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..bss.routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 200,
+   "offset": 148,
    "section": ".text.tk_canopy_sync",
    "symbol": "tk_midi_cancel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 208,
+   "offset": 156,
    "section": ".text.tk_canopy_sync",
    "symbol": "tk_service_cancel_track",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 216,
+   "offset": 164,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..bss.routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 228,
+   "offset": 178,
    "section": ".text.tk_canopy_sync",
    "symbol": ".sec..bss.routed",
    "type": "cf.32"
@@ -6850,534 +6822,506 @@
   },
   {
    "addend": 0,
-   "offset": 148,
+   "offset": 146,
    "section": ".text.poll",
    "symbol": "tk_canopy_sync",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 162,
+   "offset": 158,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 170,
+   "offset": 166,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 184,
+   "offset": 180,
    "section": ".text.poll",
    "symbol": "tk_native_idle",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 206,
+   "offset": 202,
    "section": ".text.poll",
    "symbol": "tk_canopy_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 218,
+   "offset": 214,
    "section": ".text.poll",
    "symbol": "tk_service_set_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 230,
+   "offset": 226,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 236,
+   "offset": 232,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 248,
+   "offset": 244,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 262,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 272,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.editing_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 286,
+   "offset": 264,
    "section": ".text.poll",
    "symbol": "tk_canopy_sync",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 306,
+   "offset": 282,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_midi",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 312,
+   "offset": 288,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 342,
+   "offset": 318,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_relay",
    "type": "cf.32"
   },
   {
    "addend": 244,
-   "offset": 360,
+   "offset": 336,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 370,
+   "offset": 346,
    "section": ".text.poll",
    "symbol": ".sec..bss.boundary",
    "type": "cf.32"
   },
   {
    "addend": 244,
-   "offset": 378,
+   "offset": 354,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 244,
-   "offset": 396,
+   "offset": 372,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 408,
+   "offset": 384,
    "section": ".text.poll",
    "symbol": "tk_service_boundary",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 414,
+   "offset": 390,
    "section": ".text.poll",
    "symbol": ".sec..bss.boundary",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 420,
+   "offset": 396,
    "section": ".text.poll",
    "symbol": "dkrt_blocks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 428,
+   "offset": 404,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 434,
+   "offset": 410,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 448,
+   "offset": 424,
    "section": ".text.poll",
    "symbol": ".sec..text.clear_retrigs",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 454,
+   "offset": 430,
    "section": ".text.poll",
    "symbol": ".sec..text.tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 460,
+   "offset": 436,
    "section": ".text.poll",
    "symbol": "tk_midi_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 480,
+   "offset": 456,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 494,
+   "offset": 470,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 500,
+   "offset": 476,
    "section": ".text.poll",
    "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 512,
+   "offset": 488,
    "section": ".text.poll",
    "symbol": "tk_service_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 518,
+   "offset": 494,
    "section": ".text.poll",
    "symbol": "tk_midi_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 524,
+   "offset": 500,
    "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 532,
+   "offset": 508,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 542,
+   "offset": 518,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 554,
+   "offset": 530,
    "section": ".text.poll",
    "symbol": "tk_sequence_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 562,
+   "offset": 538,
    "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 572,
+   "offset": 548,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 588,
+   "offset": 564,
    "section": ".text.poll",
    "symbol": "tk_sequence_native_targets",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 594,
+   "offset": 570,
    "section": ".text.poll",
    "symbol": "tk_fw_project",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 612,
+   "offset": 588,
    "section": ".text.poll",
    "symbol": "tk_fw_active_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 636,
+   "offset": 614,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 668,
+   "offset": 646,
    "section": ".text.poll",
    "symbol": "tk_pattern_fw_existing",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 686,
+   "offset": 662,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 702,
+   "offset": 674,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.kind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 682,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 726,
+   "offset": 706,
    "section": ".text.poll",
    "symbol": "tk_service_active_config",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 742,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.kind",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 778,
+   "offset": 752,
    "section": ".text.poll",
    "symbol": "tk_canopy_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 798,
-   "section": ".text.poll",
-   "symbol": "tk_sequence_canopy_sound_fallback",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 866,
-   "section": ".text.poll",
-   "symbol": "tk_sequence_prepare",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 874,
-   "section": ".text.poll",
-   "symbol": "pp_selected_tempo",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 884,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.editing_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 890,
-   "section": ".text.poll",
-   "symbol": "tk_capture_poll",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 896,
-   "section": ".text.poll",
-   "symbol": ".sec..text.update_pool",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 904,
-   "section": ".text.poll",
-   "symbol": "tk_capture_dropped",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 910,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.capture_drops.6",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 918,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.capture_notice.5",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 924,
-   "section": ".text.poll",
-   "symbol": "tk_capture_dropped",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 930,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.capture_drops.6",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 956,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.capture_notice.5",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 962,
-   "section": ".text.poll",
-   "symbol": "dk_ui_core_handle",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 968,
-   "section": ".text.poll",
-   "symbol": ".sec..rodata.note_insert.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 976,
-   "section": ".text.poll",
-   "symbol": "dk_ui_toast",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 984,
-   "section": ".text.poll",
-   "symbol": "tk_native_drain",
-   "type": "cf.32"
-  },
-  {
-   "addend": 44,
-   "offset": 990,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.draft",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1004,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.notes_title_at",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1016,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.notes_menu",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1022,
-   "section": ".text.poll",
-   "symbol": "dk_ui_core_menu_front",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1036,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.notes_title_at",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1050,
-   "section": ".text.poll",
-   "symbol": ".sec..text.notes_update_title",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1070,
+   "offset": 790,
    "section": ".text.poll",
    "symbol": "tk_native_relay_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1090,
+   "offset": 810,
    "section": ".text.poll",
    "symbol": "tk_native_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1114,
+   "offset": 834,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1130,
+   "offset": 850,
    "section": ".text.poll",
    "symbol": "tk_pool_fw_limit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1206,
+   "offset": 936,
    "section": ".text.poll",
    "symbol": "tk_sequence_target_kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1214,
+   "offset": 1028,
    "section": ".text.poll",
-   "symbol": ".sec..bss.kind",
+   "symbol": "tk_sequence_prepare",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1036,
+   "section": ".text.poll",
+   "symbol": "pp_selected_tempo",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1046,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1052,
+   "section": ".text.poll",
+   "symbol": "tk_capture_poll",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1058,
+   "section": ".text.poll",
+   "symbol": ".sec..text.update_pool",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1066,
+   "section": ".text.poll",
+   "symbol": "tk_capture_dropped",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1072,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.capture_drops.6",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1080,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.capture_notice.5",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1086,
+   "section": ".text.poll",
+   "symbol": "tk_capture_dropped",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1092,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.capture_drops.6",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1118,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.capture_notice.5",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1124,
+   "section": ".text.poll",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1130,
+   "section": ".text.poll",
+   "symbol": ".sec..rodata.note_insert.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1138,
+   "section": ".text.poll",
+   "symbol": "dk_ui_toast",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1146,
+   "section": ".text.poll",
+   "symbol": "tk_native_drain",
+   "type": "cf.32"
+  },
+  {
+   "addend": 44,
+   "offset": 1152,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.draft",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1164,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.notes_title_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1174,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.notes_menu",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1180,
+   "section": ".text.poll",
+   "symbol": "dk_ui_core_menu_front",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1192,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.notes_title_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1206,
+   "section": ".text.poll",
+   "symbol": ".sec..text.notes_update_title",
    "type": "cf.32"
   },
   {
@@ -14668,20 +14612,6 @@
    "type": "cf.32"
   },
   {
-   "addend": 216,
-   "offset": 18,
-   "section": ".text.tk_sequence_canopy_sound_fallback",
-   "symbol": "tk_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 104,
-   "section": ".text.tk_sequence_canopy_sound_fallback",
-   "symbol": "instrument_locked_sound",
-   "type": "cf.32"
-  },
-  {
    "addend": 0,
    "offset": 2,
    "section": ".text.tk_pool_fw_relay_ready",
@@ -16603,10 +16533,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff0048d73cfc246e000c286e00142a6e001c4eb90000000014006700047071ae000b2f004eb9000000004878003542a7486eff6726404eb9000000004fef001070011d40ff664a8b6708102b0009660001e4420378ff2d44ff2e4878000e486c000a486eff4a4eb9000000004fef000c1a2c000a424042011d45ff373d40ff431d41ff454a8b660004104a036700042471eeffa273eeffb8780a7a11e788e9a97818808173eeffbaeba97a0180aeff2e1d45ff68808173eeffa6e9a9808108c0001f2d40ff987007b0aeff2e660003d4302effe63d40ff7441eeff9c428043eeff767207b2aeff2e660003c03228004c33810800548854807818b88066e42a2eff2e55852d6effd4ff8e2d6effd8ff922d45ff387004b08565063d6eff3aff764a2e001b6600008e7faeff379bcd41edff431830e80067727904707fd887b08465687d947210b28667604201420541ec000a7185b086660003984a01664c4878000e486eff4a220e0681ffffff582f0147f90000000052852d41ff321d6eff37ff4a4e9318851d44ff58780e42054c0468004878000e222eff322f014874680a4e934fef001815450008528d7003b08d6600ff7c71aa0008720bb280664c206e00104a1066444a03662a71ae000b260e0683ffffff9c2f032f004eb900000000508f4a8067242f034eb900000000588f4a806716122effe1206e0010428010c173817780b681650002fc71ae000b723648780036486eff664c01080016020680000000002f004eb9000000004fef000c600002587180486eff96486eff9c2f1320404868ffff4eb9000000004fef00104a806700023471aeffde72032d40ff2eb280671655804a80660a71eeffbc54802d40ff2e16026000fde278072d44ff2e60f27ff30c0a32330c0c4a03671c7a19ba87661620010680fffffc0071c00c800000780062043d41ff967341486eff58486eff462f012f074eb9000000004fef00104a8067562e2eff462a062f074878000142a74eb9000000004fef000cca802d45ff382a04ca812d45ff3c2a2eff388aaeff3c660001928c808881200772020680ffffffcbb280657a222eff580681ffffffd041f608001141ff431a2eff2d52851d45ff2d73ab000871aeff2db2806200ff50428042817240c2842a008a8167083015721080813a804280428122040281000000802a008a8167083015720480813a80428042812204028100000100280088816700fd1430157a2080853a806000fd08122eff677a057181ba80670000f852811d41ff6722077a0aeba943f60a04202eff5882803341ff667207b28767000090653a7a04ba87676a65144a87675c53874a876600ff54154000096000ff4c4a8056c15b874a8766527a7e4481ba8054c014814480154000016000ff2e720ab287676a651051874a8766545780154000056000ff16720bb28767727222b2876600ff082d40ff2e6000ff00154000086000fef83540000c6000fef0730141f900000000d280d1c1155000046000fedc41f900000000d1c0155000026000fecc4a8066027001154000036000febe1540000a71c0e2887a4b0680000000323200ba806402724b154100066000fe9e154000076000fe964203140310024cee3cfcff004e5e4e754205428642846000fe82302effa06000fc2c322800206000fc404aaeff2e6d00fc684eb900000000486eff742f2eff2e280071ae000b2f004eb9000000002f041d40ff684eb9000000004fef00104a2eff686600fc34609a7190528541e8000eb88057c0448082806000fc504243226e001033830a0110b608e2528054886000fcea",
+   "hex": "4e56ff0048d73cfc246e000c286e00142a6e001c4eb90000000014006700049071ae000b2f004eb9000000004878003542a7486eff6726404eb9000000004fef001070011d40ff664a8b6708102b0009660001e4420378ff2d44ff2e4878000e486c000a486eff4a4eb9000000004fef000c1a2c000a424042011d45ff373d40ff431d41ff454a8b660004304a036700044471eeffa273eeffb8780a7a11e788e9a97818808173eeffbaeba97a0180aeff2e1d45ff68808173eeffa6e9a9808108c0001f2d40ff987007b0aeff2e660003f4302effe63d40ff7441eeff9c428043eeff767207b2aeff2e660003e03228004c33810800548854807818b88066e42a2eff2e55852d6effd4ff8e2d6effd8ff922d45ff387004b08565063d6eff3aff764a2e001b6600008e7faeff379bcd41edff431830e80067727904707fd887b08465687d947210b28667604201420541ec000a7185b086660003b84a01664c4878000e486eff4a220e0681ffffff582f0147f90000000052852d41ff321d6eff37ff4a4e9318851d44ff58780e42054c0468004878000e222eff322f014874680a4e934fef001815450008528d7003b08d6600ff7c71aa0008720bb280664c206e00104a1066444a03662a71ae000b260e0683ffffff9c2f032f004eb900000000508f4a8067242f034eb900000000588f4a806716122effe1206e0010428010c173817780b6816500031c71ae000b723648780036486eff664c01080016020680000000002f004eb9000000004fef000c60000278718042a742a742a720404868ffff4eb9000000004fef00104a806700fe02486eff96486eff9c2f1371ab000922404869ffff4eb9000000004fef00104a806700023471aeffde72032d40ff2eb280671655804a80660a71eeffbc54802d40ff2e16026000fdc278072d44ff2e60f27ff30c0a32330c0c4a03671c7a19ba87661620010680fffffc0071c00c800000780062043d41ff967341486eff58486eff462f012f074eb9000000004fef00104a8067562e2eff462a062f074878000142a74eb9000000004fef000cca802d45ff382a04ca812d45ff3c2a2eff388aaeff3c660001928c808881200772020680ffffffcbb280657a222eff580681ffffffd041f608001141ff431a2eff2d52851d45ff2d73ab000871aeff2db2806200ff50428042817240c2842a008a8167083015721080813a804280428122040281000000802a008a8167083015720480813a80428042812204028100000100280088816700fcf430157a2080853a806000fce8122eff677a057181ba80670000f852811d41ff6722077a0aeba943f60a04202eff5882803341ff667207b28767000090653a7a04ba87676a65144a87675c53874a876600ff54154000096000ff4c4a8056c15b874a8766527a7e4481ba8054c014814480154000016000ff2e720ab287676a651051874a8766545780154000056000ff16720bb28767727222b2876600ff082d40ff2e6000ff00154000086000fef83540000c6000fef0730141f900000000d280d1c1155000046000fedc41f900000000d1c0155000026000fecc4a8066027001154000036000febe1540000a71c0e2887a4b0680000000323200ba806402724b154100066000fe9e154000076000fe964203140310024cee3cfcff004e5e4e754205428642846000fe82302effa06000fc0c322800206000fc204aaeff2e6d00fc484eb900000000486eff742f2eff2e280071ae000b2f004eb9000000002f041d40ff684eb9000000004fef00104a2eff686600fc14609a7190528541e8000eb88057c0448082806000fc304243226e001033830a0110b608e2528054886000fcca",
    "kind": "text",
    "name": ".text.prepare_seed",
-   "size": 1308
+   "size": 1340
   },
   {
    "align": 2,
@@ -16631,10 +16561,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffb848d7001c77ae000b7401e7aa200246802d40ffc44a2e000f67000088486effc82f034eb900000000508f180067122f032f2e00104eb900000000508f4a006666303900000000c0aeffc433c0000000004a04676071aeffc879aeffc9d080888066027801303900000000808233c0000000004eb9000000004a00671c71ae000f2f002f034eb9000000002f042f034eb9000000004fef00104cee001cffb84e5e4e754204609a303900000000808233c000000000303900000000c4804a4267122f034eb9000000002f034eb900000000508f3039000000004284c0aeffc433c000000000608c",
+   "hex": "4e56ffc42f0377ae000b2f027401e7aa4a2e000f676e486effc82f034eb900000000508f4a00675c71aeffc873aeffc9d08080812d40ffc44a80660670012d40ffc4303900000000808233c0000000004eb9000000004a00671e71ae000f2f002f034eb9000000002f2effc42f034eb9000000004fef0010242effbc262effc04e5e4e75303900000000c0824a4067122f034eb9000000002f034eb900000000508f303900000000468242aeffc4c48033c2000000006098",
    "kind": "text",
    "name": ".text.tk_canopy_sync",
-   "size": 234
+   "size": 184
   },
   {
    "align": 2,
@@ -16642,13 +16572,6 @@
    "kind": "bss",
    "name": ".bss.sequence_snapshot",
    "size": 864
-  },
-  {
-   "align": 2,
-   "hex": "",
-   "kind": "bss",
-   "name": ".bss.tk_canopy_fallback",
-   "size": 2
   },
   {
    "align": 2,
@@ -17450,10 +17373,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff9048d73cfc4eb9000000004a00670004d42e0e42854bf9000000000687ffffffe2758576011805ebab2f024eb900000000588f4a00660003e42f024eb900000000588f24003039000000007201b28257c67984c0834a40675245f90000000071b25800b480670000922f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80661042a742a72f044eb9000000004fef000c20034680323900000000c08133c00000000070ffb08267722f044eb900000000588f4a00673a7202b2826600035c2f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b2826600034a2039000000004a8066062039000000002f00487800012f044eb9000000004fef000c448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fec02079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000260090b90000000023c3000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032400d4b9000000004c4120004c41200223c0000000004eb9000000003f0042672f024eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001304ab9000000006700012645eeffca2f0a4eb9000000004eb900000000588f2d40ffb84a80670e2f004eb900000000588f2d40ffb842849bcd2c124a86670000d6bcb900000000670000cc420041eeffe24281b881660001ea4a00660000b82f064eb900000000588f2d40ffc04a80670000a43a39000000002640428247eb0032468571f9000000000500676471822e2a00042d52ffc42f0028404eb900000000588f20404a80670001fa43f900000000720271b12800b280660001984aaeffb8670001e0beaeffb8660001d82f0c4eb900000000588f4a00670001c82f0c2f2effc44eb900000000508f4a00660001b4528247eb00387010b0826686700a4c040800222effc052843d8508ea2d8608e22d8108e6528d508a7003b08d6600ff1a2f04486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000508f223900000000b2b900000000674220390000000041f90000000023d0000000004a80670c220392800c81000005db63207001808323c0000000004eb9000000004879000000002f004eb900000000508f4eb9000000004a3900000000670001022003727790b900000000b280640000f22f39000000004eb900000000588f4a80670000de23c3000000004cee3cfcff904e5e4ef90000000074ff6000fc267003b082660c2f074eb9000000006000fc9e2006448071802f072f004eb900000000508f6000fc8a4a8267087003b0826600fcd0303900000000c0834a406700fcc22f044eb90000000071802f002f044e956000fcaabc9057c2528141e8000a448280826000fe0257804a80661a4aaeffb86744beaeffb8663e4a68003266384a536700fe8260302f0c2f072d48ffbc4eb900000000508f43f90000000073b12800206effbcb280660e53804a8066cabeaeffb86700fe507001e5a88a806000fe464cee3cfcff904e5e4e75",
+   "hex": "4e56ff9448d73cfc4eb9000000004a00670004a82e0e42854bf9000000000687ffffffe2758576011805ebab2f024eb900000000588f4a00660002cc2f024eb900000000588f24003039000000007201b28257c67984c0834a40674e45f90000000071b25800b4806700008e2f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80660c42a72f044eb900000000508f20034680323900000000c08133c00000000070ffb082675e2f044eb900000000588f4a00673a7202b282660002482f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b28266000236487800012f044eb900000000508f448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fed82079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000240090b90000000023c2000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032600d6b9000000004c4130004c41300323c0000000004eb9000000003f0042672f034eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001ea4ab900000000670001e045eeffca2f0a4eb9000000004eb900000000588f2d40ffbc4a80670e2f004eb900000000588f2d40ffbc428342aeffc42a124a856700018abab90000000067000180420041eeffe24281b681660000ec4a006600016c2f054eb900000000588f28404a806700015a38390000000047ec003242874bf900000000468471f9000000000f006700011873872c2a00042f012d41ffc04eb900000000588f222effc020404a80672a71b5780022407002b0896600009a4aaeffbc6716bcaeffbc66102f014eb900000000588f4a00660000d07001efa88880600000c674ff6000fd3e7003b082660c2f074eb9000000006000fdb22006448071802f072f004eb900000000508f6000fd9e4a8267087003b0826600fdd0303900000000c0834a406700fdc22f044eb90000000071802f002f044e954fef000c6000fdaaba9057c4528141e8000a448480846000ff007003b08966204aaeffbc6700ff78bcaeffbc6600ff704a6800326600ff684a5367306000ff602f012f062d48ffc04eb900000000508f73b57800206effc0b2806600ff4253804a8066ccbcaeffbc6600ff34528747eb00387010b0876600fed2700a4c03080052833d8408ea2d8508e22d8c08e652aeffc4508a7203b2aeffc46600fe622f03486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000508f207900000000b1f900000000674220390000000041f90000000023d0000000004a80670c220292800c81000005db63207001808223c0000000004eb9000000004879000000002f004eb900000000508f4eb9000000004a390000000067342002727790b900000000b28064262f39000000004eb900000000588f4a80671423c2000000004cee3cfcff944e5e4ef9000000004cee3cfcff944e5e4e75",
    "kind": "text",
    "name": ".text.poll",
-   "size": 1264
+   "size": 1220
   },
   {
    "align": 2,
@@ -19207,13 +19130,6 @@
   },
   {
    "align": 2,
-   "hex": "4fefffec48d71c0c122f001f202f00184ab90000000067324a80672e7581e88a662848814282c3fc06a5d0812440264045ea0400528b10130800000066185282548b0c820000008066ec42004cd71c0c4fef00144e75103228006be2718042a742a742a72f004eb9000000004fef00104a8066ca700160d4",
-   "kind": "text",
-   "name": ".text.tk_sequence_canopy_sound_fallback",
-   "size": 120
-  },
-  {
-   "align": 2,
    "hex": "",
    "kind": "bss",
    "name": ".bss.tk_sequence_midi_info",
@@ -19892,7 +19808,7 @@
    "size": 24
   }
  ],
- "source_sha256": "fa130d2a6fbd9c39687696b342dbc61667b0d9fbbe1da07e7ec80d82bb9065c7",
+ "source_sha256": "a7d6777d321df78ec5ef83d011b9511ca6a84192998e23fc09a46ace6d9d0a1b",
  "symbols": [
   {
    "global": false,
@@ -20576,12 +20492,6 @@
    "global": false,
    "name": ".sec..bss.tempo",
    "section": ".bss.tempo",
-   "value": 0
-  },
-  {
-   "global": false,
-   "name": ".sec..bss.tk_canopy_fallback",
-   "section": ".bss.tk_canopy_fallback",
    "value": 0
   },
   {
@@ -23898,12 +23808,6 @@
   },
   {
    "global": true,
-   "name": "tk_canopy_fallback",
-   "section": ".bss.tk_canopy_fallback",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "tk_canopy_is_owner",
    "section": ".text.tk_canopy_is_owner",
    "value": 0
@@ -24882,12 +24786,6 @@
   },
   {
    "global": true,
-   "name": "tk_sequence_canopy_sound_fallback",
-   "section": ".text.tk_sequence_canopy_sound_fallback",
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "tk_sequence_drain",
    "section": ".text.tk_sequence_drain",
    "value": 0
@@ -25636,8 +25534,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18635",
-  "isa_check": "8a40c51f260a7022ae637f2c5af5e386bdac0abb5ff2533f6ec1783e07dce149",
+  "instructions_redecoded": "18576",
+  "isa_check": "0ba022caf367083bd84dcaf880653d2a1ba4371422ab1ac0c851d27b6302a6ec",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

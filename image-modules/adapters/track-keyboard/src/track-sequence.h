@@ -78,7 +78,6 @@ void tk_sequence_native_targets(TkSequenceNativeTarget targets[TK_SEQUENCE_TARGE
 int tk_sequence_target_kind(uint32_t kit, uint8_t track);
 void tk_sequence_set_midi(uint8_t track, bool midi);
 void tk_sequence_set_relay(uint8_t track, bool relay);
-bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track);
 
 /* Read the stock audio root or MIDI chord for the selected note trig. */
 uint8_t tk_sequence_native_pitches(uint32_t pattern, uint8_t track, uint8_t step, bool midi,

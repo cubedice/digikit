@@ -175,6 +175,11 @@
       "devices": ["dt2"]
     },
     {
+      "id": "fork-instrument-play-track-keyboard",
+      "roots": ["core/instrument-play", "core/track-keyboard", "core/health"],
+      "devices": ["dt2"]
+    },
+    {
       "id": "fork-loop-storage-pattern-position-loop-display-phrase-ui",
       "roots": [
         "core/runtime",

@@ -93,10 +93,9 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
       const instance = tracks.indexOf(track - 1);
       if (instance < 0) throw new Error(`Track ${track} is not admitted: ${tracks}`);
       const base = instance * 48;
-      const [metadata, first, strum] = await Promise.all([
-        cf('src_state', base + 6), cf('src_state', base + 7), cf('src_state', base + 9),
-      ]);
-      return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+      // word 8 holds controls 2 and 3: COLOR and DRIFT, VOICE B and H with the track keyboard
+      const voice = await cf('src_state', base + 8);
+      return { color: voice >>> 16, drift: voice & 0xffff };
     };
     const kit = () => word(0x80004704); // DTII 1.17 active kit pointer (devices/digitakt-ii.toml).
     const selectPattern = async (trig: 1 | 2) => {
@@ -114,14 +113,14 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
 
     const kit1 = await kit();
     await selectCanopy();
-    await turn(2, 20);
-    await turn(3, 12);
-    await turn(4, 16);
-    await expect.poll(() => values(), { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 3 });
+    const defaults = await values();
+    await turn(2, 20); // COLOR
+    await turn(8, 12); // DRIFT
+    await expect.poll(() => values(), { timeout: 30_000 }).not.toEqual(defaults);
     evidence.first = await values();
     evidence.kit1 = kit1;
     await selectCanopy(2);
-    await turn(2, 12); await turn(3, 8); await turn(4, 8);
+    await turn(2, 12); await turn(8, 8);
     evidence.firstTrack2 = await values(2);
     await focusTrack(1);
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(0);
@@ -131,13 +130,12 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     const kit2 = await kit();
     evidence.kit2 = kit2;
     await selectCanopy();
-    await turn(2, 12);
-    await turn(3, 8);
-    await turn(4, 8);
+    await turn(2, -12);
+    await turn(8, 8);
     evidence.second = await values();
     expect(evidence.second).not.toEqual(evidence.first);
     await selectCanopy(2);
-    await turn(2, 24); await turn(3, 12); await turn(4, 12);
+    await turn(2, -24); await turn(8, 12);
     evidence.secondTrack2 = await values(2);
     expect(evidence.secondTrack2).not.toEqual(evidence.firstTrack2);
     await focusTrack(1);
@@ -155,14 +153,14 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     await expect.poll(() => values(2), { timeout: 30_000 }).toEqual(evidence.firstTrack2);
     await focusTrack(2);
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(1);
-    await turn(2, 4);
+    await turn(2, -4);
     evidence.copyTimeTrack2 = await values(2);
     expect(evidence.copyTimeTrack2).not.toEqual(evidence.firstTrack2);
     await focusTrack(1);
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(0);
     // Change the source after its last saved snapshot; the copy must capture
     // this new value, not the Sound handle left by the earlier pattern switch.
-    await turn(2, 4);
+    await turn(2, -4);
     evidence.copyTime = await values();
     expect(evidence.copyTime).not.toEqual(evidence.first);
     const modified = async (modifier: string, name: string) => {
@@ -175,12 +173,12 @@ describeOn('dt2', 'CANOPY pattern copy on the DT2', () => {
     await sessionRt(session).ui.wait({ ms: 1000, why: SETTLE });
     evidence.afterCopy = await counters();
     // A copy must retain the values at copy time, even if the source changes.
-    await turn(2, 4);
+    await turn(2, -4);
     evidence.afterSourceEdit = await values();
     expect(evidence.afterSourceEdit).not.toEqual(evidence.copyTime);
     await focusTrack(2);
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(1);
-    await turn(2, 4);
+    await turn(2, -4);
     expect(await values(2)).not.toEqual(evidence.copyTimeTrack2);
     await focusTrack(1);
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(0);

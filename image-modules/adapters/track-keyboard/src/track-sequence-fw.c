@@ -419,22 +419,3 @@ void tk_sequence_set_relay(uint8_t track, bool relay)
     else
         relay_tracks &= (uint16_t)~bit;
 }
-
-/* optional: CANOPY's host (core/instrument-play) is not in every image */
-extern int instrument_locked_sound(uint32_t index, uintptr_t expected, CpPreset *out,
-                                   uint16_t *tune) __attribute__((weak));
-
-bool tk_sequence_canopy_sound_fallback(uint32_t pattern, uint8_t track)
-{
-    if (!TK_HAVE(instrument_locked_sound) || !pattern || track >= TK_TRACKS)
-        return false;
-    const uint8_t *native = (const uint8_t *)(uintptr_t)pattern;
-    const uint8_t *trig = native + TRACK_BYTES * track;
-    for (uint8_t step = 0; step < TK_STEPS; ++step) {
-        int8_t pool = (int8_t)trig[SOUND_LOCKS + step];
-        if ((trig[2u * step + 1u] & 1u) && pool >= 0 &&
-            !instrument_locked_sound((uint32_t)pool, 0, NULL, NULL))
-            return true;
-    }
-    return false;
-}

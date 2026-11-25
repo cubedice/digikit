@@ -120,32 +120,27 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
       const tracks = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
       const instance = tracks.indexOf(trackNo - 1);
       if (instance < 0) throw new Error(`Track ${trackNo} is not admitted: ${tracks}`);
-      // CsState is 192 bytes. Control IDs 0/1 are CHRD/VOIC and 4 is STRUM;
-      // metadata's mode distinguishes PLAY from the first ROOT chord.
+      // CsState is 192 bytes (48 words per instance).
       const base = instance * 48;
-      const [metadata, first, strum] = await Promise.all([
-        cf('src_state', base + 6), cf('src_state', base + 7), cf('src_state', base + 9),
-      ]);
-      return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+      // word 8 holds controls 2 and 3: COLOR and DRIFT, VOICE B and H with the track keyboard
+      const voice = await cf('src_state', base + 8);
+      return { color: voice >>> 16, drift: voice & 0xffff };
     };
     await chooseCanopy(1);
-    await turn(2, 20); // CHRD
-    await turn(3, 12); // VOIC
-    await turn(4, 16); // STRUM
-    await expect.poll(() => sound(1), { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 3 });
+    const defaults = await sound(1);
+    await turn(2, 20); // COLOR
+    await turn(8, 12); // DRIFT
+    await expect.poll(() => sound(1), { timeout: 30_000 }).not.toEqual(defaults);
     const first = await sound(1);
     log.track1Edited = first;
-    expect(first.chord).toBeGreaterThan(0);
-    expect(first.strum).toBeGreaterThan(0);
+    expect(first.color).toBeGreaterThan(defaults.color);
     await chooseCanopy(2);
-    await turn(2, 12);
-    await turn(3, 8);
-    await turn(4, 8);
-    await expect.poll(() => sound(2), { timeout: 30_000 }).toMatchObject({ mode: 1, voicing: 2 });
+    await turn(2, -12);
+    await turn(8, 8);
+    await expect.poll(() => sound(2), { timeout: 30_000 }).not.toEqual(defaults);
     const second = await sound(2);
     log.track2Edited = second;
-    expect(second.chord).toBeGreaterThan(0);
-    expect(second.strum).toBeGreaterThan(0);
+    expect(second.color).toBeLessThan(defaults.color);
     expect(second).not.toEqual(first);
     expect(await sound(1), 'track 2 edits do not replace track 1').toEqual(first);
     log.before = [first, second];
@@ -241,7 +236,7 @@ describeOn('dt2', 'CANOPY persistence on the DT2', () => {
     log.tracksAfterPowerCycle = await Promise.all(Array.from({ length: 4 }, (_, i) => cf('ip_tracks', i)));
     log.persistenceAfterLoad = await persistence();
     log.after = [await sound(1), await sound(2)];
-    expect(log.after, 'saved per-track CHRD, VOIC and STRUM survive reboot').toEqual(log.before);
+    expect(log.after, 'saved per-track COLOR and DRIFT survive reboot').toEqual(log.before);
     const after = log.persistenceAfterLoad as { info: number[] };
     expect(after.info[4], 'the load restored both saved extensions').toBeGreaterThanOrEqual(2);
     await session.expectNoFault('CANOPY native project reboot');
