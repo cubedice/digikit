@@ -2,7 +2,7 @@
 //! Retain the same controllers after interruption; dropping is not cancellation.
 use crate::{
     instrument_exchange::Failure,
-    instrument_image::Transfer,
+    instrument_image::{Error as ImageError, Transfer},
     instrument_load::{Command, Loads},
     instrument_transport::{Driver, Error as LinkError, Progress as LinkProgress, Transport},
 };
@@ -138,11 +138,12 @@ impl PumpState {
             Ok(LinkProgress::Pending) => return Progress::Pending,
             Ok(LinkProgress::Failed(_)) => return self.recover(transfer, loads, Failure::Link),
             Ok(LinkProgress::Complete(completed)) => {
-                return if completed.image(transfer, loads).is_ok() {
-                    Progress::Pending
-                } else {
-                    self.block(Failure::Protocol)
-                }
+                return match completed.image(transfer, loads) {
+                    Ok(()) => Progress::Pending,
+                    // a streamed image's source failed after a good write: nothing it sent is initialized, so detach as after a link failure
+                    Err(ImageError::Source) => self.recover(transfer, loads, Failure::Link),
+                    Err(_) => self.block(Failure::Protocol),
+                };
             }
             Ok(LinkProgress::Idle) => {}
         }

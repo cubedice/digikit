@@ -3,7 +3,7 @@ use super::*;
 use crate::{
     instrument_admission::{self, Limits},
     instrument_registry::{self, Request},
-    instrument_section::{RelocateError, Section},
+    instrument_section::{RelocateError, Relocation, Section},
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -54,6 +54,47 @@ impl<T: Transport> Coordinator<'_, T> {
         ledger: &mut Ledger<'_>,
         output: &mut [u8],
         resolve: impl FnMut(&[u8]) -> Option<u32>,
+    ) -> Result<Plan, AdmissionError> {
+        let plan = self.plan(owner, section, types, limits, ledger)?;
+        match section.relocate_into(plan.grant.image.start, output, resolve) {
+            Ok(()) => Ok(plan),
+            Err(error) => {
+                self.cancel_admission(plan.ticket(), ledger)?;
+                Err(AdmissionError::Relocate(error))
+            }
+        }
+    }
+
+    /// As `admit`, for an image uploaded from its file (`instrument_stream`): every fixup is checked as `admit` checks it, in the table's
+    /// order, which must be increasing (the packer writes it so), and nothing is written. The relocation is what the stream applies.
+    #[inline(never)]
+    pub fn admit_streamed(
+        &mut self,
+        owner: u32,
+        section: &Section<'_>,
+        types: &[u32],
+        limits: &Limits,
+        ledger: &mut Ledger<'_>,
+        resolve: impl FnMut(&[u8]) -> Option<u32>,
+    ) -> Result<(Plan, Relocation), AdmissionError> {
+        let plan = self.plan(owner, section, types, limits, ledger)?;
+        match section.prepare_relocation(plan.grant.image.start, resolve, true) {
+            Ok(relocation) => Ok((plan, relocation)),
+            Err(error) => {
+                self.cancel_admission(plan.ticket(), ledger)?;
+                Err(AdmissionError::Relocate(error))
+            }
+        }
+    }
+
+    /// Reserve and plan; the caller relocates, and cancels the admission when that fails.
+    fn plan(
+        &mut self,
+        owner: u32,
+        section: &Section<'_>,
+        types: &[u32],
+        limits: &Limits,
+        ledger: &mut Ledger<'_>,
     ) -> Result<Plan, AdmissionError> {
         self.admission_idle()?;
         let (used, tracks) = self
@@ -118,13 +159,7 @@ impl<T: Transport> Coordinator<'_, T> {
             &section.packed(types),
             &available,
         )
-        .map_err(AdmissionError::Plan)
-        .and_then(|plan| {
-            section
-                .relocate_into(grant.image.start, output, resolve)
-                .map_err(AdmissionError::Relocate)?;
-            Ok(plan)
-        });
+        .map_err(AdmissionError::Plan);
         match &prepared {
             Ok(plan) => {
                 self.costs[owner as usize] = Some(Cost {

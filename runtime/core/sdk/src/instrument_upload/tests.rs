@@ -286,3 +286,45 @@ fn instrument_upload_deadline_wins_over_final_ack_and_invalid_budgets_do_not_sen
     assert!(transfer.install_ticket(&f.loads).is_err());
     f.assert_retained();
 }
+
+/// A streamed image whose source gives bytes that are not the admitted ones (`complete` false).
+struct NotAdmitted;
+impl crate::instrument_image::Source for NotAdmitted {
+    fn fill(&mut self, _offset: u32, out: &mut [u8]) -> Result<(), ()> {
+        out.fill(0x5a);
+        Ok(())
+    }
+    fn complete(&mut self) -> bool {
+        false
+    }
+}
+#[test]
+fn instrument_upload_detaches_when_a_streamed_source_fails() {
+    let mut f = Fixture::new();
+    let mut source = NotAdmitted;
+    let mut chunk = [0u8; crate::instrument_image::CHUNK];
+    let mut transfer = Transfer::begin_streamed(
+        &mut f.loads,
+        f.ticket,
+        &f.grant,
+        &mut source,
+        300,
+        &mut chunk,
+        true,
+    )
+    .unwrap();
+    let mut upload = Upload::new(&mut f.driver, &mut transfer, &mut f.loads, 0, 30).unwrap();
+    assert_eq!(upload.tick(0), Progress::Pending);
+    // the image's write completes, then the source fails: nothing it sent is initialized, and no BSS write follows
+    assert_eq!(
+        upload.tick(1),
+        Progress::Recover {
+            cause: Failure::Link,
+            command: Command::Detach(f.ticket)
+        }
+    );
+    assert_eq!(upload.tick(2), Progress::Finished);
+    drop(upload);
+    assert_eq!(f.state.starts.get(), 1);
+    f.assert_retained();
+}

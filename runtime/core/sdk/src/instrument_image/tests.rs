@@ -157,3 +157,160 @@ fn instrument_image_external_cancellation_stops_further_writes() {
         Err(Error::Load(LoadError::WrongPhase))
     );
 }
+
+/// Gives `image` chunk by chunk, noting the offsets asked for; fails the `fail`th fill (after scribbling on the chunk) and answers `complete`
+/// with `whole`.
+struct Chunks<'a> {
+    image: &'a [u8],
+    fills: [u32; 8],
+    n: usize,
+    fail: Option<usize>,
+    whole: bool,
+    completes: u32,
+}
+impl<'a> Chunks<'a> {
+    fn new(image: &'a [u8]) -> Self {
+        Chunks {
+            image,
+            fills: [u32::MAX; 8],
+            n: 0,
+            fail: None,
+            whole: true,
+            completes: 0,
+        }
+    }
+}
+impl Source for Chunks<'_> {
+    fn fill(&mut self, offset: u32, out: &mut [u8]) -> Result<(), ()> {
+        self.fills[self.n] = offset;
+        self.n += 1;
+        if self.fail == Some(self.n) {
+            out.fill(0xee);
+            return Err(());
+        }
+        out.copy_from_slice(&self.image[offset as usize..offset as usize + out.len()]);
+        Ok(())
+    }
+    fn complete(&mut self) -> bool {
+        self.completes += 1;
+        self.whole
+    }
+}
+
+#[test]
+fn instrument_image_streamed_sends_what_a_copy_sends_one_fill_per_chunk() {
+    let mut image = [0u8; 2 * CHUNK + 44];
+    for (i, b) in image.iter_mut().enumerate() {
+        *b = (i * 13) as u8;
+    }
+    let (mut loads, t, grant, _, _) = setup(image.len() as u32, 300);
+    let mut copied = [0u8; 3 * CHUNK];
+    let mut n = 0;
+    let mut transfer = Transfer::begin(&mut loads, t, &grant, &image, true).unwrap();
+    while let Some(write) = transfer.next(&loads).unwrap() {
+        copied[n..n + write.data.len()].copy_from_slice(write.data);
+        n += write.data.len();
+        transfer.acknowledged(&loads, write.ack).unwrap();
+    }
+    let (mut loads, t, grant, _, _) = setup(image.len() as u32, 300);
+    let mut source = Chunks::new(&image);
+    let mut chunk = [0u8; CHUNK];
+    let mut transfer = Transfer::begin_streamed(
+        &mut loads,
+        t,
+        &grant,
+        &mut source,
+        image.len() as u32,
+        &mut chunk,
+        true,
+    )
+    .unwrap();
+    let mut streamed = [0u8; 3 * CHUNK];
+    let mut m = 0;
+    while let Some(write) = transfer.next(&loads).unwrap() {
+        // a retry before the ACK sends the same bytes, and asks the source for nothing
+        assert_eq!(transfer.next(&loads).unwrap().unwrap(), write);
+        streamed[m..m + write.data.len()].copy_from_slice(write.data);
+        m += write.data.len();
+        let ack = write.ack;
+        transfer.acknowledged(&loads, ack).unwrap();
+    }
+    assert!(transfer.install_ticket(&loads).is_ok());
+    drop(transfer);
+    assert_eq!((m, &streamed[..m]), (n, &copied[..n]));
+    assert_eq!(
+        &source.fills[..source.n],
+        &[0, CHUNK as u32, 2 * CHUNK as u32]
+    );
+    assert_eq!(source.completes, 1);
+}
+
+#[test]
+fn instrument_image_streamed_source_failure_offers_no_write_and_only_detaches() {
+    let image = [7u8; CHUNK + 40];
+    // the second chunk cannot be read; then: every chunk read, but not the admitted bytes
+    for (fail, whole) in [(Some(2), true), (None, false)] {
+        let (mut loads, t, grant, _, _) = setup(image.len() as u32, 300);
+        let mut source = Chunks::new(&image);
+        source.fail = fail;
+        source.whole = whole;
+        let mut chunk = [0u8; CHUNK];
+        let mut transfer = Transfer::begin_streamed(
+            &mut loads,
+            t,
+            &grant,
+            &mut source,
+            image.len() as u32,
+            &mut chunk,
+            true,
+        )
+        .unwrap();
+        let first = transfer.next(&loads).unwrap().unwrap().ack;
+        if fail.is_some() {
+            // the second chunk is read when the first write is acknowledged
+            assert_eq!(transfer.acknowledged(&loads, first), Err(Error::Source));
+            let second = Ack {
+                address: first.address + CHUNK as u32,
+                bytes: 40,
+                ..first
+            };
+            for ack in [first, second] {
+                assert_eq!(transfer.acknowledged(&loads, ack), Err(Error::Source));
+            }
+        } else {
+            transfer.acknowledged(&loads, first).unwrap();
+            let last = transfer.next(&loads).unwrap().unwrap().ack;
+            assert_eq!(transfer.acknowledged(&loads, last), Err(Error::Source));
+        }
+        assert_eq!(
+            transfer.next(&loads),
+            Err(Error::Source),
+            "no write, not even the BSS"
+        );
+        assert_eq!(transfer.install_ticket(&loads), Err(Error::NotReady));
+        assert_eq!(transfer.failed(&mut loads), Ok(Command::Detach(t)));
+        assert_eq!(transfer.next(&loads), Err(Error::Stopped));
+    }
+}
+
+#[test]
+fn instrument_image_streamed_first_chunk_failure_leaves_the_load_unstarted() {
+    let image = [7u8; 64];
+    let (mut loads, t, grant, _, _) = setup(64, 8);
+    let mut source = Chunks::new(&image);
+    source.fail = Some(1);
+    let mut chunk = [0u8; CHUNK];
+    assert!(matches!(
+        Transfer::begin_streamed(&mut loads, t, &grant, &mut source, 64, &mut chunk, true),
+        Err(Error::Source)
+    ));
+    let mut source = Chunks::new(&image);
+    assert!(matches!(
+        Transfer::begin_streamed(&mut loads, t, &grant, &mut source, 60, &mut chunk, true),
+        Err(Error::ImageSize)
+    ));
+    assert_eq!(source.n, 0, "a wrong size reads nothing");
+    // not started: the same load can still begin
+    let transfer = Transfer::begin(&mut loads, t, &grant, &image, true).unwrap();
+    assert!(transfer.next(&loads).unwrap().is_some());
+}

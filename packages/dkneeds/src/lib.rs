@@ -38,19 +38,19 @@ pub struct V2Needs {
 /// needs of `needs_of`. The runtime's scan (the DIGIKIT menu) and the hosts read with this; `needs_of` refuses a V2 section.
 ///
 /// The arena of a V2 file is what `loader::load` allocates for it: one block that holds the module (image and bss), a copy of its
-/// keys table and the output buffer of the relocated DSP image, each rounded to 16 (the DSP section is read from the file). The block stays
-/// for as long as the module is loaded, and there is no separate transfer block (`arena_xfer` is 0).
+/// keys table and the upload buffer (`instrument::UPLOAD_BUFFER`), each rounded to 16. The DSP section stays in the file, and its image is
+/// read from there again while it is sent, so the block holds no copy of it. The block stays for as long as the module is loaded, and there
+/// is no separate transfer block (`arena_xfer` is 0).
 pub fn needs_of_v2<B: Bytes>(src: &mut B) -> Result<V2Needs, Error> {
     let mut n = needs_impl(src, true)?;
     if n.instruments.rows != 0 {
         let total = word(src, H_IMAGE_SIZE)?
             .checked_add(word(src, H_BSS)?)
             .ok_or(Error::Sizes)?;
-        let dsp_off = word(src, H_DSP_OFF)?;
         let pad = |v: u32| v.checked_add(15).map(|v| v & !15);
         let allocation = pad(total)
             .and_then(|at| at.checked_add(pad(word(src, H_REG_SIZE).ok()?)?))
-            .and_then(|at| at.checked_add(word(src, dsp_off + DSP_H_IMAGE_SIZE).ok()?))
+            .and_then(|at| at.checked_add(instrument::UPLOAD_BUFFER))
             .ok_or(Error::Sizes)?;
         // `needs_impl` counted the block of image and bss; the record block of the keys table stays
         let module = arena_block(total).ok_or(Error::Sizes)?;

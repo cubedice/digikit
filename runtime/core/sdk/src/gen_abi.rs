@@ -26,8 +26,8 @@ pub const LIVE_UNLOAD: u32 = 2;
 pub const LIVE_RELOAD: u32 = 3;
 /// Room for the entries a caller of dkrt_capacity gives (the runtime has 16 kinds; new kinds are appended).
 pub const CAP_MAX: usize = 20;
-/// The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 480 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card, so the hardware set peaks near 426 KB, and the rest pays for RELAY in the image (docs/plans/upstream-merge-1124).
-pub const ARENA_BYTES: usize = 491520;
+/// The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 400 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), so the hardware set peaks near 345 KB, and the rest is image space (docs/plans/upstream-merge-1124).
+pub const ARENA_BYTES: usize = 409600;
 /// The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load).
 pub const PACKAGE_BYTES: usize = 352768;
 /// The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes).

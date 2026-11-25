@@ -110,13 +110,13 @@ cardRigs('capacity, ColdFire only', { roots: RT, dsp: 'cold', symbols: SYMBOLS }
   );
 
   test(
-    'no modules: the arena is whole (480 KiB, nothing used) and the system package has its own block, reported apart',
+    'no modules: the arena is whole (400 KiB, nothing used) and the system package has its own block, reported apart',
     async () => {
       await rig.first();
       const g = geometryOf(rig.device, rig.plan);
       const got = await bootEntries(rig, 'idle', []);
       await expectBoot(rig, g, [], got);
-      expect(g.arenaBytes, 'every device has the 480 KiB arena (the fork: docs/plans/upstream-merge-1124)').toBe(491520);
+      expect(g.arenaBytes, 'every device has the 400 KiB arena (the fork: docs/plans/upstream-merge-1124)').toBe(409600);
       expect(
         [got.cap.ARENA!.limit, got.cap.ARENA!.used, got.cap.ARENA!.largest],
         'the arena has all its bytes free in one block: the package is not in it',
