@@ -21,8 +21,10 @@ pub struct Block {
 }
 
 /// A file of persistent V2 instruments after the loader placed it, handed to their owner (`Images::queue_instruments`). The addresses are in the
-/// module's arena block: the copy of the keys table and the output buffer of the relocated DSP image. The DSP section stays in the file: `section_off` is where
-/// it starts there, and the owner stages the file again when it admits the section (the file the loader staged last: `RealImages::stage`).
+/// module's arena block: the copy of the keys table and the owner's output buffer (`admit_instruments` says its size). The DSP section stays in the file:
+/// `section_off` is where it starts there, and the owner stages the file again when it admits the section (the file the loader staged last:
+/// `RealImages::stage`). The device's owner reads the image from the file a third time while it sends it, relocating it chunk by chunk into the
+/// output buffer (`dkrt_sdk::instrument_stream`), so the arena never holds the DSP image.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct InstrumentLoad {
     pub rec: usize,
@@ -73,8 +75,8 @@ pub trait Images {
     unsafe fn instruments_idle(&mut self) -> bool {
         true
     }
-    /// Admit the version 7 or 8 DSP section of the staged file, for selection index `selection`: the bytes of the output buffer its relocated image
-    /// takes, or the refusal (`E_CONTRACT`: no owner, or it has a load in flight; `E_FORMAT`: a section or machine keys it does not take).
+    /// Admit the version 7 or 8 DSP section of the staged file, for selection index `selection`: the bytes of the output buffer the owner needs
+    /// to send its relocated image, or the refusal (`E_CONTRACT`: no owner, or it has a load in flight; `E_FORMAT`: a section or machine keys it does not take).
     unsafe fn admit_instruments(&mut self, _section: &[u8], _selection: u32) -> Result<u32, i32> {
         Err(dkrt_sdk::E_CONTRACT)
     }
@@ -194,7 +196,8 @@ impl Images for RealImages {
         if crate::package::instrument::resolve_types(&section, selection).is_err() {
             return Err(dkrt_sdk::E_FORMAT);
         }
-        Ok(section.memory_request().image_bytes)
+        // a chunk and two sector buffers, whatever the image's size: the image is streamed from the file (`pending::prepare`)
+        Ok(pending::UPLOAD_BUFFER)
     }
     unsafe fn queue_instruments(&mut self, l: InstrumentLoad) {
         use crate::package::instrument::pending;

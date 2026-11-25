@@ -5,7 +5,7 @@
 use crate::{
     instrument_admission::Plan,
     instrument_exchange::{self as exchange, Failure},
-    instrument_image::Transfer,
+    instrument_image::{Source, Transfer, CHUNK},
     instrument_load::{Command, Ledger, Loads, MemoryError},
     instrument_mailbox::Mailbox,
     instrument_provider::Replies,
@@ -67,6 +67,11 @@ enum Phase {
     Install(exchange::PumpState),
     Initialize(exchange::PumpState),
     Detach(exchange::PumpState),
+}
+/// What a job uploads: a relocated copy, or a source with the image's size and the chunk it fills.
+enum Image<'image> {
+    Copy(&'image [u8]),
+    Stream(&'image mut dyn Source, u32, &'image mut [u8; CHUNK]),
 }
 struct Job<'image> {
     transfer: Transfer<'image>,
@@ -151,6 +156,40 @@ impl<'image, T: Transport> Coordinator<'image, T> {
         budget: u32,
         upload_budget: u32,
     ) -> Result<(), Error> {
+        self.start(plan, Image::Copy(image), now, budget, upload_budget)
+    }
+
+    /// As `begin_with_upload_budget`, for an image admitted with `admit_streamed`: `source` relocates it (`image_len` bytes) one chunk at a
+    /// time into `chunk` (`instrument_stream`), so no relocated copy is kept. Both must outlive all link reads, as a copy would. A source
+    /// that fails stops the upload, which then detaches as after a link failure.
+    #[inline(never)]
+    pub fn begin_streamed_with_upload_budget(
+        &mut self,
+        plan: Plan,
+        source: &'image mut dyn Source,
+        image_len: u32,
+        chunk: &'image mut [u8; CHUNK],
+        now: u32,
+        budget: u32,
+        upload_budget: u32,
+    ) -> Result<(), Error> {
+        self.start(
+            plan,
+            Image::Stream(source, image_len, chunk),
+            now,
+            budget,
+            upload_budget,
+        )
+    }
+
+    fn start(
+        &mut self,
+        plan: Plan,
+        image: Image<'image>,
+        now: u32,
+        budget: u32,
+        upload_budget: u32,
+    ) -> Result<(), Error> {
         if self.blocked.is_some() {
             return Err(Error::Blocked);
         }
@@ -180,9 +219,14 @@ impl<'image, T: Transport> Coordinator<'image, T> {
             self.blocked = Some(Failure::Link);
             return Err(Error::Blocked);
         }
-        let transfer =
-            Transfer::begin(&mut self.loads, plan.grant.ticket, &plan.grant, image, true)
-                .map_err(Error::Image)?;
+        let (loads, ticket, grant) = (&mut self.loads, plan.grant.ticket, &plan.grant);
+        let transfer = match image {
+            Image::Copy(image) => Transfer::begin(loads, ticket, grant, image, true),
+            Image::Stream(source, image_len, chunk) => {
+                Transfer::begin_streamed(loads, ticket, grant, source, image_len, chunk, true)
+            }
+        }
+        .map_err(Error::Image)?;
         self.job = Some(Job {
             transfer,
             plan,

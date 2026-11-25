@@ -28,6 +28,9 @@ pub struct Section<'a> {
     bss: u32,
     align: u32,
     state_bytes: u32,
+    /// Where the image and the relocation table are in the section's bytes (what a streamed upload reads again: `instrument_stream`).
+    image_at: u32,
+    relocs_at: u32,
 }
 fn word(bytes: &[u8], at: usize) -> u32 {
     u32::from_be_bytes(bytes[at..at + 4].try_into().unwrap())
@@ -173,7 +176,13 @@ impl<'a> Section<'a> {
             bss,
             align,
             state_bytes,
+            image_at: image_at as u32,
+            relocs_at: word(bytes, 0x1c),
         })
+    }
+    /// The image and the relocation table, and their offsets in the section's bytes (a streamed upload reads them from the file again).
+    pub(crate) fn stream_parts(&self) -> (&'a [u8], u32, &'a [u8], u32) {
+        (self.image, self.image_at, self.relocations, self.relocs_at)
     }
     pub fn memory_request(&self) -> MemoryRequest {
         MemoryRequest {
@@ -202,7 +211,7 @@ impl<'a> Section<'a> {
 }
 
 mod relocate;
-pub use relocate::RelocateError;
+pub use relocate::{Fixup, RelocateError, Relocation};
 
 #[cfg(test)]
 pub(crate) mod tests;

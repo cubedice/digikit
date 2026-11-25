@@ -34,6 +34,10 @@ pub const MAX_TEXT_RANGES: u32 = 32;
 pub const TEXT_RANGE_BYTES: u32 = 8;
 /// A callback or a relocated instruction: one 48-bit instruction.
 pub const INSTRUCTION_BYTES: u32 = 6;
+/// The loader's upload buffer for a V2 file, in the module's arena block, whatever the image's size: the image is read again from the file and
+/// relocated one chunk at a time while it is sent (`dkrt_sdk::instrument_stream`), so the buffer holds one chunk (`instrument_image::CHUNK`)
+/// and the two sector buffers of the file reads.
+pub const UPLOAD_BUFFER: u32 = 4096 + 2 * 512;
 
 /// Header fields beyond those of `gen_limits` (`DSP_H_*`): the instrument table, then the text table of version 8 (reserved, zero, in version 7).
 pub const H_RESERVED: u32 = 0x3c;

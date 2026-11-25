@@ -30,6 +30,8 @@ pub mod instrument_provider;
 pub mod instrument_registry;
 /// Bounded DKDS8 instrument-only section validation.
 pub mod instrument_section;
+/// A V2 image streamed from its file and relocated one chunk at a time, with no relocated copy.
+pub mod instrument_stream;
 /// Stable-buffer driver for the tagged production DSP-link ABI.
 pub mod instrument_transport;
 /// Selection-scoped V2 machine-key resolution against boot assignments.

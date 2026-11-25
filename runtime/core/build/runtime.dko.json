@@ -4511,7 +4511,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 491520,
+   "addend": 409600,
    "offset": 38,
    "section": ".text._RNvNtCsckz4Hnf5ZD7_4dkrt5state9init_once",
    "symbol": ".sec..bss.DKRT_ARENA",
@@ -26249,7 +26249,7 @@
    "addend": 0,
    "offset": 594,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5store11plan_rename",
-   "symbol": ".sec..rodata.global.2g",
+   "symbol": ".sec..rodata.global.2h",
    "type": "cf.32"
   },
   {
@@ -26638,10 +26638,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 8,
    "offset": 14,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk8settings6crc_of",
-   "symbol": ".sec..rodata.global.2s",
+   "symbol": ".sec..rodata.global.2t",
    "type": "cf.32"
   },
   {
@@ -27313,7 +27313,7 @@
    "addend": 0,
    "offset": 48,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1W",
+   "symbol": ".sec..rodata.global.1X",
    "type": "cf.32"
   },
   {
@@ -27334,7 +27334,7 @@
    "addend": 0,
    "offset": 136,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1Y",
+   "symbol": ".sec..rodata.global.1Z",
    "type": "cf.32"
   },
   {
@@ -27352,10 +27352,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 32,
    "offset": 284,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1Z",
+   "symbol": ".sec..rodata.global.20",
    "type": "cf.32"
   },
   {
@@ -27373,10 +27373,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 32,
+   "addend": 6,
    "offset": 558,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.20",
+   "symbol": ".sec..rodata.global.21",
    "type": "cf.32"
   },
   {
@@ -27394,10 +27394,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 6,
+   "addend": 8,
    "offset": 604,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.21",
+   "symbol": ".sec..rodata.global.22",
    "type": "cf.32"
   },
   {
@@ -27408,10 +27408,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 18,
    "offset": 628,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.25",
+   "symbol": ".sec..rodata.global.26",
    "type": "cf.32"
   },
   {
@@ -27422,10 +27422,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 7,
+   "addend": 0,
    "offset": 682,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.2a",
+   "symbol": ".sec..rodata.global.2b",
    "type": "cf.32"
   },
   {
@@ -27436,10 +27436,10 @@
    "type": "cf.32"
   },
   {
-   "addend": 8,
+   "addend": 0,
    "offset": 714,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.22",
+   "symbol": ".sec..rodata.global.23",
    "type": "cf.32"
   },
   {
@@ -27453,7 +27453,7 @@
    "addend": 0,
    "offset": 740,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.23",
+   "symbol": ".sec..rodata.global.24",
    "type": "cf.32"
   },
   {
@@ -27467,28 +27467,28 @@
    "addend": 0,
    "offset": 764,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.27",
+   "symbol": ".sec..rodata.global.28",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 774,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.28",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 784,
-   "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
    "symbol": ".sec..rodata.global.29",
    "type": "cf.32"
   },
   {
-   "addend": 18,
+   "addend": 7,
+   "offset": 784,
+   "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
+   "symbol": ".sec..rodata.global.2a",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 796,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.26",
+   "symbol": ".sec..rodata.global.27",
    "type": "cf.32"
   },
   {
@@ -27509,7 +27509,7 @@
    "addend": 0,
    "offset": 840,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1U",
+   "symbol": ".sec..rodata.global.1V",
    "type": "cf.32"
   },
   {
@@ -27530,7 +27530,7 @@
    "addend": 0,
    "offset": 928,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1X",
+   "symbol": ".sec..rodata.global.1Y",
    "type": "cf.32"
   },
   {
@@ -27551,7 +27551,7 @@
    "addend": 0,
    "offset": 1100,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.24",
+   "symbol": ".sec..rodata.global.25",
    "type": "cf.32"
   },
   {
@@ -27565,7 +27565,7 @@
    "addend": 0,
    "offset": 1244,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1V",
+   "symbol": ".sec..rodata.global.1W",
    "type": "cf.32"
   },
   {
@@ -27586,7 +27586,7 @@
    "addend": 0,
    "offset": 1332,
    "section": ".text._RNvNtCskt2sAo3rUBF_8dkrt_sdk5fault4rows",
-   "symbol": ".sec..rodata.global.1Y",
+   "symbol": ".sec..rodata.global.1Z",
    "type": "cf.32"
   },
   {
@@ -29070,7 +29070,7 @@
   },
   {
    "align": 2,
-   "hex": "598f2f0a2f02222f00104a8167380c810007800062302079000000004a88672606810000000f70f0c28006810000001095ca60022040225020280004b3c1641024484a8066ee4280241f245f588f4e75240994812f420008741fb4af0008641043f0180022af000823400004200922414a8a671a254000042089203ca110c8ed21400004200806800000001060ba23c00000000060e2",
+   "hex": "598f2f0a2f02222f00104a8167380c810006400062302079000000004a88672606810000000f70f0c28006810000001095ca60022040225020280004b3c1641024484a8066ee4280241f245f588f4e75240994812f420008741fb4af0008641043f0180022af000823400004200922414a8a671a254000042089203ca110c8ed21400004200806800000001060ba23c00000000060e2",
    "kind": "text",
    "name": ".text._RNvNtCsckz4Hnf5ZD7_4dkrt5arena10alloc_walk",
    "size": 150
@@ -30861,43 +30861,43 @@
    "size": 14
   },
   {
-   "align": 1,
-   "hex": "5245432048454c44",
+   "align": 2,
+   "hex": "5245432048454c44444b535400000012000020000001",
    "kind": "data",
    "name": ".rodata.global.2t",
-   "size": 8
+   "size": 22
   },
   {
    "align": 1,
-   "hex": "73616d706c65733f",
+   "hex": "73616d706c6573454e544552",
    "kind": "data",
    "name": ".rodata.global.2a",
-   "size": 8
+   "size": 12
   },
   {
    "align": 8,
-   "hex": "7061636b6167653a206e6f20686f6f6b73005354455020006d6964203e206c656e",
+   "hex": "7061636b6167653a206e6f20686f6f6b73002000000000006d6964203e206c656e",
    "kind": "data",
    "name": ".rodata.global.26",
    "size": 33
   },
   {
    "align": 2,
-   "hex": "00000004000000054658204d4153544552",
+   "hex": "0000000400000005564f494345",
    "kind": "data",
    "name": ".rodata.global.22",
-   "size": 17
+   "size": 13
   },
   {
    "align": 1,
-   "hex": "446b4a6f6200564f494345",
+   "hex": "446b4a6f6200504320",
    "kind": "data",
    "name": ".rodata.global.21",
-   "size": 11
+   "size": 9
   },
   {
    "align": 2,
-   "hex": "00000001000000020000000f000000100000001a0000001b0000001d0000001e504320",
+   "hex": "00000001000000020000000f000000100000001a0000001b0000001d0000001e494e20",
    "kind": "data",
    "name": ".rodata.global.20",
    "size": 35
@@ -32258,7 +32258,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss.DKRT_ARENA",
-   "size": 491520
+   "size": 409600
   },
   {
    "align": 2,
@@ -33305,100 +33305,93 @@
   },
   {
    "align": 2,
-   "hex": "444b535400000012000020000001",
-   "kind": "data",
-   "name": ".rodata.global.2s",
-   "size": 14
-  },
-  {
-   "align": 2,
    "hex": "000000000000000000000000000000000000000000000000000000000000000000000000000000000100",
    "kind": "data",
-   "name": ".rodata.global.2g",
+   "name": ".rodata.global.2h",
    "size": 42
   },
   {
    "align": 1,
-   "hex": "454e544552",
+   "hex": "3f",
    "kind": "data",
-   "name": ".rodata.global.29",
-   "size": 5
+   "name": ".rodata.global.2b",
+   "size": 1
   },
   {
    "align": 1,
    "hex": "524554",
    "kind": "data",
-   "name": ".rodata.global.28",
+   "name": ".rodata.global.29",
    "size": 3
   },
   {
    "align": 1,
    "hex": "43414c4c",
    "kind": "data",
-   "name": ".rodata.global.27",
+   "name": ".rodata.global.28",
    "size": 4
   },
   {
    "align": 1,
-   "hex": "20",
+   "hex": "5354455020",
    "kind": "data",
-   "name": ".rodata.global.25",
-   "size": 1
+   "name": ".rodata.global.27",
+   "size": 5
   },
   {
    "align": 1,
    "hex": "5349544520554e4b4e4f574e",
    "kind": "data",
-   "name": ".rodata.global.24",
+   "name": ".rodata.global.25",
    "size": 12
   },
   {
    "align": 1,
    "hex": "46582053454e44",
    "kind": "data",
-   "name": ".rodata.global.23",
+   "name": ".rodata.global.24",
    "size": 7
   },
   {
    "align": 1,
-   "hex": "494e20",
+   "hex": "4658204d4153544552",
    "kind": "data",
-   "name": ".rodata.global.1Z",
-   "size": 3
+   "name": ".rodata.global.23",
+   "size": 9
   },
   {
    "align": 1,
    "hex": "494e20554e4b4e4f574e",
    "kind": "data",
-   "name": ".rodata.global.1Y",
+   "name": ".rodata.global.1Z",
    "size": 10
   },
   {
    "align": 1,
    "hex": "494e204649524d57415245",
    "kind": "data",
-   "name": ".rodata.global.1X",
+   "name": ".rodata.global.1Y",
    "size": 11
   },
   {
    "align": 1,
    "hex": "4641554c543a204453502053544f50",
    "kind": "data",
-   "name": ".rodata.global.1W",
+   "name": ".rodata.global.1X",
    "size": 15
   },
   {
    "align": 1,
    "hex": "4641554c543a204350552050414e4943",
    "kind": "data",
-   "name": ".rodata.global.1V",
+   "name": ".rodata.global.1W",
    "size": 16
   },
   {
    "align": 1,
    "hex": "4641554c543a20435055204352415348",
    "kind": "data",
-   "name": ".rodata.global.1U",
+   "name": ".rodata.global.1V",
    "size": 16
   },
   {
@@ -33808,7 +33801,7 @@
    "size": 24
   }
  ],
- "source_sha256": "0639735582ef588fff6d5fecbcaf320505d458f159280e06127df79f14b70562",
+ "source_sha256": "270dbbf3b40c2b23faf9f6ad0697a9d625eed039695065d66c71d10d0c0c9ec6",
  "symbols": [
   {
    "global": false,
@@ -34898,12 +34891,6 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.global.1U",
-   "section": ".rodata.global.1U",
-   "value": 0
-  },
-  {
-   "global": false,
    "name": ".sec..rodata.global.1V",
    "section": ".rodata.global.1V",
    "value": 0
@@ -35168,14 +35155,14 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.global.2g",
-   "section": ".rodata.global.2g",
+   "name": ".sec..rodata.global.2b",
+   "section": ".rodata.global.2b",
    "value": 0
   },
   {
    "global": false,
-   "name": ".sec..rodata.global.2s",
-   "section": ".rodata.global.2s",
+   "name": ".sec..rodata.global.2h",
+   "section": ".rodata.global.2h",
    "value": 0
   },
   {
@@ -39994,7 +39981,7 @@
  "toolchain": {
   "exports": "DKRT_ARENA DKRT_AUX_TASK DKRT_BOOT DKRT_CARD DKRT_CRASH DKRT_DSP_STOPPED DKRT_HEALTH DKRT_HOST_DIR DKRT_INSTRUMENT_BINDING DKRT_INSTRUMENT_FILE DKRT_INSTRUMENT_LOAD DKRT_INSTRUMENT_SESSION DKRT_INSTRUMENT_WORDS DKRT_IO_TASK DKRT_LOG DKRT_LOG_COUNT DKRT_MAILBOX DKRT_MENUS DKRT_MENU_OBJS DKRT_MODULE_RUNTIME DKRT_PATHS DKRT_PD_CUT DKRT_PKG DKRT_POLLS DKRT_POLL_OWNER DKRT_SAVE_MODE DKRT_SDK_BUF DKRT_SECBUF DKRT_SESSION_IDLE DKRT_SET DKRT_SETTINGS DKRT_SETTINGS_HDR DKRT_STABLE_BLOCKS DKRT_STAGE DKRT_STATE DKRT_STORE_CAP DKRT_STORE_FP DKRT_STORE_PEEK DKRT_UI_START DKRT_UNLOAD_OBSERVERS DKRT_UPLOAD_BUF DKRT_UPLOAD_COUNT DKRT_UPLOAD_CUT DKRT_UPLOAD_DROPPED DKRT_UPLOAD_FLIP DKRT_UPLOAD_LAST DKRT_UPLOAD_TEAR DKRT_UPLOAD_WRITES dk_debug_log_sink_set dk_log_event dk_sink_set dk_span_sink_set dkrt_aux_run dkrt_aux_wait dkrt_blocks dkrt_boot dkrt_boot_info dkrt_boot_name dkrt_capacity dkrt_ctx_owner dkrt_diag dkrt_exc dkrt_fit dkrt_fx dkrt_health dkrt_image_file_abort dkrt_image_file_close dkrt_image_file_create dkrt_image_file_write dkrt_instrument_generation dkrt_instrument_type dkrt_io_post_image dkrt_io_wake dkrt_job_cancel dkrt_job_post dkrt_live dkrt_live_state dkrt_load dkrt_menu_built dkrt_menu_release dkrt_midi_rx dkrt_module dkrt_module_header dkrt_phase dkrt_poll_add dkrt_poll_remove dkrt_record_name dkrt_restart dkrt_scan dkrt_scan_reads dkrt_selection_get dkrt_selection_set dkrt_service_query dkrt_settings_flush dkrt_settings_get dkrt_settings_put dkrt_speed_flags dkrt_status dkrt_store_lease dkrt_store_read dkrt_store_stat dkrt_store_unlease dkrt_tick dkrt_ui_settings_rows dkrt_unload_observer_add dkrt_unload_observer_remove",
   "instructions_redecoded": "38035",
-  "isa_check": "fd40c093f2409a76ee57186e118a3d01f984da9e53db21b9df15a4e236a9450f",
+  "isa_check": "3a181d3ed3915fb255234a55e51aa26748fede5ae3a13c1bcf6511c44e622065",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
   "rustc_codegen_gcc": "a7d8a5227b520187e3d93c1f7fc01dd1ba8659cf",

@@ -152,8 +152,8 @@ bytes of cf.expansion with relay-input, relay-storage and plusdrive-write) did n
 
   | Buffer | Upstream | The fork |
   | --- | ---: | ---: |
-  | `ARENA_BYTES` | 524,288 | 491,520 |
-  | `PACKAGE_BYTES` | 327,680 | 352,768 (349,088 used) |
+  | `ARENA_BYTES` | 524,288 | 491,520 (409,600 since the streamed upload below) |
+  | `PACKAGE_BYTES` | 327,680 | 352,768 (349,088 used; 349,920 with the streamed upload) |
   | `STAGE_BYTES` | 131,072 | 106,496 (the largest staged file is `canopy.dkm`, 102,344 bytes) |
 
   `max_chunk` (32 KiB) and `TBL_CAP` (8 KiB) are upstream's: uploads keep their speed.
@@ -162,3 +162,41 @@ Free cf.expansion on DT2: `canopy-overloop-prism-relay` 18,548, `relay-track` 54
 and the track keyboard service loaded, the arena has 403,280 of 491,520 bytes in use (75,408 free in one piece). Tried and dropped on the
 way: a smaller upload chunk and table buffers (slower uploads), and an arena allocator that placed DSP transfer copies at the top (it broke
 the full-set capacity test and is not needed once CANOPY's section stays on the card).
+
+## The DSP image streamed from the card (branch `feat/v2-stream`)
+
+After RELAY fitted, the largest thing left in CANOPY's arena block was the relocated copy of its DSP image (86,720 bytes), kept for as
+long as CANOPY was loaded so that the upload could read it. The owner of the instruments still admits the section from the staging
+buffer, but keeps only what relocating needs (the base and the resolved imports, with every fixup checked as before) and sends the image
+from the file: each 4 KB chunk is read with the store's sector reads, relocated, and written to the link (`dkrt_sdk::instrument_stream`,
+`Transfer::begin_streamed`, `Coordinator::admit_streamed`).
+
+- **The admitted bytes, or nothing.** The stream hashes the image and the relocation table as it reads them and compares the hashes with
+  those of the admitted section; a fixup that a chunk boundary cuts must read the same from both chunks. A file that changed after the
+  admission, a failed card read or a table out of order stops the upload before the BSS is cleared or anything is initialized, and the
+  load detaches as after a link failure (`instrument_image::Error::Source`). The packer writes the relocation table in offset order
+  (`dkmdsp.rs`), which the streamed admission requires (`RelocateError::Order`).
+- **The V2 block** holds the module, its keys table and a fixed upload buffer of 5,120 bytes (one chunk and two sector buffers,
+  `dkneeds::instrument::UPLOAD_BUFFER`). With the five modules loaded the arena has 321,680 bytes in use (403,280 before): 81,600 less.
+- **`ARENA_BYTES` 409,600** (400 KiB, 80 KiB less): the hardware set's peak drops by the same 81,600 bytes, so the arena keeps the
+  headroom it had at 480 KiB, and the 81,920 bytes go to the image.
+- **The cost**: about 200 single-sector card reads per CANOPY load, made between the link writes of the upload (the relocated copy at
+  admission is gone). Not measured on hardware yet.
+
+Free cf.expansion on DT2: `canopy-overloop-prism-relay` 100,452 (18,532 before). PACKAGE 349,920 of 352,768 bytes. The arena with the five modules: 321,680 of 409,600 in use, 75,088 free in one piece. With the owner's settings record and
+selection, the rehearsal boots all five modules, CANOPY's instrument becomes ready, and the ten settings entries read back unchanged.
+
+The instrument service's tables (`services/instrument.dks`, 47,834 bytes of bss) were checked for the same kind of slack and have none
+that a smaller constant would remove: the MIDI ledger (12,408: 128 events of 76 bytes, 128 held keys, 33 routes), the four instances'
+state (9,624, most of it a 128-key ledger per instance), the status queue (6,656: 128 replies, sized for the UI's 150 ms window at 750
+replies a second), the shared-note queues (5,400: 20 notes per instance, one release reserved for each). What would save space is a
+change of structure: one key pool shared by the four instances (about 6 KB) or the lock and source snapshots of an event in a side table
+for the sequencer's notes only (about 4 KB). Not done.
+
+The track keyboard service has key tables of its own (a 512-key MIDI table, 48 keys per track) for the tracks it routes, and the
+image's MIDI router asks it first: on a channel it routes to a CANOPY track, CANOPY's ledger takes no new note and only releases the
+keys it already held. The ledger is not a second copy, though: it also carries the panel keys, the sequencer's trigs with their lock
+snapshots and CANOPY's own channel routes (the owner's `canopy/routes/v1`), and it is CANOPY's MIDI input when `track-keyboard.dks` is
+not loaded. The per-instance key state is CANOPY's chord and voice layer, which notes from either path go through. Making the track
+keyboard CANOPY's only external MIDI input would save at most the 33 routes and part of the 128-key pool (under 2.6 KB), and would
+need the saved routes moved to the track keyboard's.

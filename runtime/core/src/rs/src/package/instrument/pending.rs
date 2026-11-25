@@ -3,8 +3,15 @@
 //! survives boot. Uncertain DSP failures retain the entire record until reboot.
 use super::{Owner, LinkProgress, Progress};
 use core::ptr::addr_of_mut;
-use dkrt_sdk::{*, instrument_admission::{Limits, Range}, instrument_descriptor,
-    instrument_load::Command, instrument_registry::Ticket, instrument_section::Section};
+use dkrt_abi::storage::StoreFile;
+use dkrt_sdk::{*, instrument_admission::{Limits, Range}, instrument_descriptor, instrument_image::CHUNK,
+    instrument_load::Command, instrument_registry::Ticket, instrument_section::Section,
+    instrument_stream::{Reader, Stream}};
+
+/// The output buffer of a V2 load (in its arena block, 16-byte aligned): the chunk of the relocated image being sent, then the two sector
+/// buffers of `CardReader`.
+pub(crate) const UPLOAD_BUFFER: u32 = dkneeds::instrument::UPLOAD_BUFFER;
+const _: () = assert!(UPLOAD_BUFFER as usize == CHUNK + 2 * 512);
 
 pub(crate) struct Pending {
     pub rec: usize,
@@ -13,11 +20,12 @@ pub(crate) struct Pending {
     /// The copy of the file's keys table (`complete` reads the machine keys from it).
     pub keys: u32,
     pub keys_size: u32,
-    /// The store file the loader staged for this load, and where its DSP section is in it: `prepare` stages the file again and reads the section there (the
-    /// arena block holds no copy of it).
-    pub file: Option<dkrt_abi::storage::StoreFile>,
+    /// The store file the loader staged for this load, and where its DSP section is in it: `prepare` stages the file again and admits the section
+    /// there, and the upload reads the image from the file once more (the arena block holds no copy of it).
+    pub file: Option<StoreFile>,
     pub section_off: u32,
     pub section_size: u32,
+    /// The output buffer (`UPLOAD_BUFFER` bytes).
     pub output: u32,
     pub output_size: u32,
     pub init: u32,
@@ -73,7 +81,7 @@ pub(crate) unsafe fn queue(mut p: Pending) {
 impl Pending {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(rec: usize, selection: u32, image_size: u32, keys: u32, keys_size: u32,
-        file: Option<dkrt_abi::storage::StoreFile>, section_off: u32, section_size: u32, output: u32, output_size: u32,
+        file: Option<StoreFile>, section_off: u32, section_size: u32, output: u32, output_size: u32,
         init: u32, tick: u32, menu: u32) -> Self {
         Self { rec, selection, image_size, keys, keys_size, file, section_off, section_size, output,
             output_size, init, tick, menu, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
@@ -187,9 +195,11 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
     let Some(policy) = policy() else { return E_CONTRACT; };
     // The DSP section, from the file again: the load checks the file against the hash of its store entry, so it is the file the loader checked (a file
     // replaced since is refused). The staging buffer is free: no load starts while this transaction drains or owns the link (`instruments_idle`), and
-    // nothing below keeps a pointer into it past this call (the plan holds the relocated output).
+    // nothing below keeps a pointer into it past this call: the upload reads the image from the file again (`STREAM`), and checks it is the one
+    // admitted here.
     let Some(file) = p.file else { return E_CONTRACT; };
     if p.section_off.checked_add(p.section_size).map_or(true, |end| end > file.size) { return E_FORMAT; }
+    if p.output % 16 != 0 || p.output_size < UPLOAD_BUFFER { return E_CONTRACT; }
     let staged = crate::package::resident::store::load_to_stage(&file);
     if staged != OK { return staged; }
     let bytes = core::slice::from_raw_parts(
@@ -201,15 +211,75 @@ unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_lo
         reset_frame: 20000, reset_overhead: 1000,
         process_total: policy[3].saturating_mul(policy[2]),
         call_depth: policy[5], stack_bytes: policy[6] };
-    let output = core::slice::from_raw_parts_mut(p.output as *mut u8, p.output_size as usize);
-    let Ok(plan) = owner.admit(p.rec as u32, &section, types.as_slice(), &limits,
-        ledger, output, |_| None) else { return E_DSP_XFER; };
+    let Ok((plan, relocation)) = owner.admit_streamed(p.rec as u32, &section, types.as_slice(), &limits,
+        ledger, |_| None) else { return E_DSP_XFER; };
     p.type_no = types.as_slice()[0];
-    p.ticket = Some(plan.ticket());
+    let ticket = plan.ticket();
+    p.ticket = Some(ticket);
     let Some(budget) = plan.upload_bytes().and_then(upload_budget) else { return E_DSP_XFER; };
-    if owner.begin_with_upload_budget(plan, output, now, 2000, budget).is_err() { return E_DSP_XFER; }
+    let reader = CardReader { file, section_off: p.section_off, section_size: p.section_size,
+        sectors: (p.output as *mut u8).add(CHUNK), held: [u32::MAX; 2], last: 0 };
+    // No job uses the stream: `admit_streamed` refuses while one runs.
+    let stream = &mut *addr_of_mut!(STREAM);
+    let image_len = stream.insert(Stream::new(&section, relocation, reader)).image_len();
+    let source = stream.as_mut().unwrap();
+    let chunk = &mut *(p.output as *mut [u8; CHUNK]);
+    if owner.begin_streamed_with_upload_budget(plan, source, image_len, chunk, now, 2000, budget).is_err() {
+        // nothing was sent (a first chunk that could not be read, or a busy owner): give the admission back when the owner takes it
+        if owner.cancel_admission(ticket, ledger).is_ok() { p.ticket = None; }
+        return E_DSP_XFER;
+    }
     p.phase = 2;
     OK
+}
+
+/// The stream of the load being sent (one at a time); the owner's job borrows it until the job ends.
+static mut STREAM: Option<Stream<CardReader>> = None;
+
+/// The DSP section's bytes from its store file, through two sector buffers (the upload reads the image and the relocation table in turns). A
+/// file sector is read with the store's own sector read, which takes the store lock for that one read: nothing is held between UI passes.
+struct CardReader {
+    file: StoreFile,
+    section_off: u32,
+    section_size: u32,
+    /// Two 512-byte buffers (16-byte aligned, in the output buffer after the chunk), the file sector each holds (`u32::MAX`: none), and the one
+    /// used last.
+    sectors: *mut u8,
+    held: [u32; 2],
+    last: usize,
+}
+
+impl CardReader {
+    /// The buffer that holds file sector `sector`, read now when neither does (into the one used less recently).
+    fn buffer(&mut self, sector: u32) -> Result<*const u8, ()> {
+        let i = if self.held[0] == sector { 0 } else if self.held[1] == sector { 1 } else {
+            let i = 1 - self.last;
+            self.held[i] = u32::MAX;
+            let at = unsafe { self.sectors.add(i * 512) };
+            if unsafe { crate::package::resident::store::read_sector(self.file.first + sector, at) } != OK { return Err(()); }
+            self.held[i] = sector;
+            i
+        };
+        self.last = i;
+        Ok(unsafe { self.sectors.add(i * 512) })
+    }
+}
+
+impl Reader for CardReader {
+    fn read(&mut self, offset: u32, out: &mut [u8]) -> Result<(), ()> {
+        if offset.checked_add(out.len() as u32).map_or(true, |end| end > self.section_size) { return Err(()); }
+        let mut at = self.section_off + offset;
+        let mut done = 0;
+        while done < out.len() {
+            let within = (at % 512) as usize;
+            let n = (512 - within).min(out.len() - done);
+            let buf = self.buffer(at / 512)?;
+            unsafe { core::ptr::copy_nonoverlapping(buf.add(within), out.as_mut_ptr().add(done), n); }
+            done += n;
+            at += n as u32;
+        }
+        Ok(())
+    }
 }
 
 // Preserve the old 64-KiB / 2000-UI-pass allowance per upload page. Include
