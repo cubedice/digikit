@@ -693,10 +693,10 @@ fn v2_accounting_is_explicit_and_keeps_instruments_out_of_voice_rows() {
     );
     assert_eq!(n.base.voice_rows, 0);
     assert_eq!(n.base.dsp_area, 640); // align64(64 + 8 + 2 * align8(260))
-                                      // the loader's one V2 block: the module (4 -> 16), the keys table, the 160-byte section and the 64-byte output buffer of the
+                                      // the loader's one V2 block: the module (4 -> 16), the keys table, and the 64-byte output buffer (the 160-byte section stays in the file) of the
                                       // relocated image; nothing is held only while the image is sent
     let keys = (register(&[]).len() as u32 + 15) & !15;
-    assert_eq!(n.base.arena, arena_block(16 + keys + 160 + 64).unwrap());
+    assert_eq!(n.base.arena, arena_block(16 + keys + 64).unwrap());
     assert_eq!(n.base.arena_xfer, 0);
     let old = dkm(4, 0, &[], &dsp_section(3, 8, 100, &[(20, 3)]));
     let v2 = needs_of_v2(&mut old.as_slice()).unwrap();

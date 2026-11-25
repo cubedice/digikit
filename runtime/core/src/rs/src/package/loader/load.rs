@@ -56,7 +56,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
                 return r;
             }
         }
-        let allocation = if c.v2 { v2_layout(&c, total).3 } else { total };
+        let allocation = if c.v2 { v2_layout(&c, total).2 } else { total };
         let blk = match self.m.alloc(allocation) {
             Some(b) => b,
             None => {
@@ -185,10 +185,9 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
     /// waits for `publish_v2`), and the load handed to the owner of the instruments.
     pub(super) unsafe fn queue_v2(&mut self, rec: usize, c: &Checked, blk: Block, init: u32, tick: u32) {
         let image::Head { image_size, bss, menu, .. } = c.head;
-        let (keys_at, section_at, output_at, allocation) = v2_layout(c, image_size + bss);
+        let (keys_at, output_at, allocation) = v2_layout(c, image_size + bss);
         let (mem, base) = (blk.ptr, blk.addr.get());
         core::ptr::copy_nonoverlapping(c.f.add(c.reg_off as usize), mem.add(keys_at as usize), c.reg_size as usize);
-        core::ptr::copy_nonoverlapping(c.f.add(c.v2_off as usize), mem.add(section_at as usize), c.v2_size as usize);
         let m: &mut Module = records::module(rec);
         m.size = allocation;
         records::set_menu(rec, 0);
@@ -199,7 +198,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
             image_size,
             keys: base + keys_at,
             keys_size: c.reg_size,
-            section: base + section_at,
+            section_off: c.v2_off,
             section_size: c.v2_size,
             output: base + output_at,
             output_size: c.v2_output,

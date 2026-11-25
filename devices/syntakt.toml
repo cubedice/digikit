@@ -169,8 +169,8 @@ span_clock_hz = 132000000
 [limits]
 modules = 8
 machine_rows = 0
-arena_bytes = 524288
-stage_bytes = 131072
+arena_bytes = 491520
+stage_bytes = 106496
 fx_slots = 0
 send_slots = 0
 param_rows = 0

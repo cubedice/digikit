@@ -13,7 +13,10 @@ pub(crate) struct Pending {
     /// The copy of the file's keys table (`complete` reads the machine keys from it).
     pub keys: u32,
     pub keys_size: u32,
-    pub section: u32,
+    /// The store file the loader staged for this load, and where its DSP section is in it: `prepare` stages the file again and reads the section there (the
+    /// arena block holds no copy of it).
+    pub file: Option<dkrt_abi::storage::StoreFile>,
+    pub section_off: u32,
     pub section_size: u32,
     pub output: u32,
     pub output_size: u32,
@@ -70,9 +73,9 @@ pub(crate) unsafe fn queue(mut p: Pending) {
 impl Pending {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(rec: usize, selection: u32, image_size: u32, keys: u32, keys_size: u32,
-        section: u32, section_size: u32, output: u32, output_size: u32,
+        file: Option<dkrt_abi::storage::StoreFile>, section_off: u32, section_size: u32, output: u32, output_size: u32,
         init: u32, tick: u32, menu: u32) -> Self {
-        Self { rec, selection, image_size, keys, keys_size, section, section_size, output,
+        Self { rec, selection, image_size, keys, keys_size, file, section_off, section_size, output,
             output_size, init, tick, menu, phase: 0, ticket: None, result: E_DSP_XFER, reported: false, type_no: 0, was_live: false }
     }
     unsafe fn discard(&mut self, result: i32) {
@@ -182,7 +185,15 @@ unsafe fn tick_inner(owner: &mut Owner, link: LinkProgress, now: u32) {
 }
 unsafe fn prepare(owner: &mut Owner, p: &mut Pending, ledger: &mut instrument_load::Ledger<'_>, now: u32) -> i32 {
     let Some(policy) = policy() else { return E_CONTRACT; };
-    let bytes = core::slice::from_raw_parts(p.section as *const u8, p.section_size as usize);
+    // The DSP section, from the file again: the load checks the file against the hash of its store entry, so it is the file the loader checked (a file
+    // replaced since is refused). The staging buffer is free: no load starts while this transaction drains or owns the link (`instruments_idle`), and
+    // nothing below keeps a pointer into it past this call (the plan holds the relocated output).
+    let Some(file) = p.file else { return E_CONTRACT; };
+    if p.section_off.checked_add(p.section_size).map_or(true, |end| end > file.size) { return E_FORMAT; }
+    let staged = crate::package::resident::store::load_to_stage(&file);
+    if staged != OK { return staged; }
+    let bytes = core::slice::from_raw_parts(
+        (crate::package::resident::store::stage() as *const u8).add(p.section_off as usize), p.section_size as usize);
     let Some(bounds) = descriptor_limits() else { return E_CONTRACT; };
     let Ok(section) = Section::parse(bytes, crate::package::resident::platform::device(), bounds) else { return E_FORMAT; };
     let Ok(types) = super::resolve_types(&section, p.selection) else { return E_FORMAT; };

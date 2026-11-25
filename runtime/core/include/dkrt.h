@@ -31,12 +31,12 @@
 #define DKRT_LIVE_RELOAD 3
 /* Room for the entries a caller of dkrt_capacity gives (the runtime has 16 kinds; new kinds are appended). */
 #define DKRT_CAP_MAX 20
-/* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). */
-#define DKRT_ARENA_BYTES 524288
-/* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 348,672, for the instrument host in the package (348,512 used on 2026-11-24), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
-#define DKRT_PACKAGE_BYTES 348672
-/* The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). */
-#define DKRT_STAGE_BYTES 131072
+/* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 480 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card, so the hardware set peaks near 426 KB, and the rest pays for RELAY in the image (docs/plans/upstream-merge-1124). */
+#define DKRT_ARENA_BYTES 491520
+/* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
+#define DKRT_PACKAGE_BYTES 352768
+/* The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes). */
+#define DKRT_STAGE_BYTES 106496
 /* Machine and voice rows the runtime's tables have: the most run-time machine types a device can have (DkrtDevice.dyn_types; the runtime checks it at start). */
 #define DKRT_MACHINE_ROWS 8
 /* The logical keys of a device: DkrtDevice.key_codes has this many entries, indexed by the key's number (dk_key of sdk/include/dk/gen/keys.h; entry 0 is DK_KEY_NONE). `patchkit gen` refuses more key names. */
