@@ -1,5 +1,5 @@
 // Panel steps and readers shared by CANOPY's Sound persistence device tests:
-// track and machine selection, the KEYS page edits, and the stock PRESET and
+// track and machine selection, the VOICE page edits, and the stock PRESET and
 // SYSEX DUMP menus of DTII 1.17 (the menu rows were read from OLED frames).
 import type { Session } from '@digi/test-support';
 import { expect } from 'vitest';
@@ -9,7 +9,7 @@ import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
 
-export type Sound = { mode: number; chord: number; voicing: number; strum: number };
+export type Sound = { color: number; drift: number };
 // PRESET menu, left column: LOAD (+Drive), SAVE (+Drive), MANAGE, POOL.
 export const PRESET_LOAD = 0;
 export const PRESET_SAVE = 1;
@@ -33,8 +33,8 @@ export function canopyPanel(session: Session, plan: RuntimePlan, sym: (name: str
       await edge('TRK', false);
     }
   };
-  // The KEYS page (SRC page 0) of track n's admitted CANOPY instance.
-  const keysPage = async (n: number) => {
+  // The VOICE page (SRC page 0 with the track keyboard) of track n's admitted CANOPY instance.
+  const voicePage = async (n: number) => {
     await track(n);
     await key('SRC');
     await expect.poll(() => cf('ip_src_debug', 0), { timeout: 30_000 }).toBe(n - 1);
@@ -54,28 +54,23 @@ export function canopyPanel(session: Session, plan: RuntimePlan, sym: (name: str
     await key('YES');
     await key('YES');
     await expect.poll(async () => (await admitted()).includes(n - 1), { timeout: 60_000 }).toBe(true);
-    await keysPage(n);
+    await voicePage(n);
   };
   const sound = async (trackNo: number): Promise<Sound> => {
     const instance = (await admitted()).indexOf(trackNo - 1);
     if (instance < 0) throw new Error(`Track ${trackNo} is not admitted`);
-    // CsState is 192 bytes. Control IDs 0/1 are CHRD/VOIC and 4 is STRUM;
-    // metadata's mode distinguishes PLAY from the first ROOT chord.
+    // CsState is 192 bytes (48 words per instance).
     const base = instance * 48;
-    const [metadata, first, strum] = await Promise.all([
-      cf('src_state', base + 6),
-      cf('src_state', base + 7),
-      cf('src_state', base + 9),
-    ]);
-    return { mode: metadata & 3, chord: first >>> 16, voicing: first & 0xffff, strum: strum >>> 16 };
+    // word 8 holds controls 2 and 3: COLOR and DRIFT, VOICE B and H with the track keyboard
+    const voice = await cf('src_state', base + 8);
+    return { color: voice >>> 16, drift: voice & 0xffff };
   };
-  // KEYS page encoders: B = CHRD, C = VOIC, D = STRUM (4 detents per list step).
-  const edit = async (n: number, chord: number, voicing: number, strum: number) => {
+  // VOICE page encoders of a Velvet or Reed Sound: B = COLOR, H = DRIFT (signed detents).
+  const edit = async (n: number, color: number, drift: number) => {
     const before = await sound(n);
-    await keysPage(n);
-    if (chord) await turn(2, chord);
-    if (voicing) await turn(3, voicing);
-    if (strum) await turn(4, strum);
+    await voicePage(n);
+    if (color) await turn(2, color);
+    if (drift) await turn(8, drift);
     await expect.poll(() => sound(n), { timeout: 30_000 }).not.toEqual(before);
     await sessionRt(session).ui.wait({ ms: 300, why: REDRAW });
     return sound(n);
@@ -215,7 +210,7 @@ export function canopyPanel(session: Session, plan: RuntimePlan, sym: (name: str
     shot,
     leaveMenus,
     chooseCanopy,
-    keysPage,
+    voicePage,
     sound,
     edit,
     poolSave,

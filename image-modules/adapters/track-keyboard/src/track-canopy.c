@@ -94,7 +94,6 @@ static bool legacy(uint8_t track, TkTrackConfig *out)
 }
 
 static volatile uint16_t routed;
-volatile uint16_t tk_canopy_fallback;
 static IsnSnapshot sequence_snapshot[TK_TRACKS];
 
 bool tk_canopy_routed(uint8_t track)
@@ -185,6 +184,9 @@ static bool prepare_seed(uint8_t track, TkParams *params, TkRecipe *recipe, TkSe
     IsnSnapshot snapshot = {.valid = 1};
     CpPreset saved;
     bool sound_lock = audio && audio->pool_sound;
+    /* A step locked to a Sound that is not CANOPY's plays with the track's own Sound: the track keeps its note engine. */
+    if (sound_lock && !instrument_locked_sound(audio->pool_sound - 1u, 0, NULL, NULL))
+        sound_lock = false;
     if (sound_lock && !instrument_locked_sound(audio->pool_sound - 1u, audio->sound, &saved,
                                                &snapshot.sound_tune))
         return false;
@@ -265,20 +267,15 @@ void tk_canopy_backend(TkTrackBackend *out)
 }
 
 /* The track keyboard is CANOPY's note engine: it takes every CANOPY track whose settings it has, its own once edited or those its Sound
- * carries, and CANOPY plays the notes it resolves. A pattern that locks a step to a Sound that is not CANOPY's keeps the track with
- * CANOPY's own path (`fallback`). */
-void tk_canopy_sync(uint8_t track, bool active, uint32_t pattern)
+ * carries, and CANOPY plays the notes it resolves. A step locked to a Sound that is not CANOPY's plays with the track's Sound
+ * (`prepare_seed`). */
+void tk_canopy_sync(uint8_t track, bool active)
 {
     TkTrackConfig config;
     bool settled = active && tk_service_active_settings(track, &config);
     unsigned lanes = 0;
-    bool fallback = settled && tk_sequence_canopy_sound_fallback(pattern, track);
     uint16_t bit = (uint16_t)(1u << track);
-    if (fallback)
-        tk_canopy_fallback |= bit;
-    else
-        tk_canopy_fallback &= (uint16_t)~bit;
-    if (settled && !fallback) {
+    if (settled) {
         lanes = config.params.poly | (unsigned)config.params.arp << 1;
         if (!lanes)
             lanes = 1;

@@ -85,9 +85,9 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
 
     // Two CANOPY tracks with different settings.
     await p.chooseCanopy(1);
-    const a = await p.edit(1, 20, 12, 16);
+    const a = await p.edit(1, 20, 12);
     await p.chooseCanopy(2);
-    const b = await p.edit(2, 12, 8, 8);
+    const b = await p.edit(2, -12, 8);
     expect(b).not.toEqual(a);
     expect(await p.sound(1), 'track 2 edits do not replace track 1').toEqual(a);
     log.edited = { a, b };
@@ -95,7 +95,7 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     // Preset pool: save track 1, change it, load the pool Sound onto track 2 and back onto track 1.
     await p.poolSave(1);
     log.afterPoolSave = await p.persistence();
-    const a2 = await p.edit(1, 0, 0, 10);
+    const a2 = await p.edit(1, 0, 10);
     expect(a2).not.toEqual(a);
     await p.poolLoad(2);
     await expect.poll(() => p.sound(2), { timeout: 30_000, message: 'pool Sound loaded onto track 2' }).toEqual(a);
@@ -106,11 +106,11 @@ describeOn('dt2', 'CANOPY Sound transfer on the DT2', () => {
     await session.expectNoFault('CANOPY preset pool save and loads');
 
     // +Drive library: save track 2 (changed first), change it again, load the saved Sound onto track 1.
-    const c = await p.edit(2, 0, 4, 20);
+    const c = await p.edit(2, 0, 20);
     expect(c).not.toEqual(a);
     await p.driveSave(2);
     log.afterDriveSave = await p.persistence();
-    const d = await p.edit(2, 0, 0, 5);
+    const d = await p.edit(2, 4, 0);
     expect(d).not.toEqual(c);
     await p.driveLoad(1);
     await expect.poll(() => p.sound(1), { timeout: 30_000, message: '+Drive Sound loaded onto track 1' }).toEqual(c);
