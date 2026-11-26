@@ -62,6 +62,20 @@ function build(device: 'dt2' | 'dn2', withoutStats: boolean) {
     _fx_rec: FXREC,
     _dl_tail_chain: 0,
     _dk_rec: 0,
+    // the optional imports of the tail sections the fork adds (module.toml `optional`): 0, as in an image without their modules
+    _dl_irows: 0,
+    _dl_iwords: 0,
+    _pattern_position_info: 0,
+    _loop_ui_status: 0,
+    _instrument_reply: 0,
+    _iv_lock_stage: 0,
+    _phrase_control_info: 0,
+    _phrase_reply: 0,
+    _relay_status: 0,
+    _relay_request: 0,
+    _relay_response: 0,
+    _tk_pool_receive: 0,
+    _tk_pool_quiet_reply: 0,
     ...layout.data,
   };
   const linked = link(object, CODE_BASE, externs);

@@ -138,6 +138,8 @@ export const slotBusAddress = (device: Device, firmware: string): number =>
 
 /** Word of track 1 whose third byte is the machine type; the tracks lie 0x450 apart (finding 02). */
 export const TRACK_OBJ_WORD = 0x4265338c;
+/** The bytes between two tracks' objects (finding 02). */
+export const TRACK_OBJ_STRIDE = 0x450;
 
 /** The firmware's kit-library sector ranges (hi exclusive, `[fx] kit_areas`), which the fixed FX write-safety policies allow; none on a device without `[fx]`. */
 export const kitAreas = (device: Device): [number, number][] => deviceProfile(device).fx?.kit_areas ?? [];
@@ -161,6 +163,7 @@ export function fxProfile(device: Device): FxProfile {
   const store = cardStore(device);
   return {
     track_type_word: TRACK_OBJ_WORD,
+    track_type_stride: TRACK_OBJ_STRIDE,
     value_classes: profile.fx.value_classes,
     selection: { copy_a: store.selA, copy_b: store.selB },
     fx_slots: profile.limits.fx_slots,

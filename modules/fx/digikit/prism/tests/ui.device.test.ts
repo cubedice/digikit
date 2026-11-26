@@ -35,7 +35,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
       name: 'prism-ui',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',

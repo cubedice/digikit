@@ -153,7 +153,7 @@ fn ext_table() -> Vec<u32> {
 #[test]
 fn the_src_page_table_is_taken_whole_or_not_at_all() {
     use ext_info::{bind_table, w, VERSION, WORDS};
-    let mut core = core_with(Some(table(1)), 1);
+    let mut core = core_with(Some(rows(1)), 1);
     let mut dst = [0xffff_ffffu32; WORDS];
     assert!(
         !unsafe { bind_table(&core, dst.as_mut_ptr()) },
@@ -173,7 +173,7 @@ fn the_src_page_table_is_taken_whole_or_not_at_all() {
     ] {
         let mut bad = ext_table();
         bad[word] = value;
-        let mut core = core_with(Some(table(1)), 1);
+        let mut core = core_with(Some(rows(1)), 1);
         core.info_tables.push((name_hash("machines_ext_info"), bad));
         let mut dst = [0xffff_ffffu32; WORDS];
         assert!(

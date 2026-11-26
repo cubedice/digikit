@@ -185,7 +185,7 @@
       "devices": ["dt2"]
     },
     {
-      "id": "fork-instrument-play-loop-storage-loop-display-phrase-ui",
+      "id": "fork-instrument-play-loop-storage-loop-display-phrase-ui-track-keyboard",
       "roots": [
         "core/runtime",
         "core/rows",
@@ -196,6 +196,7 @@
         "core/loop-storage",
         "core/loop-display",
         "core/phrase-ui",
+        "core/track-keyboard",
         "core/health"
       ],
       "devices": ["dt2"]

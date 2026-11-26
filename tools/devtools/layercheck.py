@@ -1617,10 +1617,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
                     text[:start] + re.sub(r"[^\n]", " ", text[start:end]) + text[end:]
                 )
         for m, d, pat in pats:
-            if (
-                f.startswith(d + "/")
-                or SC_POLICY_ID.get(f) == m.id
-            ):
+            if f.startswith(d + "/") or SC_POLICY_ID.get(f) == m.id:
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if pat.search(line):

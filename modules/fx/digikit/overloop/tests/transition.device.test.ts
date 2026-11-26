@@ -42,7 +42,7 @@ describeOn('dt2', 'DTII Overloop: an armed pattern change', () => {
       name: 'overloop-transition',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/loop-storage',

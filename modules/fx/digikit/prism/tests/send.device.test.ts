@@ -46,7 +46,7 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
       name: 'prism-send',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',

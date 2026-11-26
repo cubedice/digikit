@@ -47,7 +47,7 @@ describeOn('dt2', 'DTII PRISM and Overloop: a transition from PRISM\'s page', ()
       name: 'prism-transition',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/loop-storage',

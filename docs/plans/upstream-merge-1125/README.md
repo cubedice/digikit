@@ -5,9 +5,9 @@ The fork (`main`, `11007c3cd`, CANOPY's voice host) takes upstream `main` at `21
 (`image-modules/` gone, `Provider::start_in`, the tick step table, registry windows, the de-naming rule) and RC5b (device tests
 selected by ownership). Branch `integrate/upstream-1125`, tree `~/digikit-hw` on the WSL disk. Nothing is pushed or installed.
 
-The merge commit (`eafb5f3bd`) resolves every textual conflict; it does not build. The four commits after it are steps 2 to 5 of
-the plan: the move, the port, the regeneration and the test metadata. Steps 6 and 7 (the hardware fit, the rehearsal, the device
-gates) are not done.
+The merge commit (`eafb5f3bd`) resolves every textual conflict; it does not build. The commits after it are steps 2 to 5 of the
+plan (the move, the port, the regeneration and the test metadata), the merge of the fork's `main` at `435a43b97` (the step entry
+audition), and step 7: the device gates, the install rehearsal and the merge gate, with what they found fixed.
 
 ## The layout
 
@@ -77,8 +77,9 @@ made again from the current `ports/fw` with `patchkit port facts` (the resolver 
 
 RC5b selects device tests by ownership: the fork's test projects drop their tags and name their subjects in
 `implicitDependencies` (a service by its project and its crate); a module that a record loads only for the setup is `incidental`
-with its reason (the machines service in CANOPY's and PRISM's records; CANOPY itself in the track keyboard's record, where the
-layer check allows CANOPY's name only in the acceptance metadata).
+with its reason (the machines service in CANOPY's and PRISM's records). The track keyboard's device test with CANOPY moved into
+CANOPY's project (`modules/machine/digikit/canopy/tests/track-keyboard.device.test.ts`), whose subjects include the track keyboard: a
+change to either selects it, and the track keyboard's tests no longer name a module (the layer check's exception for them is gone).
 
 ## Gates
 
@@ -97,7 +98,60 @@ On the host, on the WSL disk (2026-11-25); nothing ran on a device.
 - **Python.** `tests/patchkit` and the services' tests: 1,213 passed, 59 skipped, 1 failed. The failure,
   `test_pk_current.py::test_ports_are_current`, needs the DT2 function database, which this machine cannot rebuild (the same limit
   as the resolver above). CANOPY's tests: 1,422 passed, 1 skipped.
-- **Not run.** The device tests (steps 6 and 7) and `mise run test` (the merge gate, which selects device tests).
+
+### Step 7: the emulator, the rehearsal and the merge gate (2026-11-26)
+
+On the DT2 1.17 and DN2 1.12 emulators; nothing ran on a device.
+
+- **The fork's device suites.** CANOPY's (the track keyboard's CANOPY test, the step entry audition and the wheel and bend among
+  them), the track keyboard's, Overloop's and RELAY's pass, and so do PRISM's but one. PRISM's coexistence test
+  (`coexistence.device.test.ts`) loads its four modules now, then fails at its first note: it plays CANOPY's track with a TRIG
+  press outside keyboard mode, and since the voice host (#19) such a press is silent on a CANOPY track. The panel hands a press to
+  the track keyboard only in keyboard mode or in a step entry (`runtime/platform/keyboard-panel/src/cf/panel.c`), and the stock
+  path has no voice for CANOPY. A probe on the 1.17 emulator, CANOPY on track 1: TRIG 1 with keyboard mode off peaks at -100 dB,
+  TRIG 9 in keyboard mode at -33.2 dB. The fork's `main` has the same gap; there the test stopped earlier (see below). The fix is
+  the panel's, not the merge's, and is left to its own change.
+- **Upstream's device sets.** `core/runtime-machines-tests` and `core/services/fx-tests` pass; SHOT passes on the DT2. On the DN2,
+  `shot-dn2-audio.device.test.ts` fails its retrigger phase: the sample is in its B part before the retrigger and in A after it,
+  but both levels are 0.026 against a floor of 0.05. Upstream's own tree at the last integration (`c8f8a02c3`, `~/digikit-up`)
+  fails it with the same levels, so it is upstream's, not the merge's.
+- **Capacity and smoke.** `test-device--capacity--dt2` and `gate-device-smoke` pass.
+- **Install rehearsal.** The hardware set `canopy-overloop-prism-relay` with the owner's settings record (the backup of
+  2026-11-25): the five modules of the saved selection (CANOPY, Overloop, REMOTE, PRISM, RELAY) load with result 0 and no fault.
+  The arena uses 352,384 of 450,560 bytes (98,176 free, the largest free block 85,344), the DSP area 227,648 of 524,224, the
+  system package 357,424 of its 360,448, and the container leaves 497,072 bytes. Before the merge the same selection left 122,304
+  bytes of arena free: `machines.dks` now takes 88,800 bytes of arena before its keys block (66,704 with it before), because RC4-4
+  moved the machine list copy and the view refresh from the image into it; cf.expansion gained 21,212 bytes in return.
+  `instrument.dks` and `track-keyboard.dks` are within 50 bytes of before.
+- **Found and fixed by step 7.**
+  - PRISM's and Overloop's device tests named `core/dynreg`, which upstream renamed `core/rows`.
+  - PRISM's send test read the second track's type word through `track_type_stride`, which the fork's Python FX profile set
+    (`0x450`) and upstream's TypeScript profile (`fxProfile`) does not: it is `TRACK_OBJ_STRIDE` beside `TRACK_OBJ_WORD` now.
+  - PRISM's coexistence test loaded CANOPY without `core/track-keyboard`, which CANOPY requires since the voice host (#19): CANOPY's
+    load answered `DK_E_MISSING` and the two effects waited behind it. This was broken on the fork's `main` too. Its image list and
+    its `image-roots.json` set take the track keyboard.
+  - `services/machines/dks/tests/image.rs`: the fork's `machines_ext_info` cases called the helper `table`, which upstream renamed
+    `rows`.
+  - The fixtures `local-patch` and `local-step`: their lock files gain upstream's `dkneeds` dependency of `dkrt-sdk`.
+  - `dsp-stats.rig.test.ts` links the DT2 tail, whose fork sections import thirteen optional symbols (instrument, phrase, RELAY,
+    pool and position providers): the rig gives them 0, as an image without their modules does.
+  - `dsp-voice.rig.test.ts`: an unregistered type takes 66 instructions to the stock path where upstream bounds it at 60; the six are
+    the fork's constant check of the V2 table (its address published and tested, the scan flag cleared), not a walk. The bound is 70.
+  - `tools/devtools/layercheck.py` as `ruff format` writes it.
+- **The merge gate** (`DIGI_GATE_BASE=origin/main mise run test`): 246 tasks pass, 8 fail, none from the merge.
+  - `digikit/overloop:test-dsp` and `digikit/prism:test-dsp`: the heaviest block is 6 cycles over the cost each module.toml declares
+    (5,511 against 5,505; 22,192 against 22,186), as on the fork's `main`.
+  - `gate-fx-dn2:fx-no-aot`, `gate-fx-dn2:tier-quick` and `tests/patchkit/test_pk_current.py` need the firmware function database,
+    which this machine cannot rebuild.
+  - `gate-fast-roots:fixtures`: the DN2 runtime fixture times out (wall clock), as in #17.
+  - `tools:python-tests`, besides `test_pk_current.py`: `test_debug_module.py` and the two sample-pool tests fail the same way on
+    upstream's tree (`git archive upstream/main`; the debug harness truncates a pointer to 32 bits, `debug.c` line 533). The
+    pluck menu scenario (`test_menu_dt2.py`) fails in `pk_dkrt_boot.service_symbol`, which looks every read of `patchkit addr` up
+    among the resident symbols of `runtime.maps`; `DKRT_DSP` is a system package static since upstream's `3615916b4` and is
+    found through the host directory instead. Neither file differs from upstream.
+  - `@digi/web:test-wasm`: the gallery requires a README.md of every shipped module and RELAY has none (as on `main`); two cases
+    time out at 120 s under the gate's load.
+  - `digiemu-desktop:rust-tests`: the system library `dbus-1` is not installed.
 
 ## Follow-ups
 
@@ -109,4 +163,9 @@ On the host, on the WSL disk (2026-11-25); nothing ran on a device.
   with the adapter's table (`mf_srcpage_ext`) and `mf_typearg`'s MOD answers have no unit test, only the device tests of CANOPY.
 - **Service-run C under `runtime/platform`.** The C and assembler of the fork's three services still live in their adapters'
   folders (the seams' tables), where upstream's layout puts only flashed code.
-- **Steps 6 and 7**: the hardware fit and rehearsal, the device gates of the track keyboard, CANOPY, PRISM, Overloop and RELAY.
+- **A TRIG press outside keyboard mode on a CANOPY track.** Silent since #19 (above); the panel should hand it to the track
+  keyboard as it does a step entry, with a device test of the press and PRISM's coexistence test as the check.
+- **RELAY's README.** The web gallery requires one of every shipped module.
+- **Upstream's.** `service_symbol`'s package reads (the pluck menu scenario), the debug harness's pointer cast and the sample-pool
+  tests on a 64-bit host, and SHOT's DN2 retrigger levels: to report upstream, not to change here.
+- **The install.** The bundle is rebuilt from the merged `main` and rehearsed again before anything is flashed.

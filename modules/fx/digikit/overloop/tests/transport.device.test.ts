@@ -48,7 +48,7 @@ describeOn('dt2', 'DTII Overloop: a queued change and the transport', () => {
       name: 'overloop-transport',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/loop-storage',

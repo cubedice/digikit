@@ -34,7 +34,7 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
       name: 'prism-coexistence',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/input',
@@ -42,6 +42,8 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
         'core/loop-storage',
         'core/loop-display',
         'core/phrase-ui',
+        // CANOPY plays through the track keyboard (its module.toml requires it)
+        'core/track-keyboard',
         'core/health',
       ],
       inventory,
