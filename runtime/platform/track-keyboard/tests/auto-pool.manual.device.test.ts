@@ -1,7 +1,7 @@
 // device-literals: allow (uses the DTII stock voice records)
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { liveOptions } from '@digi/regression/runtime/live-options.ts';
-import { dspWords } from '@digi/regression/runtime/fx-live.ts';
+import { dspWords } from '@digi/regression/runtime/dsp-state.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';

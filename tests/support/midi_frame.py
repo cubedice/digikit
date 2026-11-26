@@ -35,9 +35,7 @@ def composed_frame(
 ) -> None:
     """CONSUMER: an instrument's DSP sources (none: no consumer). CARRIER: its carrier
     sources; when given, the adapter's carrier and the instrument registry are linked too."""
-    position = (
-        ROOT / "runtime/platform/pattern-position/src/dsp/pattern_position.s"
-    )
+    position = ROOT / "runtime/platform/pattern-position/src/dsp/pattern_position.s"
     source = position.read_text()
     for name in ("packet", "receiver", "config", "consumer", "reply", "block"):
         source += "\n" + (MOD / f"src/dsp/{name}.s").read_text()
@@ -52,8 +50,7 @@ def composed_frame(
             source += (
                 "\n"
                 + (
-                    ROOT
-                    / f"runtime/platform/instrument-registry/src/dsp/{name}.s"
+                    ROOT / f"runtime/platform/instrument-registry/src/dsp/{name}.s"
                 ).read_text()
             )
     obj = pk_sharc.assemble(source)

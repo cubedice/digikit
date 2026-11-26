@@ -2,18 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { encoder, type Session } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import {
-  bounded,
-  dspWords,
-  frames,
-  peak,
-  readFloatWav,
-  rows,
-  rpc,
-  word,
-  REDRAW,
-  SETTLE,
-} from '@digi/regression/runtime/fx-live.ts';
+import { bounded, rpc, word } from '@digi/regression/runtime/guest-access.ts';
+import { dspWords, frames, rows } from '@digi/regression/runtime/dsp-state.ts';
+import { peak, readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 import { SINE } from '@digi/regression/runtime/fixtures.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, selectSine, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';

@@ -14,7 +14,7 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
-import { SETTLE } from '@digi/regression/runtime/fx-live.ts';
+import { SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 describeOn('dt2', 'CANOPY Sound copy on the DT2', () => {

@@ -8,17 +8,17 @@
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
 #include "files.h"
-#include "../../../points/machines/src/cf/dt2/src-pages.h"
+#include "../../instrument-play/src/cf/src-pages.h"
 #include "../../../../sdk/dsp/contract/dk_relay_track.inc"
 #include "relay-seam.h"
 
 typedef uint32_t u32;
 typedef uint8_t u8;
-extern const u32 machines_info[];
+extern const u32 rows_info[];
 extern volatile u32 pp_position[16];
 #ifdef DK_SERVICE
 /* services/relay.dks: the image's data through the image table (relay-seam.h) */
-#define machines_info ((const u32 *)RT_DATA(machines_info))
+#define rows_info ((const u32 *)RT_DATA(rows_info))
 #define pp_position ((volatile u32 *)RT_DATA(pp_position))
 #endif
 extern u32 rtm_type(u8 *), rtm_track(u32), pp_record_frames(u32), pp_record_steps(void);
@@ -333,10 +333,12 @@ void relay_ui_pass(void)
 }
 int rtm_is_type(unsigned type)
 {
-    unsigned first = machines_info[3];
-    if (type < first || type - first >= machines_info[4])
+    /* the machine rows of core/rows' table rows_info: words M_FIRST 5, M_COUNT 6, M_ROWS 3, M_ROW_SIZE 4, and O_NAME 18 the name's offset in a row */
+    unsigned first = rows_info[5];
+    if (type < first || type - first >= rows_info[6])
         return 0;
-    const char *n = *(const char **)(uintptr_t)(machines_info[6] + 64 * (type - first) + 56);
+    const char *n =
+        *(const char **)(uintptr_t)(rows_info[3] + rows_info[4] * (type - first) + rows_info[18]);
     return n && n[0] == 'R' && n[1] == 'E' && n[2] == 'L' && n[3] == 'A' && n[4] == 'Y' && !n[5];
 }
 extern const u8 rtm_mod_rate, rtm_mod_spacing, rtm_mod_feedback, rtm_mod_mix, rtm_mod_gain,

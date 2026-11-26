@@ -147,6 +147,8 @@ export interface FxProfile {
   fx_slots: number;
   send_slots: number;
   track_type_word: number;
+  /** The bytes between two tracks' type words (the fork's PRISM send test sets it to reach a second track). */
+  track_type_stride?: number;
   value_classes: number;
   selection: { copy_a: number; copy_b: number };
   settings: { copy_a: number; copy_b: number };

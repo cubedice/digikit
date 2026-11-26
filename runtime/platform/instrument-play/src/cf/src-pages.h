@@ -1,4 +1,4 @@
-/* Core-facing DT2 SRC capability. This does not allocate native parameter slots
+/* Core-facing SRC capability. This does not allocate native parameter slots
  * or relax the V1 DK_PAGE restrictions. Register only after a complete painter
  * and input adapter are ready. All calls run on the UI task. */
 #ifndef DK_MACHINE_SRC_PAGES_H
@@ -12,7 +12,8 @@ typedef struct {
 int mf_src_register(uint32_t type, const MfSrcCapability *cap);
 /* An old owner's teardown cannot remove a replacement generation. */
 void mf_src_unregister(uint32_t type, uint32_t generation);
-/* Called by the draw hook. Unregistered/invalid types retain the one-page rule. */
+/* Called by the draw hook: the registered page count, 0 for an unregistered or invalid type (the hook then takes the native page count,
+ * the one-page rule). */
 uint32_t mf_src_page_count(uint32_t type);
 /* UI-task native-vector update. Additional pages grow the firmware-owned vector
  * using its matching allocator/free; the native destructor retains

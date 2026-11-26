@@ -54,7 +54,7 @@ pub(crate) unsafe fn row_used<C: CoreApi>(core: &C, inf: *const u32, t: u32, k: 
 /// # Safety
 /// The registry's words come from the image through the core.
 pub unsafe fn type_taken<C: CoreApi>(core: &C, t: u32) -> bool {
-    let inf = dkrt_svc_rows::dynreg(core);
+    let inf = dkrt_svc_rows::rows_info(core);
     if inf.is_null() {
         return true;
     }

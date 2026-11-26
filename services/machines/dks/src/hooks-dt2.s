@@ -155,16 +155,23 @@ mf_srcpage:
     jmp     mf_x_sp_stock
 3:  jmp     mf_x_sp_alt
 
-| The same hook in an image whose core/machines has `src-pages.c` (table `machines_ext_info`): a core adapter may register up to four SRC pages for an
-| added type (`mf_src_register`), and `mf_src_apply_pages` cuts or grows the page vector with the firmware's own allocator; a type without a
-| registration keeps the one-page rule, and a stock type gets its two entries back. d0 = the track's type.
+| The same hook in an image whose core/instrument-play has `src-pages.c` (table `machines_ext_info`): a core adapter may register up to four SRC pages
+| for an added type (`mf_src_register`), and `mf_src_apply_pages` cuts or grows the page vector with the firmware's own allocator; a type without a
+| registration takes the native page count (the one-page rule), and a stock type gets its two entries back. d0 = the track's type.
 mf_srcpage_ext:
     cmp.l   DKRT_MF_TAB+T_FIRST,%d0
     blt.s   1f
-    move.l  %d0,-(%sp)
+    move.l  %d0,-(%sp)                  | the type, for the native count below
     movea.l DKRT_MF_EXT+X_SRC_COUNT,%a1
-    jsr     (%a1)
-    addq.l  #4,%sp
+    jsr     (%a1)                       | the adapter's count of a registered type, 0 for any other
+    tst.l   %d0
+    bne.s   6f
+    move.l  (%sp),%d0
+    move.l  #SRC_PAGES,-(%sp)
+    move.l  %d0,-(%sp)
+    jsr     dks_native_page_count       | an unregistered type: the native page count (the one-page rule)
+    addq.l  #8,%sp
+6:  addq.l  #4,%sp
     move.l  %d0,-(%sp)
     move.l  %a2,-(%sp)
     movea.l DKRT_MF_EXT+X_SRC_APPLY,%a1

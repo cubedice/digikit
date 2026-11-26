@@ -94,8 +94,8 @@ doc = "The module arena: a static array of the runtime's bss. Every device has t
 [[const]]
 name = "PACKAGE_BYTES"
 type = "usize"
-value = 352768
-doc = "The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load)."
+value = 360448
+doc = "The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 360,448, for the instrument host in the package (357,424 used after the upstream merge of 2026-11-25), docs/plans/upstream-merge-1124 and upstream-merge-1125). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load)."
 
 [[const]]
 name = "STAGE_BYTES"

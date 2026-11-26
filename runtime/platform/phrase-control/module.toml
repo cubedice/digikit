@@ -10,7 +10,7 @@ status = "experimental"
 summary = "The phrase effect's controls (version 3: a repeater's), its SYNC time from the tempo, and the status transport."
 ports = ["dt2-1.17"]
 # core/loop-storage: the bank lease (`_phrase_storage_info`) a phrase effect's engine imports with the control words.
-requires = ["core/pattern-position", "core/fxpages", "core/loop-storage"]
+requires = ["core/pattern-position", "core/rows", "core/dynfx", "core/loop-storage"]
 conflicts = []
 
 [targets]

@@ -1,7 +1,7 @@
 #include "../src/control.c"
 #include <assert.h>
 #include <string.h>
-const u32 machines_info[8];
+const u32 rows_info[19];
 struct RelayFiles relay_files;
 static unsigned rotary_cells, text_count, rotary_value[8];
 static struct {

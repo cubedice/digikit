@@ -1,7 +1,9 @@
 import { expect, test } from 'vitest';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
-import { dspWords, pickSine, REDRAW, word } from '@digi/regression/runtime/fx-live.ts';
+import { dspWords } from '@digi/regression/runtime/dsp-state.ts';
+import { pickSine, REDRAW } from '@digi/regression/runtime/panel-waits.ts';
+import { word } from '@digi/regression/runtime/guest-access.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { loadedServiceSymbols } from '@digi/regression/runtime/loaded-service-symbols.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';

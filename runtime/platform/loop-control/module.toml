@@ -8,8 +8,8 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "The home of the loop effect's crossfader, ARM and DROP outside the kit, its status from the DSP, and its tap."
-# core/fxpages: the fx service asks this module for the loop effect's values (fx_held_values). core/dsp-link returns the status.
-requires = ["core/fxpages", "core/dsp-link"]
+# core/rows and core/dynfx: the effect rows; the fx service asks this module for the loop effect's values (fx_held_values). core/dsp-link returns the status.
+requires = ["core/rows", "core/dynfx", "core/dsp-link"]
 conflicts = []
 ports = ["dt2-1.17"]
 

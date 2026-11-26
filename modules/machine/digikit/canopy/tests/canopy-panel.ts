@@ -7,7 +7,7 @@ import { planSymbol, type RuntimePlan } from '@digi/regression/runtime/runtime-p
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
-import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 
 export type Sound = { color: number; drift: number };
 // PRESET menu, left column: LOAD (+Drive), SAVE (+Drive), MANAGE, POOL.

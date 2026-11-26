@@ -160,7 +160,7 @@ final-output gate.
 | Pattern timing | Overloop bridge publishes committed master-grid boundaries | Validated finer clock for subdivisions, triplets and swing |
 | Settings | Device-wide runtime store, called on the UI task; no public DKM settings API | Bounded module-owned settings access and explicit presets |
 
-Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../image-modules/points/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../ports/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../runtime/core/src/rs/src/settings.rs).
+Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../runtime/platform/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../ports/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../runtime/core/src/rs/src/settings.rs).
 
 The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
 now confirms that the cable-0 byte parser also queues complete channel messages,

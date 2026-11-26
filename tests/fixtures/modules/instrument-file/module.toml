@@ -7,7 +7,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "Private bounded admission policy for the normal-file V2 loader."
-requires = ["test/instrument-load", "core/dynreg"]
+requires = ["test/instrument-load", "core/rows"]
 conflicts = []
 ports = ["dt2-1.17"]
 [targets]

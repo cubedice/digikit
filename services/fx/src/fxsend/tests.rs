@@ -106,37 +106,39 @@ fn an_effect_without_a_cell_runs_on_the_master_only_if_it_may() {
     );
 }
 
-/// An image with a send page of `cells` cells (the words of `fxpages_info` as `tests/contract.rs` gives them), the effect table and the parameter table of the firmware.
+/// An image whose `rows_info` holds the parameter table and the blocks of the effect knobs (owner 2, from code 40) and the send knobs (owner 3, from code 90), with the
+/// effect pages of a small device of `cells` send cells bound (the facts `tests/table.rs` uses), and the effect chain of `core/dynfx`.
 fn send_page_core(cells: u32) -> dkrt_test_support::FakeCore {
+    use dkrt_svc_rows::rows_info::w as r;
     let mut core = dkrt_test_support::FakeCore::new();
-    let mut t = std::vec![0u32; 64];
-    t[0] = 0x4658_5047; // "FXPG"
-    t[1] = 4;
-    t[2] = core.device;
-    t[3] = 0x6000;
-    t[4] = 0x2c;
-    t[5] = 14;
-    t[6] = 3;
-    t[8] = 8;
-    t[12] = 40;
-    t[13] = 8;
-    t[14] = 0x14;
-    t[15] = 32;
-    t[37] = 70;
-    t[38] = 0x46a7;
-    t[w::CELLS] = cells;
-    t[w::P_SEND] = 90;
-    t[61] = 13;
-    t[63] = 0x80;
-    core.info_tables.push((crate::fxpage::INFO_HASH, t));
-    let mut d = std::vec![0u32; 96];
-    d[dkrt_svc_rows::dynreg::w::P_TABLE] = 0x10000;
-    d[dkrt_svc_rows::dynreg::w::PF_SIZE] = 0x40;
-    d[dkrt_svc_rows::dynreg::w::P_ROWS] = 0x20000;
-    d[dkrt_svc_rows::dynreg::w::P_ROW_SIZE] = 0x20;
-    d[dkrt_svc_rows::dynreg::w::P_TEMPLATE_OFF] = 8;
-    core.set_dynreg(d);
+    let mut d = std::vec![0u32; 110];
+    d[r::P_TABLE] = 0x10000;
+    d[r::PF_SIZE] = 0x40;
+    d[r::P_ROWS] = 0x20000;
+    d[r::P_ROW_SIZE] = 0x20;
+    d[r::P_TEMPLATE_OFF] = 8;
+    core.set_rows_info(d);
+    core.set_rows_blocks(&[(1, 20, 16, 0xd1), (2, 40, 24, 0x75), (3, 90, 5, 0x75)]);
     core.set_dynfx(0, 4);
+    let facts = crate::fxpage::DeviceFacts {
+        device: core.device,
+        page_first: 14,
+        slots: 3,
+        array_off: 0x14,
+        values_n: 32,
+        mark_index: 70,
+        send_cells: cells,
+        knob_block: 2,
+        send_block: 3,
+        track_page: 13,
+        store_off: 0x80,
+        ..Default::default()
+    };
+    // SAFETY: the bound table is this crate's static; the tests that bind it hold the test lock
+    assert_eq!(
+        unsafe { crate::fxpage::bind_facts(&core, &facts, [0, 0]) },
+        OK
+    );
     core
 }
 
@@ -169,10 +171,10 @@ fn give(a: Option<[u8; TRACKS]>) {
 fn the_phrase_effect_takes_its_amounts_from_its_adapters_and_no_cell() {
     use dkrt_test_support::Call;
     let _g = crate::test_lock::hold();
-    let core = send_page_core(2);
     let send_only = FXF_SEND | FXF_NOMASTER | FXF_DEFAULT_SEND;
     unsafe {
         clean();
+        let core = send_page_core(2);
         let d = crate::rows::frows();
         for (k, owner) in [(0usize, 1u8), (1, 2)] {
             d.fx_owner[k] = owner;

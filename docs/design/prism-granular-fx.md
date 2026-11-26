@@ -390,7 +390,7 @@ but its long-storage and timing port requires separate validation.
 | FX framework | One global PRISM entry with four nested pages, scoped navigation and page recall, more parameter storage than the current eight-word contract, action controls, input/LED ownership and versioned telemetry. |
 | Persistence | Save parameters and next-input choices. Capture audio is volatile initially; boot returns FADE to LIVE. Native trig locks and MOD destinations need a separate FX extension. |
 
-The existing [send framework](../../image-modules/points/fx/README.md) builds
+The existing [send framework](../../runtime/platform/fx/README.md) builds
 selected-track wet input but cannot attenuate the original direct
 contributions. Its current [page framework](../../image-modules/points/fxpages/README.md)
 also does not provide this four-page surface. These are explicit framework

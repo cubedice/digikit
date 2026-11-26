@@ -8,7 +8,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "Single-instance V2 transport, development admission policy and shared carrier."
-requires = ["core/keyboard-panel", "core/copy-watch", "core/instrument-registry", "core/dsp-voice", "core/dynreg", "core/dyndsp", "core/ui"]
+requires = ["core/keyboard-panel", "core/copy-watch", "core/instrument-registry", "core/dsp-voice", "core/rows", "core/dyndsp", "core/ui"]
 # Its C runs from services/instrument.dks (docs/plans/fork-image-diet.md): a module that requires it needs the file.
 served_by = "instrument"
 conflicts = ["test/canopy-carrier", "test/canopy-transport", "test/instrument-load"]
@@ -45,7 +45,7 @@ to = "_mi_velocity_entry"
 path = "build/play-cf.dko.json"
 optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig", "tk_pattern_cleared", "tk_pattern_copied", "tk_runtime_init", "tk_midi_channel_message", "rtm_can_save", "rtm_mod_carrier", "rtm_mod_param", "rtm_src", "dl_reset_begin", "dl_reset_quiesce"]
 # The image part (docs/plans/fork-image-diet.md): the Sound persistence path, the hook entries that stay, the pure codecs, and the generated forwarders (seam.s) and image table (seam-table.s). Everything else runs from services/instrument.dks.
-sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/seam.s", "src/cf/seam-table.s"]
+sources = ["src/cf/image.c", "src/cf/preset.c", "src/cf/sound-record.c", "src/cf/sound-assoc.c", "src/cf/sound-persist.c", "src/cf/sound-persist.s", "src/cf/sound-load.s", "src/cf/src-lock-capture.s", "src/cf/src-mod.s", "src/cf/src-pages.c", "src/cf/src-ext.s", "src/cf/seam.s", "src/cf/seam-table.s"]
 include_dirs = ["build/gen", "src", "../keyboard-panel/src/cf"]
 place = "cf.expansion"
 devices = ["dt2"]
@@ -86,6 +86,9 @@ ip_kit_table_lit = "cf.project.site.kit_table_lit"
 ip_sound_pool_lit = "cf.project.site.sound_pool_lit"
 fw_alloc = "cf.mem.fn.new"
 fw_free = "cf.mem.fn.free"
+# src-pages.c grows a native SRC page vector with the firmware's own allocator
+mf_src_alloc = "cf.mem.fn.new"
+mf_src_free = "cf.mem.fn.free"
 ip_src_type = "cf.machine.fn.current_track_type"
 ip_src_track = "cf.page.site.instrument_src_track"
 ip_src_alternate = "cf.page.site.instrument_src_alternate"
@@ -134,6 +137,21 @@ ip_lock_due_2_skip = "cf.page.site.instrument_lock_skip_2"
 # take the stock path while it is 0. The service reads the image table `instrument_image` (seam-table.s) at setup.
 [[slot]]
 name = "instrument_vec"
+
+# The SRC page functions (src-pages.c) and the modulation mapping (instrument_mod_param, the service's) for the hooks `mf_srcpage` and `mf_typearg` of
+# services/machines.dks, which copies the table into DKRT_MF_EXT (services/machines/src/ext_info.rs has the layout). It was core/machines' until upstream moved
+# the machine plug-in point into the service (RC4); the table and src-pages.c are this adapter's now (docs/plans/upstream-merge-1125, D2).
+[[info]]
+name = "machines_ext_info"
+symbol = "mf_ext_info"
+devices = ["dt2"]
+
+# The runtime calls instrument_play_tick once per UI pass (an image tick, `platform::image_ticks`): a forwarder of seam.s into
+# services/instrument.dks (`rts` while the file is not loaded). The runtime names no adapter.
+[[info]]
+name = "tick_instrument_play"
+symbol = "instrument_play_tick"
+tick = true
 
 [[info]]
 name = "instrument_image"

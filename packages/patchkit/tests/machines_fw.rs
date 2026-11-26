@@ -406,6 +406,9 @@ fn the_dispatch_answers_a_type_of_the_registry_with_its_row_and_gives_a_row_with
 const HOOKS_MR: &str = "services/machines/dks/src/hooks-dt2.s";
 const ABSENT: &str = "tests/fixtures/native-page-absent.s";
 const SLOTMAP: u32 = W + 0x10_2000;
+/// The fork's table of the image's SRC page and modulation functions (`DKRT_MF_EXT`, bound from `machines_ext_info`): all words 0 here (an image
+/// without core/instrument-play), so the hooks take the paths of the service alone.
+const EXT: u32 = W + 0x10_3000;
 const TYPE_FN: u32 = W + 0x12_1000;
 const TAIL_TYPEARG: &str = "dk_tail_09514a38";
 
@@ -414,6 +417,7 @@ fn unit_mr() -> Option<Unit> {
         &[HOOKS_MR, ABSENT],
         &[
             ("DKRT_MF_TAB", TAB),
+            ("DKRT_MF_EXT", EXT),
             ("DKRT_MF_RANK", RANK),
             ("DKRT_MF_RANKN", RANKN),
             ("mf_spt", TYPE_FN),

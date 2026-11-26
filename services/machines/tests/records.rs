@@ -421,7 +421,7 @@ fn a_machine_type_is_taken_when_a_module_owns_its_row_or_its_row_has_a_name() {
     inf[w::M_DYN_N] = 8;
     inf[w::O_NAME] = 4;
     let mut core = core();
-    core.set_dynreg(inf);
+    core.set_rows_info(inf);
     let name_of = |t: u32| ROWS + (t - M_FIRST) * 0x40 + 4;
     // rows 0 to 3: an empty name (a pointer to a 0 byte), none, an image name, a free row a module owns
     unsafe {

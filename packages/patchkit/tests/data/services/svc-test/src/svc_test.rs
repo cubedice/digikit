@@ -8,7 +8,8 @@ pub struct SvcTest;
 
 impl<C: CoreApi> Provider<C> for SvcTest {
     /// Nothing to set up: the C source's count starts at zero with the file's bss.
-    fn start(_core: &C) -> Result<Self, Status> {
-        Ok(SvcTest)
+    fn start_in(_core: &C, slot: &mut core::mem::MaybeUninit<Self>) -> Result<(), Status> {
+        slot.write(SvcTest);
+        Ok(())
     }
 }

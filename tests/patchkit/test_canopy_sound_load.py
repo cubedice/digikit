@@ -31,9 +31,7 @@ def test_sound_loader_window_matches_image():
     actual = port_resolve.resolve_cf_window_hash(
         main, 0x40000400, dict(site["rule"], name=site["name"])
     )
-    anchors = tomllib.loads((ROOT / "devices/ports/dt2-1.17.toml").read_text())[
-        "anchor"
-    ]
+    anchors = tomllib.loads((ROOT / "ports/dt2-1.17.toml").read_text())["anchor"]
     pinned = next(a for a in anchors if a["name"] == site["name"])
     assert all(actual[k] == pinned[k] for k in actual)
 

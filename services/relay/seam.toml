@@ -65,6 +65,6 @@ functions = [
 ]
 optional = []
 # the machine table of core/machines (RELAY finds its type by name) and the transport words of core/pattern-position
-data = ["machines_info", "pp_position"]
+data = ["rows_info", "pp_position"]
 # registry codes: the params entries of this adapter (the MOD destinations of a RELAY track)
 values = ["rtm_mod_rate", "rtm_mod_spacing", "rtm_mod_feedback", "rtm_mod_mix", "rtm_mod_gain", "rtm_mod_position"]

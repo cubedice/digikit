@@ -8,7 +8,7 @@ from modules.machine.digikit.canopy.tools.wavetables import preview_values
 
 
 def test_compiled_preview_preserves_original_table_and_every_position(tmp_path):
-    root = Path(__file__).resolve().parents[4]
+    root = Path(__file__).resolve().parents[5]
     ui = root / "runtime/platform/instrument-play/src/cf"
     source = Path(__file__).with_name("preview-equivalence.c")
     binary = tmp_path / "preview-equivalence"

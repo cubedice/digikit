@@ -38,7 +38,8 @@ conflicts = []
 # dp, fp and fs are the symbols the users link by). The platform knows the blocks by number: each block's owner number, size (a `[limits]` key times a
 # factor) and template come from the device file's `[rows]` and `[[rows.block]]` (the device file says what each block is for).
 # Each owner fills its block at load and clears it at unload; the template is a stock row that is valid for the value-class lookup. No
-# other module adds a row to this registry in the image (packages/patchkit/tests/rows.rs). `rows_info` (src/cf/rows-info.inc) says where
+# other module adds a row to this registry in the image (packages/patchkit/tests/rows.rs), but the fork's two adapters with native MOD
+# destinations. `rows_info` (src/cf/rows-info.inc) says where
 # the blocks are and how a row is made; the capacity words of the admission point at it.
 
 [[gen]]
@@ -54,7 +55,9 @@ uses = ["DEVICE_ID", "DYN_TYPES", "ROWS_*", "PROFILE_*"]
 name = "params"
 devices = ["dt2"]
 first = "image.u32(cf.param.fn.value_class + 6)"      # the immediate of `cmpi.l #count,D0` in the accessor: the stock row count
-max = 64
+# 72: besides the blocks, the fork's core/instrument-play and core/relay-track add the named rows of their native MOD
+# destinations (packages/patchkit/tests/rows.rs lists them); the hardware set with RELAY uses 66.
+max = 72
 region = "cf.expansion"
 
 [[registry.field]]

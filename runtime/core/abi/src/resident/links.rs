@@ -20,7 +20,7 @@ pub struct LinkRows {
     pub dl_stats_hook: *const (),
     /// `core/dsp-link`: `void dl_tick_cb_drop(u32 start, u32 end)`, clears the per-block callback that points into a range.
     pub dl_tick_cb_drop: *const (),
-    /// The fork's persistent V2 instrument host (appended, minor 5): the providers its coordinator binds once (`instrument_provider::Binding`) and the
+    /// The fork's persistent V2 instrument host (appended, minor 6: upstream's 2.5 appended the observer imports): the providers its coordinator binds once (`instrument_provider::Binding`) and the
     /// trusted firmware adapter's entries. Each is 0 when its module is not in the image.
     pub instrument: InstrumentLinks,
 }

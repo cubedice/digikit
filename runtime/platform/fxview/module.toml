@@ -8,7 +8,7 @@ type = "framework"
 author = "digikit"
 status = "experimental"
 summary = "The one owner of the FX view's draw, key and encoder slots: it hands them to the image adapters that paint a page of their own."
-requires = ["core/fxpages"]
+requires = ["core/rows", "core/dynfx"]
 conflicts = []
 ports = ["dt2-1.17"]
 

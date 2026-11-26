@@ -83,9 +83,14 @@ fn the_reserved_rows_are_the_limits_of_the_device_file() {
             "{dev}"
         );
     }
-    // no other module reserves parameter rows: the claim policy of a block is its user's, the rows are the platform's
+    // no other module reserves parameter rows: the claim policy of a block is its user's, the rows are the platform's. The fork's
+    // adapters with native MOD destinations add named rows of their own (the destinations of the MOD picker; no block, no claim).
+    const MOD_DESTINATIONS: [&str; 2] = ["core/instrument-play", "core/relay-track"];
     for m in &lib.modules {
-        if m.id() == "core/rows" || m.manifest.module.category != "core" {
+        if m.id() == "core/rows"
+            || m.manifest.module.category != "core"
+            || MOD_DESTINATIONS.contains(&m.id())
+        {
             continue;
         }
         assert!(

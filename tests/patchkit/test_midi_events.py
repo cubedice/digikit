@@ -836,10 +836,10 @@ def test_dsp_loader_enforces_each_optional_tail_boundary(
     )
     externs = {
         "_dl_back": back,
-        "_dl_vrows": 0,
-        "_dl_vcount": 0,
-        "_dl_frows": 0,
-        "_dl_fcount": 0,
+        "_dl_win1_base": 0,
+        "_dl_win1_rows": 0,
+        "_dl_win2_base": 0,
+        "_dl_win2_rows": 0,
         "_dl_irows": 0,
         "_dl_iwords": 0,
         "_dv_diag": 0,
@@ -938,7 +938,7 @@ def test_din_hook_resolves_uniquely_on_pinned_image():
         pytest.skip("DTII 1.17 firmware required")
     declarations = tomllib.loads((ROOT / "ports/fw/midi.toml").read_text())
     site = next(s for s in declarations["site"] if s["name"].endswith(".din_rx"))
-    port = tomllib.loads((ROOT / "devices/ports/dt2-1.17.toml").read_text())
+    port = tomllib.loads((ROOT / "ports/dt2-1.17.toml").read_text())
     anchor = next(a for a in port["anchor"] if a["name"] == site["name"])
     main = port_resolve.sections_of(FIRMWARE)[3]
     rule = site["rule"]
@@ -1345,10 +1345,10 @@ def test_v2_registration_window_is_bounded(
     )
     externs = {
         "_dl_back": back,
-        "_dl_vrows": 0,
-        "_dl_vcount": 0,
-        "_dl_frows": 0,
-        "_dl_fcount": 0,
+        "_dl_win1_base": 0,
+        "_dl_win1_rows": 0,
+        "_dl_win2_base": 0,
+        "_dl_win2_rows": 0,
         "_dl_irows": base,
         "_dl_iwords": target + 64,
         "_dv_diag": 0,

@@ -32,15 +32,18 @@ pub unsafe fn setup<C: CoreApi>(core: &C) -> i32 {
     OK
 }
 
-/// The owner of the file: it holds nothing; its `start` binds the image table (`seam::setup`: refused, `E_NO_REGISTRY`, without a usable one), which
+/// The owner of the file: it holds nothing; its `start_in` binds the image table (`seam::setup`: refused, `E_NO_REGISTRY`, without a usable one), which
 /// the loader runs before it fills the slots, so no forwarder reaches the moved code before the table is bound.
 pub struct RelayFile;
 
 impl<C: CoreApi> Provider<C> for RelayFile {
-    fn start(core: &C) -> Result<Self, Status> {
-        // SAFETY: `start` runs once, in the file's `init`
+    fn start_in(core: &C, slot: &mut core::mem::MaybeUninit<Self>) -> Result<(), Status> {
+        // SAFETY: `start_in` runs once, in the file's `init`
         match unsafe { setup(core) } {
-            dkrt_sdk::OK => Ok(RelayFile),
+            dkrt_sdk::OK => {
+                slot.write(RelayFile);
+                Ok(())
+            }
             e => Err(e),
         }
     }

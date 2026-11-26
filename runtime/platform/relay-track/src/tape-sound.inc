@@ -227,7 +227,7 @@ static void tape_sound_tick(void)
     static unsigned next;
     initialize_settings();
     if (!relay_type) {
-        unsigned first = machines_info[3], count_types = machines_info[4];
+        unsigned first = rows_info[5], count_types = rows_info[6];
         if (count_types > 128)
             return;
         for (unsigned i = 0; i < count_types; ++i)

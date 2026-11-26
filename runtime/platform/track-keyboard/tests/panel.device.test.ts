@@ -4,7 +4,7 @@ import { repoRoot } from '@digi/test-support';
 import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { liveOptions } from '@digi/regression/runtime/live-options.ts';
-import { word } from '@digi/regression/runtime/fx-live.ts';
+import { word } from '@digi/regression/runtime/guest-access.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { selectDt2, trackType } from '@digi/regression/runtime/project-kit.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';

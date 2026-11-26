@@ -95,11 +95,6 @@ void mf_src_free(uint8_t *p)
     (void)p;
     assert(0);
 }
-uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary)
-{
-    (void)type;
-    return ordinary;
-}
 static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, stock_turns,
                                      stock_keys, invalidations, polls;
 static uint32_t manager[16], node[4], vtable[60], modal[24], modal_node[4];
@@ -924,7 +919,8 @@ int main(int argc, char **argv)
         selected = 1;
         generation = 2;
         context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 1);
+        /* unregistered: 0, and the machines service's hook takes the native page count */
+        assert(mf_src_page_count(type_id) == 0);
         selected = 0;
     } else
         return 2;

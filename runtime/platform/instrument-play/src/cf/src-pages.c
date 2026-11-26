@@ -24,11 +24,10 @@ void mf_src_unregister(uint32_t type, uint32_t generation)
     entries[type].pages = 0;
     entries[type].generation = 0;
 }
-extern uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary);
 uint32_t mf_src_page_count(uint32_t type)
 {
     if (type < 7 || type >= 32 || !entries[type].generation)
-        return mf_native_page_count(type, 1);
+        return 0;
     return entries[type].pages;
 }
 
