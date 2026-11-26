@@ -102,7 +102,7 @@ try {
   pair.prism.set({ input: 1 });
   // PRISM played on the old pattern: more repeats, darker
   await run(change + BAR);
-  pair.prism.set({ rpts: 0.72, colr: -0.4 });
+  pair.prism.set({ rpts: 0.72, colr: 0 });
   await run(fadeFrom);
   for (let step = 1; step <= 127; step++) {
     await run(fadeFrom + Math.round((step * (fadeTo - fadeFrom)) / 127));
@@ -110,7 +110,7 @@ try {
   }
   // PRISM set up for the new pattern, then G
   await run(fadeTo);
-  pair.prism.set({ rpts: 0.5, colr: 0 });
+  pair.prism.set({ rpts: 0.5, colr: 0.5 });
   await run(gAt);
   pair.prism.set({ input: 0 });
   await run(end);
@@ -147,9 +147,9 @@ writeFileSync(
     `  0.00 s        pattern A plays, PRISM echoes it (INPT LIVE)`,
     `  ${seconds(armAt)}        ARM`,
     `  ${seconds(change)}        the pattern change: the loop (the last bar of A) takes over at LOOP, PRISM takes the loop`,
-    `  ${seconds(change + BAR)}        PRISM played on the old pattern: more repeats (0.72), darker (COLR -0.4)`,
+    `  ${seconds(change + BAR)}        PRISM played on the old pattern: more repeats (0.72), darker (COLR 0)`,
     `  ${seconds(fadeFrom)}       the crossfader moves from LOOP to LIVE, evenly over two bars`,
-    `  ${seconds(fadeTo)}       LIVE: B alone and dry, A's echoes dying away; PRISM set back (RPTS 0.5, COLR 0)`,
+    `  ${seconds(fadeTo)}       LIVE: B alone and dry, A's echoes dying away; PRISM set back (RPTS 0.5, COLR 0.5, uncoloured)`,
     `  ${seconds(gAt)}       G: INPT LIVE, PRISM echoes pattern B`,
     `  ${seconds(n)}       end. Peak of the output before the scaling ${top.toFixed(3)}.`,
     '',

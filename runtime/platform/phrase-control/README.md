@@ -19,7 +19,8 @@ offsets in that header are bytes.
 | SYNC, FLIP, HOLD | 0, 1 | bits of `FLAGS` |
 | RATIO | 0..12, 6 the 1/1 | `SYNC_TIME`, with ZONE: frames of the ratio of the zone's 1/1 at the tempo |
 | RPTS | 0..127 | `RPTS`, float: 0..96 is 0..0.75 (a repeat at its level), 96..127 is 0.75..1 |
-| COLR, SKEW | 0..127, 64 the centre | float -1..1 |
+| COLR | 0..127, 96 the uncoloured point | float: 0..96 is -1..0.5 (uncoloured), 96..127 is 0.5..1 |
+| SKEW | 0..127, 64 the centre | float -1..1 |
 | ROUTE | 0 SKEW, 1 PONG, 2 SWAP | routing bits in `FLAGS`; PONG makes the published `SKEW` zero |
 | HALO, MIX | 0..127 | float 0..1 |
 | INPT | 0 LIVE, 1 LOOP, also without a loop (the engine then hears silence); not saved | `INPUT` |
@@ -38,9 +39,10 @@ RATIO multiplies it by 1/2, 4/7, 3/5, 2/3, 3/4, 4/5, 1, 5/4, 4/3, 3/2, 5/3, 7/4 
 `PH_SYNC_MAX` (513,600 frames, 10.7 s, the top zone's high end). Without a valid tempo the last tempo stays (120 BPM
 before any).
 
-The values are kept in the runtime settings under `phrase/<module id>` (a header with format number 4 and a count, then
-the values). A format 3 record with ping-pong enabled loads as PONG if its saved skew is centred or SWAP otherwise.
-The defaults are ZONE ECHO, RATE in the middle, RPTS 48, COLR and SKEW at the centre, HALO 0, MIX 100, SYNC off at the
+The values are kept in the runtime settings under `phrase/<module id>` (a header with format number 5 and a count, then
+the values). A record of format 3 or 4 had COLR uncoloured at 64: its COLR loads at the same share of the way to
+either end (64 as 96). A format 3 record with ping-pong enabled loads as PONG if its saved skew is centred or SWAP otherwise.
+The defaults are ZONE ECHO, RATE in the middle, RPTS 48, COLR uncoloured (96), SKEW at the centre, HALO 0, MIX 100, SYNC off at the
 1/1, and straight feedback. A stored RATIO above 12 is read as 12. HOLD is transient. These settings are global and
 independent of Elektron kits, sounds, and projects.
 

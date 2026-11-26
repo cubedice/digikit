@@ -185,7 +185,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 20,
+   "addend": 16,
    "offset": 130,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
@@ -199,7 +199,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 16,
+   "addend": 20,
    "offset": 148,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
@@ -228,77 +228,91 @@
   },
   {
    "addend": 28,
-   "offset": 254,
+   "offset": 246,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 290,
+   "section": ".text.publish",
+   "symbol": "__subsf3",
+   "type": "cf.32"
+  },
+  {
    "addend": 32,
-   "offset": 292,
+   "offset": 304,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 322,
+   "offset": 334,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 40,
-   "offset": 360,
+   "offset": 372,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 380,
+   "offset": 392,
    "section": ".text.publish",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 390,
+   "offset": 402,
    "section": ".text.publish",
    "symbol": ".sec..bss.row_index",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 400,
+   "offset": 412,
    "section": ".text.publish",
    "symbol": ".sec..bss.generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 414,
+   "offset": 426,
    "section": ".text.publish",
    "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 420,
+   "offset": 432,
    "section": ".text.publish",
    "symbol": ".sec..bss.published",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 428,
+   "offset": 440,
    "section": ".text.publish",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 478,
+   "offset": 490,
+   "section": ".text.publish",
+   "symbol": "__addsf3",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 526,
    "section": ".text.publish",
    "symbol": "__addsf3",
    "type": "cf.32"
@@ -472,7 +486,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 40,
+   "addend": 36,
    "offset": 304,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
@@ -486,21 +500,21 @@
    "type": "cf.32"
   },
   {
-   "addend": 0,
+   "addend": 24,
    "offset": 332,
+   "section": ".text.phrase_bind",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 338,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.key",
    "type": "cf.32"
   },
   {
    "addend": 12,
-   "offset": 338,
-   "section": ".text.phrase_bind",
-   "symbol": ".sec..bss.raw",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
    "offset": 344,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
@@ -514,7 +528,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 36,
+   "addend": 40,
    "offset": 356,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
@@ -531,82 +545,96 @@
    "addend": 0,
    "offset": 382,
    "section": ".text.phrase_bind",
-   "symbol": ".sec..rodata.CSWTCH.44",
+   "symbol": ".sec..rodata.CSWTCH.45",
    "type": "cf.32"
   },
   {
    "addend": 56,
-   "offset": 414,
+   "offset": 418,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 36,
-   "offset": 424,
+   "offset": 428,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 56,
-   "offset": 436,
+   "offset": 440,
+   "section": ".text.phrase_bind",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 446,
+   "section": ".text.phrase_bind",
+   "symbol": ".sec..bss.raw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 468,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 48,
-   "offset": 442,
+   "offset": 644,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 450,
+   "offset": 652,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 20,
-   "offset": 456,
+   "offset": 658,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 476,
+   "offset": 678,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.sends_key",
    "type": "cf.32"
   },
   {
    "addend": 52,
-   "offset": 520,
+   "offset": 720,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.raw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 530,
+   "offset": 730,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.page_code",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 536,
+   "offset": 736,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.owner",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 542,
+   "offset": 742,
    "section": ".text.phrase_bind",
    "symbol": ".sec..bss.row_index",
    "type": "cf.32"
@@ -727,7 +755,7 @@
    "addend": 0,
    "offset": 56,
    "section": ".text.dkrt_phrase_set",
-   "symbol": ".sec..rodata.CSWTCH.44",
+   "symbol": ".sec..rodata.CSWTCH.45",
    "type": "cf.32"
   },
   {
@@ -1000,17 +1028,17 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe4700148d73c1c243900000000b1822002e1882440d5fc00000000200a204a0680000001004298b1c066fa4ab90000000056c07203207900000000283c000001005288254100042548002024bc504843312544000847f90000000049f90000000071004480254000102f39000000004e932ebc447e00002f004e94508f4ab90000000056c1263900000000254000244ab90000000056c0730171004481e5894480d08080814ab90000000056c17301448180814a8367000102720878028081b88357c173014481e98980812079000000004bf900000000254000287060b088650000de2f084e932ebc3c0000002f004e95508f25400030723f203900000000b280640000e020404868ffc04e932ebc427c00002f004e94508f2540003453832f39000000004e932ebc42fe00002f004e94508f254000384a83670000e0203900000000723fb280640000b620404868ffc04e932ebc427c00002f004e94508f2540003c2f39000000004e932ebc42fe00002f004e94508f41f9000000002550004441f900000000255000dc41f90000000025400040255000e04eb90000000023c2000000002f004eb9000000004cef3c1c00044fef00204e7542816000ff0c4868ffa04e932ebc3c0421082f004e95588f2ebc3f4000002f004eb9000000006000ff10724092802f014e932ebc3c8000000680800000002f004e956000ff1a724092802f014e932ebc3c8000000680800000002f004e956000ff4442806000ff40",
+   "hex": "4fefffe4700148d73c1c243900000000b1822002e1882440d5fc00000000200a204a0680000001004298b1c066fa4ab90000000056c07203207900000000283c000001005288254100042548002024bc504843312544000847f90000000049f90000000071004480254000102f39000000004e932ebc447e00002f004e94508f4ab90000000056c1263900000000254000244ab90000000056c0730171004481d2814480e58880814ab90000000056c17301448180814a836700010e720878028081b88357c173014481e98980812079000000004bf900000000254000287060b088650000ea2f084e932ebc3c0000002f004e95207900000000508f254000307260b288650000ec2f084e932ebc3c8000002f004e95588f2ebc3f8000002f004eb900000000508f2540003453832f39000000004e932ebc42fe00002f004e94508f254000384a83670000e8203900000000723fb280640000be20404868ffc04e932ebc427c00002f004e94508f2540003c2f39000000004e932ebc42fe00002f004e94508f41f9000000002550004441f900000000255000dc41f90000000025400040255000e04eb90000000023c2000000002f004eb9000000004cef3c1c00044fef00204e7542816000ff004868ffa04e932ebc3c0421082f004e95588f2ebc3f4000002f004eb9000000006000ff044868ffa04e932ebc3c8421082f004e95588f2ebc3f0000002f004eb9000000006000ff12724092802f014e932ebc3c8000000680800000002f004e956000ff3c42806000ff38",
    "kind": "text",
    "name": ".text.publish",
-   "size": 548
+   "size": 568
   },
   {
    "align": 2,
-   "hex": "4fefff8c48d75c3c242f00782c6f0080246f0084226f00882f6f007c0020b4b900000000660e4a82670abdf9000000006700028c42b90000000042b90000000042b90000000052b90000000041f9000000004298b1fc0000000066f642b90000000042b90000000042b9000000004a82660e4cd75c3c4fef00744ef900000000428041f90000000012310800670c1181080052807617b68066ee4204722f2a3c70687261263c66782f7323c50000000023c30000000047f90000000011840800303c736513c100000000283c656e642f23c40000000041f90000000033c000000000700722405280123298f96600013822002009420343f90000000047f9000000001383080011831800203c00000000204b4298b1c066fa7804700623c4000000007864487800402a3c000001fc23c4000000007230280f0684000000382f04764023c5000000007a0348790000000023c00000000023c10000000023c30000000023c30000000045f9000000004e924fef000cba806d0000c4428049f90000000042832044b083660001027a0fba80662673af003657814a81661c4ab90000000067147840b8b90000000066000104720123c10000000042b9000000007a0d42b90000000042b900000000ba80653c4878001047ef00282f0b4879000000004e924fef000c7210b280660000cc428142804a33080067067801e1ac828452807810b88066ec23c1000000002a2f002023ce0000000023c20000000023c5000000006000fe4e17810800118108007a26ba806600feb072276000feba73af00347650b6816600ff3473af00357a48ba816600ff28122f003657817381e2896600ff1a162f00377a0222030681fffffff37381ba816500ff04220352817301e589b2806600fef671836000fef2528393c94281e18979b09804528982847804b88966f079dcb2846402280126c458886000fed672026000fefc42816000ff4a4cd75c3c4fef00744e75",
+   "hex": "4fefff8c48d75c3c242f00782c6f0080246f0084226f00882f6f007c0020b4b900000000660e4a82670abdf900000000670002de42b90000000042b90000000042b90000000052b90000000041f9000000004298b1fc0000000066f642b90000000042b90000000042b9000000004a82660e4cd75c3c4fef00744ef900000000428041f90000000012310800670c1181080052807617b68066ee4204722f2a3c70687261263c66782f7323c50000000023c30000000047f90000000011840800303c736513c100000000283c656e642f23c40000000041f90000000033c000000000700722405280123298f9660000ee22002009420343f90000000047f9000000001383080011831800203c00000000204b4298b1c066fa7804723023c4000000007840487800402a3c000001fc23c4000000007006280f0684000000382f04766023c5000000007a6423c10000000048790000000023c00000000023c30000000023c50000000045f9000000004e924fef000c7203b2806d78428149f90000000042832044b283660000ba7a0fba81660000de71af003657804a80660000d84ab90000000067147840b8b900000000660000b8700123c000000000203900000000783fb880650001267a604c050800ec8823c000000000600000a817810800118108007a26ba806600fefa72276000ff0473af00347650b6816600ff7e73af00357a48ba816600ff72122f0036760257817381b6816500ff62162f00377a0222030681fffffff37381ba816500ff4c220352817301e589b2806600ff3e73836000ff3a528393c94280e18879b09804528980847804b88966f079dcb0846402280026c458886000ff1e70026000ff487a07ba81640c71af00367604b6806400ff3c42b900000000700d42b90000000042b900000000b081653a4878001047ef00282f0b4879000000004e924fef000c7210b2806656428142804a33080067067801e1ac828452807810b88066ec23c1000000002a2f002023ce0000000023c20000000023c5000000006000fd860680ffffffc02600783feb8b968020034c4400000680000000606000fec8428160be4cd75c3c4fef00744e75",
    "kind": "text",
    "name": ".text.phrase_bind",
-   "size": 712
+   "size": 794
   },
   {
    "align": 2,
@@ -1049,7 +1077,7 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffb4222e000c48d7040c4ab900000000660c70ff4cee040cffb44e5e4e75700eb0ae000865ec740cb4ae0008670000b2262e000841f90000000071f03a00b28064022001226e000845f900000000b0b29c00677425809c004eb9000000007005b0ae00086762720bb2ae0008675a243c5048040f42802d42ffc041eeffc47605b680664a4281741852802601e4ab2401e08a1141000358881143fffc2601424348431142fffe1143fffd760fb68066ce48780040486effc04879000000004eb9000000004fef000c42806000ff4822000681fffffff5e28967aa22320c0060a670fe6000ff30",
+   "hex": "4e56ffb4222e000c48d7040c4ab900000000660c70ff4cee040cffb44e5e4e75700eb0ae000865ec740cb4ae0008670000b2262e000841f90000000071f03a00b28064022001226e000845f900000000b0b29c00677425809c004eb9000000007005b0ae00086762720bb2ae0008675a243c5048050f42802d42ffc041eeffc47605b680664a4281741852802601e4ab2401e08a1141000358881143fffc2601424348431142fffe1143fffd760fb68066ce48780040486effc04879000000004eb9000000004fef000c42806000ff4822000681fffffff5e28967aa22320c0060a670fe6000ff30",
    "kind": "text",
    "name": ".text.dkrt_phrase_set",
    "size": 232
@@ -1065,7 +1093,7 @@
    "align": 2,
    "hex": "000703f80001000c00010001007f007f007f007f007f0001007fffff0002",
    "kind": "data",
-   "name": ".rodata.CSWTCH.44",
+   "name": ".rodata.CSWTCH.45",
    "size": 30
   },
   {
@@ -1230,7 +1258,7 @@
    "size": 60
   }
  ],
- "source_sha256": "e5b257c69eac0c00c456d264140bb85cf63294fe99eefe5e378e20c01011a810",
+ "source_sha256": "9aa126ec9991aa309cb1ffa6611e007771a65afe9f9f89412928ea32020c1860",
  "symbols": [
   {
    "global": false,
@@ -1366,8 +1394,8 @@
   },
   {
    "global": false,
-   "name": ".sec..rodata.CSWTCH.44",
-   "section": ".rodata.CSWTCH.44",
+   "name": ".sec..rodata.CSWTCH.45",
+   "section": ".rodata.CSWTCH.45",
    "value": 0
   },
   {
@@ -1396,8 +1424,8 @@
   },
   {
    "global": false,
-   "name": "CSWTCH.44",
-   "section": ".rodata.CSWTCH.44",
+   "name": "CSWTCH.45",
+   "section": ".rodata.CSWTCH.45",
    "value": 0
   },
   {
@@ -2107,8 +2135,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "1960",
-  "isa_check": "e83a0de8865f8cedeee370bc31bd602a4194f5af19a40bb85774016a41387f8a",
+  "instructions_redecoded": "1991",
+  "isa_check": "cb5ce2c7a78b0459cb8a93e42c2dda1e523cbcaba0bdf25deb3dd7b30d7184c5",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

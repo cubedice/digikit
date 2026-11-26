@@ -164,10 +164,13 @@ cases.push({
   seconds: 10,
   start: { sync: true, syncTime: 12000, rpts: 1 },
 });
-for (const colr of [-1, -0.6, -0.3, 0, 0.3, 0.6, 1]) {
+// the rows of COLR's table (engine-rig.ts COLOURS), from the darkest up
+const COLOUR_NAMES = ['oil-can', 'to-bbd', 'warm-bbd', 'crunch', 'to-tape', 'tape', 'clean', 'to-digital', 'digital'];
+for (const [row, name] of COLOUR_NAMES.entries()) {
+  const colr = row / 4 - 1;
   cases.push({
-    name: `colr-${colr < 0 ? 'dark' : colr > 0 ? 'bright' : 'centre'}${colr ? `-${Math.abs(colr * 100).toFixed(0)}` : ''}`,
-    about: `COLR ${colr}, RPTS 0.7, a quarter note at 120 BPM.`,
+    name: `colr-${row}-${name}`,
+    about: `COLR ${colr} (the page's ${Math.min(127, row * 16)}), RPTS 0.7, a quarter note at 120 BPM.`,
     input: 'one bar of the phrase, then nothing',
     signal: phrase(sec(0.2), 1),
     seconds: 10,
@@ -276,7 +279,7 @@ cases.push({
 });
 cases.push({
   name: 'hold-colour-halo',
-  about: 'HOLD taken at 3 s (a half note, 48000 frames), then COLR and HALO on the held loop: COLR -1 at 6 s, 1 at 9 s, 0 at 12 s, HALO 1 at 14 s, 0 at 18 s. The loop itself does not change: at 20 s it is as at 4 s.',
+  about: 'HOLD taken at 3 s (a half note, 48000 frames), then COLR and HALO on the held loop: COLR -1 at 6 s, 1 at 9 s, 0.5 (uncoloured) at 12 s, HALO 1 at 14 s, 0 at 18 s. The loop itself does not change: at 20 s it is as at 4 s.',
   input: 'two bars of the phrase, then nothing',
   signal: phrase(sec(0.2), 2),
   seconds: 24,
@@ -285,7 +288,7 @@ cases.push({
     [3, { hold: true }],
     [6, { colr: -1 }],
     [9, { colr: 1 }],
-    [12, { colr: 0 }],
+    [12, { colr: 0.5 }],
     [14, { halo: 1 }],
     [18, { halo: 0 }],
   ],
@@ -394,7 +397,7 @@ if (!names.length)
       'A plucked note is a tone with its octave, 10 ms of noise at the attack and a decay of 120 ms.',
       '',
       `Controls not named in a line are: ${show({ ...DEFAULTS, mix: 1 })}. zone 1..8, rate 0..1 inside the zone, syncTime in`,
-      'frames (24000 is a quarter note at 120 BPM), rpts 0..1 (0.75 is unity), colr -1 dark .. 1 bright, halo 0..1, skew -1..1.',
+      'frames (24000 is a quarter note at 120 BPM), rpts 0..1 (0.75 is unity), colr -1 the darkest .. 0.5 uncoloured .. 1 thin and bright, halo 0..1, skew -1..1.',
       '',
       ...entries.flatMap((e) => [e, '']),
     ].join('\n'),

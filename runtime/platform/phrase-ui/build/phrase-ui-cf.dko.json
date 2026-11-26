@@ -248,6 +248,48 @@
    "type": "cf.32"
   },
   {
+   "addend": 14,
+   "offset": 30,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 38,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 1,
+   "offset": 46,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 6,
+   "offset": 54,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 10,
+   "offset": 62,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 19,
+   "offset": 70,
+   "section": ".text.pu_colour_name",
+   "symbol": ".sec..rodata.pu_colour_name.str1.1",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
    "offset": 24,
    "section": ".text.pu_format",
@@ -549,7 +591,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 84,
+   "addend": 74,
    "offset": 328,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
@@ -563,14 +605,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 89,
+   "addend": 79,
    "offset": 394,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 94,
+   "addend": 84,
    "offset": 406,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
@@ -591,344 +633,330 @@
    "type": "cf.32"
   },
   {
-   "addend": 104,
+   "addend": 94,
    "offset": 468,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 498,
+   "section": ".text.pu_page",
+   "symbol": "pu_colour_name",
+   "type": "cf.32"
+  },
+  {
+   "addend": 99,
+   "offset": 514,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 23,
+   "offset": 546,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 104,
+   "offset": 558,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
    "addend": 38,
-   "offset": 512,
+   "offset": 602,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 109,
-   "offset": 528,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 23,
-   "offset": 560,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 114,
-   "offset": 572,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 48,
-   "offset": 616,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 119,
-   "offset": 632,
+   "offset": 618,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 706,
+   "offset": 692,
    "section": ".text.pu_page",
    "symbol": "pu_selecting",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 714,
+   "offset": 700,
    "section": ".text.pu_page",
    "symbol": "pu_tracks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 758,
+   "offset": 744,
    "section": ".text.pu_page",
    "symbol": "pu_track_count",
    "type": "cf.32"
   },
   {
-   "addend": 124,
-   "offset": 770,
+   "addend": 114,
+   "offset": 756,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 778,
+   "offset": 764,
    "section": ".text.pu_page",
    "symbol": ".sec..text.copy",
    "type": "cf.32"
   },
   {
-   "addend": 136,
-   "offset": 804,
+   "addend": 126,
+   "offset": 790,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 142,
-   "offset": 812,
+   "addend": 132,
+   "offset": 798,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 872,
+   "offset": 858,
    "section": ".text.pu_page",
    "symbol": ".sec..text.copy",
    "type": "cf.32"
   },
   {
-   "addend": 147,
-   "offset": 902,
+   "addend": 137,
+   "offset": 888,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 79,
-   "offset": 922,
+   "addend": 69,
+   "offset": 908,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 151,
-   "offset": 928,
+   "addend": 141,
+   "offset": 914,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 15,
-   "offset": 966,
+   "offset": 952,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 986,
+   "offset": 972,
    "section": ".text.pu_page",
    "symbol": ".sec..text.put",
    "type": "cf.32"
   },
   {
    "addend": 7,
-   "offset": 998,
+   "offset": 984,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 23,
+   "offset": 1000,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 15,
    "offset": 1014,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 15,
-   "offset": 1028,
+   "addend": 89,
+   "offset": 1022,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 99,
-   "offset": 1036,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 94,
-   "offset": 1044,
+   "addend": 84,
+   "offset": 1030,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 24,
-   "offset": 1062,
+   "offset": 1048,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 29,
-   "offset": 1068,
+   "offset": 1054,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 33,
-   "offset": 1078,
+   "offset": 1064,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 23,
-   "offset": 1088,
+   "offset": 1074,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 121,
+   "offset": 1116,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 48,
+   "offset": 1138,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 43,
-   "offset": 1098,
+   "offset": 1148,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 23,
-   "offset": 1108,
+   "addend": 53,
+   "offset": 1164,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 131,
-   "offset": 1150,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 58,
+   "addend": 60,
    "offset": 1172,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 53,
+   "addend": 64,
    "offset": 1182,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 63,
-   "offset": 1198,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 70,
-   "offset": 1206,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 74,
-   "offset": 1216,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 156,
-   "offset": 1228,
+   "addend": 146,
+   "offset": 1194,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 15,
-   "offset": 1234,
+   "offset": 1200,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
-   "addend": 53,
+   "addend": 43,
+   "offset": 1230,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 1238,
+   "section": ".text.pu_page",
+   "symbol": ".sec..text.copy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 69,
+   "offset": 1252,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
+   "addend": 141,
    "offset": 1264,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
+   "addend": 154,
+   "offset": 1334,
+   "section": ".text.pu_page",
+   "symbol": ".sec..rodata.pu_page.str1.1",
+   "type": "cf.32"
+  },
+  {
    "addend": 24,
-   "offset": 1272,
+   "offset": 1344,
    "section": ".text.pu_page",
    "symbol": ".sec..text.copy",
    "type": "cf.32"
   },
   {
-   "addend": 79,
-   "offset": 1286,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 151,
-   "offset": 1298,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 164,
-   "offset": 1368,
-   "section": ".text.pu_page",
-   "symbol": ".sec..rodata.pu_page.str1.1",
-   "type": "cf.32"
-  },
-  {
-   "addend": 24,
+   "addend": 160,
    "offset": 1378,
-   "section": ".text.pu_page",
-   "symbol": ".sec..text.copy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 170,
-   "offset": 1412,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1442,
+   "offset": 1408,
    "section": ".text.pu_page",
    "symbol": "pu_time",
    "type": "cf.32"
   },
   {
-   "addend": 58,
-   "offset": 1468,
+   "addend": 48,
+   "offset": 1434,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 23,
-   "offset": 1498,
+   "offset": 1464,
    "section": ".text.pu_page",
    "symbol": ".sec..rodata.pu_page.str1.1",
    "type": "cf.32"
@@ -948,7 +976,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 156,
+   "addend": 146,
    "offset": 230,
    "section": ".text.pu_render_header",
    "symbol": ".sec..rodata.pu_page.str1.1",
@@ -1004,7 +1032,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 79,
+   "addend": 69,
    "offset": 142,
    "section": ".text.pu_render",
    "symbol": ".sec..rodata.pu_page.str1.1",
@@ -1068,28 +1096,28 @@
   },
   {
    "addend": 24,
-   "offset": 716,
+   "offset": 718,
    "section": ".text.pu_render",
    "symbol": ".sec..text.copy",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 782,
+   "offset": 784,
    "section": ".text.pu_render",
    "symbol": ".sec..rodata.pu_render.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1688,
+   "offset": 1692,
    "section": ".text.pu_render",
    "symbol": ".sec..rodata.infinity.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1706,
+   "offset": 1710,
    "section": ".text.pu_render",
    "symbol": ".sec..text.glyph",
    "type": "cf.32"
@@ -2253,6 +2281,20 @@
   },
   {
    "align": 1,
+   "hex": "0044494749004f494c00424244004352554e005441504500",
+   "kind": "data",
+   "name": ".rodata.pu_colour_name.str1.1",
+   "size": 24
+  },
+  {
+   "align": 2,
+   "hex": "202f00047260b280671a6520720fb28064227227b2806424ec886628203c000000004e75203c0000000060f6203c0000000060ee203c0000000060e6203c0000000060de203c0000000060d6",
+   "kind": "text",
+   "name": ".text.pu_colour_name",
+   "size": 76
+  },
+  {
+   "align": 1,
    "hex": "4c2000522000",
    "kind": "data",
    "name": ".rodata.pu_format.str1.1",
@@ -2260,7 +2302,7 @@
   },
   {
    "align": 2,
-   "hex": "2f032f02222f0010242f000c202f00144a81661c2f004eb900000000588f2f4000102f42000c241f261f4ef9000000007603b6816618720cb2806402700641f90000000041f00c002f50001060d47607b681661e723fb280650e724092802f4100102f42000c603a22000681ffffffc060ec7609b68166467240b280673e763fb680652876409680203c000000002f002f024eb900000000508f2f4300102f40000c241f261f4ef9000000002600203c000000000683ffffffc060d242802f400010609e",
+   "hex": "2f032f02222f0010242f000c202f00144a81661c2f004eb900000000588f2f4000102f42000c241f261f4ef9000000007603b6816618720cb2806402700641f90000000041f00c002f50001060d47607b681661e725fb280650e726092802f4100102f42000c603a22000681ffffffa060ec7609b68166467240b280673e763fb680652876409680203c000000002f002f024eb900000000508f2f4300102f40000c241f261f4ef9000000002600203c000000000683ffffffc060d242802f400010609e",
    "kind": "text",
    "name": ".text.pu_format",
    "size": 196
@@ -2358,17 +2400,17 @@
   },
   {
    "align": 1,
-   "hex": "504852415345004e4f204c494e4b002d2d00464c49500000484f4c4400494e46004441524b004252495400504f4e470053574150004c495645004c4f4f500053494c454e540043555400574149540041524d44005a4f4e450053594e4300524154450046524545005250545300434f4c520048414c4f00534b4557004e4f2054524b002054524b00545249475300494e5054002053540058464144004e4f204c4f4f50004c4f4f5020002053542000",
+   "hex": "504852415345004e4f204c494e4b002d2d00464c49500000484f4c4400494e4600504f4e470053574150004c495645004c4f4f500053494c454e540043555400574149540041524d44005a4f4e450053594e4300524154450046524545005250545300434f4c520048414c4f00534b4557004e4f2054524b002054524b00545249475300494e5054002053540058464144004e4f204c4f4f50004c4f4f5020002053542000",
    "kind": "data",
    "name": ".rodata.pu_page.str1.1",
-   "size": 175
+   "size": 165
   },
   {
    "align": 2,
-   "hex": "4e56ff8448d73cfc42a749f900000000246e00084e944878000224004e94487800042d40ffbc4e94487800052d40ffb04e94487800062a004e94487800072d40ffb44e944878000828004e94487800092d40ffb84e944fef00204878000e2a404e942f0a26004eb900000000508f2e007001b08366043a7c0040202a00cc4a806606203c000000002f002f2e000c47f9000000004e932f024eb900000000206e000c2f00486800084e934fef00144a87670003044200206e000c114001402f07486effd04eb900000000206e000c508f2c0e0686ffffffd02f06486800104e934878000a4e944fef000c226e000c136effbf013823400030234200344a85670002ec7060226e000c13400139300d1344013a136effbb013b1340013c4aaeffb0670002d247f9000000002f024eb9000000002f2effb02f0b47f900000000206e000c240e2f00487900000000486800384e934fef00180682ffffffc0222e000c0681000000584aaeffbc67000292487800032d41ffac4e942f00487800032f024eb90000000042a74879000000002f02222effac4879000000002f014e934fef00242f2effb4487800062c3c000000002f0222464e914fef000c4a8566000266223c0000000020022f052f01206e000c2f00487900000000486800784e932f04487800072f0222464e914fef0020703fb084640002407240b28467000242203c0000000042a72f00206e000c2f02487900000000486800984e932f2effb84878000822462f024e914fef001c4297487900000000206e000c2f02487900000000486800b84e932f0d487800092f0222464e914fef00207001b083670001ec7202b283660001ee203c000000002f032f00206e000c2f02487900000000486800d84e934fef00144aaa00d0670001d04aaa01146608282a01204a846704282a00dc70017e02c0844878000bce84240e0682ffffffe02a404e942f0a2a07e28d26004eb90000000028404eb9000000004a8356c1206e000c508f314001424a8c57c01145013f44814480c0811140013d300d1140013e4eb9000000004a80660001644879000000002f024eb900000000508f206e000c41e800f84a8c6700016c487800014879000000002f024879000000002f084e934fef00144200206e000c49e80118114000184a8d660001904a8767000178080400046600015c44c46a00016071aa00fa224645f9000000002f004878000a2f024e912f02240e0682fffffff02f024e924879000000002f004e924fef001c200242a72f004879000000004879000000002f0c4e934fef00144cee3cfcff844e5e4e754aaa004867264aaa005c66204201203c00000000226e000c134101402f00486effd04eb9000000006000fcea7201203c0000000060de202effb46000fd1247f9000000006000fd2e4a8766062c3c0000000042a74879000000002f064879000000002f014e934fef00146000fd80223c00000000203c000000006000fd96203c000000006000fdc8203c000000006000fdbe203c000000006000fe1c203c000000006000fe1242846000fe402f004878000a2f0220464e904fef000c2002204052804a1066f84879000000002f086000fe824a83670e4a8d671c2202203c0000000060082202203c0000000042a72f012f006000fe80223c0000000060de203c000000006000fed8203c000000006000fece42a74879000000004879000000006000fec6206a00d042a77b8520504e90588f4a80660000c84879000000002f024eb900000000508f4a87670000d6203c000000002f052f002f024879000000002f0c4e934fef0014202a00ec4a806d1e0c803f7fffff620000d272172800e2ac22040681ffffff89ea89670000a04281206e000c5281214101344a836700fe584879000000004868001847f9000000004e9322462600202a00f871802f004878000a2f024e912f022f034e93487900000000260e0683fffffff02f004e934fef00202eaa00e02f0324004eb9000000002f032f024e934fef00106000fdfa727eb280640a4879000000006000ff322f004878000a2f0220464e904fef000c6000ff28203c000000006000ff2a0280007fffff2a3c000000969a8408c000172200ef899280eaa96000ff48727f6000ff42",
+   "hex": "4e56ff8448d73cfc42a749f900000000246e00084e944878000224004e94487800042d40ffbc4e94487800052d40ffb04e94487800062a004e94487800072d40ffb44e944878000828004e94487800092d40ffb84e944fef00204878000e2a404e942f0a26004eb900000000508f2e007001b08366043a7c0040202a00cc4a806606203c000000002f002f2e000c47f9000000004e932f024eb900000000206e000c2f00486800084e934fef00144a87670002f64200206e000c114001402f07486effd04eb900000000206e000c508f2c0e0686ffffffd02f06486800104e934878000a4e944fef000c226e000c136effbf013823400030234200344a85670002de7060226e000c13400139300d1344013a136effbb013b1340013c4aaeffb0670002c447f9000000002f024eb9000000002f2effb02f0b47f900000000206e000c240e2f00487900000000486800384e934fef00180682ffffffc0222e000c0681000000584aaeffbc67000284487800032d41ffac4e942f00487800032f024eb90000000042a74879000000002f02222effac4879000000002f014e934fef00242f2effb4487800062c3c000000002f0222464e914fef000c4a8566000258223c0000000020022f052f01206e000c2f00487900000000486800784e932f04487800072f0222464e914fef001c2e844eb90000000042a7206e000c2f002f02487900000000486800984e932f2effb84878000822462f024e914fef00204297487900000000206e000c2f02487900000000486800b84e932f0d487800092f0222464e914fef00207001b083670001d87202b283660001da203c000000002f032f00206e000c2f02487900000000486800d84e934fef00144aaa00d0670001bc4aaa01146608282a01204a846704282a00dc70017e02c0844878000bce84240e0682ffffffe02a404e942f0a2a07e28d26004eb90000000028404eb9000000004a8356c1206e000c508f314001424a8c57c01145013f44814480c0811140013d300d1140013e4eb9000000004a80660001504879000000002f024eb900000000508f206e000c41e800f84a8c67000158487800014879000000002f024879000000002f084e934fef00144200206e000c49e80118114000184a8d6600017c4a8767000164080400046600014844c46a00014c71aa00fa224645f9000000002f004878000a2f024e912f02240e0682fffffff02f024e924879000000002f004e924fef001c200242a72f004879000000004879000000002f0c4e934fef00144cee3cfcff844e5e4e754aaa004867264aaa005c66204201203c00000000226e000c134101402f00486effd04eb9000000006000fcf87201203c0000000060de202effb46000fd2047f9000000006000fd3c4a8766062c3c0000000042a74879000000002f064879000000002f014e934fef00146000fd8e223c00000000203c000000006000fda4203c000000006000fe30203c000000006000fe2642846000fe542f004878000a2f0220464e904fef000c2002204052804a1066f84879000000002f086000fe964a83670e4a8d671c2202203c0000000060082202203c0000000042a72f012f006000fe94223c0000000060de203c000000006000feec203c000000006000fee242a74879000000004879000000006000feda206a00d042a77b8520504e90588f4a80660000c84879000000002f024eb900000000508f4a87670000d6203c000000002f052f002f024879000000002f0c4e934fef0014202a00ec4a806d1e0c803f7fffff620000d272172800e2ac22040681ffffff89ea89670000a04281206e000c5281214101344a836700fe6c4879000000004868001847f9000000004e9322462600202a00f871802f004878000a2f024e912f022f034e93487900000000260e0683fffffff02f004e934fef00202eaa00e02f0324004eb9000000002f032f024e934fef00106000fe0e727eb280640a4879000000006000ff322f004878000a2f0220464e904fef000c6000ff28203c000000006000ff2a0280007fffff2a3c000000969a8408c000172200ef899280eaa96000ff48727f6000ff42",
    "kind": "text",
    "name": ".text.pu_page",
-   "size": 1542
+   "size": 1508
   },
   {
    "align": 2,
@@ -2386,10 +2428,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ffbc48d73cfc42a7487800404878007c42a742a745f900000000262e00102f2e000c266e00084e922f032f2e000c2f0b4eb9000000004fef00244aab0050671e42a74879000000004878000e487800092f2e000c4eb9000000004fef00144aab0090671e42a748790000000048780016487800092f2e000c4eb9000000004fef00144a2b013f671e42a74879000000004878001e487800092f2e000c4eb9000000004fef001448780001742a487800014878000748780028487800042f2e000c4e9248780001487800014878000748780038487800042f2e000c4e924fef0030487800014878000f4878000148780029487800032f2e000c4e92487800014878000f48780001487800294878000b2f2e000c4e924fef00304878000148780001487800012f02487800052f2e000c4e924878000148780001487800012f024878000954822f2e000c4e924fef00307038b08266c4202b00304a806716727fb2806402707f5380c0fc000c747e4c42000052804878000178372f004878000598802f04487800052f2e000c4e924fef00184a8367000176240e0682fffffff02f2b00304878000a2f024eb9000000002f0251822f024eb9000000004fef00142002487800012f004878003b4878000749f90000000042822c0b0686000000382f2e000c4e944fef00147a03ca82cbfc001a0685000000202d45ffe47a03ba826400047e7004b082660003ca7a7f79ab013b4879000000004878002d4878001dd8844bf9000000002f2e000c06840000003f4c4548044e954fef00107a047fab013b707fcfc506870000003f4c4078074a876734722d701d48790000000092842f0190872f002f2e000c4e9548790000000020444868002d20474868001d2f2e000c4e954fef0020448459854a85670002503a7c002820064a83670003167201b282673650807803b882660002e473ab013a7a40ba816722ec89660002ce722d2f00486efff11d41fff04eb900000000508f200e0680fffffff04878000178082f00486d00132f2effe452820686000000202f2e000c4e944fef0014b8826600feea4cee3cfcffbc4e5e4e75203c000000006000feae7203b282670001587801b882670000e878159bcdbbeb003457c0220044814a01670000ce307c000341f5880471007a01528d487800019a80701d2f082f0590882f002f0456842f2e000c4e924fef00187208b28d66be3a7c000d6000ff247a07ba826600016c282b013448780001487800014878001748780030487800632f2e000c4e924878000148780009487800014878002c487800632f2e000c4e924fef00304878000148780009487800014878002c487800792f2e000c4e924fef00184a846700feb82004721453804c010800787f487800014878000d487800034878002a4c4408002040486800636000026e91c86000ff3448780001486b0060487800134878003a2f2e000c4e944fef00146000ff444884726042873a7c0053c9fc00054c4148043004c1fc000520006a025280e2809bc0487800014878000248780003487800142f0d52875a8d2f2e000c4e924fef0018be846fdc6000fefa71ab013a787f7a1448780001c1fc000606800000003f4c4408002e00528728079a80d884220452812f012f01726d2f0592802f012f2e000c4e9271ab013a4fef0018ec886700feb242a7726f200453802f002f00701690872f0092872f012f2e000c4e924fef00186000fe8e7a086000fd5a79ab013c727f7a134878000148780003e98c06840000003f4c4148049a842f054878002c487800302f2e000c4e92487800014878000320444868000348780032487800302f2e000c4e924fef00306000fd5c428471eb0142720148780001e8a0c2802001d08020402004e68048680001204148680001c1fc000620407007c0844868002c5284c1fc00032040486800492f2e000c4e924fef00187010b08466b46000fd0a722b6000fd327a07ba82661c4a2b013f6700fd3e4a2b013e6600fd36200b0680000001286000fd2a7205b2826600fd224aab00f06700fd1a4a836600fd14200b0680000000e86000fd087a06ba826600fd9a4a2b013d6700ff5648780001487800014878000d4878002b4878004e2f2e000c4e92487800014878000b487800014878002b4878005a2f2e000c4e924fef003048780001487800014878000d487800354878004e2f2e000c4e924fef00184a2b013e671e487800014878000b487800014878002b4878004e2f2e000c4e924fef00184878000148780001487800014878002c487800512f2e000c4e924fef00186000fc147002b0826600fc90182b01397a5f7184ba806400fd96487900000000487800124878004f2f2e000c4eb9000000004fef00106000fcb8",
+   "hex": "4e56ffbc48d73cfc42a7487800404878007c42a742a745f900000000262e00102f2e000c266e00084e922f032f2e000c2f0b4eb9000000004fef00244aab0050671e42a74879000000004878000e487800092f2e000c4eb9000000004fef00144aab0090671e42a748790000000048780016487800092f2e000c4eb9000000004fef00144a2b013f671e42a74879000000004878001e487800092f2e000c4eb9000000004fef001448780001742a487800014878000748780028487800042f2e000c4e9248780001487800014878000748780038487800042f2e000c4e924fef0030487800014878000f4878000148780029487800032f2e000c4e92487800014878000f48780001487800294878000b2f2e000c4e924fef00304878000148780001487800012f02487800052f2e000c4e924878000148780001487800012f024878000954822f2e000c4e924fef00307038b08266c4202b00304a806716727fb2806402707f5380c0fc000c747e4c42000052804878000178372f004878000598802f04487800052f2e000c4e924fef00184a8367000178240e0682fffffff02f2b00304878000a2f024eb9000000002f0251822f024eb9000000004fef00142002487800012f004878003b4878000749f90000000042822c0b0686000000382f2e000c4e944fef00147a03ca82cbfc001a0685000000202d45ffe47a03ba82640004827004b082660003ce7a7f79ab013b4879000000004878002d4878001dd8844bf9000000002f2e000c06840000003f4c4548044e954fef00107a047fab013b707fcfc506870000003f4c4078074a876734722d701d48790000000092842f0190872f002f2e000c4e9548790000000020444868002d20474868001d2f2e000c4e954fef0020448459854a85670002543a7c002820064a836700031a7201b282673850807803b882660002e873ab013a7a60ba816724785fb881650002d0722d2f00486efff11d41fff04eb900000000508f200e0680fffffff04878000178082f00486d00132f2effe452820686000000202f2e000c4e944fef0014b8826600fee84cee3cfcffbc4e5e4e75203c000000006000feac7203b282670001587801b882670000e878159bcdbbeb003457c0220044814a01670000ce307c000341f5880471007a01528d487800019a80701d2f082f0590882f002f0456842f2e000c4e924fef00187208b28d66be3a7c000d6000ff227a07ba826600016e282b013448780001487800014878001748780030487800632f2e000c4e924878000148780009487800014878002c487800632f2e000c4e924fef00304878000148780009487800014878002c487800792f2e000c4e924fef00184a846700feb62004721453804c010800787f487800014878000d487800034878002a4c4408002040486800636000027091c86000ff3448780001486b0060487800134878003a2f2e000c4e944fef00146000ff444884726042873a7c0053c9fc00054c4148043004c1fc000520006a025280e2809bc0487800014878000248780003487800142f0d52875a8d2f2e000c4e924fef0018be846fdc6000fefa71ab013a787f7a1448780001c1fc000606800000003f4c4408002e00528728079a80d884220452812f012f01726d2f057a5f92802f012f2e000c4e9271ab013a4fef0018ba806400feb042a7726f200453802f002f00701690872f0092872f012f2e000c4e924fef00186000fe8c7a086000fd5679ab013c727f7a134878000148780003e98c06840000003f4c4148049a842f054878002c487800302f2e000c4e92487800014878000320444868000348780032487800302f2e000c4e924fef00306000fd58428471eb0142720148780001e8a0c2802001d08020402004e68048680001204148680001c1fc000620407007c0844868002c5284c1fc00032040486800492f2e000c4e924fef00187010b08466b46000fd06722b6000fd307a07ba82661c4a2b013f6700fd3c4a2b013e6600fd34200b0680000001286000fd287205b2826600fd204aab00f06700fd184a836600fd12200b0680000000e86000fd067a06ba826600fd984a2b013d6700ff5648780001487800014878000d4878002b4878004e2f2e000c4e92487800014878000b487800014878002b4878005a2f2e000c4e924fef003048780001487800014878000d487800354878004e2f2e000c4e924fef00184a2b013e671e487800014878000b487800014878002b4878004e2f2e000c4e924fef00184878000148780001487800014878002c487800512f2e000c4e924fef00186000fc107002b0826600fc8e182b01397a5f7184ba806400fd94487900000000487800124878004f2f2e000c4eb9000000004fef00106000fcb6",
    "kind": "text",
    "name": ".text.pu_render",
-   "size": 1718
+   "size": 1722
   },
   {
    "align": 2,
@@ -2546,7 +2588,7 @@
    "size": 300
   }
  ],
- "source_sha256": "db4ccfb6ecbf9eeaecfe7397fe7cd4edf318d66acc0e42dcd977ad12932af692",
+ "source_sha256": "33b5393da146eae950d7ca2163db51732644d16b69c1deb807e319c03cb0c8e8",
  "symbols": [
   {
    "global": false,
@@ -2630,6 +2672,12 @@
    "global": false,
    "name": ".sec..rodata.names.1",
    "section": ".rodata.names.1",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..rodata.pu_colour_name.str1.1",
+   "section": ".rodata.pu_colour_name.str1.1",
    "value": 0
   },
   {
@@ -3084,6 +3132,12 @@
   },
   {
    "global": true,
+   "name": "pu_colour_name",
+   "section": ".text.pu_colour_name",
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "pu_context",
    "section": ".text.pu_context",
    "value": 0
@@ -3261,8 +3315,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2581",
-  "isa_check": "bcd49379170b1271725f528f75a4246fb7bfb5de32a65a9663f1cdcbeb6927f1",
+  "instructions_redecoded": "2599",
+  "isa_check": "5f9b6a85d99777baecb6f8d91ef29cab46bd113831e74bface53871a79834505",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

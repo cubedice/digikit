@@ -48,7 +48,7 @@ static void init(PhraseUi *s)
     raw[PH_P_RATE] = 508;
     raw[PH_P_RATIO] = PH_SYNC_UNITY;
     raw[PH_P_RPTS] = 48;
-    raw[PH_P_COLR] = 64;
+    raw[PH_P_COLR] = PH_COLR_CLEAN;
     raw[PH_P_SKEW] = 64;
     raw[PH_P_MIX] = 100;
     writes = 0;
@@ -248,11 +248,19 @@ static void formats(void)
     pu_format(b, PH_P_MIX, 127);
     same(b, "127");
     pu_format(b, PH_P_COLR, 44);
-    same(b, "20");
-    pu_format(b, PH_P_COLR, 64);
+    same(b, "52");
+    pu_format(b, PH_P_COLR, PH_COLR_CLEAN);
     same(b, "0");
     pu_format(b, PH_P_COLR, 108);
-    same(b, "44");
+    same(b, "12");
+    static const struct {
+        uint32_t raw;
+        const char *name;
+    } colours[] = {{0, "OIL"},   {15, "OIL"},  {16, "BBD"},  {39, "BBD"},
+                   {40, "CRUN"}, {63, "CRUN"}, {64, "TAPE"}, {95, "TAPE"},
+                   {96, ""},     {97, "DIGI"}, {127, "DIGI"}};
+    for (uint32_t i = 0; i < sizeof(colours) / sizeof(colours[0]); ++i)
+        same(pu_colour_name(colours[i].raw), colours[i].name);
     pu_format(b, PH_P_SKEW, 52);
     same(b, "L 12");
     pu_format(b, PH_P_SKEW, 64);
@@ -333,15 +341,15 @@ static void page_cells(void)
     same(p.cells[1].state, "FREE");
     same(p.cells[2].value, "INF");
     same(p.cells[2].state, "HOLD");
-    same(p.cells[3].value, "44");
-    same(p.cells[3].state, "BRIT");
+    same(p.cells[3].value, "12");
+    same(p.cells[3].state, "DIGI");
     same(p.cells[4].value, "70");
     same(p.cells[5].value, "R 30");
     assert(p.cells[0].lit && p.cells[2].lit && !p.cells[1].lit && p.mix == 104);
     raw[PH_P_COLR] = 44;
     pu_page(&s, &p);
-    same(p.cells[3].value, "20");
-    same(p.cells[3].state, "DARK");
+    same(p.cells[3].value, "52");
+    same(p.cells[3].state, "CRUN");
     /* Without the loop effect's home the loop cells say there is none. */
     same(p.cells[6].value, "LIVE");
     same(p.cells[7].state, "NO LOOP");
@@ -491,7 +499,7 @@ static void rendering(void)
     raw[PH_P_COLR] = 0;
     pu_page(&s, &p);
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 110, 32, "-64"));
+    assert(saw_at(&d, 110, 32, "-96"));
 }
 static void rate_readout(void)
 {
@@ -1057,8 +1065,8 @@ static void colour_icon(void)
     PhraseUi s;
     Drawn d;
     init(&s);
-    static const uint32_t levels[] = {0, 63, 64, 127};
-    static const int radii[] = {1, 4, 4, 7};
+    static const uint32_t levels[] = {0, PH_COLR_CLEAN - 1, PH_COLR_CLEAN, 127};
+    static const int radii[] = {1, 5, 6, 7};
     for (int i = 0; i < 4; ++i) {
         raw[PH_P_COLR] = levels[i];
         icon_frame(&s, &d);
@@ -1067,7 +1075,7 @@ static void colour_icon(void)
             for (int x = 97; x <= 122; ++x) {
                 int dx = x > 110 ? x - 110 : 110 - x, dy = y > 21 ? y - 21 : 21 - y;
                 int on = dx <= radius && dy <= radius &&
-                         (levels[i] < 64 || dx == radius || dy == radius);
+                         (levels[i] < PH_COLR_CLEAN || dx == radius || dy == radius);
                 assert(d.pixels[y][x] == on);
             }
     }

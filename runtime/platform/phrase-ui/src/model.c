@@ -319,6 +319,15 @@ const char *pu_zone_name(uint32_t zone)
                                                 "ECHO", "LONG", "PHRS", "LOOP"};
     return names[zone < PH_ZONES ? zone : 0];
 }
+const char *pu_colour_name(uint32_t raw)
+{
+    /* The engine's table has a row every 16 steps: the oil can at 0, the warm BBD at 32, the crunch at 48, tape at 80. */
+    if (raw == PH_COLR_CLEAN)
+        return "";
+    if (raw > PH_COLR_CLEAN)
+        return "DIGI";
+    return raw < 16 ? "OIL" : raw < 40 ? "BBD" : raw < 64 ? "CRUN" : "TAPE";
+}
 void pu_format(char out[16], uint32_t p, uint32_t raw)
 {
     /* the SYNC ratios of dk_phrase.inc, shortest first: X a multiple of the zone's 1/1, / a division */
@@ -334,8 +343,8 @@ void pu_format(char out[16], uint32_t p, uint32_t raw)
         return;
     }
     if (p == PH_P_COLR) {
-        /* The distance from the centre, where the repeats are clean; the cell names the side. */
-        number(out, raw < 64 ? 64 - raw : raw - 64);
+        /* The distance from the point where the repeats are uncoloured; the cell names the colour. */
+        number(out, raw < PH_COLR_CLEAN ? PH_COLR_CLEAN - raw : raw - PH_COLR_CLEAN);
         return;
     }
     if (p == PH_P_SKEW && raw != 64) {

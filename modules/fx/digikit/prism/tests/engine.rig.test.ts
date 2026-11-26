@@ -9,6 +9,8 @@ import { afterAll, describe, expect, test } from 'vitest';
 import {
   BANK,
   CH,
+  COLOURS,
+  COLOUR_CLEAN,
   DEVICE_FRAMES,
   PH,
   PS,
@@ -19,6 +21,8 @@ import {
   ZONES,
   bandLevel,
   burst,
+  colourGain,
+  colourRow,
   crossingHz,
   db,
   envelope,
@@ -26,6 +30,7 @@ import {
   levelAt,
   maxSecondDifference,
   noise,
+  PRISM,
   peak,
   rms,
   runSteps,
@@ -254,6 +259,10 @@ describe('PRISM repeater engine: contract', () => {
         expect(fade[k]! ** 2 + fade[128 - k]! ** 2).toBeCloseTo(1, 6);
       }
       expect([fade[0], fade[128]]).toEqual([0, 1]);
+      const colours = await floats('_prism_colours', 3 * COLOURS.length);
+      expect(PRISM.PRISM_COLOUR_ROWS).toBe(COLOURS.length);
+      expect(w2f(PRISM.PRISM_COLOUR_CLEAN!)).toBe(COLOUR_CLEAN);
+      COLOURS.forEach((_, row) => colourRow(row).forEach((number, k) => expect(colours[3 * row + k]).toBeCloseTo(number, 6)));
       const zones = await floats('_prism_zones', 16);
       ZONES.forEach(([low, high], z) => {
         expect(zones[2 * z]).toBe(low);
@@ -849,68 +858,79 @@ describe('PRISM repeater engine: repeats', () => {
 });
 
 describe('PRISM repeater engine: COLR', () => {
-  /** dB from one repeat to the next of a low and a high tone, at unity repeats. */
-  async function tilt(colr: number): Promise<{ low: number[]; high: number[] }> {
+  /** dB from one repeat to the next of a low tone (200 Hz), a high one (4 kHz) and the top (10 kHz), at unity repeats. */
+  async function tilt(colr: number): Promise<{ low: number[]; high: number[]; top: number[] }> {
     return withRig({ frames: 65536 }, async (rig) => {
       const T = 4800;
       rig.set({ sync: true, syncTime: T, rpts: 0.75, colr });
       await rig.run(600);
       const at = 64;
       const start = rig.clock + at;
-      const take = await rig.run(1400, sum(burst(200, 0.08, start, 3840, 480), burst(4000, 0.08, start, 3840, 480)));
+      const tones = sum(burst(200, 0.04, start, 3840, 480), burst(4000, 0.04, start, 3840, 480), burst(10000, 0.04, start, 3840, 480));
+      const take = await rig.run(1400, tones);
       const levels = (lo: number, hi: number) =>
         Array.from({ length: 5 }, (_, k) => bandLevel(take.left, lo, hi, at + (k + 1) * T, at + (k + 1) * T + 3840));
       const steps = (l: number[]) => l.slice(1).map((v, k) => db(v / l[k]!));
-      return { low: steps(levels(150, 250)), high: steps(levels(3600, 4400)) };
+      return { low: steps(levels(150, 250)), high: steps(levels(3600, 4400)), top: steps(levels(9500, 10500)) };
     });
   }
+  const line = (colr: number, t: { low: number[]; high: number[]; top: number[] }): string =>
+    `${colr}: ${t.low[0]!.toFixed(2)} / ${t.high[0]!.toFixed(2)} / ${t.top[0]!.toFixed(2)}`;
 
-  test('at the centre the repeats keep their spectrum', async () => {
-    const { low, high } = await tilt(0);
-    for (const step of [...low, ...high]) expect(Math.abs(step)).toBeLessThan(0.01);
-    note(`COLR 0, dB a repeat at 200 Hz / 4 kHz: ${low[0]!.toFixed(3)} / ${high[0]!.toFixed(3)}`);
+  test('at the uncoloured point, three quarters of the way up, the repeats keep their spectrum', async () => {
+    const { low, high, top } = await tilt(COLOUR_CLEAN);
+    for (const step of [...low, ...high, ...top]) expect(Math.abs(step)).toBeLessThan(0.01);
+    note(`COLR ${COLOUR_CLEAN}, dB a repeat at 200 Hz / 4 kHz / 10 kHz: ${low[0]!.toFixed(3)} / ${high[0]!.toFixed(3)} / ${top[0]!.toFixed(3)}`);
   });
 
-  test('toward dark every repeat loses highs, down to a low pass at 800 Hz', async () => {
-    const quarter = await tilt(-0.25);
-    const half = await tilt(-0.5);
-    const most = await tilt(-0.75);
-    const full = await tilt(-1);
-    note(`COLR dark, dB a repeat at 200 Hz / 4 kHz: ${[['-0.25', quarter], ['-0.5', half], ['-0.75', most], ['-1', full]].map(([name, t]) => `${name as string}: ${(t as typeof full).low[0]!.toFixed(2)} / ${(t as typeof full).high[0]!.toFixed(2)}`).join('; ')}`);
-    // a one-pole low pass at 800 Hz takes 14.2 dB at 4 kHz and 0.3 dB at 200 Hz. The amount is the square of COLR: at a
-    // half the highs fall by 0.24 of what the low pass takes off them (2.4 dB)
-    expect(full.high[0]!).toBeLessThan(-12);
-    expect(full.high[0]!).toBeGreaterThan(-16);
-    expect(half.high[0]!).toBeLessThan(-1.9);
-    expect(half.high[0]!).toBeGreaterThan(-3);
-    // more dark, more loss
-    expect(quarter.high[0]!).toBeLessThan(-0.3);
-    expect(half.high[0]!).toBeLessThan(quarter.high[0]!);
-    expect(most.high[0]!).toBeLessThan(half.high[0]!);
-    expect(full.high[0]!).toBeLessThan(most.high[0]!);
-    for (const step of [...half.low, ...full.low]) expect(step).toBeGreaterThan(-0.6);
-    for (const step of full.high) expect(step).toBeLessThan(-12);
+  test('every repeat takes the filter of the table: at its rows and between them', async () => {
+    const lines: string[] = [];
+    const taken = new Map<number, Awaited<ReturnType<typeof tilt>>>();
+    for (const colr of [-1, -0.75, -0.625, -0.5, -0.25, 0, 0.25, 0.75, 1]) {
+      const t = await tilt(colr);
+      taken.set(colr, t);
+      lines.push(`${line(colr, t)} (the table: ${[200, 4000, 10000].map((hz) => db(colourGain(colr, hz)).toFixed(2)).join(' / ')})`);
+    }
+    note(`COLR, dB a repeat at 200 Hz / 4 kHz / 10 kHz: ${lines.join('; ')}`);
+    for (const [colr, t] of taken) {
+      // one pass of the filter, as the table's numbers give it
+      expect(t.low[0]!).toBeCloseTo(db(colourGain(colr, 200)), 0);
+      expect(t.high[0]!).toBeCloseTo(db(colourGain(colr, 4000)), 0);
+      // the top: below the uncoloured point the heads drift between frames, and reading between frames takes up to 2 dB
+      // more off it
+      const top = db(colourGain(colr, 10000));
+      if (colr >= COLOUR_CLEAN) expect(t.top[0]!).toBeCloseTo(top, 0);
+      else {
+        expect(t.top[0]!).toBeLessThan(top + 0.5);
+        expect(t.top[0]!).toBeGreaterThan(top - 2.5);
+      }
+    }
+    const at = (colr: number) => taken.get(colr)!;
+    // the darkest: a narrow, low band (the oil can)
+    expect(at(-1).high[0]!).toBeLessThan(-14);
+    expect(at(-1).low[0]!).toBeLessThan(-1.5);
+    expect(at(-1).low[0]!).toBeGreaterThan(-4);
+    // a warm BBD: the lows stay, the highs fall
+    expect(at(-0.5).low[0]!).toBeGreaterThan(-0.5);
+    expect(at(-0.5).high[0]!).toBeLessThan(-5);
+    // the mid-range crunch: both ends fall
+    expect(at(-0.25).low[0]!).toBeLessThan(-4);
+    expect(at(-0.25).high[0]!).toBeLessThan(-3);
+    // tape: the lows and most of the highs stay, the top falls
+    expect(at(0.25).low[0]!).toBeGreaterThan(-0.5);
+    expect(at(0.25).high[0]!).toBeGreaterThan(-2);
+    expect(at(0.25).top[0]!).toBeLessThan(-3);
+    // above the uncoloured point: thin (the lows fall) and the top is lifted
+    expect(at(1).low[0]!).toBeLessThan(-11);
+    expect(at(1).top[0]!).toBeGreaterThan(0.5);
+    expect(at(0.75).low[0]!).toBeLessThan(-2);
+    expect(at(0.75).low[0]!).toBeGreaterThan(at(1).low[0]!);
+    // from the warm BBD down, darker with every step
+    expect(at(-0.75).high[0]!).toBeLessThan(at(-0.5).high[0]!);
+    expect(at(-1).high[0]!).toBeLessThan(at(-0.75).high[0]!);
   });
 
-  test('toward bright every repeat loses lows, up to a high pass at 1 kHz', async () => {
-    const quarter = await tilt(0.25);
-    const half = await tilt(0.5);
-    const most = await tilt(0.75);
-    const full = await tilt(1);
-    note(`COLR bright, dB a repeat at 200 Hz / 4 kHz: ${[['0.25', quarter], ['0.5', half], ['0.75', most], ['1', full]].map(([name, t]) => `${name as string}: ${(t as typeof full).low[0]!.toFixed(2)} / ${(t as typeof full).high[0]!.toFixed(2)}`).join('; ')}`);
-    // a one-pole high pass at 1 kHz takes 14.2 dB at 200 Hz and 0.3 dB at 4 kHz; at a half the lows fall by 2.4 dB
-    expect(full.low[0]!).toBeLessThan(-13);
-    expect(full.low[0]!).toBeGreaterThan(-15.5);
-    expect(half.low[0]!).toBeLessThan(-1.9);
-    expect(half.low[0]!).toBeGreaterThan(-3);
-    expect(quarter.low[0]!).toBeLessThan(-0.3);
-    expect(half.low[0]!).toBeLessThan(quarter.low[0]!);
-    expect(most.low[0]!).toBeLessThan(half.low[0]!);
-    expect(full.low[0]!).toBeLessThan(most.low[0]!);
-    for (const step of [...half.high, ...full.high]) expect(step).toBeGreaterThan(-0.5);
-  });
-
-  test('the dark side saturates gently and drifts slowly; the centre does neither', async () => {
+  test('below the uncoloured point the repeats saturate and drift slowly; at it they do neither', async () => {
     const run = (colr: number) =>
       withRig({ frames: 65536 }, async (rig) => {
         rig.set({ sync: true, syncTime: 12000, rpts: 0, colr });
@@ -924,16 +944,24 @@ describe('PRISM repeater engine: COLR', () => {
           wobble: (Math.max(...pitch) - Math.min(...pitch)) / 2000,
         };
       });
-    const centre = await run(0);
-    const dark = await run(-1);
-    expect(centre.third).toBeLessThan(-100);
-    expect(centre.wobble).toBeLessThan(1e-5);
-    // the dark side at a tone of 0.8: a third harmonic well below the tone, and a pitch that moves by about 0.15 %
-    expect(dark.third).toBeGreaterThan(-60);
-    expect(dark.third).toBeLessThan(-25);
-    expect(dark.wobble).toBeGreaterThan(0.0005);
-    expect(dark.wobble).toBeLessThan(0.002);
-    note(`a 1 kHz tone of 0.8, one echo: third harmonic ${centre.third.toFixed(0)} dB at the centre, ${dark.third.toFixed(1)} dB at full dark; pitch drift +-${(dark.wobble * 100).toFixed(3)} % at full dark, ${(centre.wobble * 100).toFixed(4)} % at the centre`);
+    const clean = await run(COLOUR_CLEAN);
+    const digital = await run(1);
+    const crunch = await run(-0.25);
+    const darkest = await run(-1);
+    for (const none of [clean, digital]) {
+      expect(none.third).toBeLessThan(-100);
+      expect(none.wobble).toBeLessThan(1e-5);
+    }
+    // a tone of 0.8 through the crunch row, the one that saturates most: a third harmonic well below the tone
+    expect(crunch.third).toBeGreaterThan(-45);
+    expect(crunch.third).toBeLessThan(-20);
+    expect(darkest.third).toBeGreaterThan(-70);
+    // the drift is the darkest row's most: a pitch that moves by about 0.15 %; a quarter of the way up it is far less
+    expect(darkest.wobble).toBeGreaterThan(0.0005);
+    expect(darkest.wobble).toBeLessThan(0.002);
+    expect(crunch.wobble).toBeLessThan(darkest.wobble / 3);
+    expect(crunch.wobble).toBeGreaterThan(1e-5);
+    note(`a 1 kHz tone of 0.8, one echo: third harmonic ${clean.third.toFixed(0)} dB uncoloured, ${crunch.third.toFixed(1)} dB at COLR -0.25, ${darkest.third.toFixed(1)} dB at -1; pitch drift +-${(darkest.wobble * 100).toFixed(3)} % at -1, +-${(crunch.wobble * 100).toFixed(3)} % at -0.25, ${(clean.wobble * 100).toFixed(4)} % uncoloured`);
   });
 });
 
