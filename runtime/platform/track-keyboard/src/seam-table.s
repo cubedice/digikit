@@ -6,8 +6,8 @@
     .globl tk_image
 tk_image:
     .long 0x544b5331
-    .long 3
-    .long 64
+    .long 4
+    .long 65
     .long tk_defaults
     .long tk_track_defaults
     .long tk_rate_division
@@ -32,6 +32,7 @@ tk_image:
     .long tk_pattern_fw_revision
     .long tk_pattern_fw_selected
     .long tk_pattern_fw_track_base
+    .long tk_pattern_fw_work_write
     .long tk_pool_can_start
     .long tk_pool_capacity
     .long tk_pool_link_init

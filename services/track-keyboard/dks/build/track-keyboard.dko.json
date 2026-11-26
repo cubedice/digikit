@@ -416,6 +416,13 @@
    "type": "cf.32"
   },
   {
+   "addend": 248,
+   "offset": 474,
+   "section": ".text",
+   "symbol": ".sec..bss",
+   "type": "cf.32"
+  },
+  {
    "addend": 0,
    "offset": 0,
    "section": ".rodata",
@@ -1319,63 +1326,63 @@
    "type": "cf.32"
   },
   {
-   "addend": 204,
+   "addend": 208,
    "offset": 2,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 208,
+   "addend": 212,
    "offset": 18,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 212,
+   "addend": 216,
    "offset": 26,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 216,
+   "addend": 220,
    "offset": 34,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 220,
+   "addend": 224,
    "offset": 42,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 224,
+   "addend": 228,
    "offset": 50,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 228,
+   "addend": 232,
    "offset": 58,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 232,
+   "addend": 236,
    "offset": 66,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 240,
+   "addend": 244,
    "offset": 74,
    "section": ".text.canopy_linked",
    "symbol": "tk_img",
@@ -1676,7 +1683,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 236,
+   "addend": 240,
    "offset": 34,
    "section": ".text.tk_canopy_controller",
    "symbol": "tk_img",
@@ -3717,6 +3724,13 @@
    "offset": 52,
    "section": ".text.update_pool",
    "symbol": "tk_pool_fw_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 14,
+   "section": ".text.settings_print",
+   "symbol": "tk_pattern_fw_peek",
    "type": "cf.32"
   },
   {
@@ -6576,7 +6590,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 24,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
@@ -6688,14 +6702,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 180,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 190,
    "section": ".text.refresh_pattern",
    "symbol": "tk_img",
@@ -6961,7 +6975,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 336,
    "section": ".text.poll",
    "symbol": "tk_img",
@@ -6975,14 +6989,14 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 354,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 372,
    "section": ".text.poll",
    "symbol": "tk_img",
@@ -7332,45 +7346,206 @@
    "type": "cf.32"
   },
   {
+   "addend": 0,
+   "offset": 1154,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_looked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1170,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1176,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_looked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1182,
+   "section": ".text.poll",
+   "symbol": ".sec..text.settings_print",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1188,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1200,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_behind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1214,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_print",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1222,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1228,
+   "section": ".text.poll",
+   "symbol": "tk_pattern_fw_work_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1236,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1242,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1254,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_print",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1260,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_behind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1276,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_print",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1284,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_print",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1290,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1298,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1306,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_behind",
+   "type": "cf.32"
+  },
+  {
    "addend": 44,
-   "offset": 1152,
+   "offset": 1312,
    "section": ".text.poll",
    "symbol": ".sec..bss.draft",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1164,
+   "offset": 1324,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1174,
+   "offset": 1334,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1180,
+   "offset": 1340,
    "section": ".text.poll",
    "symbol": "dk_ui_core_menu_front",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1192,
+   "offset": 1352,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1206,
+   "offset": 1366,
    "section": ".text.poll",
    "symbol": ".sec..text.notes_update_title",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1372,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_behind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1382,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_changed",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1396,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1402,
+   "section": ".text.poll",
+   "symbol": "tk_pattern_fw_work_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1410,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
   },
   {
@@ -9390,7 +9565,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 108,
    "section": ".text.tk_native_kind",
    "symbol": "tk_img",
@@ -9411,7 +9586,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 36,
    "section": ".text.tk_native_relay_sound",
    "symbol": "tk_img",
@@ -10181,7 +10356,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 252,
+   "addend": 256,
    "offset": 170,
    "section": ".text.tk_trig_refresh_keys",
    "symbol": "tk_img",
@@ -14381,7 +14556,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 248,
+   "addend": 252,
    "offset": 42,
    "section": ".text.tk_capture_midi_mode",
    "symbol": "tk_img",
@@ -15235,7 +15410,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 434,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_img",
@@ -15417,7 +15592,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 244,
+   "addend": 248,
    "offset": 1094,
    "section": ".text.tk_pool_fw_update",
    "symbol": "tk_img",
@@ -16222,7 +16397,7 @@
    "type": "cf.32"
   },
   {
-   "addend": 212,
+   "addend": 216,
    "offset": 56,
    "section": ".text._RNvNtCs1u70TlLGtUb_23dkrt_svc_track_keyboard4seam6usable",
    "symbol": ".sec..rodata.global.13",
@@ -16386,10 +16561,10 @@
  "sections": [
   {
    "align": 4,
-   "hex": "2279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed1",
+   "hex": "2279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed12279000000004ed1",
    "kind": "text",
    "name": ".text",
-   "size": 472
+   "size": 480
   },
   {
    "align": 4,
@@ -16403,7 +16578,7 @@
    "hex": "",
    "kind": "bss",
    "name": ".bss",
-   "size": 256
+   "size": 260
   },
   {
    "align": 2,
@@ -17184,6 +17359,13 @@
   },
   {
    "align": 2,
+   "hex": "2f02202f00084a8067342f004eb900000000588f4a80672691c8223c811c9dc575b008005288b581243c010001934c021800b1fc0000400066e670018081241f4e75",
+   "kind": "text",
+   "name": ".text.settings_print",
+   "size": 66
+  },
+  {
+   "align": 2,
    "hex": "4e56ffe01039000000002f032f024a3900000000670000be4a00670a74ff76ff2d43ffe0604a75b90000000071b900000000486effe42f004eb900000000508f2d40ffe04a806d2871b90000000041f90000000073b0080055814a8167122f2effe42f004eb900000000508f4a0067ae71b90000000022002040528120025280e188484142418280202effe052808280b2b90000000067302f2effe02f022f08240e0682ffffffe82f0223c1000000004eb9000000002f022f39000000004eb9000000004fef0018242effd8262effdc4e5e4e754a006600ff4474ff6000ff4e",
    "kind": "text",
    "name": ".text.notes_update_title",
@@ -17506,10 +17688,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff9448d73cfc4eb9000000004a00670004a82e0e42854bf9000000000687ffffffe2758576011805ebab2f024eb900000000588f4a00660002cc2f024eb900000000588f24003039000000007201b28257c67984c0834a40674e45f90000000071b25800b4806700008e2f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80660c42a72f044eb900000000508f20034680323900000000c08133c00000000070ffb082675e2f044eb900000000588f4a00673a7202b282660002482f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b28266000236487800012f044eb900000000508f448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fed82079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000240090b90000000023c2000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032600d6b9000000004c4130004c41300323c0000000004eb9000000003f0042672f034eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001ea4ab900000000670001e045eeffca2f0a4eb9000000004eb900000000588f2d40ffbc4a80670e2f004eb900000000588f2d40ffbc428342aeffc42a124a856700018abab90000000067000180420041eeffe24281b681660000ec4a006600016c2f054eb900000000588f28404a806700015a38390000000047ec003242874bf900000000468471f9000000000f006700011873872c2a00042f012d41ffc04eb900000000588f222effc020404a80672a71b5780022407002b0896600009a4aaeffbc6716bcaeffbc66102f014eb900000000588f4a00660000d07001efa88880600000c674ff6000fd3e7003b082660c2f074eb9000000006000fdb22006448071802f072f004eb900000000508f6000fd9e4a8267087003b0826600fdd0303900000000c0834a406700fdc22f044eb90000000071802f002f044e954fef000c6000fdaaba9057c4528141e8000a448480846000ff007003b08966204aaeffbc6700ff78bcaeffbc6600ff704a6800326600ff684a5367306000ff602f012f062d48ffc04eb900000000508f73b57800206effc0b2806600ff4253804a8066ccbcaeffbc6600ff34528747eb00387010b0876600fed2700a4c03080052833d8408ea2d8508e22d8c08e652aeffc4508a7203b2aeffc46600fe622f03486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000508f207900000000b1f900000000674220390000000041f90000000023d0000000004a80670c220292800c81000005db63207001808223c0000000004eb9000000004879000000002f004eb900000000508f4eb9000000004a390000000067342002727790b900000000b28064262f39000000004eb900000000588f4a80671423c2000000004cee3cfcff944e5e4ef9000000004cee3cfcff944e5e4e75",
+   "hex": "4e56ff9448d73cfc4eb9000000004a00670005782e0e42854bf9000000000687ffffffe2758576011805ebab2f024eb900000000588f4a00660002cc2f024eb900000000588f24003039000000007201b28257c67984c0834a40674e45f90000000071b25800b4806700008e2f044eb90000000042a72f044eb9000000004fef000c71b2580055804a80660c42a72f044eb900000000508f20034680323900000000c08133c00000000070ffb082675e2f044eb900000000588f4a00673a7202b282660002482f074eb900000000588f2f072f044eb900000000508f4a00671830390000000041f90000000011825800808333c0000000007202b28266000236487800012f044eb900000000508f448652857d862f062f044eb9000000003039000000007203b28257c2c68044824a4356c34483c68277832f032f044eb9000000004fef00107010b0856600fed82079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000240090b90000000023c2000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032600d6b9000000004c4130004c41300323c0000000004eb9000000003f0042672f034eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001ea4ab900000000670001e045eeffca2f0a4eb9000000004eb900000000588f2d40ffbc4a80670e2f004eb900000000588f2d40ffbc428342aeffc42a124a856700018abab90000000067000180420041eeffe24281b681660000ec4a006600016c2f054eb900000000588f28404a806700015a38390000000047ec003242874bf900000000468471f9000000000f006700011873872c2a00042f012d41ffc04eb900000000588f222effc020404a80672a71b5780022407002b0896600009a4aaeffbc6716bcaeffbc66102f014eb900000000588f4a00660000d07001efa88880600000c674ff6000fd3e7003b082660c2f074eb9000000006000fdb22006448071802f072f004eb900000000508f6000fd9e4a8267087003b0826600fdd0303900000000c0834a406700fdc22f044eb90000000071802f002f044e954fef000c6000fdaaba9057c4528141e8000a448480846000ff007003b08966204aaeffbc6700ff78bcaeffbc6600ff704a6800326600ff684a5367306000ff602f012f062d48ffc04eb900000000508f73b57800206effc0b2806600ff4253804a8066ccbcaeffbc6600ff34528747eb00387010b0876600fed2700a4c03080052833d8408ea2d8508e22d8c08e652aeffc4508a7203b2aeffc46600fe622f03486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000508f207900000000b1f900000000674220390000000041f90000000023d0000000004a80670c220292800c81000005db63207001808223c0000000004eb9000000004879000000002f004eb900000000508f4eb900000000200290b9000000000c80000001766300009020390000000023c20000000045f900000000b0b900000000674a4a8067244a3900000000660e2f004e92588fb0b900000000670e2f39000000004eb900000000588f20390000000023c0000000002f004e92420123c00000000013c100000000588f602a2f004e92588fb0b900000000675823c0000000004ab90000000056c023c200000000448013c0000000004a390000000067642002727790b900000000b28064562f39000000004eb900000000588f4a80674423c2000000004cee3cfcff944e5e4ef9000000004a390000000067bc200290b9000000000c8000000bb763ac2f39000000004eb900000000420013c0000000006000ff684cee3cfcff944e5e4e75",
    "kind": "text",
    "name": ".text.poll",
-   "size": 1220
+   "size": 1428
   },
   {
    "align": 2,
@@ -17874,6 +18056,41 @@
    "kind": "bss",
    "name": ".bss.draft",
    "size": 48
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_behind",
+   "size": 1
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_looked",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_changed",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_print",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.work_pattern",
+   "size": 4
   },
   {
    "align": 1,
@@ -19732,10 +19949,10 @@
   },
   {
    "align": 16,
-   "hex": "000000010001000000000000000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e0000001f000000200000002100000022000000230000002400000025000000260000002700000028000000290000002a0000002b0000002c0000002d0000002e0000002f0000003000000031000000320000003e0000003f",
+   "hex": "000000010001000000000000000000030000000400000005000000060000000700000008000000090000000a0000000b0000000c0000000d0000000e0000000f000000100000001100000012000000130000001400000015000000160000001700000018000000190000001a0000001b0000001c0000001d0000001e0000001f000000200000002100000022000000230000002400000025000000260000002700000028000000290000002a0000002b0000002c0000002d0000002e0000002f000000300000003100000032000000330000003f00000040",
    "kind": "data",
    "name": ".rodata.global.13",
-   "size": 212
+   "size": 216
   },
   {
    "align": 1,
@@ -19781,14 +19998,14 @@
   },
   {
    "align": 2,
-   "hex": "202f0004222f0008204058882241588906800000010022d8b08866fa204120bc544b53314e75",
+   "hex": "202f0004222f0008204058882241588906800000010422d8b08866fa204120bc544b53314e75",
    "kind": "text",
    "name": ".text._RNvNtCs1u70TlLGtUb_23dkrt_svc_track_keyboard4seam4copy",
    "size": 38
   },
   {
    "align": 2,
-   "hex": "206f00044a88670a203c544b5331b090670442004e757003b0a8000466f47040b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
+   "hex": "206f00044a88670a203c544b5331b090670442004e757004b0a8000466f47041b0a8000866ec43f900000000600820194ab00c0067dcb3fc0000000066f0700160d2",
    "kind": "text",
    "name": ".text._RNvNtCs1u70TlLGtUb_23dkrt_svc_track_keyboard4seam6usable",
    "size": 66
@@ -19955,7 +20172,7 @@
    "size": 24
   }
  ],
- "source_sha256": "6c0f98988d0960d91fc5351e85a91c34dfdc8000742c91ff340981d36c8e98d6",
+ "source_sha256": "74982f653a82a4effa54980e569277555caf344e6693f7c0af466069b28a5024",
  "symbols": [
   {
    "global": false,
@@ -20735,6 +20952,36 @@
    "global": false,
    "name": ".sec..bss.was_running",
    "section": ".bss.was_running",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_behind",
+   "section": ".bss.work_behind",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_changed",
+   "section": ".bss.work_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_looked",
+   "section": ".bss.work_looked",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_pattern",
+   "section": ".bss.work_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.work_print",
+   "section": ".bss.work_print",
    "value": 0
   },
   {
@@ -21795,6 +22042,12 @@
   },
   {
    "global": false,
+   "name": ".sec..text.settings_print",
+   "section": ".text.settings_print",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": ".sec..text.start",
    "section": ".text.start",
    "value": 0
@@ -22469,7 +22722,7 @@
    "global": true,
    "name": "cp_valid",
    "section": ".text",
-   "value": 384
+   "value": 392
   },
   {
    "global": false,
@@ -22571,19 +22824,19 @@
    "global": true,
    "name": "dk_ui_core_handle",
    "section": ".text",
-   "value": 288
+   "value": 296
   },
   {
    "global": true,
    "name": "dk_ui_core_list_title",
    "section": ".text",
-   "value": 296
+   "value": 304
   },
   {
    "global": true,
    "name": "dk_ui_core_menu_front",
    "section": ".text",
-   "value": 304
+   "value": 312
   },
   {
    "global": true,
@@ -22679,37 +22932,37 @@
    "global": true,
    "name": "dkrt_blocks",
    "section": ".text",
-   "value": 312
+   "value": 320
   },
   {
    "global": true,
    "name": "dkrt_instrument_type",
    "section": ".text",
-   "value": 320
+   "value": 328
   },
   {
    "global": true,
    "name": "dkrt_irq_mask",
    "section": ".text",
-   "value": 328
+   "value": 336
   },
   {
    "global": true,
    "name": "dkrt_irq_restore",
    "section": ".text",
-   "value": 336
+   "value": 344
   },
   {
    "global": true,
    "name": "dkrt_module",
    "section": ".text",
-   "value": 344
+   "value": 352
   },
   {
    "global": true,
    "name": "dkrt_poll_add",
    "section": ".text",
-   "value": 352
+   "value": 360
   },
   {
    "global": false,
@@ -22871,7 +23124,7 @@
    "global": true,
    "name": "ilp_event_pair",
    "section": ".text",
-   "value": 392
+   "value": 400
   },
   {
    "global": false,
@@ -22883,49 +23136,49 @@
    "global": true,
    "name": "instrument_lock_source",
    "section": ".text",
-   "value": 400
+   "value": 408
   },
   {
    "global": true,
    "name": "instrument_locked_sound",
    "section": ".text",
-   "value": 408
+   "value": 416
   },
   {
    "global": true,
    "name": "instrument_src_track_keyboard",
    "section": ".text",
-   "value": 416
+   "value": 424
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_controller",
    "section": ".text",
-   "value": 448
+   "value": 456
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_lanes",
    "section": ".text",
-   "value": 424
+   "value": 432
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_legacy",
    "section": ".text",
-   "value": 432
+   "value": 440
   },
   {
    "global": true,
    "name": "instrument_track_keyboard_locked_note",
    "section": ".text",
-   "value": 440
+   "value": 448
   },
   {
    "global": true,
    "name": "instrument_track_owned",
    "section": ".text",
-   "value": 456
+   "value": 464
   },
   {
    "global": false,
@@ -23519,19 +23772,19 @@
    "global": true,
    "name": "pp_current_pattern",
    "section": ".text",
-   "value": 360
+   "value": 368
   },
   {
    "global": true,
    "name": "pp_selected_tempo",
    "section": ".text",
-   "value": 368
+   "value": 376
   },
   {
    "global": true,
    "name": "pp_transport_running",
    "section": ".text",
-   "value": 376
+   "value": 384
   },
   {
    "global": false,
@@ -23747,7 +24000,7 @@
    "global": true,
    "name": "rtm_is_type",
    "section": ".text",
-   "value": 464
+   "value": 472
   },
   {
    "global": false,
@@ -23867,6 +24120,12 @@
    "global": false,
    "name": "settings_of",
    "section": ".text.settings_of",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "settings_print",
+   "section": ".text.settings_print",
    "value": 0
   },
   {
@@ -24603,6 +24862,12 @@
   },
   {
    "global": true,
+   "name": "tk_pattern_fw_work_write",
+   "section": ".text",
+   "value": 192
+  },
+  {
+   "global": true,
    "name": "tk_pattern_has_track",
    "section": ".text",
    "value": 112
@@ -24647,13 +24912,13 @@
    "global": true,
    "name": "tk_pool_can_start",
    "section": ".text",
-   "value": 192
+   "value": 200
   },
   {
    "global": true,
    "name": "tk_pool_capacity",
    "section": ".text",
-   "value": 200
+   "value": 208
   },
   {
    "global": true,
@@ -24749,31 +25014,31 @@
    "global": true,
    "name": "tk_pool_link_init",
    "section": ".text",
-   "value": 208
+   "value": 216
   },
   {
    "global": true,
    "name": "tk_pool_link_quiet",
    "section": ".text",
-   "value": 216
+   "value": 224
   },
   {
    "global": true,
    "name": "tk_pool_link_ready",
    "section": ".text",
-   "value": 224
+   "value": 232
   },
   {
    "global": true,
    "name": "tk_pool_publish_frame",
    "section": ".text",
-   "value": 232
+   "value": 240
   },
   {
    "global": true,
    "name": "tk_pool_update",
    "section": ".text",
-   "value": 240
+   "value": 248
   },
   {
    "global": true,
@@ -25301,13 +25566,13 @@
    "global": true,
    "name": "tk_stock_step_clear",
    "section": ".text",
-   "value": 264
+   "value": 272
   },
   {
    "global": true,
    "name": "tk_stock_step_clip_get",
    "section": ".text",
-   "value": 280
+   "value": 288
   },
   {
    "global": true,
@@ -25325,7 +25590,7 @@
    "global": true,
    "name": "tk_stock_step_copy",
    "section": ".text",
-   "value": 248
+   "value": 256
   },
   {
    "global": true,
@@ -25337,7 +25602,7 @@
    "global": true,
    "name": "tk_stock_step_paste",
    "section": ".text",
-   "value": 256
+   "value": 264
   },
   {
    "global": true,
@@ -25355,7 +25620,7 @@
    "global": true,
    "name": "tk_stock_step_toggle",
    "section": ".text",
-   "value": 272
+   "value": 280
   },
   {
    "global": true,
@@ -25707,6 +25972,36 @@
   },
   {
    "global": false,
+   "name": "work_behind",
+   "section": ".bss.work_behind",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_changed",
+   "section": ".bss.work_changed",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_looked",
+   "section": ".bss.work_looked",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_pattern",
+   "section": ".bss.work_pattern",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "work_print",
+   "section": ".bss.work_print",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "write_at",
    "section": ".bss.write_at",
    "value": 0
@@ -25723,8 +26018,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "DK_SVC_OWNER dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "18722",
-  "isa_check": "9b4dba7cc039b028c1d7e7b8c50bf44fd98bd923b0714e52659b7151d89009c7",
+  "instructions_redecoded": "18798",
+  "isa_check": "6d9e1d04368f328a79fd04993d1d9ee773d725dbe740d121753f40d5de7d6975",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",
