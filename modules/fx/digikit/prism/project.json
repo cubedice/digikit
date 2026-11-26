@@ -19,13 +19,7 @@
           "core/phrase-ui",
           "core/health"
         ],
-        "plusdrive": true,
-        "tags": [
-          "A:core/dynfx",
-          "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/fxview"
-        ]
+        "plusdrive": true
       },
       {
         "files": [
@@ -46,11 +40,11 @@
           "core/health"
         ],
         "plusdrive": true,
-        "tags": [
-          "A:core/dynfx",
-          "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/fxview"
+        "incidental": [
+          {
+            "module": "core/services/machines",
+            "reason": "the host machine service of test/sine, the tests' source sound; the machine rows are not asserted here"
+          }
         ]
       },
       {
@@ -79,12 +73,23 @@
           "core/health"
         ],
         "plusdrive": true,
-        "tags": [
-          "A:core/dynfx",
-          "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/fxview",
-          "S:instrument"
+        "incidental": [
+          {
+            "module": "core/services/machines",
+            "reason": "loaded beside PRISM to prove the owner's hardware selection coexists (all load, PRISM's page and sends work); its own behaviour is not asserted here"
+          },
+          {
+            "module": "digikit/canopy",
+            "reason": "loaded beside PRISM to prove the owner's hardware selection coexists (all load, PRISM's page and sends work); its own behaviour is not asserted here"
+          },
+          {
+            "module": "digikit/remote",
+            "reason": "loaded beside PRISM to prove the owner's hardware selection coexists (all load, PRISM's page and sends work); its own behaviour is not asserted here"
+          },
+          {
+            "module": "core/services/instrument",
+            "reason": "loaded beside PRISM to prove the owner's hardware selection coexists (all load, PRISM's page and sends work); its own behaviour is not asserted here"
+          }
         ]
       },
       {
@@ -110,12 +115,11 @@
           "core/health"
         ],
         "plusdrive": true,
-        "tags": [
-          "A:core/dynfx",
-          "A:core/fxpages",
-          "A:core/phrase-ui",
-          "A:core/loop-display",
-          "A:core/fxview"
+        "incidental": [
+          {
+            "module": "core/services/machines",
+            "reason": "the host machine service of test/sine, the tests' source sound; the machine rows are not asserted here"
+          }
         ]
       }
     ]
@@ -124,5 +128,14 @@
     "test-device": {
       "cache": false
     }
-  }
+  },
+  "implicitDependencies": [
+    "core/services/fx",
+    "dkrt-svc-fx",
+    "digikit/overloop",
+    "core/phrase-ui",
+    "core/phrase-control",
+    "core/fxview",
+    "core/dynfx"
+  ]
 }
