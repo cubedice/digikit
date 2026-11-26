@@ -983,11 +983,17 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         *w++ = ' ';
         uint16_t bit = (uint16_t)(1u << track);
         int owner = tk_pool_fw_owner(track);
+        /* A track that cannot lend its voice says why when its machine is the reason: a MIDI track has no audio voice, CANOPY
+         * and RELAY play their own. Any other audio track has trigs or locks in the pattern, or another claim. */
+        const char *unavailable = kind[track] == TK_NATIVE_MIDI     ? "MIDI"
+                                  : kind[track] == TK_NATIVE_CANOPY ? "CANOPY"
+                                  : kind[track] == TK_NATIVE_RELAY  ? "RELAY"
+                                                                    : "IN USE";
         const char *state = pool_request & bit    ? owner == pool_owner ? "RESERVED" : "SELECTED"
                             : pool_original & bit ? "REMOVE"
                             : owner == pool_owner ? "BORROWED"
                             : pool_eligible & bit ? "AVAILABLE"
-                                                  : "IN USE";
+                                                  : unavailable;
         while (*state)
             *w++ = *state++;
         *w = 0;
