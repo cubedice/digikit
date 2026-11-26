@@ -5,7 +5,16 @@
     "test-only"
   ],
   "implicitDependencies": [
-    "digikit/canopy"
+    "digikit/canopy",
+    "core/instrument-play",
+    "core/track-keyboard",
+    "core/services/instrument",
+    "dkrt-svc-instrument",
+    "core/services/track-keyboard",
+    "dkrt-svc-track-keyboard",
+    "core/services/machines",
+    "dkrt-svc-machines",
+    "core/runtime-package"
   ],
   "metadata": {
     "runtimeAcceptance": [
@@ -27,13 +36,6 @@
           "core/instrument-play",
           "core/track-keyboard",
           "core/health"
-        ],
-        "tags": [
-          "S:machines",
-          "A:core/instrument-play",
-          "S:instrument",
-          "C:loading",
-          "S:track-keyboard"
         ]
       },
       {
@@ -54,12 +56,6 @@
           "core/instrument-play",
           "core/track-keyboard",
           "core/health"
-        ],
-        "tags": [
-          "S:machines",
-          "A:core/instrument-play",
-          "S:instrument",
-          "S:track-keyboard"
         ]
       },
       {
@@ -110,13 +106,26 @@
           "core/instrument-play",
           "core/track-keyboard",
           "core/health"
+        ]
+      },
+      {
+        "files": [
+          "track-keyboard.device.test.ts"
         ],
-        "tags": [
-          "S:machines",
-          "A:core/instrument-play",
-          "C:state",
-          "S:instrument",
-          "S:track-keyboard"
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "core/services/machines",
+          "core/services/instrument",
+          "core/services/track-keyboard"
+        ],
+        "patchModules": [
+          "core/track-keyboard",
+          "core/instrument-play",
+          "core/health"
         ]
       }
     ]

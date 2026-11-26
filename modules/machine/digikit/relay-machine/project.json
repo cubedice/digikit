@@ -22,15 +22,7 @@
           "core/health",
           "core/input"
         ],
-        "plusdrive": true,
-        "tags": [
-          "A:core/relay-track",
-          "A:core/pattern-position",
-          "S:instrument",
-          "S:relay",
-          "A:core/relay-input",
-          "A:core/fxview"
-        ]
+        "plusdrive": true
       }
     ]
   },
@@ -38,5 +30,17 @@
     "test-device": {
       "cache": false
     }
-  }
+  },
+  "implicitDependencies": [
+    "core/services/relay",
+    "dkrt-svc-relay",
+    "core/services/instrument",
+    "dkrt-svc-instrument",
+    "core/services/machines",
+    "dkrt-svc-machines",
+    "core/relay-track",
+    "core/relay-input",
+    "core/pattern-position",
+    "core/fxview"
+  ]
 }

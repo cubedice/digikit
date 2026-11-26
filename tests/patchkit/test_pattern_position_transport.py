@@ -16,7 +16,7 @@ import pytest
 from tools.patchkit import pk_sharc, pk_toolchains
 
 ROOT = Path(__file__).resolve().parents[2]
-PROVIDER = ROOT / "image-modules/adapters/pattern-position"
+PROVIDER = ROOT / "runtime/platform/pattern-position"
 LINK = ROOT / "runtime/platform/dsp-link"
 MAGIC, SALT = 0x50504F53, 0x7B91D6E3
 RX, DATA, BASE, BACK = 0x200A0000, 0x20090000, 0xB90000, 0xB9F000

@@ -4,12 +4,16 @@ import { expect } from 'vitest';
 import { LOG_KIND } from '@digi/dk-session/gen_proto';
 import type { TestRuntime } from '@digi/regression/support.ts';
 import { liveArtifacts, record } from '@digi/regression/runtime/artifacts.ts';
-import { captureNote, frames, pickSine, readFloatWav, word } from '@digi/regression/runtime/fx-live.ts';
+import { captureNote } from '@digi/regression/runtime/note-capture.ts';
+import { frames } from '@digi/regression/runtime/dsp-state.ts';
+import { pickSine } from '@digi/regression/runtime/panel-waits.ts';
+import { readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
+import { word } from '@digi/regression/runtime/guest-access.ts';
 import { DEBUG_MODULE, moduleStorePath } from '@digi/regression/runtime/install.ts';
 import { sendCc, sendNote, sendNoteOff } from '@digi/regression/runtime/midi.ts';
 import { TRACK_OBJ_WORD } from '@digi/regression/runtime/project-kit.ts';
 import { runtimeTests } from '@digi/regression/runtime/ready.ts';
-import { bootInfo } from '@digi/regression/runtime/card-kit.ts';
+import { bootInfo } from '@digi/regression/runtime/guest-mailbox.ts';
 import { planSymbol, prepareRuntimePlan, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { cliInstall, transferCommand } from '@digi/regression/runtime/transfer-cli.ts';
 
@@ -58,11 +62,11 @@ async function cstr(rt: TestRuntime, addr: number): Promise<string> {
   return Buffer.from(end < 0 ? out : out.slice(0, end)).toString('latin1');
 }
 
-/** Row layout from `dynreg_info` (words: M_ROWS 3, M_ROW_SIZE 4, M_FIRST 5, O_NAME 18, O_SNAME 19, EMPTY 29): the machine row of `type`. */
+/** Row layout from `rows_info` (words: M_ROWS 3, M_ROW_SIZE 4, M_FIRST 5, O_NAME 18, O_SNAME 19, EMPTY 29): the machine row of `type`. */
 const INFO = { rows: 3, size: 4, first: 5, name: 18, sname: 19, empty: 29 } as const;
 
 async function machineRow(rt: TestRuntime, plan: RuntimePlan, type: number) {
-  const info = planSymbol(plan, 'dynreg_info');
+  const info = planSymbol(plan, 'rows_info');
   const w = (i: number) => word(rt.session, info + 4 * i);
   const row = (await w(INFO.rows)) + ((await w(INFO.size)) * (type - (await w(INFO.first))));
   return { row, name: await w(INFO.name), sname: await w(INFO.sname), empty: await w(INFO.empty) };
@@ -114,7 +118,7 @@ async function expectMissingAndSilent(rt: TestRuntime): Promise<void> {
   const artifacts = liveArtifacts(rt.session, 'missing');
   const sinePath = moduleStorePath(device as 'dt2' | 'dn2', 'test/sine');
   await cliInstall(rt.session, 'test/sine', artifacts, 300_000, [DEBUG_MODULE]);
-  const plan = await prepareRuntimePlan(rt.session, artifacts, ['dynreg_info', 'DKRT_BOOT']);
+  const plan = await prepareRuntimePlan(rt.session, artifacts, ['rows_info', 'DKRT_BOOT']);
   // the next boot would load the debug module alone: the machine is outside the saved selection
   await rt.dk.select([moduleStorePath(device as 'dt2' | 'dn2', DEBUG_MODULE)]);
   await transferCommand(rt.session, ['install', OTHER_ID], path.join(artifacts, 'install-other.log'), 300_000);

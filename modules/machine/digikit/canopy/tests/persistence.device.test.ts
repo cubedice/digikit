@@ -15,9 +15,10 @@ import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.t
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
-import { bootInfo, currentRecord, recordsIn } from '@digi/regression/runtime/card-kit.ts';
+import { bootInfo } from '@digi/regression/runtime/guest-mailbox.ts';
+import { currentRecord, recordsIn } from '@digi/regression/runtime/card-record.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
-import { REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';
 
 describeOn('dt2', 'CANOPY persistence on the DT2', () => {

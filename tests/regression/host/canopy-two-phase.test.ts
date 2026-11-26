@@ -20,7 +20,7 @@ test('task slab staging permits IRQ publication and commits reservations atomica
         '-fsanitize=undefined',
         path.join(import.meta.dirname, 'canopy-two-phase.c'),
         path.join(fixture, 'two-phase.c'),
-        path.join(root, 'image-modules/adapters/instrument-play/src/cf/sound-pool.c'),
+        path.join(root, 'runtime/platform/instrument-play/src/cf/sound-pool.c'),
         '-o',
         executable,
       ],

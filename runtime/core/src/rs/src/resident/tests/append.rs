@@ -166,7 +166,7 @@ fn the_ui_hooks_are_the_last_group_of_the_package_hooks() {
 #[test]
 fn the_appended_groups_are_the_last_ones_so_an_older_package_is_a_prefix() {
     use core::mem::{offset_of, size_of};
-    assert!(RESIDENT_MINOR >= 4, "this test is about the appends of 1.1 to 1.3; minor 4 appended only an entry to the `ui` group of `PackageHooks` (above) and minor 5 only entries inside two groups (below): a later minor that appends to this table after `exports` needs its own case");
+    assert!(RESIDENT_MINOR >= 4, "this test is about the appends of 1.1 to 1.3; minor 4 appended only an entry to the `ui` group of `PackageHooks` (above), minor 5 only entries inside `ImportRows` and minor 6 only entries inside two groups (below): a later minor that appends to this table after `exports` needs its own case");
     let pointer = size_of::<*const ()>();
     assert_eq!(offset_of!(ResidentTable, links) + pointer, offset_of!(ResidentTable, host_dir));
     assert_eq!(offset_of!(ResidentTable, host_dir) + pointer, offset_of!(ResidentTable, exports));
@@ -204,6 +204,28 @@ fn the_appended_groups_are_the_last_ones_so_an_older_package_is_a_prefix() {
     assert_eq!(copy().header.minor, RESIDENT_MINOR);
 }
 
+#[test]
+fn observer_imports_extend_the_resident_2_4_prefix() {
+    use core::mem::{offset_of, size_of};
+    use dkrt_abi::resident::ImportRows;
+
+    let pointer = size_of::<*const ()>();
+    // These are the slots in the 2.4 group, not offsets derived from the new fields.
+    assert_eq!(offset_of!(ImportRows, dk_debug_setup), 32 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_device_track_count), 33 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_selected_track), 34 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_log_sink_set), 35 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_speed_flags), 36 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_top_view), 37 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_read_parameter), 38 * pointer);
+
+    assert!(open(&copy(), 5).is_ok());
+    let mut old = copy();
+    old.header.minor = 4;
+    let refused = open(&old, 5).err().expect("observer imports require a 2.5 resident");
+    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 4, 5));
+}
+
 /// `PackageState.package_bytes` was appended to a shared view (RC2s-3): a view layout change is a major bump (`resident.rs`, "Shared views"), so the major is 2. A package built
 /// for major 2 is refused by a core of major 1 (which has the shorter `PackageState`) and by a core of a later major, with the version reason: no package reads a view
 /// laid out for another major.
@@ -219,19 +241,20 @@ fn a_change_of_a_shared_view_layout_is_a_major_version() {
     assert_eq!(open(&newer_core, RESIDENT_MINOR).err().map(|r| r.reason), Some(Reason::Major));
 }
 
-/// Minor 5 (the fork's instrument host in the package, docs/plans/upstream-merge-1124) appended one entry at the end of two groups: `instrument` of `LinkRows` (the
-/// image functions the host calls) and `instrument` of `Views` (the image's instrument words). A minor-4 package reads both groups as the prefix it knows; a minor-5
-/// package is refused by a minor-4 core (by the minor, before it reads a group the core built shorter).
+/// Minor 6 (the fork's instrument host in the package, docs/plans/upstream-merge-1124; it was the fork's minor 5 until upstream's 2.5 took that number for the
+/// observer imports, docs/plans/upstream-merge-1125 D4) appended one entry at the end of two groups: `instrument` of `LinkRows` (the image functions the host calls)
+/// and `instrument` of `Views` (the image's instrument words). A minor-5 package reads both groups as the prefix it knows; a minor-6 package is refused by a
+/// minor-5 core (by the minor, before it reads a group the core built shorter).
 #[test]
-fn minor_5_appended_the_instrument_entries_at_the_end_of_links_and_views() {
+fn minor_6_appended_the_instrument_entries_at_the_end_of_links_and_views() {
     use core::mem::{offset_of, size_of};
     use dkrt_abi::resident::{InstrumentLinks, InstrumentViews, LinkRows, Views};
-    assert_eq!(RESIDENT_MINOR, 5, "minor 5 appended the instrument entries: a later minor needs its own case");
+    assert_eq!(RESIDENT_MINOR, 6, "minor 6 appended the instrument entries: a later minor needs its own case");
     assert_eq!(offset_of!(LinkRows, instrument) + size_of::<InstrumentLinks>(), size_of::<LinkRows>());
     assert_eq!(offset_of!(Views, instrument) + size_of::<InstrumentViews>(), size_of::<Views>());
-    let mut core_1_4 = copy();
-    core_1_4.header.minor = 4;
-    let refused = open(&core_1_4, 5).err().expect("a minor-5 package on a minor-4 core is refused");
-    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 4, 5));
-    assert!(open(&copy(), 4).is_ok());
+    let mut core_2_5 = copy();
+    core_2_5.header.minor = 5;
+    let refused = open(&core_2_5, 6).err().expect("a minor-6 package on a minor-5 core is refused");
+    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 5, 6));
+    assert!(open(&copy(), 5).is_ok());
 }

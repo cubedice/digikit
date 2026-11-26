@@ -8,7 +8,7 @@
 table = "0.13.0"    # the least version a packed `.dkm` needs: `patchkit pack` writes at least this, so the loader refuses a module of an older MINOR (the 0.7 format, no header table, among them) with E_CONTRACT. It is the current MINOR: the loader accepts only the runtime's MAJOR and MINOR, so a module that links no import newer than the last MINOR needs this floor to load (raise it with `version` at every MINOR)
 service_registration = "0.12.1" # minimum runtime for callback ordering and service-local APIs
 resident_query = "0.12.2" # minimum runtime for the optional resident query facet
-version = "0.13.0"  # 0.x (stable is 1.0.0): a MINOR may break (an import changed or removed, the module file format, the store format, the SysEx protocol); a PATCH only adds
+version = "0.13.2"  # 0.x (stable is 1.0.0): a MINOR may break (an import changed or removed, the module file format, the store format, the SysEx protocol); a PATCH only adds
 # The one-version rule (docs/plans/sdk.md section 5.1): every `[[import]]` has `since`, the runtime version that added it (a string "0.7.0"; S3 is breaking, so every import has 0.7.0).
 # `patchkit pack` writes the newest `since` among the imports a module links into the `.dkm` header (word 0x30, the runtime version the module needs; bit 31 is the trace flag,
 # 0 when the module links no service import). The runtime loads a module only when that version has the runtime's MAJOR and MINOR and a PATCH at most the runtime's; otherwise
@@ -1501,6 +1501,22 @@ sig = "i32 (i16 *out, u32 n)"
 doc = "The selected track and its Sound parameter words (read-only, from the firmware's own accessors). Writes the first `n` s16 words of that track's Sound array to `out`. Returns the track, or a negative code (-2 no project yet, -3 the track has no record: `out` is not written)."
 
 [[import]]
+name = "dk_debug_top_view"
+service = "runtime"
+since = "0.13.1"
+context = "ui"
+sig = "i32 (u32 *out)"
+doc = "Read the active firmware view on the UI task. Returns 0 and writes [object, class] (0, 0 for an empty stack), DK_E_AGAIN when the data is not ready, or DK_E_NOT_FOUND on a firmware without a bound view stack. With null out, only checks whether the observer is supported and reads no firmware memory (any task)."
+
+[[import]]
+name = "dk_debug_read_parameter"
+service = "runtime"
+since = "0.13.2"
+context = "ui"
+sig = "i32 (u32 scope, u32 track, u32 word, i32 *out)"
+doc = "Read one raw s16 parameter from the live kit. Scope 1 is the Sound words of track (zero-based), scope 2 is the kit FX array (track argument must be 0). With null out, validates coverage and range without following the live kit pointer, from any task. DK_E_NOT_FOUND when the kit layout is unavailable, DK_E_RANGE for an invalid key, DK_E_AGAIN while the kit is not ready."
+
+[[import]]
 name = "dk_debug_setup"
 service = "runtime"
 since = "0.10.4"
@@ -1818,7 +1834,7 @@ args = ["index", "name0", "name1", "name2", "-"]
 [[log.kind]]
 id = 44
 name = "MODULE_COMMIT"
-args = ["index", "rows", "records_addr", "records_size", "-"]
+args = ["index", "rows", "records_addr", "records_size", "name_hash"]
 
 # a machine of a module of api major 3 declared latched parameters (info level, once per such machine, right before its module's MODULE_COMMIT): the selection index
 # (0xffffffff: not a boot load), the machine's ordinal in the module and its latch mask (bit w: the machine's parameter word w, its w-th parameter, is latched at note-on).
@@ -1937,6 +1953,19 @@ id = 63
 name = "PROJECT_MODULE"
 args = ["slot", "what", "status", "index", "id_hash"]
 
+# The top input view sampled on consecutive UI passes by the opt-in debug observer.
+# A zero object and class mean an empty stack. Class is the firmware vtable, not a dialog's purpose.
+[[log.kind]]
+id = 64
+name = "VIEW_CHANGED"
+args = ["old_view", "view", "old_class", "class", "generation"]
+
+# Opt-in live kit parameter watch. key = track << 8 | word.
+[[log.kind]]
+id = 65
+name = "VALUE_CHANGED"
+args = ["scope", "key", "old", "new", "generation"]
+
 [spans]             # the owners of the runtime's profiling spans that are not modules (the debug module's span table, docs/plans/profiling.md section 7.2)
 phases = ["early", "late", "last"]   # the service tick phases, owner 0x100 | p, in the order of `tick_phase` (runtime/core/abi/src/service.rs)
 polls = 4                            # the poll slots, owner 0x200 | i: POLLS of runtime/core/src/rs/src/state.rs. A slot holds whichever function registered with `dkrt_poll_add`, so the host names a poll by the function at that slot (address map), not from this file
@@ -2000,7 +2029,7 @@ REMOTE_TURN = 0x39     # encoder (u8), delta (s8); the reply body is the delta t
 REMOTE_RELEASE = 0x3a  # release every key the module holds
 LOG = 0x20             # digikit/debug: body u32 from_seq; reply u32 oldest, u32 newest, u8 n, then n events of 32 bytes
 PEEK = 0x21            # digikit/debug: body u32 addr, u16 len (1 to 512, inside the device file's `[digikit] peek` ranges); reply u32 addr, u16 len, the bytes
-LOGCFG = 0x22          # digikit/debug: body u8 op (0 get, 1 set: u8 default, 8 module levels); reply u8 default, 8 module levels, u8 debug_on (1 while loaded); op 2 = card log get (no more body), op 3 = card log set (body: u8 op=3, u8 on); reply for op 2 and op 3 (16 bytes): u8 on, u8 file (0 a, 1 b), u8 state (0 off, 1 on, 2 full, 3 error), u8 0, u32 writes (this boot), i32 last_status, u32 ms_since_write (0xffffffff = none yet); a debug module without the card log replies to op 2 with an error status
+LOGCFG = 0x22          # digikit/debug: body u8 op (0 get, 1 set: u8 default, 8 module levels); reply u8 default, 8 module levels, u8 debug_on (1 while loaded); op 2 = card log get, op 3 = card log set (u8 on); reply (16 bytes): u8 on, u8 file, u8 state, u8 0, u32 writes, i32 last_status, u32 ms_since_write; op 4 = view observer state, op 5 = set view observation (u8 on); reply (16 bytes): u8 version, u8 supported, u8 enabled, u8 ready, u32 generation, u32 view, u32 class
 PROFILE_STATE = 0x1e   # digikit/debug: profiling start and stop, and its state
 PROFILE_READ = 0x1f    # digikit/debug: read the span records
 PROFILE_DSP = 0x1b     # digikit/debug: the DSP stats window: body u8 op (0 get, 1 start, 2 stop, 3 clear); reply (big-endian) u8 version (1), u8 flags (bit 0 stats on, bit 1 a sweep follows), u8 clear generation, u8 rows (16), u32 sweep number, u32 sweeps, u32 gaps, u32 ignored, then when bit 1 is set the 100 words of the window (4 header words: blocks, largest stock block delta, overruns, spare; 16 rows of 6 words: calls, cycles low, cycles high, largest call, largest block, spare)
@@ -2095,8 +2124,8 @@ STAGE = { id = 4, fit = true, label = "file" }   # the staging buffer: the large
 DSP_AREA = { id = 5, fit = true, label = "DSP memory" }   # DSP run-time area bytes; used: taken, alignment gaps counted as free; largest: the largest free range
 MACHINE_ROWS = { id = 6, ceiling = "machine_rows", fit = true, label = "machine rows" }   # run-time machine types (registry machine rows) in use
 VOICE_ROWS = { id = 7, ceiling = "machine_rows", fit = true, label = "voice rows" }   # DSP voice rows in use
-PARAM_ROWS = { id = 8, ceiling = "param_rows", fit = true, label = "parameter rows" }   # parameter rows core/dynreg reserves, in use
-PAGE_ROWS = { id = 9, ceiling = "page_rows", fit = true, label = "page rows" }   # page rows core/dynreg reserves (Digitone II), in use
+PARAM_ROWS = { id = 8, ceiling = "param_rows", fit = true, label = "parameter rows" }   # parameter rows core/rows reserves, in use
+PAGE_ROWS = { id = 9, ceiling = "page_rows", fit = true, label = "page rows" }   # page rows core/rows reserves (Digitone II), in use
 FX_SLOTS = { id = 10, ceiling = "fx_slots", fit = true, label = "effect slots" }   # effects in the chain: the device's limit (`[limits] fx_slots`); used: run-time effects claimed (the effect rows of core/dynfx); largest: 0
 MAP_ENTRIES = { id = 11, ceiling = "map_entries" }   # sticky machine-type map entries in use
 STORE = { id = 12 }   # the module and sample store, in KiB (a store can be 22 GiB); used: KiB taken; largest: 0 (BEGIN says E_FULL with the free bytes)
@@ -2181,11 +2210,11 @@ INSTRUMENT_TRACKS = { id = 8, capacity = "INSTRUMENT_TRACKS" }   # their track i
 modules = 8         # module records: the selection record holds SEL_MAX = 8 paths (record format, runtime/core/sdk/src/lib.rs)
 map_entries = 8     # sticky machine-type map entries: MAP_N = 8 (record format: bytes 28-31 and 480-507)
 fx_slots = 4        # effects in the chain: DK_FX_MAX of [fx] (kept equal by packages/patchkit/tests/sdkgen.rs)
-send_slots = 2      # effects on a send bus: the Sound array's free indices a send page can use, [fx] send_indices (at most SEND_MAX = 2 in core/fxpages)
+send_slots = 2      # effects on a send bus: the Sound array's free indices a send page can use, [fx] send_indices (at most SEND_MAX = 2 in the fx service)
 dsp_area_bytes = 524288  # the 17-bit word offset of a core/dsp-link chunk reaches 2^17 words
-param_rows = 16     # parameter rows core/dynreg reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
-page_rows = 8       # page rows core/dynreg reserves (Digitone II)
-machine_rows = 8    # run-time machine types core/dynreg reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
+param_rows = 16     # parameter rows core/rows reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
+page_rows = 8       # page rows core/rows reserves (Digitone II)
+machine_rows = 8    # run-time machine types core/rows reserves (tied to its manifest by packages/patchkit/tests/devdata.rs)
 stage_bytes = 106496  # the runtime's staging buffer (the fork: 104 KiB, upstream 128 KiB; runtime/core/abi.toml): the largest .dkm file (patchkit refuses a larger one)
 
 [limits.format]     # format limits of the `.dkm` loader (packages/dkneeds, runtime/core/src/rs/src/loader.rs, dsp.rs, arena.rs); generated into every language
@@ -2199,7 +2228,9 @@ dkm_header = 160    # 0xa0: the header of a `.dkm` (init, fini, menu and tick of
 # machine keys, effect ids and the keys of a service's kind), 4 KINDS (kind, length, handler entry: a service module's kinds), 5 SLOTS, 6 HOOKS, 7 EXPORTS, 8 RESOURCES,
 # and, in a version 2 table only: 9 PROVIDES (service name hash, version: the services the module provides), 10 BIND (site hash, address, stock length, trampoline offset,
 # then the stock bytes padded to 4, at most 64: the firmware sites a service binds), 11 FW (the firmware identity), and, in a version 3 table only (the port file): 12 FWNAMES
-# (hash, address, exit number, kind, flags), 13 SITES (hook hash, address, displaced length, kind, flags, check value). In a version 2 or 3 table a SLOTS item has 12 bytes (slot id, flags, entry).
+# (hash, address, exit number, kind, flags), 13 SITES (hook hash, address, displaced length, kind, flags, check value; a `patch` site has the length of its bytes, 1, 2 or 4, and the check value of those stock bytes).
+# A HOOKS item whose entry is `HOOK_ENTRY_PATCH` (the low 24 bits all set) is a patch: its site is a `patch` SITES item and the service gives the bytes in `init` (`dk_service_declare_patch`).
+# In a version 2 or 3 table a SLOTS item has 12 bytes (slot id, flags, entry).
 # A module that needs and keeps nothing has the 8-byte head. A file with no table, or another magic, is the format of runtime 0.7: E_CONTRACT.
 dsp_header = 64     # 0x40: the header of the DSP section
 max_records = 32    # records of the `register` table
@@ -2215,6 +2246,8 @@ table_magic = 1145787458  # 0x444b5442 "DKTB": the first word of the header tabl
 table_version = 3   # the newest version of the header table a reader accepts (1 to 3; a writer uses 2 for a table with PROVIDES, BIND or FW and 3 for the port file's FWNAMES and SITES; a change is a MINOR of the runtime)
 provider_max = 8    # provider slots of the boot plan (the services that provide; separate from the module records, SEL_MAX)
 install_sites = 48  # hook sites installed at once over all providers (the installer's table: machines 21 + fx 9 and room)
+install_patches = 16  # patch sites (plain bytes of 1, 2 or 4) installed at once over all providers (the installer's patch log)
+service_patches_max = 8  # `[[patch]]` entries of one service file (patchkit refuses more; the loader keeps their values from `init` to the install)
 slots_max = 16      # `[[slot]]` entries of one module (patchkit refuses more)
 info_max = 64       # entries of the image's one table `dkrt_info_table`: every `[[info]]` and `[[slot]]` of all adapters (patchkit refuses more; the core reads at most this many)
 collect_bytes = 1618  # `size_of::<Collect>()` of the runtime's collect.rs on the ColdFire: the generic records and the declarations of one `init`, held in an arena block until the commit (the runtime checks it at compile time; the host's struct has more padding)

@@ -23,7 +23,7 @@ pub struct Views {
     pub menu_objs: *mut [u8; MAX_MODULES],
     /// `DKRT_MODULE_RUNTIME`: the runtime version each record needs.
     pub module_runtime: *mut [u32; MAX_MODULES],
-    /// The resident statics of the fork's persistent V2 instrument host (appended, minor 5): the image adapters read `dkrt_instrument_type` and
+    /// The resident statics of the fork's persistent V2 instrument host (appended, minor 6): the image adapters read `dkrt_instrument_type` and
     /// `dkrt_instrument_generation` (from `words`) and the tests read the diagnostics by symbol; the package's coordinator writes them.
     pub instrument: InstrumentViews,
 }

@@ -40,8 +40,8 @@ END = 0xB9F100
 def carrier_policy(blob, *, velocity_hook=False):
     """Execute the adapter policy, keeping its per-track state between calls."""
     path = (
-        Path(__file__).resolve().parents[4]
-        / "image-modules/adapters/midi-events/src/dsp/carrier.s"
+        Path(__file__).resolve().parents[5]
+        / "runtime/platform/midi-events/src/dsp/carrier.s"
     )
     obj = pk_sharc.assemble(
         "\n".join(

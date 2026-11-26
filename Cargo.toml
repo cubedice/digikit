@@ -28,6 +28,7 @@ members = [
     "packages/emulator/sharc-stats",
     "packages/emulator/wasm-core",
     "packages/dkaddrmap",
+    "packages/dkaudio",
     "packages/dkprof",
     "packages/dksharc",
     "packages/dkneeds",
@@ -56,7 +57,7 @@ members = [
     "services/relay",
     # host test harness for <dk/platform/ui.h> (fake dk_ui_* calls, driver, C sample)
     "runtime/platform/ui/host",
-    "image-modules/adapters/midi-events/host",
+    "runtime/platform/midi-events/host",
     "ports/bindings/rs",
     "packages/patchkit",
     "packages/sharc-rig",

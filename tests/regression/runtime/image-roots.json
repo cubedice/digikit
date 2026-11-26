@@ -3,53 +3,46 @@
   "sets": [
     {
       "id": "rt",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp"]
     },
     {
       "id": "rt-ui",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/ui"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/ui"]
     },
     {
       "id": "coupled",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/input", "core/dynfx", "core/fxpages"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/input", "core/dynfx"]
     },
     {
       "id": "ib",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/introblank"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/introblank"]
     },
     {
       "id": "rt-usb-bulk",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/usb-bulk"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/usb-bulk"]
     },
     {
       "id": "rt-usb-bulk-audio",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/usb-bulk", "core/usb-bulk-audio"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/usb-bulk", "core/usb-bulk-audio"]
     },
     {
       "id": "rt-usb-bulk-sdhc",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/usb-bulk", "core/sdhc-large"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/usb-bulk", "core/sdhc-large"]
     },
     {
       "id": "rt-usb-bulk-sdhc-pd",
-      "roots": [
-        "core/runtime",
-        "core/dynreg",
-        "core/dyndsp",
-        "core/usb-bulk",
-        "core/sdhc-large",
-        "core/plusdrive-write"
-      ],
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/usb-bulk", "core/sdhc-large", "core/plusdrive-write"],
       "devices": ["dt2"]
     },
     {
       "id": "usb-fast",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/usb-bulk", "core/usb-bulk-audio", "core/sdhc-large"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/usb-bulk", "core/usb-bulk-audio", "core/sdhc-large"]
     },
     {
       "id": "usb-fast-pd",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/usb-bulk",
         "core/usb-bulk-audio",
@@ -60,24 +53,16 @@
     },
     {
       "id": "rt-pd",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/plusdrive-write"],
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/plusdrive-write"],
       "devices": ["dt2"]
     },
     {
       "id": "rt-dynfx",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/dynfx"]
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/dynfx"]
     },
     {
-      "id": "rt-dynfx-fxpages",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages"]
-    },
-    {
-      "id": "rt-dynfx-fxpages-ui",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/dynfx", "core/fxpages", "core/ui"]
-    },
-    {
-      "id": "fx-kit-persist",
-      "roots": ["core/runtime", "core/dynfx", "core/fxpages"]
+      "id": "rt-dynfx-ui",
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/dynfx", "core/ui"]
     },
     {
       "id": "instrument-play",
@@ -88,7 +73,7 @@
       "id": "prism-transition",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/loop-storage",
@@ -104,7 +89,7 @@
       "id": "overloop",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/loop-storage",
@@ -119,7 +104,7 @@
       "id": "prism",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/phrase-ui",
@@ -137,7 +122,7 @@
       "id": "prism-coexist",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/input",
@@ -152,14 +137,14 @@
     },
     {
       "id": "fork-phrase-ui",
-      "roots": ["core/runtime", "core/dynreg", "core/dyndsp", "core/dynfx", "core/phrase-ui", "core/health"],
+      "roots": ["core/runtime", "core/rows", "core/dyndsp", "core/dynfx", "core/phrase-ui", "core/health"],
       "devices": ["dt2"]
     },
     {
       "id": "fork-loop-storage-pattern-position-loop-display",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/loop-storage",
@@ -183,7 +168,7 @@
       "id": "fork-loop-storage-pattern-position-loop-display-phrase-ui",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/loop-storage",
@@ -200,10 +185,10 @@
       "devices": ["dt2"]
     },
     {
-      "id": "fork-instrument-play-loop-storage-loop-display-phrase-ui",
+      "id": "fork-instrument-play-loop-storage-loop-display-phrase-ui-track-keyboard",
       "roots": [
         "core/runtime",
-        "core/dynreg",
+        "core/rows",
         "core/dyndsp",
         "core/dynfx",
         "core/input",
@@ -211,6 +196,7 @@
         "core/loop-storage",
         "core/loop-display",
         "core/phrase-ui",
+        "core/track-keyboard",
         "core/health"
       ],
       "devices": ["dt2"]

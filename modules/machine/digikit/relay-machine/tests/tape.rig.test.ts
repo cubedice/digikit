@@ -5,11 +5,11 @@ import { RawRig, f2w, w2f } from '@digi/sharc-rig-kit';
 
 it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes on the real tape path', async () => {
   const root = path.resolve(import.meta.dirname, '../../../../..');
-  const adapter = 'image-modules/adapters/relay-track/src/dsp';
+  const adapter = 'runtime/platform/relay-track/src/dsp';
   const files = [
-    'image-modules/adapters/relay-storage/src/dsp/storage.s',
-    'image-modules/adapters/relay-storage/src/dsp/pool.s',
-    'image-modules/adapters/relay-track/src/dsp/audio.s',
+    'runtime/platform/relay-storage/src/dsp/storage.s',
+    'runtime/platform/relay-storage/src/dsp/pool.s',
+    'runtime/platform/relay-track/src/dsp/audio.s',
     adapter + '/engine.s',
     'modules/machine/digikit/relay-machine/src/dsp/voice.s',
   ];

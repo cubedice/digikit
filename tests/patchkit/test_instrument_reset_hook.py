@@ -22,7 +22,7 @@ def test_reset_window_matches_pinned_firmware():
     actual = port_resolve.resolve_cf_window_hash(
         main, 0x40000400, dict(site["rule"], name=site["name"])
     )
-    port = tomllib.loads((REPO_ROOT / "devices/ports/dt2-1.17.toml").read_text())
+    port = tomllib.loads((REPO_ROOT / "ports/dt2-1.17.toml").read_text())
     pinned = next(a for a in port["anchor"] if a["name"] == site["name"])
     assert all(actual[k] == pinned[k] for k in actual)
     assert main[
@@ -96,7 +96,7 @@ argument: .long 0
 """)
     probe.write_text(probe.read_text().replace("ALLOW", str(int(allow_release))))
     linked = patchkit.cf_link(
-        [REPO_ROOT / "image-modules/adapters/midi-events/src/cf/reset.s", probe],
+        [REPO_ROOT / "runtime/platform/midi-events/src/cf/reset.s", probe],
         0x47E00000,
         {},
     )

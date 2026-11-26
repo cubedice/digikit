@@ -2,7 +2,7 @@
 #ifndef CANOPY_RAW_STORE_H
 #define CANOPY_RAW_STORE_H
 #include <stdint.h>
-#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../runtime/platform/instrument-play/src/cf/sound-pool.h"
 
 enum { CRS_RECORD_BYTES = 0x455, CRS_PROJECT_LIMIT = 2192 };
 typedef enum {

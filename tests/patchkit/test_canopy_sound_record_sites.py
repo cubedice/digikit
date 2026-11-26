@@ -1,6 +1,6 @@
 """Pin the DTII 1.17 facts that make the CANOPY record extension invisible to stock.
 
-The extension (image-modules/adapters/instrument-play/src/cf/sound-record.c) uses
+The extension (runtime/platform/instrument-play/src/cf/sound-record.c) uses
 record positions 4..28 step 4 and 77..89. These checks read the image bytes; they
 do not run the firmware.
 """

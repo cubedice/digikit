@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { button, encoder } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { bounded, dspWords, rows, word } from '@digi/regression/runtime/fx-live.ts';
+import { bounded, word } from '@digi/regression/runtime/guest-access.ts';
+import { dspWords, rows } from '@digi/regression/runtime/dsp-state.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
 import { record } from '@digi/regression/runtime/artifacts.ts';
@@ -34,7 +35,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
       name: 'prism-ui',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',

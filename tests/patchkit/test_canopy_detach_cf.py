@@ -13,7 +13,7 @@ from tools.patchkit import patchkit
 ROOT = Path(__file__).resolve().parents[2]
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 FIXTURE = ROOT / "tests/regression/fixtures/canopy-detach"
-ADAPTER = ROOT / "image-modules/adapters/instrument-play/src/cf"
+ADAPTER = ROOT / "runtime/platform/instrument-play/src/cf"
 
 
 def test_detach_model_full_and_partial_overwrite_on_coldfire(tmp_path):

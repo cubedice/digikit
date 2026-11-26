@@ -1,6 +1,6 @@
 """Bounded JSON driver for the phrase control transport on the concrete SHARC rig.
 
-The colocated Vitest test (image-modules/adapters/phrase-control/tests/transport.test.ts)
+The colocated Vitest test (runtime/platform/phrase-control/tests/transport.test.ts)
 supplies states, operations and expectations. This tool only assembles the
 production receiver and reply code, executes it and returns observations.
 """
@@ -12,7 +12,7 @@ import sys
 
 from tests.support import fx_rig as fx
 
-CONTROL = fx.ROOT / "image-modules/adapters/phrase-control"
+CONTROL = fx.ROOT / "runtime/platform/phrase-control"
 SOURCES = (
     fx.EFFECTS,
     CONTROL / "src/dsp/control.s",

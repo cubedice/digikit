@@ -17,7 +17,7 @@ import {
 import { aggregate, withReusablePatchedSession, type PatchedSession } from '../support.ts';
 import { record } from './artifacts.ts';
 import { cachedCard, cardKey, fileSha } from './card-cache.ts';
-import { plusdriveBinary } from './card-kit.ts';
+import { plusdriveBinary } from './card-store.ts';
 import { installSystemPackage } from './system-package.ts';
 import { FIRMWARE, claimRunDir } from './devices.ts';
 import { sampleWav } from './fixtures.ts';
@@ -27,18 +27,11 @@ import { bindServiceSymbols } from './service-symbols.ts';
 import { expectRuntimeUi } from './ready.ts';
 import { moduleResultsNote } from './runtime-menu.ts';
 import { pollEmulated } from './waits.ts';
-import {
-  analysisJson,
-  bounded,
-  evidence,
-  evidenceCollector,
-  options,
-  pickSine,
-  word,
-  type RequireAudible,
-  type Rt,
-  expectLifetimeSafety,
-} from './fx-live.ts';
+import { bounded, word } from './guest-access.ts';
+import { evidence, evidenceCollector, type RequireAudible } from './fx-evidence.ts';
+import { options } from './devices.ts';
+import { expectLifetimeSafety } from './lifetime-safety.ts';
+import { pickSine, type Rt } from './panel-waits.ts';
 import {
   planSymbol,
   prepareRuntimePlanListedOffline,
@@ -46,38 +39,15 @@ import {
   type PreparedRuntimePlan,
   type RuntimePlan,
 } from './runtime-plan.ts';
+import { fxProfile, type FxProfile } from './device-data.ts';
+import { seedSettingsCard } from './project-kit.ts';
 import { runtimeWatchEnv, type SafetyPolicy } from './write-safety.ts';
+import { renderShots } from '@digi/test-support';
+
+export type { FxProfile };
 
 const exec = promisify(execFile);
 const root = repoRoot();
-export interface FxProfile {
-  fx_slots: number;
-  send_slots: number;
-  track_type_word: number;
-  track_type_stride?: number;
-  value_classes: number;
-  selection: { copy_a: number; copy_b: number };
-  settings: { copy_a: number; copy_b: number };
-  kit_areas: [number, number][];
-  fx: {
-    kit_ptr: number;
-    array_off: number;
-    page_first: number;
-    value_indices: number[];
-    template_percent: number;
-    template_bipolar: number;
-    template_mix: number;
-    store_off: number;
-    store_halfwords: number;
-    mark_index: number;
-    tail_off: number;
-    track_page: number;
-    sound_off: number;
-    sound_stride: number;
-    send_template: number;
-    send_indices: number[];
-  };
-}
 export interface FxCardPreset {
   /** Seed the native boot project for a scenario that uses the stock sample filesystem. */
   seedProject?: boolean;
@@ -287,12 +257,8 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
           { modules },
         );
         planSymbol(prepared.plan, 'DKRT_BOOT');
-        profile = await analysisJson<FxProfile>(
-          'tools.patchkit.pk_digikit_fxroutes',
-          ['profile', '--device', device],
-          artifacts,
-          'profile',
-        );
+        profile = fxProfile(device);
+        record(artifacts, 'profile', profile);
         watchOutput = path.join(artifacts, 'writewatch.jsonl');
         const env = runtimeWatchEnv(prepared.planFile, watchOutput);
         record(artifacts, 'watch-environment', env);
@@ -351,44 +317,27 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
             if (preset.seedProject && !built.stdout.includes('project=Some('))
               throw new Error('the +Drive builder did not seed a native project');
             if (preset.settings?.length) {
-              const entries = path.join(work, 'settings.json');
-              fs.writeFileSync(
-                entries,
-                JSON.stringify(preset.settings.map(([key, value_hex]) => ({ key, value_hex }))),
-              );
-              await analysisJson(
-                'tools.patchkit.pk_digikit_fxroutes',
-                ['seed-card', out, '--device', device, '--entries', entries],
-                artifacts,
-                `settings-${tag}`,
-              );
+              record(artifacts, `settings-${tag}`, seedSettingsCard(out, device, preset.settings));
             }
             return out;
           };
-          // A card with settings goes through the Python seed-card tool, whose imports the key does not cover: it is built in
-          // the run dir each time. Other presets are built once into the card cache: equal inputs give the same card (and snapshot).
-          let cardImage: string;
-          if (preset.settings?.length) {
-            const work = path.join(session.runDir, tag);
-            fs.rmSync(work, { recursive: true, force: true });
-            fs.mkdirSync(work, { recursive: true });
-            cardImage = await produce(work);
-          } else {
-            const key = cardKey(device, {
-              kind: 'fx-route-preset',
-              ...(preset.seedProject
-                ? {
-                    project: fileSha(resolveInputs(device, FIRMWARE[device]).syx),
-                    sample: createHash('sha256').update(sampleWav(1)).digest('hex'),
-                  }
-                : {}),
-              modules: files.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
-              services: services.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
-              port: port ? fileSha(port.file) : undefined,
-              selection: preset.selection,
-            });
-            cardImage = await cachedCard(key, produce);
-          }
+          // Every preset is built once into the card cache: equal inputs (the files, the selection and the seeded settings; the code that seeds them is among the
+          // builder sources of the key) give the same card (and snapshot).
+          const key = cardKey(device, {
+            kind: 'fx-route-preset',
+            ...(preset.seedProject
+              ? {
+                  project: fileSha(resolveInputs(device, FIRMWARE[device]).syx),
+                  sample: createHash('sha256').update(sampleWav(1)).digest('hex'),
+                }
+              : {}),
+            modules: files.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
+            services: services.map((f) => ({ name: f.name, sha: fileSha(f.file) })),
+            port: port ? fileSha(port.file) : undefined,
+            selection: preset.selection,
+            settings: preset.settings?.length ? preset.settings : undefined,
+          });
+          const cardImage = await cachedCard(key, produce);
           const boot = planSymbol(prepared.plan, 'DKRT_BOOT');
           if (!prepared.preparedImage) throw new Error('explicit route plan lacks prepared image identity');
           baselines.set(tag, {
@@ -407,7 +356,7 @@ export function withPreparedFxSession(device: Device, scope: string, config: Pre
           (async () => {
             expectLifetimeSafety({ device, watchOutput, overlays, epochs, artifacts, policy, cardServices });
           })(),
-          analysisJson('tools.patchkit.pk_digikit_fxroutes', ['render-shots', artifacts], artifacts, 'rendered-shots'),
+          (async () => record(artifacts, 'rendered-shots', renderShots(artifacts)))(),
         ]);
         const errors = results.filter((result) => result.status === 'rejected').map((result) => result.reason);
         if (errors.length === 1) throw errors[0];

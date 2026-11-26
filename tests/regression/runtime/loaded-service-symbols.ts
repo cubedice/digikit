@@ -2,7 +2,7 @@ import type { Session } from '@digi/test-support';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 import { serviceMapEntries, serviceSymbols } from './service-symbols.ts';
 import { sessionRt } from './session-rt.ts';
-import { SETTLE } from './fx-live.ts';
+import { SETTLE } from './panel-waits.ts';
 
 /**
  * A name lookup for a test that reads the state of code a card service runs for an image adapter (docs/plans/fork-image-diet.md section 9):

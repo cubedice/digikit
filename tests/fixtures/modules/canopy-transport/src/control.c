@@ -1,6 +1,6 @@
 /* Emulator-only provider. Bootstrap uses actual frame ACKs; never forge readiness
  * in production. The optional UI-tick policy slot is exclusive to this fixture. */
-#include "../../../../../image-modules/adapters/midi-events/src/cf/bridge.h"
+#include "../../../../../runtime/platform/midi-events/src/cf/bridge.h"
 extern uint32_t dkrt_irq_mask(void);
 extern void dkrt_irq_restore(uint32_t);
 extern int canopy_carrier_prepare(int allow_refresh) __attribute__((weak));

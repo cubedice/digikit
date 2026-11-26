@@ -436,9 +436,9 @@ for the DTII is 102,328 bytes (148,280 with the full table).
 
 
 The track keyboard plays CANOPY's keyboard modes and learned shapes. See
-[the keyboard notes](../../../../image-modules/adapters/instrument-play/README.md#keyboard-modes-and-the-track-keyboard).
+[the keyboard notes](../../../../runtime/platform/instrument-play/README.md#keyboard-modes-and-the-track-keyboard).
 The Stage 3 pad renderer and Stage 4 arp are implemented. See the
-[pad sound setup](../../../../image-modules/adapters/instrument-play/README.md#pad-sound-setup-stage-3).
+[pad sound setup](../../../../runtime/platform/instrument-play/README.md#pad-sound-setup-stage-3).
 
 
 ## Applied controls and SRC values (CPS6)

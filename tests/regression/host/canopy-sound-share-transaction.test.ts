@@ -8,7 +8,7 @@ test('real SRC edits commit copy-on-share snapshots or refuse without mutation',
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-share-transaction-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'runtime/platform/instrument-play/src/cf');
     const executable = path.join(directory, 'share-transaction');
     execFileSync(
       'cc',

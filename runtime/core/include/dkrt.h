@@ -33,8 +33,8 @@
 #define DKRT_CAP_MAX 20
 /* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 440 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), and RELAY runs from the service file relay.dks (37.6 KB of arena while it is loaded), so the hardware set peaks near 383 KB, and the rest is image space (docs/plans/upstream-merge-1124). */
 #define DKRT_ARENA_BYTES 450560
-/* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
-#define DKRT_PACKAGE_BYTES 352768
+/* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 360,448, for the instrument host in the package (357,424 used after the upstream merge of 2026-11-25), docs/plans/upstream-merge-1124 and upstream-merge-1125). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
+#define DKRT_PACKAGE_BYTES 360448
 /* The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes). */
 #define DKRT_STAGE_BYTES 106496
 /* Machine and voice rows the runtime's tables have: the most run-time machine types a device can have (DkrtDevice.dyn_types; the runtime checks it at start). */
@@ -344,7 +344,7 @@ typedef struct DkrtDevice {
     uint32_t keep_base;                          /* [digikit] keep_base: RAM a soft reset is assumed to keep (the crash record) */
     uint32_t keep_bytes;                         /* [digikit] keep_bytes */
     uint32_t dsp_block_cycles;                   /* [board] dsp_clock_hz / dsp_blocks_per_second, rounded (0 without DEV_HAS_DSP) */
-    uint32_t dyn_type_first;                     /* core/machines types.toml dynamic_first */
+    uint32_t dyn_type_first;                     /* core/rows types.toml dynamic_first */
     uint32_t dyn_types;                          /* run-time machine types (0 without DEV_HAS_DSP) */
     uint32_t tracks;                             /* [digikit] tracks: the tracks of the device (0: not given) */
     uint32_t key_codes[DKRT_DEV_KEYS];           /* [input.keys]: the id of each logical key in the firmware's key events, indexed by the key's number (0: the device has no such key) */

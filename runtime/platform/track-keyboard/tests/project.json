@@ -1,0 +1,53 @@
+{
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "name": "track-keyboard-tests",
+  "tags": [
+    "test-only"
+  ],
+  "implicitDependencies": [
+    "core/track-keyboard",
+    "core/keyboard-panel",
+    "core/copy-watch",
+    "core/fxview",
+    "core/relay-input",
+    "core/services/track-keyboard",
+    "dkrt-svc-track-keyboard",
+    "core/instrument-play",
+    "core/services/instrument",
+    "dkrt-svc-instrument"
+  ],
+  "metadata": {
+    "runtimeAcceptance": [
+      {
+        "files": [
+          "panel.device.test.ts",
+          "midi.device.test.ts",
+          "sequence.device.test.ts",
+          "sequence-transition.device.test.ts",
+          "arp-phase.device.test.ts",
+          "keys-latency.device.test.ts",
+          "pool.device.test.ts",
+          "storage.device.test.ts",
+          "track-clipboard.device.test.ts",
+          "trig-clipboard.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "core/services/track-keyboard"
+        ],
+        "patchModules": [
+          "core/track-keyboard",
+          "core/health"
+        ]
+      }
+    ]
+  },
+  "targets": {
+    "test-device": {
+      "cache": false
+    }
+  }
+}

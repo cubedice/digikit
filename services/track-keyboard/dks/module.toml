@@ -31,23 +31,23 @@ devices = ["dt2"]
 path = "build/track-keyboard.dko.json"
 sources = [
     "Cargo.toml",
-    "../../../image-modules/adapters/track-keyboard/src/track-keyboard.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-canopy.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-service.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-runtime.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-native.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-native-fw.c",
-    "../../../image-modules/adapters/track-keyboard/src/trig-view.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-step-fw.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-midi.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-midi-fw.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-capture.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-sequence.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-sequence-fw.c",
-    "../../../image-modules/adapters/track-keyboard/src/track-pool-admission.c",
+    "../../../runtime/platform/track-keyboard/src/track-keyboard.c",
+    "../../../runtime/platform/track-keyboard/src/track-canopy.c",
+    "../../../runtime/platform/track-keyboard/src/track-service.c",
+    "../../../runtime/platform/track-keyboard/src/track-runtime.c",
+    "../../../runtime/platform/track-keyboard/src/track-native.c",
+    "../../../runtime/platform/track-keyboard/src/track-native-fw.c",
+    "../../../runtime/platform/track-keyboard/src/trig-view.c",
+    "../../../runtime/platform/track-keyboard/src/track-step-fw.c",
+    "../../../runtime/platform/track-keyboard/src/track-midi.c",
+    "../../../runtime/platform/track-keyboard/src/track-midi-fw.c",
+    "../../../runtime/platform/track-keyboard/src/track-capture.c",
+    "../../../runtime/platform/track-keyboard/src/track-sequence.c",
+    "../../../runtime/platform/track-keyboard/src/track-sequence-fw.c",
+    "../../../runtime/platform/track-keyboard/src/track-pool-admission.c",
     "src/seam.s",
 ]
-include_dirs = ["../../../image-modules/adapters/track-keyboard/src"]
+include_dirs = ["../../../runtime/platform/track-keyboard/src"]
 place = "cf.expansion"
 
 # The firmware names of the moved C (the aliases core/track-keyboard used), as imports `patchkit bind` resolves for the user's firmware.

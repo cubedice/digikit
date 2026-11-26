@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../runtime/platform/instrument-play/src/cf/sound-share-pool.h"
 
 static void make(uint8_t out[SC_BYTES], uint32_t value)
 {

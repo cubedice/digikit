@@ -18,7 +18,7 @@ from tools.patchkit import patchkit, port_resolve
 ROOT = Path(__file__).resolve().parents[2]
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 FIXTURE = ROOT / "tests/regression/fixtures/canopy-two-phase"
-ADAPTER = ROOT / "image-modules/adapters/instrument-play/src/cf"
+ADAPTER = ROOT / "runtime/platform/instrument-play/src/cf"
 BASE = 0x40000400
 
 

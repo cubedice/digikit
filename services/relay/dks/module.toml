@@ -31,11 +31,11 @@ devices = ["dt2"]
 path = "build/relay.dko.json"
 sources = [
     "Cargo.toml",
-    "../../../image-modules/adapters/relay-track/src/control.c",
-    "../../../image-modules/adapters/relay-track/src/files.c",
+    "../../../runtime/platform/relay-track/src/control.c",
+    "../../../runtime/platform/relay-track/src/files.c",
     "src/seam.s",
 ]
-include_dirs = ["../../../image-modules/adapters/relay-track/src"]
+include_dirs = ["../../../runtime/platform/relay-track/src"]
 place = "cf.expansion"
 
 # The firmware names of the moved C (the aliases core/relay-track used), as imports `patchkit bind` resolves for the user's firmware.

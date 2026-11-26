@@ -39,9 +39,9 @@ def defined(obj):
 
 def test_each_forwarder_is_in_its_image_object_and_no_moved_function_stays_there():
     objs = {
-        "core/instrument-play": "image-modules/adapters/instrument-play/build/play-cf.dko.json",
-        "core/midi-events": "image-modules/adapters/midi-events/build/midi-events-cf.dko.json",
-        "core/keyboard-panel": "image-modules/adapters/keyboard-panel/build/keyboard-panel-cf.dko.json",
+        "core/instrument-play": "runtime/platform/instrument-play/build/play-cf.dko.json",
+        "core/midi-events": "runtime/platform/midi-events/build/midi-events-cf.dko.json",
+        "core/keyboard-panel": "runtime/platform/keyboard-panel/build/keyboard-panel-cf.dko.json",
     }
     for vec in spec()["vector"]:
         names = [e[0] for e in vec["entries"]]

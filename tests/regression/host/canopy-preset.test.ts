@@ -8,7 +8,7 @@ let directory: string, codec: string, settings: string;
 beforeAll(() => {
   directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-presets-'));
   const root = path.resolve(import.meta.dirname, '../../..');
-  const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
+  const source = path.join(root, 'runtime/platform/instrument-play/src/cf');
   codec = path.join(directory, 'codec');
   settings = path.join(directory, 'settings');
   for (const [driver, output, extra] of [

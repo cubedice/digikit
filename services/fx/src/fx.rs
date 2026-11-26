@@ -12,7 +12,7 @@ use dkrt_abi::provider::{ConsumerId, Describe, Provider, Reentry, Status, Ticker
 use dkrt_abi::service::{tick_phase, TableFault};
 use dkrt_sdk::proto::{CAPK_FX_SLOTS, CAPK_SEND_SLOTS};
 
-/// The fx service: nothing collected, nothing logged. The file's cell holds the one instance (`Provider::start`).
+/// The fx service: nothing collected, nothing logged. The file's cell holds the one instance (`Provider::start_in`).
 pub struct Fx {
     builder: Builder,
     guard: FxGuard,
@@ -55,10 +55,11 @@ impl Default for Fx {
 }
 
 impl<C: CoreApi> Provider<C> for Fx {
-    /// The file's `init`, before its hooks are installed: the table of the effect pages is bound (with the firmware words of the hooks), or the file is refused (`E_NO_REGISTRY`:
-    /// no usable `core/fxpages` in the image). Then the optional functions of the image are found by name (`[[info]]` entries; 0 for each the image lacks): the page painter
-    /// that the hook `fxp_graph` calls (`DKRT_FXP_PAINT`), the holder of an effect's values (`fxpage::held_setup`) and the functions of the phrase adapters (`phrase::setup`).
-    fn start(core: &C) -> Result<Fx, Status> {
+    /// The file's `init`, before its hooks are installed: the table of the effect pages is bound (the device facts, the parameter blocks of `rows_info` and the firmware words of the
+    /// hooks), or the file is refused (`E_NO_REGISTRY`: no `rows_info` with the blocks, or no effect pages on this device). Then the
+    /// optional functions of the image are found by name (`[[info]]` entries; 0 for each the image lacks): the page painter that the hook `fxp_graph` calls (`DKRT_FXP_PAINT`), the
+    /// holder of an effect's values (`fxpage::held_setup`) and the functions of the phrase adapters (`phrase::setup`).
+    fn start_in(core: &C, slot: &mut core::mem::MaybeUninit<Fx>) -> Result<(), Status> {
         // SAFETY: the table is this crate's static; the words are the file's own data (none on a host)
         let r = unsafe { fxpage::bind(core, fxpage::firmware()) };
         if r != dkrt_sdk::OK {
@@ -72,7 +73,8 @@ impl<C: CoreApi> Provider<C> for Fx {
         }
         let mut fx = Fx::new();
         fx.ui = routing::attach();
-        Ok(fx)
+        slot.write(fx);
+        Ok(())
     }
 
     // An effect module is torn down like any other (`can_stop` keeps its default): the loader's `DspPart::clear` (the row's pc to "free" first, so the chain skips it at once: the

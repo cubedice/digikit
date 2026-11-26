@@ -2,7 +2,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { button, type Session } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { bounded, dspWords, frames, readFloatWav, rpc, word, REDRAW, SETTLE } from '@digi/regression/runtime/fx-live.ts';
+import { bounded, rpc, word } from '@digi/regression/runtime/guest-access.ts';
+import { dspWords, frames } from '@digi/regression/runtime/dsp-state.ts';
+import { readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 import { SINE } from '@digi/regression/runtime/fixtures.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
@@ -45,7 +48,7 @@ describeOn('dt2', 'DTII Overloop: a queued change and the transport', () => {
       name: 'overloop-transport',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/loop-storage',

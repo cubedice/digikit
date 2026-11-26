@@ -847,7 +847,7 @@ mod tests {
         assert!(
             kind(&[
                 "Cargo.toml",
-                "../../image-modules/adapters/instrument-play/src/cf/control.c",
+                "../../runtime/platform/instrument-play/src/cf/control.c",
                 "src/hooks.s"
             ]) == Kind::Rust
         );

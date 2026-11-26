@@ -8,7 +8,7 @@ Every violation prints as `file:line: rule: what is wrong. Instead: what to do.`
 
 Rules:
 
-  roles     Each image module has `role` in [module], and the role fits its runtime/, services/ or image-modules/ folder.
+  roles     Each image module has `role` in [module], and the role fits its runtime/ or services/ folder.
   sources   Content modules (modules/ and tests/fixtures/modules) and apps include only
             their own files and the SDK (sdk/include, sdk/dsp/contract); a fixture may also include the source of another fixture (a variant of its base). Apps may also include dkrt.h (runtime) and dk_ui_core.h
             (core/ui). Only the runtime's platform file, the installer and adapters include the firmware bindings (dk_fw_* headers, the dkfw crate).
@@ -35,8 +35,8 @@ Rules:
             runtime crate's `services/`; every service (fx, machines, samples, lfo) is a crate.
   kind-free The runtime's own code (the runtime crate's and the abi crate's sources without their host tests, inline `#[cfg(test)] mod x { }` blocks included, `package/handlers.rs`, the host-test files in `package/handlers/` and the generated `package/gen_services.rs`) names no machine or effect: no builder
             call (the `provided` imports of the services machines and fx in sdk/sdk.toml, but for those with `wrapper = "fw"`: `dk_module_ctx_add_machine`, `dk_page_add_param` ...), no record kind of a machine or an effect (`KIND_MACHINE`, `KIND_PARAM`, `KIND_PAGE`,
-            `KIND_ACTION`, `KIND_NATIVE_PAGE*`, `KIND_EFFECT`, `KINDS_MACHINES`, `KINDS_FX`), no table of an image adapter that only a service reads (`dynreg_info`, `machines_info`,
-            `fxpages_info`, `mf_native_*`) and no state of the machines registry (`RegState`, `DKRT_REG`, `DKRT_ASSIGN`). The services own them: the machines and fx service files
+            `KIND_ACTION`, `KIND_NATIVE_PAGE*`, `KIND_EFFECT`, `KINDS_MACHINES`, `KINDS_FX`), no table of an image adapter that only a service reads (`rows_info`,
+            `mf_native_*`) and no state of the machines registry (`RegState`, `DKRT_REG`, `DKRT_ASSIGN`). The services own them: the machines and fx service files
             export the builder calls and write their records in `Records::commit`; the loader only runs the generic part (docs/plans/runtime-slimming.md, RS-C).
   platform  Inside the runtime crate, only `platform.rs` (the real platform, L1) and `fw.rs` at the crate's source root (the declared adapter of
             `dkrt_abi::fw::Fw`: it must contain `impl Fw for`) name the firmware crate dkfw; the rest of the core and the services use the `Platform`
@@ -51,6 +51,9 @@ Rules:
             package's loader that `optional_imports!` expands to; RC2s-2 drops it with the package crate), items inside inline `mod name { }` blocks and impls (only the
             declarations at the top level of a file count as module items), a module named by `#[path]` outside `lib.rs` (its file name is read as its module name), and a path built
             by a macro. Host-test files and every item behind `#[cfg(test)]` are not read. `BOUNDARY_ENFORCED` switches `check()` on, `--boundary-report` lists the crossings at any time.
+  de-naming The platform and the runtime core (everything under runtime/ but tests and build outputs) name no service: no `core/services/<name>` id, no `services/<name>/` path, no `dkrt_svc_<name>`
+            in a manifest, build file or source (comments stripped: a comment edit must not stale the committed runtime object), and a `requires` of a runtime/ manifest names only modules under runtime/. Allowed:
+            the files in DENAME_ALLOWED (the runtime crate's service table and handlers; the project records that list the services a device test loads).
   imports   Every function of <dk/platform/ui.h> is an `[[import]]` of sdk/sdk.toml with `requires = "core/ui"`, and every import
             with `requires` is in the runtime's `optional` list, so the runtime can link it by name (or hand out its stub).
 
@@ -80,22 +83,19 @@ FOLDER_ROLES = {
     "runtime/platform/expansion": "installer",
     "runtime/platform": "adapter",
     "runtime/apps": "app",
-    "image-modules/adapters": "adapter",
-    "image-modules/fixes": "adapter",
-    "image-modules/points": "adapter",
     "tests/fixtures/modules/dsp-stereo-proof": "adapter",
     "tests/fixtures/modules/file-catalog-proof": "adapter",
     "tests/fixtures/modules/storage-fault-proof": "adapter",
 }
 # Content modules that patch the firmware themselves (they have [[op]] and anchor externs by design: patchkit's own
 # example of a hook; the test service takes a raw hook like a core service file does). They are exempt from the objects and apps rules.
-FIRMWARE_PATCH_MODULES = {"test/registry-demo", "test/svc-test"}
+FIRMWARE_PATCH_MODULES = {"test/registry-demo", "test/svc-test", "test/local-step"}
 # Emulator-only lifecycle integration fixture: it deliberately connects private
 # providers before a public V2 SDK exists. Limit the exception to this path/id,
 # these source files and these symbols; never grant general adapter privileges.
 CANOPY_FIXTURE = "tests/fixtures/modules/canopy-transport"
 CANOPY_INCLUDES = {
-    "image-modules/adapters/midi-events/src/cf/bridge.h",
+    "runtime/platform/midi-events/src/cf/bridge.h",
     "modules/machine/digikit/canopy/src/dsp/voice.s",
     "modules/machine/digikit/canopy/src/dsp/tuning.s",
     "modules/machine/digikit/canopy/src/dsp/instrument.s",
@@ -121,7 +121,7 @@ def canopy_fixture(root: Path, m: Module) -> bool:
 # The carrier fixture installs three DSP hooks and tests stock Sound refresh.
 # These rights do not apply to CANOPY's production module or other test modules.
 CARRIER_INCLUDES = {
-    f"image-modules/adapters/midi-events/src/dsp/{name}.s"
+    f"runtime/platform/midi-events/src/dsp/{name}.s"
     for name in (
         "carrier",
         "carrier-frame",
@@ -258,7 +258,7 @@ def check_roles(root: Path, mods: list[Module]) -> list[Violation]:
                     where,
                     "roles",
                     f"{m.id} sits in {r}, which is no role folder",
-                    "move it to a role folder under runtime/, services/ or image-modules/",
+                    "move it to a role folder under runtime/ or services/",
                 )
             )
         elif have is None:
@@ -780,18 +780,10 @@ SC_CHECKER = ("tools/devtools/layercheck.py",)
 # head package (version 0.5.1 or later) is loaded, and the runtime names the module
 # only by its id in `dkrt_module`. Only that file and only that id.
 SC_POLICY_ID = {
-    "image-modules/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
+    "runtime/platform/instrument-play/src/cf/control.c": "digikit/canopy",
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
-    "image-modules/adapters/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
+    "runtime/platform/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
 }
-# The track keyboard's device test with CANOPY (the one instrument that plays through
-# the shared track keyboard on the DT2) loads the module, and the test project's
-# runtimeAcceptance record lists it: only that test, only that id, and only the
-# acceptance metadata of the project (its other fields are checked).
-SC_TRACK_KEYBOARD_TEST = {
-    "image-modules/adapters/track-keyboard/tests/canopy.device.test.ts": "digikit/canopy",
-}
-SC_TRACK_KEYBOARD_PROJECT = "image-modules/adapters/track-keyboard/tests/project.json"
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
 # of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
 # page plays), and the acceptance records list them: only these files.
@@ -1332,7 +1324,11 @@ def check_service_crates(root: Path) -> list[Violation]:
             allowed = (
                 SERVICE_DEV_DEPS if label.endswith("dev-dependencies") else SERVICE_DEPS
             )
-            if real not in allowed:
+            # a service crate may list itself as a dev-dependency to switch on its `test-support` feature for its integration tests
+            own = label.endswith("dev-dependencies") and real == data.get(
+                "package", {}
+            ).get("name")
+            if real not in allowed and not own:
                 alias = f" (as {key})" if key != real else ""
                 out.append(
                     Violation(
@@ -1455,7 +1451,7 @@ def rt_kind_free(root: Path) -> re.Pattern[str]:
         r"\b(?:"
         + "|".join(kind_free_builders(root))
         + r"|KIND_MACHINE|KIND_PARAM|KIND_PAGE|KIND_ACTION|KIND_NATIVE_PAGE|KIND_NATIVE_PAGE_V2|KIND_EFFECT|KINDS_MACHINES|KINDS_FX"
-        r"|dynreg_info|machines_info|fxpages_info|mf_native_\w+|RegState|DKRT_REG|DKRT_ASSIGN)\b"
+        r"|rows_info|mf_native_\w+|RegState|DKRT_REG|DKRT_ASSIGN)\b"
     )
 
 
@@ -1611,7 +1607,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
         if b"\0" in data[:4096]:
             continue
         text = data.decode("utf-8", "replace")
-        if f in (SC_RUNTIME_PROJECT, SC_TRACK_KEYBOARD_PROJECT):
+        if f == SC_RUNTIME_PROJECT:
             acceptance = re.search(r'"runtimeAcceptance"\s*:\s*', text)
             if acceptance:
                 start = acceptance.end()
@@ -1621,11 +1617,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
                     text[:start] + re.sub(r"[^\n]", " ", text[start:end]) + text[end:]
                 )
         for m, d, pat in pats:
-            if (
-                f.startswith(d + "/")
-                or SC_POLICY_ID.get(f) == m.id
-                or SC_TRACK_KEYBOARD_TEST.get(f) == m.id
-            ):
+            if f.startswith(d + "/") or SC_POLICY_ID.get(f) == m.id:
                 continue
             for n, line in enumerate(text.splitlines(), 1):
                 if pat.search(line):
@@ -1638,6 +1630,161 @@ def check_self_contained(root: Path, mods: list[Module]) -> list[Violation]:
         Violation(f"{f}:{n}", "self-contained", f"{m.id} named outside {d}", SC_HINT)
         for f, n, m, d in sc_hits(root, mods)
     ]
+
+
+# The platform and the runtime core do not name a service: no id (`core/services/<name>`), no repo path (`services/<name>/`), no service crate (`dkrt_svc_<name>`).
+DENAME_SUFFIXES = {
+    ".toml",
+    ".json",
+    ".s",
+    ".S",
+    ".inc",
+    ".c",
+    ".h",
+    ".rs",
+    ".mjs",
+    ".py",
+}
+DENAME_SKIP_DIRS = {"tests", "build", "target", "node_modules", "out"}
+DENAME_SKIP_FILES = {"Cargo.lock"}
+# Files that may name a service, with the reason. The runtime crate links the service crates (the one place the core reaches them);
+# a project record lists the service modules its device tests load (test wiring, not code of the layer).
+DENAME_ALLOWED = (
+    ("runtime/core/src/rs/Cargo.toml", "the runtime links the service crates"),
+    ("runtime/core/src/rs/src/package/gen_services.rs", "the generated service table"),
+    (
+        "runtime/core/src/rs/src/package/handlers.rs",
+        "the one place the core reaches a service",
+    ),
+    ("runtime/core/src/rs/src/package/handlers/", "host tests of handlers.rs"),
+    (
+        "runtime/core/owners.toml",
+        "the owners of the runtime crates (patchkit owners), including the service crates linked into it",
+    ),
+    (
+        "runtime/core/project.json",
+        "test-assembly packs the services it reads; the records list the services a device test loads",
+    ),
+    (
+        "runtime/platform/dynfx/project.json",
+        "runtimeAcceptance modules: the services its device tests load",
+    ),
+    (
+        "runtime/platform/introblank/project.json",
+        "runtimeAcceptance modules: the services its device test loads",
+    ),
+)
+
+
+# One left-to-right scan keeps string and character literals whole, so a `//` or `|` inside a string is not a comment.
+# Order matters: a comment that starts first hides the quotes inside it.
+_SCAN_RUST = re.compile(
+    r"""(?P<raw>\br(?P<h>\#*)".*?"(?P=h))|(?P<str>"(?:\\.|[^"\\])*")|(?P<chr>'(?:\\.|[^\\'\n])')"""
+    r"""|(?P<line>//[^\n]*)|(?P<block>/\*.*?\*/)""",
+    re.S,
+)
+_SCAN_GAS = re.compile(
+    r"""(?P<str>"(?:\\.|[^"\\\n])*")|(?P<line>\|[^\n]*)|(?P<block>/\*.*?\*/)""", re.S
+)
+
+
+def _blank(m: re.Match[str]) -> str:
+    if m.lastgroup in {"line", "block"}:
+        return re.sub(r"[^\n]", " ", m.group(0))
+    return m.group(0)
+
+
+def strip_comments(text: str, suffix: str, path: str = "") -> str:
+    """The text with comments blanked (line numbers kept), by the syntax of the file:
+    `//` and `/* */` in C, Rust and SHARC assembly (`.inc` and `.s` under a `dsp` folder: `|` is bit-or there);
+    `|` and `/* */` in ColdFire gas assembly (`.s`, `.S`, `.inc` elsewhere; the repo writes `|` at the start of a line);
+    `#` in TOML and Python. Quoted strings are kept whole in every syntax."""
+    if suffix in {".toml", ".py"}:
+        out = []
+        for line in text.splitlines():
+            in_str = None
+            cut = len(line)
+            for i, ch in enumerate(line):
+                if in_str:
+                    if ch == in_str:
+                        in_str = None
+                elif ch in "\"'":
+                    in_str = ch
+                elif ch == "#":
+                    cut = i
+                    break
+            out.append(line[:cut])
+        return "\n".join(out)
+    if suffix in {".s", ".S", ".inc"} and "dsp" not in Path(path).parts:
+        return _SCAN_GAS.sub(_blank, text)
+    return _SCAN_RUST.sub(_blank, text)
+
+
+def check_de_naming(root: Path) -> list[Violation]:
+    """No file under runtime/ (manifests, build files, sources; comments stripped) names a service."""
+    names = (
+        sorted(d.name for d in (root / "services").iterdir() if d.is_dir())
+        if (root / "services").is_dir()
+        else []
+    )
+    if not names:
+        return []
+    alt = "|".join(re.escape(n) for n in names)
+    pat = re.compile(
+        rf"core/services/|(?<![\w/.-])services/(?:{alt})/|\bdkrt_svc_(?:{alt})\b"
+    )
+    runtime_ids = {
+        m.id for m in load_modules(root) if rel(root, m.dir).startswith("runtime/")
+    }
+    out: list[Violation] = []
+    for f in sorted((root / "runtime").rglob("*")):
+        r = f.relative_to(root)
+        if (
+            not f.is_file()
+            or f.suffix not in DENAME_SUFFIXES
+            or f.name in DENAME_SKIP_FILES
+        ):
+            continue
+        # Skipped on purpose (documents and data, not code of the layer):
+        # - other JSON (test vectors, package manifests): data; project.json is read because its records wire modules;
+        # - `*.dko.json`: built objects, derived from sources that this rule already reads;
+        # - Markdown and other non-code suffixes (not in DENAME_SUFFIXES): prose may name a service to explain it;
+        # - DENAME_SKIP_DIRS: `tests` load services as fixtures (test wiring), the rest is generated or vendored output.
+        if f.suffix == ".json" and f.name != "project.json":
+            continue
+        if DENAME_SKIP_DIRS & set(r.parts[1:]) or f.name.endswith(".dko.json"):
+            continue
+        path = r.as_posix()
+        if any(
+            path == a or (a.endswith("/") and path.startswith(a))
+            for a, _ in DENAME_ALLOWED
+        ):
+            continue
+        text = f.read_text(encoding="utf-8", errors="replace")
+        for n, line in enumerate(strip_comments(text, f.suffix, path).splitlines(), 1):
+            if pat.search(line):
+                out.append(
+                    Violation(
+                        f"{path}:{n}",
+                        "de-naming",
+                        "the platform or the runtime core names a service",
+                        "name the concept (a registry, a window, a slot) and let the service register itself; a loaded service belongs in a test record or in DENAME_ALLOWED with a reason",
+                    )
+                )
+    for m in load_modules(root):
+        if not rel(root, m.dir).startswith("runtime/"):
+            continue
+        for dep in m.manifest.get("module", {}).get("requires", []) or []:
+            if dep not in runtime_ids:
+                out.append(
+                    Violation(
+                        f"{rel(root, m.dir)}/module.toml:{line_of(m.text, dep)}",
+                        "de-naming",
+                        f"`requires` names {dep}, which is not a module under runtime/",
+                        "a runtime module requires only runtime modules",
+                    )
+                )
+    return out
 
 
 def check(root: Path = ROOT, boundary_enforced: bool | None = None) -> list[Violation]:
@@ -1660,6 +1807,7 @@ def check(root: Path = ROOT, boundary_enforced: bool | None = None) -> list[Viol
         *check_service_crates(root),
         *check_core_kind_free(root),
         *check_self_contained(root, mods),
+        *check_de_naming(root),
     ]
 
 

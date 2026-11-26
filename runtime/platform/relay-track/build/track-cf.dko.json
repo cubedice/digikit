@@ -1,0 +1,677 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 2,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text",
+   "symbol": "relay_idle_frame",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text",
+   "symbol": "rtm_gate_pass",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 160,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 180,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 198,
+   "section": ".text",
+   "symbol": "slot.relay_vec",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 12,
+   "section": ".rodata",
+   "symbol": "dkrt_image_file_abort",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".rodata",
+   "symbol": "dkrt_image_file_close",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".rodata",
+   "symbol": "dkrt_image_file_create",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".rodata",
+   "symbol": "dkrt_image_file_write",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".rodata",
+   "symbol": "dkrt_io_post_image",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 32,
+   "section": ".rodata",
+   "symbol": "dkrt_io_wake",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".rodata",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".rodata",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".rodata",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".rodata",
+   "symbol": "dk_ui_toast",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".rodata",
+   "symbol": "fxv_box",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".rodata",
+   "symbol": "fxv_key_flags",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 60,
+   "section": ".rodata",
+   "symbol": "fxv_text",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 64,
+   "section": ".rodata",
+   "symbol": "instrument_src_now",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".rodata",
+   "symbol": "ip_current_machine_sound",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".rodata",
+   "symbol": "ip_refresh_machine_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".rodata",
+   "symbol": "ip_sa_store",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 80,
+   "section": ".rodata",
+   "symbol": "ip_src_draw_rotary",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 84,
+   "section": ".rodata",
+   "symbol": "sa_get",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 88,
+   "section": ".rodata",
+   "symbol": "sa_put",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".rodata",
+   "symbol": "sa_seq",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 96,
+   "section": ".rodata",
+   "symbol": "sa_slot",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".rodata",
+   "symbol": "mf_src_register",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 104,
+   "section": ".rodata",
+   "symbol": "pp_record_frames",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
+   "section": ".rodata",
+   "symbol": "pp_record_steps",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 112,
+   "section": ".rodata",
+   "symbol": "pp_record_timing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 116,
+   "section": ".rodata",
+   "symbol": "rows_info",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".rodata",
+   "symbol": "pp_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 124,
+   "section": ".rodata",
+   "symbol": "rtm_mod_rate",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 128,
+   "section": ".rodata",
+   "symbol": "rtm_mod_spacing",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 132,
+   "section": ".rodata",
+   "symbol": "rtm_mod_feedback",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 136,
+   "section": ".rodata",
+   "symbol": "rtm_mod_mix",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".rodata",
+   "symbol": "rtm_mod_gain",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".rodata",
+   "symbol": "rtm_mod_position",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 24,
+   "section": ".text.relay_idle_frame",
+   "symbol": "pp_record_timing",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "2039000000006706224022514ed14e7520390000000067082240226900044ed14e7520390000000067082240226900084ed14ef900000000203900000000670822402269000c4ed14ef90000000020390000000067082240226900104ed170004e7520390000000067082240226900144ed170ff4e7520390000000067082240226900184ed170004e75203900000000670822402269001c4ed170004e7520390000000067082240226900204ed170ff4e7520390000000067082240226900244ed14e7520390000000067082240226900284ed170004e75",
+   "kind": "text",
+   "name": ".text",
+   "size": 216
+  },
+  {
+   "align": 4,
+   "hex": "524c5331000000010000002500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "kind": "data",
+   "name": ".rodata",
+   "size": 148
+  },
+  {
+   "align": 2,
+   "hex": "4feffff02f0e206f0018226f001c486f00044df09c024eb90000000041ef00084280588f22183d8108004241484150803d8108fc7220b28066ea42403d4000243d4000202c5f4fef00104e75",
+   "kind": "text",
+   "name": ".text.relay_idle_frame",
+   "size": 76
+  },
+  {
+   "align": 2,
+   "hex": "202f00044e75",
+   "kind": "text",
+   "name": ".text.rtm_gate_pass",
+   "size": 6
+  }
+ ],
+ "source_sha256": "6efc37720e39b76e846a8936df8e8412c72ea8718cf0bc77aae6b3ad5fe88319",
+ "symbols": [
+  {
+   "global": true,
+   "name": "dk_ui_core_handle",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dk_ui_toast",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_image_file_abort",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_image_file_close",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_image_file_create",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_image_file_write",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_io_post_image",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_io_wake",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_box",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_key_flags",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "fxv_text",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_src_now",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_current_machine_sound",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_refresh_machine_track",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_sa_store",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_src_draw_rotary",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_register",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_position",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_record_frames",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_record_steps",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "pp_record_timing",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_idle_frame",
+   "section": ".text.relay_idle_frame",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_image",
+   "section": ".rodata",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_reply_frame",
+   "section": ".text",
+   "value": 16
+  },
+  {
+   "global": true,
+   "name": "relay_trig",
+   "section": ".text",
+   "value": 196
+  },
+  {
+   "global": true,
+   "name": "relay_ui_pass",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "relay_write_frame",
+   "section": ".text",
+   "value": 34
+  },
+  {
+   "global": true,
+   "name": "rows_info",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_can_save",
+   "section": ".text",
+   "value": 158
+  },
+  {
+   "global": true,
+   "name": "rtm_gate_frame",
+   "section": ".text",
+   "value": 56
+  },
+  {
+   "global": true,
+   "name": "rtm_gate_pass",
+   "section": ".text.rtm_gate_pass",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_is_type",
+   "section": ".text",
+   "value": 78
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_carrier",
+   "section": ".text",
+   "value": 118
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_feedback",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_gain",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_mix",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_param",
+   "section": ".text",
+   "value": 98
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_position",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_rate",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_mod_spacing",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "rtm_src",
+   "section": ".text",
+   "value": 138
+  },
+  {
+   "global": true,
+   "name": "rtm_stop_key",
+   "section": ".text",
+   "value": 178
+  },
+  {
+   "global": true,
+   "name": "sa_get",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "sa_put",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "sa_seq",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "sa_slot",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "slot.relay_vec",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "99",
+  "isa_check": "7f6f48d5a2543734913d83bb1186cd701e69120c3dc81256ef37a471554e135c",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

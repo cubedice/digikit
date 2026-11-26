@@ -35,14 +35,14 @@ def canopy_object(request):
         ]
     )
     if request.param:
-        registry = REPO_ROOT / "image-modules/adapters/instrument-registry/src/dsp"
+        registry = REPO_ROOT / "runtime/platform/instrument-registry/src/dsp"
         source += "\n" + "\n".join(
             (registry / name).read_text()
             for name in ["process.s", "process-protected.s", "input.s"]
         )
         source += "\n.PKDATA _ir_rows, 512;\n.PKDATA _ir_process_rows, 256;\n.PKDATA _ir_process_flags, 32;\n"
         source += (
-            REPO_ROOT / "image-modules/adapters/midi-events/src/dsp/packet.s"
+            REPO_ROOT / "runtime/platform/midi-events/src/dsp/packet.s"
         ).read_text()
         source += """
 .SECTION/PM seg_pmco;

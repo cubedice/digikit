@@ -15,8 +15,8 @@
 #undef src_state
 #undef src_status
 #include <assert.h>
-#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../image-modules/adapters/instrument-play/src/cf/sound-share-pool.h"
+#include "../../../runtime/platform/instrument-play/src/cf/sound-codec.h"
+#include "../../../runtime/platform/instrument-play/src/cf/sound-share-pool.h"
 
 typedef struct {
     SsPool pool;

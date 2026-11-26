@@ -11,7 +11,7 @@ from support.machine_rig import MachineRig
 
 from tools.patchkit import pk_conform
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 SOURCE = DSP
 
 

@@ -286,14 +286,14 @@
    "addend": 0,
    "offset": 243,
    "section": "seg_pmco",
-   "symbol": "_dl_vcount",
+   "symbol": "_dl_win1_rows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
    "offset": 253,
    "section": "seg_pmco",
-   "symbol": "_dl_vrows",
+   "symbol": "_dl_win1_base",
    "type": "sharc.abs32"
   },
   {
@@ -314,14 +314,14 @@
    "addend": 0,
    "offset": 265,
    "section": "seg_pmco",
-   "symbol": "_dl_fcount",
+   "symbol": "_dl_win2_rows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
    "offset": 275,
    "section": "seg_pmco",
-   "symbol": "_dl_frows",
+   "symbol": "_dl_win2_base",
    "type": "sharc.abs32"
   },
   {
@@ -1202,7 +1202,7 @@
    "size": 524288
   }
  ],
- "source_sha256": "3b4e89c8d07ff08af308c8444ee3c89822755881b2b8a84be8eabebc50e14338",
+ "source_sha256": "242c36285a3a2e554c2edf96511961435ad232466ef57fdece23d578726b41a3",
  "symbols": [
   {
    "global": false,
@@ -1578,18 +1578,6 @@
   },
   {
    "global": true,
-   "name": "_dl_fcount",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_dl_frows",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "_dl_irows",
    "section": null,
    "value": 0
@@ -1602,13 +1590,25 @@
   },
   {
    "global": true,
-   "name": "_dl_vcount",
+   "name": "_dl_win1_base",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "_dl_vrows",
+   "name": "_dl_win1_rows",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_dl_win2_base",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "_dl_win2_rows",
    "section": null,
    "value": 0
   },

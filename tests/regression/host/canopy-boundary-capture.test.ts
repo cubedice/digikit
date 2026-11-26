@@ -8,7 +8,7 @@ test('boundary capture accepts real edits with pre-reservation and snapshots ove
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-boundary-capture-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'runtime/platform/instrument-play/src/cf');
     const executable = path.join(directory, 'boundary-capture');
     execFileSync(
       'cc',

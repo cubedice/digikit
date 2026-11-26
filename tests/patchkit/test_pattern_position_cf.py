@@ -16,11 +16,11 @@ import pytest
 from tools.patchkit import patchkit, port_resolve
 
 ROOT = Path(__file__).resolve().parents[2]
-MOD = ROOT / "image-modules/adapters/pattern-position"
+MOD = ROOT / "runtime/platform/pattern-position"
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 BASE, QUEUE = 0x47E00000, 0x47E10000
 PATTERN = 0x47F00000
-# cf.pattern.site.playing_lit in DT2 1.17 (devices/ports/dt2-1.17.toml): the literal of `lea playing,a6`
+# cf.pattern.site.playing_lit in DT2 1.17 (ports/dt2-1.17.toml): the literal of `lea playing,a6`
 PLAYING_LIT, PLAYING = 0x400D84AE, 0x44F37BD0
 SCHEDULED, OVERRIDE, STEP, SUBSTEP, CLOCK, BLOCK = (
     0x4316501C,
@@ -39,7 +39,7 @@ def test_all_cf_windows_match_pinned_image():
         == "a1e7b657b705eba1a19d81c33c1e11ba9c409816447ad74005d7bbf36da6d964"
     )
     manifest = tomllib.loads((ROOT / "ports/fw/pattern.toml").read_text())
-    port = tomllib.loads((ROOT / "devices/ports/dt2-1.17.toml").read_text())
+    port = tomllib.loads((ROOT / "ports/dt2-1.17.toml").read_text())
     anchors = {a["name"]: a for a in port["anchor"]}
     for site in manifest["site"]:
         rule = dict(site["rule"], name=site["name"])

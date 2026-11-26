@@ -5,5 +5,5 @@ ports/bindings/include/dk_fw_*.h
 runtime/core/include/dkrt.h
 **/build/gen/**
 # Written by CANOPY's tools (ui_tables.py, wavetables.py); test_ui_tables.py compares them with the generator output.
-image-modules/adapters/instrument-play/src/cf/src-waves.h
-image-modules/adapters/instrument-play/src/cf/src-envelope.h
+runtime/platform/instrument-play/src/cf/src-waves.h
+runtime/platform/instrument-play/src/cf/src-envelope.h

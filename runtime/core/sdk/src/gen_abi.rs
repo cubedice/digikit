@@ -28,8 +28,8 @@ pub const LIVE_RELOAD: u32 = 3;
 pub const CAP_MAX: usize = 20;
 /// The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 440 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), and RELAY runs from the service file relay.dks (37.6 KB of arena while it is loaded), so the hardware set peaks near 383 KB, and the rest is image space (docs/plans/upstream-merge-1124).
 pub const ARENA_BYTES: usize = 450560;
-/// The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 352,768, for the instrument host in the package (349,088 used on 2026-11-25), docs/plans/upstream-merge-1124). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load).
-pub const PACKAGE_BYTES: usize = 352768;
+/// The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 360,448, for the instrument host in the package (357,424 used after the upstream merge of 2026-11-25), docs/plans/upstream-merge-1124 and upstream-merge-1125). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load).
+pub const PACKAGE_BYTES: usize = 360448;
 /// The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes).
 pub const STAGE_BYTES: usize = 106496;
 /// Machine and voice rows the runtime's tables have: the most run-time machine types a device can have (DkrtDevice.dyn_types; the runtime checks it at start).
@@ -304,7 +304,7 @@ pub struct DkrtDevice {
     pub keep_bytes: u32,
     /// [board] dsp_clock_hz / dsp_blocks_per_second, rounded (0 without DEV_HAS_DSP)
     pub dsp_block_cycles: u32,
-    /// core/machines types.toml dynamic_first
+    /// core/rows types.toml dynamic_first
     pub dyn_type_first: u32,
     /// run-time machine types (0 without DEV_HAS_DSP)
     pub dyn_types: u32,

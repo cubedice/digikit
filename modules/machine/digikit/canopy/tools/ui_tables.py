@@ -34,7 +34,7 @@ def header(voice: str) -> str:
 def main() -> None:
     root = Path(__file__).resolve().parents[4]
     voice = Path(__file__).resolve().parents[1] / "src/dsp/voice.s"
-    target = root / "image-modules/adapters/instrument-play/src/cf/src-envelope.h"
+    target = root / "runtime/platform/instrument-play/src/cf/src-envelope.h"
     target.write_text(
         header(voice.read_text(encoding="utf-8")), encoding="utf-8", newline="\n"
     )

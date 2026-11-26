@@ -1,0 +1,44 @@
+[module]
+id = "core/phrase-control"
+version = "0.1.0"
+name = "Phrase FX control transport"
+category = "core"
+role = "adapter"
+type = "framework"
+author = "digikit"
+status = "experimental"
+summary = "The phrase effect's controls (version 3: a repeater's), its SYNC time from the tempo, and the status transport."
+ports = ["dt2-1.17"]
+# core/loop-storage: the bank lease (`_phrase_storage_info`) a phrase effect's engine imports with the control words.
+requires = ["core/pattern-position", "core/rows", "core/dynfx", "core/loop-storage"]
+conflicts = []
+
+[targets]
+"dt2-1.17" = "experimental"
+
+[[object]]
+path = "build/control-cf.dko.json"
+sources = ["src/control.c"]
+place = "cf.expansion"
+devices = ["dt2"]
+
+[[object]]
+path = "build/control-dsp.dko.json"
+sources = ["src/dsp/control.s"]
+place = "dsp.l2"
+devices = ["dt2"]
+
+[[claim]]
+resource = "dt2.frame-tail.phrase"
+
+# The functions the fx service file (`fx.dks`) calls: it has no link to the image and finds each by name in the info table.
+# phrase_bind binds the effect's row; phrase_sends gives its send amounts (the tracks the effect hears).
+[[info]]
+name = "phrase_bind"
+symbol = "phrase_bind"
+devices = ["dt2"]
+
+[[info]]
+name = "phrase_sends"
+symbol = "phrase_sends"
+devices = ["dt2"]

@@ -1,18 +1,10 @@
 import path from 'node:path';
 import { button } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import {
-  alignedCompare,
-  bounded,
-  captureNote,
-  dspWords,
-  frames,
-  peak,
-  readFloatWav,
-  rows,
-  rpc,
-  word,
-} from '@digi/regression/runtime/fx-live.ts';
+import { alignedCompare, peak, readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
+import { bounded, rpc, word } from '@digi/regression/runtime/guest-access.ts';
+import { captureNote } from '@digi/regression/runtime/note-capture.ts';
+import { dspWords, frames, rows } from '@digi/regression/runtime/dsp-state.ts';
 import { SINE } from '@digi/regression/runtime/fixtures.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, selectSine, shot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
@@ -54,7 +46,7 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
       name: 'prism-send',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/phrase-ui',

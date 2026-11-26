@@ -6,9 +6,9 @@ import { RawRig, f2w } from '@digi/sharc-rig-kit';
 it('records track 16, overdubs, undoes, and keeps an independent take with track 3 selected between commands', async () => {
   const root = path.resolve(import.meta.dirname, '../../../../..');
   const headers = path.join(root, 'sdk/dsp/contract');
-  const source = 'image-modules/adapters/relay-track/src/dsp';
-  const files = ['image-modules/adapters/relay-storage/src/dsp/storage.s',
-    'image-modules/adapters/relay-storage/src/dsp/pool.s', 'image-modules/adapters/relay-track/src/dsp/audio.s', source + '/engine.s'];
+  const source = 'runtime/platform/relay-track/src/dsp';
+  const files = ['runtime/platform/relay-storage/src/dsp/storage.s',
+    'runtime/platform/relay-storage/src/dsp/pool.s', 'runtime/platform/relay-track/src/dsp/audio.s', source + '/engine.s'];
   const base = 0x20110000, command = base + 512, status = command + 256;
   const rig = await RawRig.open({objects: files.map((f,i) => ({
     text: readFileSync(path.join(root,f),'utf8').replaceAll('\r\n','\n'),

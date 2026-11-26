@@ -9,8 +9,8 @@ from canopy_paths import DSP
 
 from tools.patchkit import pk_sharc
 
-ROOT = Path(__file__).resolve().parents[4]
-MIDI = ROOT / "image-modules/adapters/midi-events/src/dsp"
+ROOT = Path(__file__).resolve().parents[5]
+MIDI = ROOT / "runtime/platform/midi-events/src/dsp"
 CANOPY = DSP
 LEGACY = ROOT / "tests/fixtures/modules/canopy-transport/src/dsp/legacy-wavetable.s"
 PACKET, OUTPUT = 0x20010000, 0x200B0000

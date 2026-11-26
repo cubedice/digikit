@@ -25,11 +25,11 @@
           "core/health"
         ],
         "plusdrive": true,
-        "tags": [
-          "A:core/dynfx",
-          "A:core/fxpages",
-          "A:core/loop-display",
-          "A:core/pattern-position"
+        "incidental": [
+          {
+            "module": "core/services/machines",
+            "reason": "the host machine service of test/sine, the tests' source sound; the machine rows are not asserted here"
+          }
         ]
       }
     ]
@@ -38,5 +38,13 @@
     "test-device": {
       "cache": false
     }
-  }
+  },
+  "implicitDependencies": [
+    "core/services/fx",
+    "dkrt-svc-fx",
+    "core/loop-display",
+    "core/loop-storage",
+    "core/pattern-position",
+    "core/dynfx"
+  ]
 }

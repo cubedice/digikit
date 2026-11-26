@@ -1,11 +1,11 @@
-# Owners of the items of runtime.dko.json (`patchkit owners`, docs/TESTING.md "Owner hashes"; plan: docs/plans/test-architecture.md, T1e).
+# Size attribution for the items of runtime.dko.json: `patchkit owners` and `patchkit objdiff --owners` (docs/TESTING.md "Owner hashes"). It selects no build or test.
 #
 # A tag lists the module path prefixes of the Rust items it owns; the longest prefix at a `::` boundary wins. Every Rust item must
 # match one prefix, or `patchkit owners` fails and names the module paths that lack an owner. A C symbol (an exported `#[no_mangle]`
 # function) is shared; an anonymous constant (a string, a vtable, a table) belongs to the owner of the items that use it, or is shared.
 #
 # `S:` tags are services and are removed when the service becomes a `.dks` file (fx and machines are out); `C:` tags stay.
-# When unsure, put a path in `shared`: a wider owner only reruns more tests.
+# When unsure, put a path in `shared`.
 
 shared = [
   "core",              # the standard library, and the primitive types
@@ -90,6 +90,7 @@ shared = [
   "dkrt::params",
   "dkrt::package::invariants",
   "dkrt_fit",
+  "dkrt_svc_rt",     # service runtime glue in every .dks: part loading, owner hooks (runtime/core/svc-rt)
 ]
 "C:dsp" = ["dkrt::package::dsp", "dkrt::package::dsp_stats", "dkrt::package::link", "dkrt_link"]
 "C:storage" = [
@@ -99,5 +100,5 @@ shared = [
   "dkrt::aux",
 ]
 "C:transport" = ["dkrt::transport", "dkrt::store_cmds", "dkrt::package::module_cmds", "dkrt::admin_cmds", "dkrt::package::live_cmds", "dkrt::package::commands"]
-"C:diagnostics" = ["dkrt::dlog", "dkrt::fault", "dkrt::report", "dkrt::watch", "dkrt::health", "dkrt::package::capacity"]
+"C:diagnostics" = ["dkrt::dlog", "dkrt::fault", "dkrt::report", "dkrt::watch", "dkrt::stock_kit", "dkrt::health", "dkrt::package::capacity"]
 "C:tick" = ["dkrt::tick"]

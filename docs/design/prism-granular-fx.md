@@ -390,13 +390,13 @@ but its long-storage and timing port requires separate validation.
 | FX framework | One global PRISM entry with four nested pages, scoped navigation and page recall, more parameter storage than the current eight-word contract, action controls, input/LED ownership and versioned telemetry. |
 | Persistence | Save parameters and next-input choices. Capture audio is volatile initially; boot returns FADE to LIVE. Native trig locks and MOD destinations need a separate FX extension. |
 
-The existing [send framework](../../image-modules/points/fx/README.md) builds
+The existing [send framework](../../runtime/platform/fx/README.md) builds
 selected-track wet input but cannot attenuate the original direct
 contributions. Its current [page framework](../../image-modules/points/fxpages/README.md)
 also does not provide this four-page surface. These are explicit framework
 changes, not module-only parameter declarations.
 
-The [DTII loop reservation](../../image-modules/adapters/loop-storage/README.md)
+The [DTII loop reservation](../../runtime/platform/loop-storage/README.md)
 provides Overloop's 8 MiB buffer. PRISM adds two independent 8 MiB banks.
 Keeping Overloop's 8 MiB would reserve 24 MiB total and leave 376 MiB of the
 original 400 MiB sample pool, before any further reservation needs. Each

@@ -2,16 +2,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { encoder } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import {
-  bounded,
-  captureNote,
-  dspWords,
-  frames,
-  pickSine,
-  readFloatWav,
-  rows,
-  word,
-} from '@digi/regression/runtime/fx-live.ts';
+import { bounded, word } from '@digi/regression/runtime/guest-access.ts';
+import { captureNote } from '@digi/regression/runtime/note-capture.ts';
+import { dspWords, frames, rows } from '@digi/regression/runtime/dsp-state.ts';
+import { pickSine } from '@digi/regression/runtime/panel-waits.ts';
+import { readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { inspectFxBoot, withPreparedFxSession } from '@digi/regression/runtime/fx-session.ts';
 import { selectTrack } from '@digi/regression/runtime/fx-track-ui.ts';
@@ -39,7 +34,7 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
       name: 'prism-coexistence',
       modules: [
         'core/runtime',
-        'core/dynreg',
+        'core/rows',
         'core/dyndsp',
         'core/dynfx',
         'core/input',
@@ -47,6 +42,8 @@ describeOn('dt2', 'DTII PRISM alongside CANOPY and Overloop', () => {
         'core/loop-storage',
         'core/loop-display',
         'core/phrase-ui',
+        // CANOPY plays through the track keyboard (its module.toml requires it)
+        'core/track-keyboard',
         'core/health',
       ],
       inventory,

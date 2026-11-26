@@ -12,8 +12,8 @@ version = 1
 [output]
 service_file = "services/relay.dks"
 adapter = "core/relay-track"
-image_table = "image-modules/adapters/relay-track/src/seam-table.s"
-header = "image-modules/adapters/relay-track/src/relay-seam.h"
+image_table = "runtime/platform/relay-track/src/seam-table.s"
+header = "runtime/platform/relay-track/src/relay-seam.h"
 guard = "DK_RELAY_SEAM_H"
 prefix = "RT"
 copy = "rt_img"
@@ -24,7 +24,7 @@ service_rs = "src/seam_gen.rs"
 slot = "relay_vec"
 table = "relay_vec_table"
 adapter = "core/relay-track"
-image_file = "image-modules/adapters/relay-track/src/seam.s"
+image_file = "runtime/platform/relay-track/src/seam.s"
 entries = [
     # core/loop-control's UI pass
     ["relay_ui_pass", "rts"],
@@ -65,6 +65,6 @@ functions = [
 ]
 optional = []
 # the machine table of core/machines (RELAY finds its type by name) and the transport words of core/pattern-position
-data = ["machines_info", "pp_position"]
+data = ["rows_info", "pp_position"]
 # registry codes: the params entries of this adapter (the MOD destinations of a RELAY track)
 values = ["rtm_mod_rate", "rtm_mod_spacing", "rtm_mod_feedback", "rtm_mod_mix", "rtm_mod_gain", "rtm_mod_position"]

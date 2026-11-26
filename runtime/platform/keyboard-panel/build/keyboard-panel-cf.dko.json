@@ -1,0 +1,1164 @@
+{
+ "arch": "cf",
+ "format": 1,
+ "relocs": [
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text",
+   "symbol": "ip_panel_on_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 22,
+   "section": ".text",
+   "symbol": "ip_panel_off_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text",
+   "symbol": "ip_note_list_resume",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 4,
+   "section": ".text.canopy_track",
+   "symbol": "dkrt_instrument_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.canopy_track",
+   "symbol": "ip_panel_track_object",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.canopy_track",
+   "symbol": "ip_panel_track_type",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 48,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_held",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 92,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 150,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.canopy_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 234,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 256,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 270,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 310,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 322,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_native_record_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 360,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 366,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 402,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 428,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 518,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 578,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 584,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 648,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_recorded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 654,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_original_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 664,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 8,
+   "offset": 672,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 12,
+   "offset": 680,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 688,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 696,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 702,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 708,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 714,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 732,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 748,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 760,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_retrig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 790,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_return",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 816,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_project_settings",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 832,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_trig_mode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 860,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 876,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 920,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_capture_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 58,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_retrig",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 82,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 108,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 120,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 4,
+   "offset": 132,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.ip_panel_off",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 170,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 184,
+   "section": ".text.ip_panel_off",
+   "symbol": "ip_panel_original_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 214,
+   "section": ".text.ip_panel_off",
+   "symbol": "tk_panel_record_audition",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 40,
+   "section": ".text.ip_note_list_write",
+   "symbol": "tk_capture_note_list_commit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": ".text.ip_note_list_write",
+   "symbol": "ip_note_list_original",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 228,
+   "section": ".text.ip_note_list_write",
+   "symbol": "tk_capture_note_list_commit",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 20,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 46,
+   "section": ".text.ip_panel_update",
+   "symbol": "tk_panel_focus",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 52,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 74,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 90,
+   "section": ".text.ip_panel_update",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 102,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..text.canopy_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 118,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 140,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 148,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 156,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 162,
+   "section": ".text.ip_panel_update",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 8,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_stock_toggle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 30,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 44,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 56,
+   "section": ".text.ip_panel_toggle",
+   "symbol": "ip_panel_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 24,
+   "offset": 74,
+   "section": ".text.ip_panel_toggle",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 76,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 100,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_step_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 116,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_selected_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_capture_panel_release",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 168,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "ip_panel_stock_key",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_live_record",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 198,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.ip_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 208,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..text.ip_panel_update",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 238,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 256,
+   "section": ".text.ip_panel_key_event",
+   "symbol": "tk_panel_off",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 262,
+   "section": ".text.ip_panel_key_event",
+   "symbol": ".sec..bss.shared_step_keys",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 16,
+   "section": ".text.ip_panel_detach",
+   "symbol": "tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 36,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 28,
+   "offset": 42,
+   "section": ".text.ip_panel_detach",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.ip_panel_detach",
+   "symbol": "ip_panel_stock_detach",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 6,
+   "section": ".text.instrument_src_now",
+   "symbol": "dkrt_irq_mask",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 50,
+   "section": ".text.instrument_src_now",
+   "symbol": "dkrt_irq_restore",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 72,
+   "section": ".text.instrument_src_now",
+   "symbol": ".sec..text.cc_milliseconds",
+   "type": "cf.32"
+  }
+ ],
+ "sections": [
+  {
+   "align": 4,
+   "hex": "4e56ffbc707f4ef9000000004fefffe848d77c044ef9000000004e56ffc848d73cfc4ef900000000",
+   "kind": "text",
+   "name": ".text",
+   "size": 40
+  },
+  {
+   "align": 2,
+   "hex": "2f024eb9000000002400700fb0af000c64064280241f4e75200272185f80b28065f02f2f000c206f000c2f2800a44eb900000000508f4a8067d82f004eb900000000588fb48057c07100448060c6",
+   "kind": "text",
+   "name": ".text.canopy_track",
+   "size": 78
+  },
+  {
+   "align": 2,
+   "hex": "4fefffc848d77cfc246f003c2c6f0058242f0040262f00442a2f00482c2f004c2a6f00542f6f005000342f2a00a04eb900000000266a009871802f400034588f4a8b67302f0b4eb9000000002f0b1e004eb9000000002f0b18004eb9000000004fef000c4a07665a4a04660001444a006600014697cb428799cc4aaf00306700015c4281700fb082650002d02f032f0a2f4100344eb900000000508f2800222f002c4a806758280788816700013e4a8b660c7801203c000000004a8066404284603c4a0456c4367c00017f0444874a00670000ee4aaf0030660000ee700fb08265000208487800124eb900000000588f4a80660000de387c00014284720141f9000000004a702a006600015a203c000000004a80660002624aaf0030670001504a8b670000dc8287660000d6700fb082650000ce47f9000000004a8b670000c241f9000000004a88670000b62f062f052f032f024e904fef00104a80670000a220035280e18841f90000000052b900000000808531802a002f052f034e932f0e2f0d2f2f00442f062f052f032f022f0a4eb90000000042af00684cef7cfc002872102f4100644fef00604ef90000000097cb7e016000ff1897cb42876000ff16387c00016000feb4387c000172016000feb4387c000172016000feb2720fb2826500018842816000fed6428742816000ff0e428472016000018642806000018a4a8c674241f9000000004a88670000d44a8466604e902f4e00582f4d00542f46004c2f4500482f4300442f4200402f4a003c4cd77cfc2f6f003400504fef00384ef90000000041f9000000004a88670000922f062f052f032f024e904fef00104a80677e4cd77cfc4fef00384e754a84670000842f0e2f0d2f2f003c2f062f052f032f022f0a52b9000000004eb9000000004fef001c52b9000000002e8623c2000000002f0523c3000000002f0323c5000000002f0223ca0000000023c30000000023c6000000004eb9000000004fef00104a80678e7001e5a881b90000000060824a846700ff30608a203c000000004a806600fefe47f9000000004a8b6700ff1620028083e8886600ff0c707fb0856500ff04223c00000000b2af00386600fef6202a00944a806700feec2f004eb900000000588f4a806700fedc2f004eb900000000588f55804a806600feca2f032f024e93508f6000febe203c0000000042844a8066126000fdb8203c000000004a806782428442814a8c6700fd9c4a8b6600fe78200780812f002f062f052f032f022f4100404eb9000000004fef0014387c0001222f002c6000fd6e",
+   "kind": "text",
+   "name": ".text.ip_panel_on",
+   "size": 940
+  },
+  {
+   "align": 2,
+   "hex": "4feffff048d7001c242f00182f6f0014000c41f9000000004a8867062f024e90588f700fb082650000b2760141f900000000e5ab38302a0041f9000000004a88670e4878ffff2f024e90508f4a80662441f9000000004a88671a2f024e90588f4a8067104a44660c2003c0b9000000004a80676e4683c7b900000000700fb082650652b9000000004a446724424041f90000000031802a00200471802f0071c4e08820404868ffff4eb900000000508f2f022f2f00104eb900000000508f4a44672070104cd7001c42af00182f4000144fef00104ef900000000424442836000ff584cd7001c4fef00104e75",
+   "kind": "text",
+   "name": ".text.ip_panel_off",
+   "size": 236
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe8206f002848d70c3c266f001c262f0020282f00244a88660a95ca243c00000080602e203c000000004a8067ec700fb08365e6727fb28465e024504a8a67dcb5e8000464d414126bd07baa0001758224452f082f042f032f0b4eb9000000004fef00100c8200000080677e4a8b677a20534a886774206800284a88676c2f0b4e90588f0c8000006a4f635e22032240ef8943e995b020412204068100009528d28832311a007b410c8500001fff623ac3fc0006204141e86a50d1c97390b283662873a80001b2846620122800026b1a7381b28266142f0a2f022f042f032f004eb9000000004fef00144cd70c3c4fef00184e75",
+   "kind": "text",
+   "name": ".text.ip_note_list_write",
+   "size": 246
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec48d70c1c246f0018242a00a02f024eb900000000588f4a00670000922f024eb900000000588f280047f900000000b5f90000000066000098202a00984a80670000882f004eb900000000588f4a0067722f2a00a04eb9000000002f002f0a26004eb9000000004fef000c24004a8067522039000000004a8b6638b68057c0750044824a82661cb5f9000000006614b8b900000000670c42b90000000052b9000000004cd70c1c4fef00144e7578ff6000ff78b6806704260442822f034e93588f60c04a8b66f060be4a8b66ea60c04a8b66e460ce",
+   "kind": "text",
+   "name": ".text.ip_panel_update",
+   "size": 216
+  },
+  {
+   "align": 2,
+   "hex": "2f0a2f2f00084eb900000000588f45f9000000004a8a67122f2f00084eb900000000588f4a0066024e924ab900000000671c2f2f00084eb900000000588f4a00660c42b90000000052b900000000245f4e75",
+   "kind": "text",
+   "name": ".text.ip_panel_toggle",
+   "size": 82
+  },
+  {
+   "align": 2,
+   "hex": "4fefffec48d71c0c266f001c246f00184a8b670000ce242b000c700f0682ffffffe7b082650000be202b00102600e88b7201c6817209c08153804a806650487800124eb900000000588f49f9000000004a8c673a4a806736202a00984a80672e2f004eb900000000588f4a0067202f2a00a04eb9000000004878000148780064487800802f002f024e944fef001841f9000000004a88670a4a8367062f024e90588f2f0b2f0a4eb900000000508f26404a83671841f9000000004a702a0067282f022f0a4eb900000000508f2f0a4eb900000000200b4cef1c0c00044fef00184e757410428360a67001e5a82239000000002601c6804a8367d24680c08141f90000000023c0000000004a8867be2f024e90588f60b6",
+   "kind": "text",
+   "name": ".text.ip_panel_key_event",
+   "size": 278
+  },
+  {
+   "align": 2,
+   "hex": "598f2f02242f000c2f6f0010000441f9000000004a8867024e90b4b900000000660c42b90000000052b9000000002f6f000400102f42000c241f588f4ef900000000",
+   "kind": "text",
+   "name": ".text.ip_panel_detach",
+   "size": 66
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_recorded",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.ip_panel_debug",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shared_live_record",
+   "size": 32
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.shared_step_keys",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "ffffffff",
+   "kind": "data",
+   "name": ".data.panel_track",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.panel_view",
+   "size": 4
+  },
+  {
+   "align": 2,
+   "hex": "4feffff491c8226f001c4281202f001448d7001c93ef0018262f00104282d3c0b3c055c071009680701fb0886538781f98882003e8a87801d281d482c08482800c810002039f630a70010681fffdfc60848052887840b88866ce20024cd7001c4fef000c4e75783f9888200960c6",
+   "kind": "text",
+   "name": ".text.cc_milliseconds",
+   "size": 110
+  },
+  {
+   "align": 2,
+   "hex": "4feffff04eb9000000002eb942940a4c223942940a502f410004223942940a542f4100082239fc07000c2f41000c2f004eb9000000002f2f00102f2f00102f2f00102f2f00104eb9000000004fef00244e75",
+   "kind": "text",
+   "name": ".text.instrument_src_now",
+   "size": 82
+  }
+ ],
+ "source_sha256": "a8f2a244b432480ba6b0911bf66579c51f4306376b2e229e078595e0f7b7e7d2",
+ "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_debug",
+   "section": ".bss.ip_panel_debug",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.panel_view",
+   "section": ".bss.panel_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shared_live_record",
+   "section": ".bss.shared_live_record",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.shared_step_keys",
+   "section": ".bss.shared_step_keys",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..data.panel_track",
+   "section": ".data.panel_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.canopy_track",
+   "section": ".text.canopy_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.cc_milliseconds",
+   "section": ".text.cc_milliseconds",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.ip_panel_off",
+   "section": ".text.ip_panel_off",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.ip_panel_update",
+   "section": ".text.ip_panel_update",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "canopy_track",
+   "section": ".text.canopy_track",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "cc_milliseconds",
+   "section": ".text.cc_milliseconds",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_instrument_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_mask",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "dkrt_irq_restore",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "instrument_src_now",
+   "section": ".text.instrument_src_now",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_original",
+   "section": ".text",
+   "value": 26
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_note_list_write",
+   "section": ".text.ip_note_list_write",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_active",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_debug",
+   "section": ".bss.ip_panel_debug",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_detach",
+   "section": ".text.ip_panel_detach",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_key_down",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_key_event",
+   "section": ".text.ip_panel_key_event",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_live_record",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_off",
+   "section": ".text.ip_panel_off",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_off_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_on",
+   "section": ".text.ip_panel_on",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_on_resume",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_original_off",
+   "section": ".text",
+   "value": 12
+  },
+  {
+   "global": true,
+   "name": "ip_panel_original_on",
+   "section": ".text",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_project_settings",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_recorded",
+   "section": ".bss.ip_panel_recorded",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_selected_track",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_step_record",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_detach",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_key",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_stock_toggle",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_toggle",
+   "section": ".text.ip_panel_toggle",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_track_object",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_track_type",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_held",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_mode",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_trig_return",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "ip_panel_update",
+   "section": ".text.ip_panel_update",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_track",
+   "section": ".data.panel_track",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "panel_view",
+   "section": ".bss.panel_view",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_live_record",
+   "section": ".bss.shared_live_record",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "shared_step_keys",
+   "section": ".bss.shared_step_keys",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_note_list_commit",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_panel_press",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_capture_panel_release",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_cancel",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_focus",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_native_record_on",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_off",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_on",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_record_audition",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_panel_retrig",
+   "section": null,
+   "value": 0
+  }
+ ],
+ "toolchain": {
+  "as": "GNU assembler (GNU Binutils) 2.47.20260726",
+  "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
+  "gcc": "m68k-elf-gcc (GCC) 16.2.0",
+  "instructions_redecoded": "764",
+  "isa_check": "13da2fea09ea5019560fae5be31898439d88bb5284e1e74e9577dfbf5479d80c",
+  "ld": "GNU ld (GNU Binutils) 2.47.20260726"
+ }
+}

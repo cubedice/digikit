@@ -1,10 +1,12 @@
+import { expectNoRefusedCalls } from '@digi/regression/runtime/service-symbols.ts';
 import { pollUntil } from '@digi/test-support';
 import { expect, test } from 'vitest';
 import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { cardRig, RT } from '@digi/regression/runtime/card-rig.ts';
 import { FIRMWARE, describeOn } from '@digi/regression/runtime/devices.ts';
 import { portAnchorAddress } from '@digi/regression/runtime/device-data.ts';
-import { dspBytes, REDRAW, stableFrameHash, type Rt } from '@digi/regression/runtime/fx-live.ts';
+import { dspBytes } from '@digi/regression/runtime/dsp-state.ts';
+import { REDRAW, stableFrameHash, type Rt } from '@digi/regression/runtime/panel-waits.ts';
 import { decodeTables, dynType, selectDt2, trackType } from '@digi/regression/runtime/project-kit.ts';
 import { ENCODERS, expectLoaded, namedKnobs, tableSymbols, turnChangesOneWord } from './machines-kit.ts';
 
@@ -67,7 +69,7 @@ describeOn('dt2', `DT2 ${FIRMWARE.dt2} machines.dks: the SRC page of a run-time 
 
     // the list has the entry (the hint is its place with the stock machines) and the choice reaches the track
     const type = await dynType(session, run.plan, ID, 'sine');
-    expect(type, 'a run-time type (the range of core/dynreg)').toBeGreaterThanOrEqual(16);
+    expect(type, 'a run-time type (the range of core/rows)').toBeGreaterThanOrEqual(16);
     await selectDt2(rt, 1, type, 7);
     expect(await trackType(session, 1), 'track 1 holds the type of Sine').toBe(type);
 
@@ -86,5 +88,6 @@ describeOn('dt2', `DT2 ${FIRMWARE.dt2} machines.dks: the SRC page of a run-time 
     expect(edit.index, 'Level edits the Sound word of its mirror index').toBe((tables.params['Level'] as { mirror: number }).mirror);
     expect(edit.after, 'Level moved down').toBeLessThan(edit.before);
     await session.expectNoFault('Sine selected, SRC knob turned');
+    await expectNoRefusedCalls(rt, run.plan, 'machines');
   }, 900_000);
 });

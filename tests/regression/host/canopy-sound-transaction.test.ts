@@ -8,7 +8,7 @@ test('reserved SRC edits publish matching Sound snapshots or leave the edit unch
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-sound-transaction-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'runtime/platform/instrument-play/src/cf');
     const executable = path.join(directory, 'sound-transaction');
     execFileSync(
       'cc',

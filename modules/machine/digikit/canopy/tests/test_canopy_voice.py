@@ -12,7 +12,7 @@ from canopy_paths import DSP
 
 from tools.patchkit import pk_sharc
 
-ROOT = Path(__file__).resolve().parents[4]
+ROOT = Path(__file__).resolve().parents[5]
 SOURCE = DSP
 BANK, OUTPUT = 0x20040000, 0x20041000
 

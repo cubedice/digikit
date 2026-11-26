@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
-#include "../../../image-modules/adapters/instrument-play/src/cf/shared-notes.h"
-#include "../../../image-modules/adapters/instrument-play/src/cf/src-native.c"
+#include "../../../runtime/platform/instrument-play/src/cf/shared-notes.h"
+#include "../../../runtime/platform/instrument-play/src/cf/src-native.c"
 static CsState state;
 static uint32_t test_held, test_marked, seq_object[0xa0];
 static int32_t test_locks[128][ILP_LANES];
@@ -94,11 +94,6 @@ void mf_src_free(uint8_t *p)
 {
     (void)p;
     assert(0);
-}
-uint32_t mf_native_page_count(uint32_t type, uint32_t ordinary)
-{
-    (void)type;
-    return ordinary;
 }
 static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, stock_turns,
                                      stock_keys, invalidations, polls;
@@ -924,7 +919,8 @@ int main(int argc, char **argv)
         selected = 1;
         generation = 2;
         context((uint8_t *)v);
-        assert(mf_src_page_count(type_id) == 1);
+        /* unregistered: 0, and the machines service's hook takes the native page count */
+        assert(mf_src_page_count(type_id) == 0);
         selected = 0;
     } else
         return 2;

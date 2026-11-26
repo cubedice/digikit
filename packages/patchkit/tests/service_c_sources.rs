@@ -96,7 +96,10 @@ fn a_service_object_with_c_and_assembler_sources_builds_packs_and_checks_against
     );
     assert!(object.relocs.iter().all(|r| r.rtype == "cf.32"));
     assert!(object.toolchain["cflags"].ends_with("-DDK_SERVICE=1"));
-    assert_eq!(object.toolchain["exports"], "dk_module dk_svc_abi");
+    assert_eq!(
+        object.toolchain["exports"],
+        "DK_SVC_OWNER dk_module dk_svc_abi"
+    );
     // the stored object is current with its sources (`build --check` would pass)
     assert_eq!(
         build::module_status(&root(), &dks).unwrap(),

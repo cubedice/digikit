@@ -71,8 +71,8 @@ and worst-case CPU qualification remain open; physical Overloop coexistence
 passed on November 3. This is not a hardware release. Evidence is in the
 [Stage 5 handover](../handovers/HANDOVER-2026-11-01-canopy-stage5.md).
 
-The implementation uses [instrument MIDI ownership](../../image-modules/adapters/midi-events/README.md),
-[the admitted playback adapter](../../image-modules/adapters/instrument-play/README.md)
+The implementation uses [instrument MIDI ownership](../../runtime/platform/midi-events/README.md),
+[the admitted playback adapter](../../runtime/platform/instrument-play/README.md)
 and the [CANOPY sine kernel](../../modules/machine/digikit/canopy/README.md).
 Earlier fixture checkpoints below remain historical evidence; the current
 completion checklist and acceptance table define the next work.
@@ -160,7 +160,7 @@ final-output gate.
 | Pattern timing | Overloop bridge publishes committed master-grid boundaries | Validated finer clock for subdivisions, triplets and swing |
 | Settings | Device-wide runtime store, called on the UI task; no public DKM settings API | Bounded module-owned settings access and explicit presets |
 
-Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../image-modules/points/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../ports/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../runtime/core/src/rs/src/settings.rs).
+Source evidence: [machine ABI](../../sdk/include/dk/gen/machine.h), [DTII profile](../../devices/digitakt-ii.toml), [machine adapter](../../runtime/platform/dsp-voice/src/dsp/dsp-voice.s), [MIDI declarations](../../ports/fw/midi.toml), [upload analysis](../findings/43-digikit-upload.md), [typed descriptor validation](../../packages/patchkit/src/typed.rs), [module authoring](../MODULE-AUTHORING.md), [pattern-position ABI](../../sdk/include/dk/pattern_position.h), and [settings implementation](../../runtime/core/src/rs/src/settings.rs).
 
 The USB hook's declaration still describes SysEx. Pinned 1.17 component execution
 now confirms that the cable-0 byte parser also queues complete channel messages,
@@ -393,7 +393,7 @@ QUERY reports zero capabilities; INITIALIZE and DETACH return unsupported, never
 a successful lifecycle acknowledgement. The block wrapper invokes the provider
 and copies its eight-word reply into existing instrument reply words 4..11,
 covered by the existing reply checksum. No extra SPI reply rows are allocated.
-See [mailbox protocol](../../image-modules/adapters/instrument-registry/README.md).
+See [mailbox protocol](../../runtime/platform/instrument-registry/README.md).
 Next: implement bounded DSP initialization/reset and detachment, then connect the
 load controller to these acknowledgements. No instrument rows are published yet.
 Validation: 13 SHARC component cases (seven V2-window and six existing suffix-bound
@@ -433,7 +433,7 @@ references (`out/canopy-mailbox-client-changed.log`). No device or ColdFire
 execution is claimed.
 
 An internal SHARC V2 single-instance reset worker is now implemented in
-`image-modules/adapters/instrument-registry/src/dsp/lifecycle.s`. It validates the
+`runtime/platform/instrument-registry/src/dsp/lifecycle.s`. It validates the
 state extent, callback range and reset reason before any write/call, clears state
 only for CREATE, and accepts only a zero callback result. Its current clearing
 limit is 1024 words per call. It is not yet connected to mailbox commands: trusted
@@ -449,7 +449,7 @@ check passes 193 host tests (16 skipped), formatting, types and layering; its on
 failure is the existing 256 stale references. Changed document references pass.
 
 The DSP now has an internal eight-row lifecycle table and begin/tick routines in
-`image-modules/adapters/instrument-registry/src/dsp/rows.s`. Initialization and
+`runtime/platform/instrument-registry/src/dsp/rows.s`. Initialization and
 detachment reset at most one track instance per tick. Completion follows the last
 callback return; failures retain the owner/generation and attempted-instance count.
 Partial initialization detaches only attempted instances, including a faulted
@@ -468,7 +468,7 @@ the existing 256 stale references and the recurring minimum-delay timer failure
 `out/canopy-row-lifecycle-timing.log`.
 
 A protected row-tick boundary is now implemented in
-`image-modules/adapters/instrument-registry/src/dsp/protected.s`. It preserves V2
+`runtime/platform/instrument-registry/src/dsp/protected.s`. It preserves V2
 callback scratch context, both 80-bit multiplier accumulators, addressing lengths
 and arithmetic mode/status while pinning the callback ABI. B3 is restored before
 I3; accumulator guard words are restored after middle words. Entry must already be
@@ -1738,7 +1738,7 @@ If a sustained carrier cannot provide the required lifetime, investigate an expl
 
 ## Transport alongside Overloop
 
-The [DSP-link implementation](../../runtime/platform/dsp-link/README.md), [pattern-position provider](../../image-modules/adapters/pattern-position/README.md) and [Overloop display](../../image-modules/adapters/loop-display/README.md) already share forward/reply transport. Centralize any new allocation in DSP-link and its receiver. Preserve the pattern-position suffix and its ABI.
+The [DSP-link implementation](../../runtime/platform/dsp-link/README.md), [pattern-position provider](../../runtime/platform/pattern-position/README.md) and [Overloop display](../../runtime/platform/loop-display/README.md) already share forward/reply transport. Centralize any new allocation in DSP-link and its receiver. Preserve the pattern-position suffix and its ABI.
 
 The DTII profile describes 174 spare forward words. Pattern position reserves the final 16. A candidate additional reservation is 32 words immediately before those 16: eight header words plus eight three-word event records. With the loader's existing three-word header, its maximum payload would become 123 words when both bridges are enabled. Confirm this calculation against the actual sender and receiver before assigning bytes; update both bounds and all upload chunk calculations together.
 
@@ -2265,7 +2265,7 @@ voice leading and the final SRC pages remain later presentation/musical work;
 Stage 2 exposes the fixed close/open/inversion choices. There is no arp or pad
 oscillator claim in this stage.
 
-See [the adapter guide](../../image-modules/adapters/instrument-play/README.md)
+See [the adapter guide](../../runtime/platform/instrument-play/README.md)
 for exact selectors, ownership behavior, storage and recovery controls.
 Stage 2 is complete at its functional emulator acceptance boundary. The combined
 menu/audio test passes normal admission, independent-note continuity, silent

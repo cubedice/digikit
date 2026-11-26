@@ -5,10 +5,10 @@
  * pool access, allocation failure, stale handles after machine changes, save
  * failure propagation, or inactive-Sound edits. Never select it for hardware. */
 #include <stdint.h>
-#include "../../../../../../image-modules/adapters/instrument-play/src/cf/instances.h"
-#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
-#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
-#include "../../../../../../image-modules/adapters/instrument-play/src/cf/sound-state.h"
+#include "../../../../../../runtime/platform/instrument-play/src/cf/instances.h"
+#include "../../../../../../runtime/platform/instrument-play/src/cf/sound-codec.h"
+#include "../../../../../../runtime/platform/instrument-play/src/cf/sound-pool.h"
+#include "../../../../../../runtime/platform/instrument-play/src/cf/sound-state.h"
 extern uint8_t *fw_alloc(uint32_t);
 extern void fw_free(uint8_t *);
 extern uint32_t dkrt_irq_mask(void);

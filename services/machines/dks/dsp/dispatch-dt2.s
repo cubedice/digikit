@@ -227,8 +227,6 @@ _dv_nodiag:
     R0 = 0x400;
     R2 = R2 OR R0;
     R1 = FEXT R1 BY R2;                   // cache[t]
-    R0 = 0;
-    DM(_dv_v2_scan) = R0;
     R2 = 31;                              // a type that no row registers takes the stock path without the table walk (`_dv_mask`, above)
     R0 = R1;
     COMP(R0, R2);
@@ -239,7 +237,10 @@ _dv_nodiag:
     R2 = LSHIFT R2 BY R0;                 // a shift by a negative count moves bit t down to bit 0
     R0 = 1;
     R2 = R2 AND R0;
-    IF EQ JUMP _dv_scan_v2;
+    // The mask holds the V2 table's types too (`_dv_mke`): a type it lacks is in neither table, so a stock voice pays nothing for the V2 table.
+    IF EQ JUMP _dv_stock;
+    R0 = 0;
+    DM(_dv_v2_scan) = R0;                 // a scan starts in the registry's rows (`_dv_scan_v2` sets it for the V2 table's)
     I4 = _dv_table;
 _dv_scan:
     R0 = DM(0, I4);                       // row type; 0 ends the table (the last row is always empty)

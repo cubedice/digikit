@@ -1,20 +1,18 @@
-| machines.dks on the Digitakt II (1.17): the ColdFire routines the service's hooks run. They were in core/machines (`src/cf/dt2/machines.s`).
+| machines.dks on the Digitakt II (1.17): the ColdFire routines the service's hooks run. The dispatch is the image's (`runtime/platform/rows/src/cf/type-dispatch-dt2.s`).
 |
 | Each hook is entered by a `jmp.l` that the runtime writes at its firmware site (a hook of a service is raw: no trampoline). The routine takes the whole
 | control flow of the site and ends in the stock code either by `jmp dk_tail_<hash of the hook>` (the displaced instructions of the site as in the user's firmware, made by
 | the port file) or, when a branch is among them, by `jmp mf_x_*` to an exit that the hook declares in `ports/fw` (`exits`; `dk_exit_<hash>_<n>`, an absolute address the port file resolves:
 | the jump changes no register or flag). The aliases `mf_x_*`, `mf_spt` are the `[object.externs]` of module.toml.
-| `DKRT_MF_TAB` is the image table `machines_info` of core/machines, copied by `setup` (lib.rs); its words give the registry rows and counts and the addresses of the
-| adapter's routines. Offsets T_* below; the same layout is in hooks-dn2.s and in `image.rs`.
+| `DKRT_MF_TAB` holds the registry words of the image's `rows_info` (core/rows), bound by `start` (`info.rs`); its words give the registry rows and counts and the address of the slot map. Offsets T_* below; the same layout is in hooks-dn2.s and in `image.rs`.
 |
 | Hook convention: registers the stock site frees are scratch (`ports/fw/machine.toml` lists them per hook); everything else a routine saves.
-| The image keeps `mf_ensure` (the tables of the registry are built once, on first use), the machine list and rank hooks, and the dispatch hook: it is the one
-| routine `mf_ensure` is called through (`mf_call_ensure`).
+| The image keeps the dispatch hook (`mf_dispatch` of core/rows: it answers a type of the registry with its row).
 
     .text
     .balignw 4, 0x4e71
 
-| row layout (bytes), the field order of core/machines' [[registry.field]]
+| row layout (bytes), the field order of core/rows' [[registry.field]]
     .equ O_CLONE,  44
     .equ ROWSIZE,  64
 
@@ -23,11 +21,7 @@
     .equ T_FIRST, 12
     .equ T_COUNT, 16
     .equ T_ROWS, 24
-    .equ T_N_PAGE_COUNT, 32
-    .equ T_N_CODE, 40
-    .equ T_N_DRAW, 44
-    .equ T_N_OVERLAY, 48
-    .equ T_SLOTMAP, 52
+    .equ T_SLOTMAP, 28
 
 | the table of the image's SRC page and modulation functions (byte offsets of the words of DKRT_MF_EXT, bound by the owner's `start`; `ext_info.rs` of the
 | crate has the same layout). Every word is 0 when the image has no table `machines_ext_info`.
@@ -139,8 +133,7 @@ mf_srcpage:
     blt.s   1f
     move.l  #SRC_PAGES,-(%sp)
     move.l  %d0,-(%sp)
-    movea.l DKRT_MF_TAB+T_N_PAGE_COUNT,%a1
-    jsr     (%a1)
+    jsr     dks_native_page_count
     addq.l  #8,%sp
     move.l  %d0,%d1
     lsl.l   #2,%d1
@@ -162,16 +155,23 @@ mf_srcpage:
     jmp     mf_x_sp_stock
 3:  jmp     mf_x_sp_alt
 
-| The same hook in an image whose core/machines has `src-pages.c` (table `machines_ext_info`): a core adapter may register up to four SRC pages for an
-| added type (`mf_src_register`), and `mf_src_apply_pages` cuts or grows the page vector with the firmware's own allocator; a type without a
-| registration keeps the one-page rule, and a stock type gets its two entries back. d0 = the track's type.
+| The same hook in an image whose core/instrument-play has `src-pages.c` (table `machines_ext_info`): a core adapter may register up to four SRC pages
+| for an added type (`mf_src_register`), and `mf_src_apply_pages` cuts or grows the page vector with the firmware's own allocator; a type without a
+| registration takes the native page count (the one-page rule), and a stock type gets its two entries back. d0 = the track's type.
 mf_srcpage_ext:
     cmp.l   DKRT_MF_TAB+T_FIRST,%d0
     blt.s   1f
-    move.l  %d0,-(%sp)
+    move.l  %d0,-(%sp)                  | the type, for the native count below
     movea.l DKRT_MF_EXT+X_SRC_COUNT,%a1
-    jsr     (%a1)
-    addq.l  #4,%sp
+    jsr     (%a1)                       | the adapter's count of a registered type, 0 for any other
+    tst.l   %d0
+    bne.s   6f
+    move.l  (%sp),%d0
+    move.l  #SRC_PAGES,-(%sp)
+    move.l  %d0,-(%sp)
+    jsr     dks_native_page_count       | an unregistered type: the native page count (the one-page rule)
+    addq.l  #8,%sp
+6:  addq.l  #4,%sp
     move.l  %d0,-(%sp)
     move.l  %a2,-(%sp)
     movea.l DKRT_MF_EXT+X_SRC_APPLY,%a1
@@ -187,3 +187,14 @@ mf_srcpage_ext:
     beq.s   3f
     jmp     mf_x_sp_stock
 3:  jmp     mf_x_sp_alt
+| ---- rank (the sort comparator's std::map insert): it gets the (type, display position) pairs of DKRT_MF_RANK, which `start` built (src/list.rs), instead of the caller's array.
+| Site: the `jsr` of the insert; stack: 0 map, 4 begin, 8 end. d0 free. The pairs are 8 bytes; DKRT_MF_RANKN of them.
+    .globl mf_rank
+mf_rank:
+    move.l  #DKRT_MF_RANK,%d0
+    move.l  %d0,4(%sp)
+    move.l  DKRT_MF_RANKN,%d0
+    lsl.l   #3,%d0
+    addi.l  #DKRT_MF_RANK,%d0
+    move.l  %d0,8(%sp)
+    jmp     mf_x_rank

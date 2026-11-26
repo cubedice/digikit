@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import { button, encoder, type Session } from '@digi/test-support';
 import { expect } from 'vitest';
-import { REDRAW, SETTLE, bounded, word } from '@digi/regression/runtime/fx-live.ts';
+import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
+import { bounded, word } from '@digi/regression/runtime/guest-access.ts';
 import { mainPage as mainPageOf, openPages as openPagesOf } from '@digi/regression/runtime/fx-pages-ui.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 
