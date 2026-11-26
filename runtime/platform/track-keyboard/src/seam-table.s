@@ -6,7 +6,7 @@
     .globl tk_image
 tk_image:
     .long 0x544b5331
-    .long 2
+    .long 3
     .long 64
     .long tk_defaults
     .long tk_track_defaults

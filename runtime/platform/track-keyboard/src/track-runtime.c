@@ -35,6 +35,9 @@ static bool was_running;
 static uint16_t registered;
 static uint8_t kind[TK_TRACKS], panel_track[TK_NOTES];
 static uint16_t panel_claims, canceled_panel;
+/* The claims of TRIG presses outside keyboard mode (tk_panel_trig_on): each belongs to its key's track, so the keyboard's focus
+ * leaves them alone and only their release (or a cancel) ends them. */
+static uint16_t trig_claims;
 static uint8_t retrig_track[TK_NOTES];
 static uint16_t retrig_keys;
 volatile uint32_t tk_panel_claim_hits;
@@ -124,6 +127,7 @@ void tk_panel_cancel(void)
             tk_service_release(panel_track[key], TK_PANEL, 0, key);
     canceled_panel |= panel_claims;
     panel_claims = 0;
+    trig_claims = 0;
 }
 
 static void clear_retrigs(void)
@@ -134,10 +138,12 @@ static void clear_retrigs(void)
     retrig_keys = 0;
 }
 
+/* The keyboard's focus (core/keyboard-panel: the selected track in keyboard mode, IP_NONE outside it): a key held on another track
+ * ends with every panel note. A TRIG press outside keyboard mode is not the keyboard's: it plays on until its release. */
 void tk_panel_focus(uint32_t track)
 {
     for (uint8_t key = 0; key < TK_NOTES; ++key)
-        if ((panel_claims & (1u << key)) && panel_track[key] != track) {
+        if ((panel_claims & ~trig_claims & (1u << key)) && panel_track[key] != track) {
             tk_panel_cancel();
             return;
         }
@@ -346,7 +352,10 @@ void tk_runtime_touch(uint8_t track)
         poll();
 }
 
-int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+/* A panel key of a track the track keyboard plays. `keyboard`: a key of KEYBOARD mode, which a NOTES learn takes and the chord
+ * selector's octave turns into a chord choice; otherwise a TRIG press that plays the track. */
+static int panel_press(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity,
+                       bool keyboard)
 {
     if (key >= TK_NOTES || track >= TK_TRACKS || pitch > 127 || !velocity || velocity > 127)
         return 0;
@@ -356,10 +365,11 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     if (!polling || !refresh_pattern() || !(registered & (1u << track)) ||
         tk_native_kind((uint8_t)track) != kind[track])
         return 0;
-    bool learned = tk_runtime_learn_note((uint8_t)track, (uint8_t)pitch, (uint8_t)velocity);
+    bool learned =
+        keyboard && tk_runtime_learn_note((uint8_t)track, (uint8_t)pitch, (uint8_t)velocity);
     poll();
     int8_t octave, channel;
-    bool selector = !learned && tk_service_enabled((uint8_t)track) &&
+    bool selector = keyboard && !learned && tk_service_enabled((uint8_t)track) &&
                     tk_service_selector((uint8_t)track, true, &octave, &channel) && channel < 0 &&
                     octave == (int8_t)(pitch / 12u);
     if (selector) {
@@ -372,12 +382,29 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     }
     panel_track[key] = (uint8_t)track;
     panel_claims |= mask;
+    if (keyboard)
+        trig_claims &= (uint16_t)~mask;
+    else
+        trig_claims |= mask;
     ++tk_panel_claim_hits;
     tk_service_tick(0, (uint16_t)pp_selected_tempo());
     if (tk_native_audio_waiting() & (1u << track))
         update_pool();
     tk_native_drain();
     return 1;
+}
+
+int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    return panel_press(key, track, pitch, velocity, true);
+}
+
+/* A TRIG press outside keyboard mode on a CANOPY track (core/keyboard-panel): the stock path auditions the key's track, and
+ * CANOPY has no stock voice to audition with. The track keyboard plays it as a press of the track; tk_panel_off ends it. */
+int tk_panel_trig_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    return track < TK_TRACKS && kind[track] == TK_NATIVE_CANOPY &&
+           panel_press(key, track, pitch, velocity, false);
 }
 
 /* Live recording on an audio or CANOPY track: the stock note action records the note and the track keyboard sounds it. */
@@ -1040,6 +1067,7 @@ int tk_panel_off(uint32_t key)
     if (!(panel_claims & mask))
         return 0;
     panel_claims &= (uint16_t)~mask;
+    trig_claims &= (uint16_t)~mask;
     tk_service_release(panel_track[key], TK_PANEL, 0, key);
     tk_native_drain();
     return 1;

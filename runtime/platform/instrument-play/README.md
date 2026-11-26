@@ -100,6 +100,16 @@ card unread. CANOPY has no MIDI route of its own: the track keyboard plays it
 from the Digitakt's MIDI config, and hands the track's pitch bend, CC1 and
 CC121 to CANOPY with its notes.
 
+CANOPY has no stock voice, so `core/keyboard-panel` hands the track keyboard
+each panel press of a CANOPY track that the stock path would audition. These
+are a key in keyboard mode, a step entry with KEYBOARD held, and a TRIG press
+outside keyboard mode, which on a stock track plays the track. The TRIG press
+(`tk_panel_trig_on`) plays the track's note with its chord and arp settings
+until its release, which the keyboard's focus (the selected track in keyboard
+mode, none outside it) does not cut short; a NOTES learn and the chord
+selector take keyboard-mode keys only. Outside keyboard mode, a TRIG press that live recording records or
+that retriggers (trig mode RETRIG) keeps its stock path.
+
 The shared adapter calls `instrument_track_keyboard_lanes(track, lanes)`
 with bit 0 for the four foreground pad voices and bit 1 for the separate
 timed voice. A nonzero mask claims the track. The first call requests

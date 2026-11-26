@@ -7,7 +7,7 @@
 # `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (the stock handler, with the caller's arguments). Without the service the
 # firmware runs stock: no ARP or KEYS page, no track keyboard, the stock step edits, MIDI routes and sequencer records.
 # Changing the order or the count changes the layout: bump `version`.
-version = 2
+version = 3
 
 [output]
 service_file = "services/track-keyboard.dks"
@@ -52,6 +52,7 @@ entries = [
     # core/keyboard-panel (the KEYBOARD view), core/midi-events (the channel router) and core/fxview (the TRIG picker): 0 is
     # "not the track keyboard's", -1 "no LED of its own"
     ["tk_panel_on", "zero"],
+    ["tk_panel_trig_on", "zero"],
     ["tk_panel_off", "zero"],
     ["tk_panel_retrig", "zero"],
     ["tk_panel_cancel", "rts"],

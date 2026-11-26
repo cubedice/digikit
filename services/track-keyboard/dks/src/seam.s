@@ -26,6 +26,7 @@ tk_vec_table:
     .long tk_trig_turn
     .long tk_trig_parameter
     .long tk_panel_on
+    .long tk_panel_trig_on
     .long tk_panel_off
     .long tk_panel_retrig
     .long tk_panel_cancel
