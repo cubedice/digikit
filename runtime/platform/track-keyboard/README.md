@@ -31,6 +31,10 @@ manual group still uses its chosen helpers. To pin a group, stop transport,
 tap the numbered TRIGs in POOL, then press YES. Blue is the owner, white
 shows selected helpers, and dim shows available tracks. NO discards the
 draft. Clear the selections and apply to return a saved group to AUTO.
+A track the group cannot borrow shows IN USE (it has trigs or locks in the
+pattern, or another claim), or MIDI, CANOPY or RELAY when its machine is
+the reason: a MIDI track has no audio voice to lend, and CANOPY and RELAY
+play their own.
 MIDI tracks show their configured channel, output routes and transmit
 budgets. CANOPY shows its internal voice limit.
 
