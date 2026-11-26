@@ -302,3 +302,11 @@ total on main, 359,408, is what the install rehearsal's boot measured. Free cf.e
 CANOPY loaded alone takes 234,128 bytes of arena: its own file 5,456, `instrument.dks` 91,712, `machines.dks` 66,704,
 `track-keyboard.dks` 66,640 and the port file 3,616 (each service with its keys block). With RELAY selected too, `instrument.dks` and
 `machines.dks` serve both, and an image with the track keyboard loads it for every track, so CANOPY itself adds 5,456.
+
+**Step entry with KEYBOARD held** (branch `feat/canopy-step-audition`). Step recording takes its notes with KEYBOARD held while
+keyboard mode is off (finding 349), and the panel handed a press to the track keyboard only in keyboard mode: on a CANOPY track,
+which has no stock voice to audition with, an entered note was written but not heard. Such a press is now a keyboard note too
+(`ip_panel_on`): the stock note action records it and the track keyboard sounds it until the key's note-off. On the 1.17 emulator
+the note action does run for these presses (pitch 60 for TRIG 9 in the test), and the note-list writer commits after the key event.
+[D] `modules/machine/digikit/canopy/tests/step-audition.device.test.ts`: the entered note sounds at -33.1 dB while held, the level
+of a keyboard-mode press on the same track (-33.2 dB), and its release ends it; before the change it was silent (-100 dB).

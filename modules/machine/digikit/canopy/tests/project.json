@@ -60,6 +60,32 @@
       },
       {
         "files": [
+          "step-audition.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "core/services/machines",
+          "core/services/instrument",
+          "core/services/track-keyboard"
+        ],
+        "patchModules": [
+          "core/instrument-play",
+          "core/track-keyboard",
+          "core/health"
+        ],
+        "tags": [
+          "S:machines",
+          "A:core/instrument-play",
+          "S:instrument",
+          "S:track-keyboard"
+        ]
+      },
+      {
+        "files": [
           "persistence.device.test.ts",
           "copy-handoff.device.test.ts",
           "pattern-copy.device.test.ts",
