@@ -10,7 +10,7 @@
  *                                                        with SYNC: the ratio of the zone's 1/1, /2 .. 1/1 .. X2
  *                         C  RPTS  press: HOLD        D  COLR
  *                         E  HALO                     F  SKEW  press: step through SKEW, PONG, SWAP
- *                         G  INPT  turn: right LOOP, left LIVE, at any time (without a loop PRISM hears silence)
+ *                         G  INPT  turn: 4 ticks right LOOP, 4 left LIVE, at any time (without a loop: silence)
  *                                  hold: the TRIG keys choose the tracks the effect hears, their LEDs show them
  *                         H  XFAD  Overloop's crossfader (while there is a loop)   press: ARM   FUNC + NO: drop the loop
  *
@@ -34,6 +34,8 @@ enum {
 };
 enum { PU_LEVEL = 8 };  /* the encoders: 0 to 7 are A to H */
 enum { PU_SELECT = 6 }; /* G: INPT, and its hold the tracks */
+/* The ticks of G toward INPT's other position that switch it (as a choice of ZONE takes four). */
+enum { PU_SWITCH_TICKS = 4 };
 /* The TRIG LEDs (the firmware's logical LEDs 26 to 41 for TRIG 1 to 16) while G is held: white for a track the effect
  * hears, the dim level for the others (the values of the input overlay before step 2 of the redesign). */
 enum { PU_LED_TRIG = 26, PU_LED_HEARD = 0x71, PU_LED_DIM = 0x02 };

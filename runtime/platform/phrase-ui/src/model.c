@@ -87,6 +87,8 @@ static void input(PhraseUi *s, uint32_t value)
 {
     if (dkrt_phrase_get(PH_P_INPT) != value) {
         dkrt_phrase_set(PH_P_INPT, value);
+        /* G's ticks counted toward the old position's other side are void */
+        s->detent[PU_SELECT] = 0;
         ++s->revision;
     }
 }
@@ -253,14 +255,22 @@ uint32_t pu_turn(PhraseUi *s, uint32_t encoder, int32_t delta, uint32_t fine)
     uint32_t p = pu_parameter(encoder);
     if (p == PH_P_SKEW && dkrt_phrase_get(PH_P_ROUTE) == PH_ROUTE_PONG)
         return PU_OWN;
-    /* G and H: taken, so that the stock page does not turn a value under them. G is INPT's switch at any time (a tick to
-     * the right is LOOP, to the left LIVE); H, while there is a loop, the loop effect's crossfader, a step a tick. */
+    /* G and H: taken, so that the stock page does not turn a value under them. G is INPT's switch at any time (to the
+     * right LOOP, to the left LIVE); H, while there is a loop, the loop effect's crossfader, a step a tick. */
     if (p >= PH_PARAM_COUNT) {
         if (!delta)
             return PU_OWN;
-        if (encoder == PU_SELECT)
-            input(s, delta > 0);
-        else if (pu_has_loop(s)) {
+        if (encoder == PU_SELECT) {
+            /* PU_SWITCH_TICKS toward the other position switch INPT, and a tick toward the one it is at clears the count:
+             * a detented knob that is let go of can tick back once, and on the device that tick put INPT back at LOOP
+             * right after a turn to LIVE. An accelerated event counts at most four. */
+            int32_t toward = dkrt_phrase_get(PH_P_INPT) ? -delta : delta;
+            if (toward > PU_SWITCH_TICKS)
+                toward = PU_SWITCH_TICKS;
+            s->detent[encoder] = toward > 0 ? s->detent[encoder] + toward : 0;
+            if (s->detent[encoder] >= PU_SWITCH_TICKS)
+                input(s, !dkrt_phrase_get(PH_P_INPT));
+        } else if (pu_has_loop(s)) {
             int32_t value = (int32_t)s->loop->get(LP_XFAD) + delta;
             if (value < 0)
                 value = 0;

@@ -282,9 +282,11 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect((await control())('PH_C_FLAGS') & routeFlags).toBe(0);
     expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: '', lit: false });
 
-    // G is INPT's switch also without a loop: to the right LOOP, which stays (PRISM hears silence and the page says so), to the left
-    // LIVE. Its press switches nothing.
+    // G is INPT's switch also without a loop, four ticks each way: to the right LOOP, which stays (PRISM hears silence and the page
+    // says so), to the left LIVE. Its press switches nothing.
     await turn('ENC G', 1);
+    expect(await value(PH.PH_P_INPT!), 'one tick of G switches nothing').toBe(0);
+    await turn('ENC G', 3);
     expect(await value(PH.PH_P_INPT!), 'G to the right: LOOP').toBe(1);
     expect((await control())('PH_C_INPUT')).toBe(1);
     await advance(session, 1500);
@@ -296,8 +298,12 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect(await value(PH.PH_P_INPT!), 'a press of G switches nothing').toBe(1);
     // the stock input path holds an encoder's turns back for about 0.3 s after its press (finding 359)
     await advance(session, 400);
-    await turn('ENC G', -2);
+    await turn('ENC G', -4);
     expect(await value(PH.PH_P_INPT!), 'G to the left: LIVE').toBe(0);
+    // the tick back a knob can make as it is let go of (on the device it put INPT back at LOOP)
+    await turn('ENC G', 1);
+    await advance(session, 300);
+    expect(await value(PH.PH_P_INPT!), 'one tick back: LIVE stays').toBe(0);
     expect((await page()).cells[6]).toMatchObject({ value: 'LIVE', state: 'NO TRK' });
     await shot(session, artifacts, 'inpt-live');
 
