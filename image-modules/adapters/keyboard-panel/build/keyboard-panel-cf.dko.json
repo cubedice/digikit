@@ -53,226 +53,254 @@
   },
   {
    "addend": 0,
-   "offset": 80,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..text.canopy_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 102,
+   "offset": 72,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_live_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 112,
+   "offset": 82,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_held",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 122,
+   "offset": 92,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_step_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 188,
+   "offset": 150,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..text.canopy_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 182,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 208,
+   "offset": 234,
+   "section": ".text.ip_panel_on",
+   "symbol": "ip_panel_key_down",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 256,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.shared_live_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 222,
+   "offset": 270,
    "section": ".text.ip_panel_on",
    "symbol": "tk_capture_panel_press",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 260,
-   "section": ".text.ip_panel_on",
-   "symbol": "tk_capture_panel_press",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 302,
+   "offset": 310,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_record_audition",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 314,
+   "offset": 322,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_native_record_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 352,
+   "offset": 360,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.shared_live_record",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 358,
+   "offset": 366,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_recorded",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 396,
+   "offset": 402,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 422,
+   "offset": 428,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_record_audition",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 488,
+   "offset": 518,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 546,
+   "offset": 578,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 552,
+   "offset": 584,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 612,
+   "offset": 648,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_recorded",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 618,
+   "offset": 654,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_original_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 628,
+   "offset": 664,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 8,
-   "offset": 636,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 12,
-   "offset": 644,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 16,
-   "offset": 652,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.ip_panel_debug",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 660,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..bss.panel_view",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 666,
-   "section": ".text.ip_panel_on",
-   "symbol": ".sec..data.panel_track",
-   "type": "cf.32"
-  },
-  {
-   "addend": 20,
    "offset": 672,
    "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
-   "addend": 0,
-   "offset": 678,
+   "addend": 12,
+   "offset": 680,
    "section": ".text.ip_panel_on",
-   "symbol": "tk_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 16,
+   "offset": 688,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 696,
    "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.panel_view",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 702,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..data.panel_track",
+   "type": "cf.32"
+  },
+  {
+   "addend": 20,
+   "offset": 708,
+   "section": ".text.ip_panel_on",
+   "symbol": ".sec..bss.ip_panel_debug",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 714,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_panel_on",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 732,
+   "section": ".text.ip_panel_on",
    "symbol": ".sec..bss.shared_step_keys",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 708,
+   "offset": 748,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 760,
    "section": ".text.ip_panel_on",
    "symbol": "tk_panel_retrig",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 738,
+   "offset": 790,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_return",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 764,
+   "offset": 816,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_project_settings",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 780,
+   "offset": 832,
    "section": ".text.ip_panel_on",
    "symbol": "ip_panel_trig_mode",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 860,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 876,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 920,
+   "section": ".text.ip_panel_on",
+   "symbol": "tk_capture_panel_press",
    "type": "cf.32"
   },
   {
@@ -664,10 +692,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffc848d77cfc246f003c262f0040282f00442a2f00482c2f004c286f00542a6f00582f6f005000302f2a00a04eb90000000073802f410038588f4a006700016a700fb083650001622f042f0a4eb900000000508f2c402e2a00984a87670001682f074eb9000000002f0736404eb9000000002f0714004eb9000000004fef000c320b4a0056c77f0744874a01670001204a0256c2367c00017001750244824a8e6724220282872c414a81670001264a806600011a3c7c0001203c000000004a8066029dce4280720fb283650e41f9000000004a703a006600016841f9000000004a88672a4a8b67264a80660000ee220282872f012f062f052f042f032f4000404eb9000000004fef0014202f002c4aaf0034670001a84a80670000c68487660000c0700fb083650000b8243c000000004a82670000ac41f9000000004a88670000a02f062f052f042f034e904fef00104a806700008c20045280e18841f90000000052b900000000808531803a0020422f052f044e902f0d2f0c2f2f00402f062f052f042f032f0a4eb90000000042af00684cef7cfc002870102f4000644fef00604ef9000000009dce6000feaa4a02660001722647428042826000fee2264e240e6000fef0428097cb42829dce6000fef6428742826000feee42816000ff144a8b674041f9000000004a88675c4a8e665c4e902f4d00582f4c00542f46004c2f4500482f4400442f4300402f4a003c4cd77cfc2f6f003000504fef00384ef90000000041f9000000004a88671c2f062f052f042f034e904fef00104a80670a4cd77cfc4fef00384e754a8e67a62f0d2f0c2f2f00382f062f052f042f032f0a52b9000000004eb9000000004fef001c52b9000000002e8623c3000000002f0523c4000000002f0423c5000000002f0323ca0000000023c40000000023c6000000004eb9000000004fef00104a8067907001e7a881b90000000060844a8e668e4df9000000004a8e6700ff2a20038084e8886600ff20707fb0856500ff18223c00000000b2af00386600ff0a202a00944a806700ff002f004eb900000000588f4a806700fef02f004eb900000000588f55804a806600fede2f042f034e96508f6000fed24a8e6600fe96367c0001428074016000fd92",
+   "hex": "4fefffc848d77cfc246f003c2c6f0058242f0040262f00442a2f00482c2f004c2a6f00542f6f005000342f2a00a04eb900000000266a009871802f400034588f4a8b67302f0b4eb9000000002f0b1e004eb9000000002f0b18004eb9000000004fef000c4a07665a4a04660001444a006600014697cb428799cc4aaf00306700015c4281700fb082650002d02f032f0a2f4100344eb900000000508f2800222f002c4a806758280788816700013e4a8b660c7801203c000000004a8066404284603c4a0456c4367c00017f0444874a00670000ee4aaf0030660000ee700fb08265000208487800124eb900000000588f4a80660000de387c00014284720141f9000000004a702a006600015a203c000000004a80660002624aaf0030670001504a8b670000dc8287660000d6700fb082650000ce47f9000000004a8b670000c241f9000000004a88670000b62f062f052f032f024e904fef00104a80670000a220035280e18841f90000000052b900000000808531802a002f052f034e932f0e2f0d2f2f00442f062f052f032f022f0a4eb90000000042af00684cef7cfc002872102f4100644fef00604ef90000000097cb7e016000ff1897cb42876000ff16387c00016000feb4387c000172016000feb4387c000172016000feb2720fb2826500018842816000fed6428742816000ff0e428472016000018642806000018a4a8c674241f9000000004a88670000d44a8466604e902f4e00582f4d00542f46004c2f4500482f4300442f4200402f4a003c4cd77cfc2f6f003400504fef00384ef90000000041f9000000004a88670000922f062f052f032f024e904fef00104a80677e4cd77cfc4fef00384e754a84670000842f0e2f0d2f2f003c2f062f052f032f022f0a52b9000000004eb9000000004fef001c52b9000000002e8623c2000000002f0523c3000000002f0323c5000000002f0223ca0000000023c30000000023c6000000004eb9000000004fef00104a80678e7001e5a881b90000000060824a846700ff30608a203c000000004a806600fefe47f9000000004a8b6700ff1620028083e8886600ff0c707fb0856500ff04223c00000000b2af00386600fef6202a00944a806700feec2f004eb900000000588f4a806700fedc2f004eb900000000588f55804a806600feca2f032f024e93508f6000febe203c0000000042844a8066126000fdb8203c000000004a806782428442814a8c6700fd9c4a8b6600fe78200780812f002f062f052f032f022f4100404eb9000000004fef0014387c0001222f002c6000fd6e",
    "kind": "text",
    "name": ".text.ip_panel_on",
-   "size": 824
+   "size": 940
   },
   {
    "align": 2,
@@ -768,7 +796,7 @@
    "size": 82
   }
  ],
- "source_sha256": "a34ab2842eac90f40cf0b8d7b1212ed9c530905571a7714b987ed06257cf9572",
+ "source_sha256": "a53bdbe85ad536743270af49bf913daa380cbb4435420ae616e6ad20a4298aed",
  "symbols": [
   {
    "global": false,
@@ -1129,8 +1157,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "735",
-  "isa_check": "a6d256dd8cab8598db599923ce2306dd5eec41b04135c160a42ff754b9016cab",
+  "instructions_redecoded": "764",
+  "isa_check": "13da2fea09ea5019560fae5be31898439d88bb5284e1e74e9577dfbf5479d80c",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }
