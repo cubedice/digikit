@@ -10,7 +10,7 @@ from pathlib import Path
 
 def main() -> None:
     root = Path(__file__).resolve().parents[3]
-    adapter = root / "image-modules/adapters/instrument-play"
+    adapter = root / "runtime/platform/instrument-play"
     target = root / "out/canopy-sound-proof-modules/instrument-play"
     target.mkdir(parents=True, exist_ok=True)
     wrapper = target / "control-proof.c"

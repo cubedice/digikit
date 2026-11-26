@@ -2,7 +2,7 @@
  * modeled snapshot/admission. Never registered by the production adapter. */
 #include <stdint.h>
 #include "../canopy-detach/detach.h"
-#include "../../../../image-modules/adapters/instrument-play/src/cf/instances.h"
+#include "../../../../runtime/platform/instrument-play/src/cf/instances.h"
 extern uint32_t canopy_bracket_entry(uint32_t, uint32_t);
 extern void instrument_sound_proof_set_load(int (*)(uint32_t, uint32_t, uint32_t, uint32_t),
                                             int (*)(uint32_t, uint32_t));

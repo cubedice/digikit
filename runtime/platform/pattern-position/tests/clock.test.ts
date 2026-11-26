@@ -17,7 +17,7 @@ function runHarness(name: string): void {
         '-Wall',
         '-Wextra',
         '-Werror',
-        resolve(`image-modules/adapters/pattern-position/tests/${name}.c`),
+        resolve(`runtime/platform/pattern-position/tests/${name}.c`),
         '-o',
         executable,
       ],

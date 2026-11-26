@@ -10,7 +10,7 @@ import pytest
 from tools.patchkit import pk_loop_storage_proof as proof
 
 ROOT = Path(__file__).resolve().parents[2]
-MODULE = ROOT / "image-modules/adapters/loop-storage"
+MODULE = ROOT / "runtime/platform/loop-storage"
 
 
 @pytest.fixture(scope="module")
@@ -74,7 +74,7 @@ def test_relay_lease_abuts_existing_phrase_storage(stock_main):
     proof.audit_main(
         stock_main, patched_from_manifest(stock_main, relay=True), relay=True
     )
-    module = ROOT / "image-modules/adapters/relay-storage"
+    module = ROOT / "runtime/platform/relay-storage"
     obj = json.loads((module / "build/relay-storage-dsp.dko.json").read_text())
     symbol = next(s for s in obj["symbols"] if s["name"] == "_relay_storage_info")
     section = next(s for s in obj["sections"] if s["name"] == symbol["section"])

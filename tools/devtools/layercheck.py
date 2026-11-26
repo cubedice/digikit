@@ -95,7 +95,7 @@ FIRMWARE_PATCH_MODULES = {"test/registry-demo", "test/svc-test", "test/local-ste
 # these source files and these symbols; never grant general adapter privileges.
 CANOPY_FIXTURE = "tests/fixtures/modules/canopy-transport"
 CANOPY_INCLUDES = {
-    "image-modules/adapters/midi-events/src/cf/bridge.h",
+    "runtime/platform/midi-events/src/cf/bridge.h",
     "modules/machine/digikit/canopy/src/dsp/voice.s",
     "modules/machine/digikit/canopy/src/dsp/tuning.s",
     "modules/machine/digikit/canopy/src/dsp/instrument.s",
@@ -121,7 +121,7 @@ def canopy_fixture(root: Path, m: Module) -> bool:
 # The carrier fixture installs three DSP hooks and tests stock Sound refresh.
 # These rights do not apply to CANOPY's production module or other test modules.
 CARRIER_INCLUDES = {
-    f"image-modules/adapters/midi-events/src/dsp/{name}.s"
+    f"runtime/platform/midi-events/src/dsp/{name}.s"
     for name in (
         "carrier",
         "carrier-frame",
@@ -780,18 +780,18 @@ SC_CHECKER = ("tools/devtools/layercheck.py",)
 # head package (version 0.5.1 or later) is loaded, and the runtime names the module
 # only by its id in `dkrt_module`. Only that file and only that id.
 SC_POLICY_ID = {
-    "image-modules/adapters/instrument-play/src/cf/control.c": "digikit/canopy",
+    "runtime/platform/instrument-play/src/cf/control.c": "digikit/canopy",
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
-    "image-modules/adapters/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
+    "runtime/platform/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
 }
 # The track keyboard's device test with CANOPY (the one instrument that plays through
 # the shared track keyboard on the DT2) loads the module, and the test project's
 # runtimeAcceptance record lists it: only that test, only that id, and only the
 # acceptance metadata of the project (its other fields are checked).
 SC_TRACK_KEYBOARD_TEST = {
-    "image-modules/adapters/track-keyboard/tests/canopy.device.test.ts": "digikit/canopy",
+    "runtime/platform/track-keyboard/tests/canopy.device.test.ts": "digikit/canopy",
 }
-SC_TRACK_KEYBOARD_PROJECT = "image-modules/adapters/track-keyboard/tests/project.json"
+SC_TRACK_KEYBOARD_PROJECT = "runtime/platform/track-keyboard/tests/project.json"
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
 # of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
 # page plays), and the acceptance records list them: only these files.

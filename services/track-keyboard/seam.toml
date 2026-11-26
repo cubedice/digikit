@@ -12,8 +12,8 @@ version = 2
 [output]
 service_file = "services/track-keyboard.dks"
 adapter = "core/track-keyboard"
-image_table = "image-modules/adapters/track-keyboard/src/seam-table.s"
-header = "image-modules/adapters/track-keyboard/src/tk-seam.h"
+image_table = "runtime/platform/track-keyboard/src/seam-table.s"
+header = "runtime/platform/track-keyboard/src/tk-seam.h"
 guard = "DK_TRACK_KEYBOARD_SEAM_H"
 prefix = "TK"
 copy = "tk_img"
@@ -24,7 +24,7 @@ service_rs = "src/seam_gen.rs"
 slot = "tk_vec"
 table = "tk_vec_table"
 adapter = "core/track-keyboard"
-image_file = "image-modules/adapters/track-keyboard/src/seam.s"
+image_file = "runtime/platform/track-keyboard/src/seam.s"
 entries = [
     # the image tick ([[info]] tick_track_keyboard): starts the track keyboard once the service is loaded
     ["tk_runtime_init", "rts"],

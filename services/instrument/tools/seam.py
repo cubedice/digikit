@@ -30,8 +30,8 @@ KINDS = ("functions", "optional", "data", "values")
 OUTPUT = {
     "service_file": "services/instrument.dks",
     "adapter": "core/instrument-play",
-    "image_table": "image-modules/adapters/instrument-play/src/cf/seam-table.s",
-    "header": "image-modules/adapters/instrument-play/src/cf/seam.h",
+    "image_table": "runtime/platform/instrument-play/src/cf/seam-table.s",
+    "header": "runtime/platform/instrument-play/src/cf/seam.h",
     "guard": "DK_INSTRUMENT_SEAM_H",
     "prefix": "IP",
     "copy": "ip_img",

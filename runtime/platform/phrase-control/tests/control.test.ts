@@ -16,7 +16,7 @@ test('phrase controls, the SYNC note table, persistence and status assembly', ()
         '-Wno-int-to-pointer-cast',
         '-I',
         resolve('sdk/include'),
-        resolve('image-modules/adapters/phrase-control/tests/control_harness.c'),
+        resolve('runtime/platform/phrase-control/tests/control_harness.c'),
         '-o',
         executable,
       ],

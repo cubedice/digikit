@@ -12,8 +12,8 @@ version = 1
 [output]
 service_file = "services/relay.dks"
 adapter = "core/relay-track"
-image_table = "image-modules/adapters/relay-track/src/seam-table.s"
-header = "image-modules/adapters/relay-track/src/relay-seam.h"
+image_table = "runtime/platform/relay-track/src/seam-table.s"
+header = "runtime/platform/relay-track/src/relay-seam.h"
 guard = "DK_RELAY_SEAM_H"
 prefix = "RT"
 copy = "rt_img"
@@ -24,7 +24,7 @@ service_rs = "src/seam_gen.rs"
 slot = "relay_vec"
 table = "relay_vec_table"
 adapter = "core/relay-track"
-image_file = "image-modules/adapters/relay-track/src/seam.s"
+image_file = "runtime/platform/relay-track/src/seam.s"
 entries = [
     # core/loop-control's UI pass
     ["relay_ui_pass", "rts"],

@@ -396,7 +396,7 @@ contributions. Its current [page framework](../../image-modules/points/fxpages/R
 also does not provide this four-page surface. These are explicit framework
 changes, not module-only parameter declarations.
 
-The [DTII loop reservation](../../image-modules/adapters/loop-storage/README.md)
+The [DTII loop reservation](../../runtime/platform/loop-storage/README.md)
 provides Overloop's 8 MiB buffer. PRISM adds two independent 8 MiB banks.
 Keeping Overloop's 8 MiB would reserve 24 MiB total and leave 376 MiB of the
 original 400 MiB sample pool, before any further reservation needs. Each

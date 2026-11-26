@@ -8,7 +8,7 @@ test('track tape waveform caching, FULL, HITS, and I/O recovery', () => {
   const tmp = mkdtempSync(join(tmpdir(), 'dk-relay-files-'));
   try {
     const exe = join(tmp, 'files');
-    const root = resolve('image-modules/adapters/relay-track');
+    const root = resolve('runtime/platform/relay-track');
     execFileSync('cc', [
       '-std=c11',
       '-O2',

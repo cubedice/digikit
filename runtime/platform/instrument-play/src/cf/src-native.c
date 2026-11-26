@@ -5,7 +5,7 @@
 #include <dk/platform/ui.h>
 #include "src-control.h"
 #include "../../../keyboard-panel/src/cf/src-clock.h"
-#include "../../../../points/machines/src/cf/dt2/src-pages.h"
+#include "src-pages.h"
 #include "dk_fw_draw.h"
 #include "dk_fw_text.h"
 #include "dk_fw_view.h"

@@ -11,7 +11,7 @@ from modules.machine.digikit.canopy.tools.wavetables import preview_header
 def test_src_preview_tables_match_factory_wave_and_envelope_data():
     module = Path(__file__).resolve().parents[1]
     root = module.parents[2]
-    ui = root / "image-modules/adapters/instrument-play/src/cf"
+    ui = root / "runtime/platform/instrument-play/src/cf"
     voice = module / "src/dsp/voice.s"
     assert (ui / "src-waves.h").read_text(encoding="utf-8") == preview_header()
     assert (ui / "src-envelope.h").read_text(

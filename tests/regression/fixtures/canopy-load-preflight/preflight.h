@@ -2,7 +2,7 @@
 #ifndef CANOPY_LOAD_PREFLIGHT_H
 #define CANOPY_LOAD_PREFLIGHT_H
 #include <stdint.h>
-#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../runtime/platform/instrument-play/src/cf/sound-pool.h"
 
 enum { CANOPY_PROJECT_SOUND_LIMIT = 2192 };
 

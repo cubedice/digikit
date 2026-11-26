@@ -16,7 +16,7 @@ from tools.patchkit import patchkit, port_resolve
 
 ROOT = Path(__file__).resolve().parents[2]
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
-LIFETIME = ROOT / "image-modules/adapters/instrument-play/src/cf/sound-lifetime.s"
+LIFETIME = ROOT / "runtime/platform/instrument-play/src/cf/sound-lifetime.s"
 PROBE = ROOT / "tests/regression/fixtures/canopy-lifetime-compare/type-probe.s"
 BASE = 0x40000400
 SIZE = 0x450

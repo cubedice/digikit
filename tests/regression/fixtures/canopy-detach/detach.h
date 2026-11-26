@@ -2,7 +2,7 @@
 #ifndef CANOPY_DETACH_H
 #define CANOPY_DETACH_H
 #include <stdint.h>
-#include "../../../../image-modules/adapters/instrument-play/src/cf/sound-pool.h"
+#include "../../../../runtime/platform/instrument-play/src/cf/sound-pool.h"
 enum {
     DT_SOUND_SIZE = 0x450,
     DT_HANDLE = 0x13a,

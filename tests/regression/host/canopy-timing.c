@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "../../../image-modules/adapters/instrument-play/src/cf/timing.h"
+#include "../../../runtime/platform/instrument-play/src/cf/timing.h"
 int main(void)
 {
     IpStartTiming state = {0};

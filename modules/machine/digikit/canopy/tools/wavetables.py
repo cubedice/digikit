@@ -237,7 +237,7 @@ def main() -> None:
     root = module.parents[2]
     target = module / "src/dsp/wavetables.s"
     target.write_text(assembly(), encoding="utf-8", newline="\n")
-    preview = root / "image-modules/adapters/instrument-play/src/cf/src-waves.h"
+    preview = root / "runtime/platform/instrument-play/src/cf/src-waves.h"
     preview.write_text(preview_header(), encoding="utf-8", newline="\n")
     print(
         f"{target}: {len(half_words()) * 4} stored bytes for {len(TABLE_NAMES) * TABLE_WORDS * 2} table bytes"

@@ -31,7 +31,7 @@ def sample(value):
 @pytest.fixture(scope="module")
 def fold():
     source = (
-        REPO_ROOT / "image-modules/adapters/track-keyboard/src/dsp/track-pool.s"
+        REPO_ROOT / "runtime/platform/track-keyboard/src/dsp/track-pool.s"
     ).read_text()
     source += """
 .SECTION/PM seg_pmco;

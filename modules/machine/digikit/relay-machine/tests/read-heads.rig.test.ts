@@ -7,14 +7,14 @@ it('plays two read-only RELAY heads from the leased owner tape at independent pi
   const root = path.resolve(import.meta.dirname, '../../../../..');
   const read = (file: string) => readFileSync(path.join(root, file), 'utf8').replaceAll('\r\n', '\n');
   const files = [
-    'image-modules/adapters/relay-storage/src/dsp/storage.s',
-    'image-modules/adapters/relay-storage/src/dsp/pool.s',
-    'image-modules/adapters/track-keyboard/src/dsp/track-pool.s',
+    'runtime/platform/relay-storage/src/dsp/storage.s',
+    'runtime/platform/relay-storage/src/dsp/pool.s',
+    'runtime/platform/track-keyboard/src/dsp/track-pool.s',
     'modules/machine/digikit/relay-machine/src/dsp/voice.s',
   ];
-  const helper = read('image-modules/points/dsp-voice/src/dsp/dsp-voice.s');
+  const helper = read('runtime/platform/dsp-voice/src/dsp/dsp-voice.s');
   const exp2 = helper.slice(helper.indexOf('.GLOBAL _dv_exp2;'), helper.indexOf('// R0 = the unsigned 16-bit'));
-  const engine = read('image-modules/adapters/relay-track/src/dsp/engine.s');
+  const engine = read('runtime/platform/relay-track/src/dsp/engine.s');
   const ampDone = engine.slice(engine.indexOf('.GLOBAL _rtm_group_amp_done;'), engine.indexOf('.GLOBAL _rtm_block;'));
   const pcmMemory = 0x20110000;
   const tracks = pcmMemory + 0x1000;

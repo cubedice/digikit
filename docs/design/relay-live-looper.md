@@ -89,7 +89,7 @@ A punch can span many laps. Press LEN to restore the tape to its state before th
 
 **Saving a fresh recording.** Close WRITE and use the stock Sound or project Save command. RELAY writes the stereo sample and shows **SAVE SOUND AGAIN**. Repeat the original save to store its reference. Panel changes such as RATE, LEN and MIX reuse the recorded sample. [Native sample format](../../packages/dksample/src/lib.rs)
 
-The shared tape pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174 seconds. Multiple tracks can play independently while one records. If another track owns the recorder, RELAY shows **REC ON Txx**. A punch creates a private writable revision and retains the previous version for undo. Tracks sharing a saved revision keep their own audio when one of them records again. [Pool layout](../../image-modules/adapters/relay-storage/README.md)
+The shared tape pool provides 8,372,224 stereo PCM16 frames at 48 kHz, about 174 seconds. Multiple tracks can play independently while one records. If another track owns the recorder, RELAY shows **REC ON Txx**. A punch creates a private writable revision and retains the previous version for undo. Tracks sharing a saved revision keep their own audio when one of them records again. [Pool layout](../../runtime/platform/relay-storage/README.md)
 
 ## Acceptance on DTII OS 1.17
 

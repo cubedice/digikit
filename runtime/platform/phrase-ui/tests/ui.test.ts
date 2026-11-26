@@ -4,11 +4,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 
-test('the loop page: the crossfader, ARM as one press, the drop, the texts of every state and what is drawn', () => {
-  const temp = mkdtempSync(join(tmpdir(), 'dk-loop-page-'));
+test('the phrase page: encoders, presses, SYNC notes, the cells and what is drawn', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'dk-phrase-ui-'));
   try {
-    const executable = join(temp, 'page');
-    const module = resolve('image-modules/adapters/loop-display');
+    const executable = join(temp, 'ui');
+    const module = resolve('runtime/platform/phrase-ui');
     execFileSync(
       'cc',
       [
@@ -19,8 +19,9 @@ test('the loop page: the crossfader, ARM as one press, the drop, the texts of ev
         '-Werror',
         '-I',
         resolve('sdk/include'),
-        join(module, 'tests/page_harness.c'),
+        join(module, 'tests/ui_harness.c'),
         join(module, 'src/model.c'),
+        join(module, 'src/render.c'),
         '-o',
         executable,
       ],

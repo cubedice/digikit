@@ -17,7 +17,7 @@ def command(sequence, operation, owner=3, generation=9):
 
 @pytest.fixture(scope="module")
 def scheduler_object():
-    root = REPO_ROOT / "image-modules/adapters"
+    root = REPO_ROOT / "runtime/platform"
     source = "\n".join(
         (root / f"instrument-registry/src/dsp/{name}.s").read_text()
         for name in ("registry", "rows", "lifecycle", "protected")

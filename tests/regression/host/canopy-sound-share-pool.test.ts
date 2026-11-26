@@ -18,7 +18,7 @@ test('copy-on-share Sound entries detach or refuse without changing other copies
         '-Werror',
         '-fsanitize=undefined',
         path.join(import.meta.dirname, 'canopy-sound-share-pool.c'),
-        path.join(root, 'image-modules/adapters/instrument-play/src/cf/sound-share-pool.c'),
+        path.join(root, 'runtime/platform/instrument-play/src/cf/sound-share-pool.c'),
         '-o',
         executable,
       ],

@@ -11,7 +11,7 @@ version = 3
 slot = "instrument_vec"
 table = "instrument_vec_table"
 adapter = "core/instrument-play"
-image_file = "image-modules/adapters/instrument-play/src/cf/seam.s"
+image_file = "runtime/platform/instrument-play/src/cf/seam.s"
 entries = [
     # called by the image code that stays (the Sound persistence path and the hook entries)
     ["instrument_mod_carrier", "jmp:ip_mod_carrier_absent"],
@@ -51,7 +51,7 @@ entries = [
 slot = "midi_vec"
 table = "midi_vec_table"
 adapter = "core/midi-events"
-image_file = "image-modules/adapters/midi-events/src/cf/seam.s"
+image_file = "runtime/platform/midi-events/src/cf/seam.s"
 entries = [
     # CANOPY's channel ledger: the router of the image part (mi_channel_message, image.c) asks it after the track keyboard
     ["mi_legacy_channel_message", "zero"],

@@ -5,8 +5,8 @@ import { RawRig, f2w, w2f } from '@digi/sharc-rig-kit';
 
 it('reconstructs a recorded stereo take at reduced rates through storage and loop boundaries', async () => {
   const root = path.resolve(import.meta.dirname, '../../../../..');
-  const storage = 'image-modules/adapters/relay-storage/src/dsp';
-  const tapeDsp = 'image-modules/adapters/relay-track/src/dsp';
+  const storage = 'runtime/platform/relay-storage/src/dsp';
+  const tapeDsp = 'runtime/platform/relay-track/src/dsp';
   const files = [storage + '/storage.s', storage + '/pool.s', tapeDsp + '/audio.s', tapeDsp + '/engine.s'];
   const external = 0x20110000;
   const command = external + 512;

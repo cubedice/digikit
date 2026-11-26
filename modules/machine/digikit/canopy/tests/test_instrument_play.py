@@ -12,7 +12,7 @@ from tools.patchkit import pk_sharc
 
 @pytest.fixture(scope="module")
 def playback_object():
-    adapters = REPO_ROOT / "image-modules/adapters"
+    adapters = REPO_ROOT / "runtime/platform"
     canopy = DSP
     source = "\n".join(
         (canopy / f"{n}.s").read_text()

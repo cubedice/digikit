@@ -17,7 +17,7 @@ from support.paths import REPO_ROOT
 from tools.patchkit import patchkit, pk_sharc, pk_toolchains, port_resolve
 
 ROOT = REPO_ROOT
-MOD = ROOT / "image-modules/adapters/midi-events"
+MOD = ROOT / "runtime/platform/midi-events"
 FIRMWARE = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 
 

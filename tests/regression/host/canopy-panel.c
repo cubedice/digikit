@@ -2,7 +2,7 @@
  * path of its own, so its tracks are the track keyboard's to play, and recording goes through the stock note action. */
 #include <assert.h>
 #include <stdio.h>
-#include "../../../image-modules/adapters/keyboard-panel/src/cf/panel.c"
+#include "../../../runtime/platform/keyboard-panel/src/cf/panel.c"
 static uint8_t view[0x200], other[0x200], object[4];
 static uint32_t machine = 9, selected, instrument_track = 0, original_on, original_off, detaches;
 static uint8_t active = 1, live, held, step_record, keyboard_held, routed = 1, native_record = 1;

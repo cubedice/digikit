@@ -44,12 +44,29 @@ import { pythonImportInputs } from './py-imports.mjs';
 export { createDependencies } from './module-dependencies.mjs';
 
 // The manifests whose private inputs select the emulator load of the content module `id` (`test-conformance`): its requires closure without the shared
-// loader, which core/runtime-fixture-tests covers: the runtime and its platform adapters (runtime/) and the plug-in points (image-modules/points/). Upstream's
-// content modules require nothing, so this is the module itself; a fork module keeps the image adapters it requires (image-modules/adapters/: CANOPY's
-// instrument host, PRISM's phrase page, ...), whose change schedules its load.
-const SHARED_LOADER = ['runtime/', 'image-modules/points/'];
-const privateClosure = (byId, id) =>
-  manifestClosure(byId, [id]).filter((file) => !SHARED_LOADER.some((prefix) => file.startsWith(prefix)));
+// loader, which core/runtime-fixture-tests covers: the runtime and its platform adapters (runtime/). Upstream's content modules require nothing, so this is the
+// module itself; a fork module keeps the fork's image adapters it requires (runtime/platform/<FORK_ADAPTERS>: CANOPY's instrument host, PRISM's phrase page,
+// ...), whose change schedules its load. The fork's adapters moved into runtime/platform with upstream's (docs/plans/upstream-merge-1125/dirmap.json).
+const FORK_ADAPTERS = [
+  'runtime/platform/copy-watch/',
+  'runtime/platform/fxview/',
+  'runtime/platform/instrument-play/',
+  'runtime/platform/instrument-registry/',
+  'runtime/platform/keyboard-panel/',
+  'runtime/platform/loop-control/',
+  'runtime/platform/loop-display/',
+  'runtime/platform/loop-storage/',
+  'runtime/platform/midi-events/',
+  'runtime/platform/pattern-position/',
+  'runtime/platform/phrase-control/',
+  'runtime/platform/phrase-ui/',
+  'runtime/platform/relay-input/',
+  'runtime/platform/relay-storage/',
+  'runtime/platform/relay-track/',
+  'runtime/platform/track-keyboard/',
+];
+const shared = (file) => file.startsWith('runtime/') && !FORK_ADAPTERS.some((prefix) => file.startsWith(prefix));
+const privateClosure = (byId, id) => manifestClosure(byId, [id]).filter((file) => !shared(file));
 
 export const createNodesV2 = [
   '**/{module.toml,project.json}',

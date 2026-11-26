@@ -15,7 +15,7 @@ from tools.patchkit import patchkit, pk_sharc, pk_toolchains
 
 @pytest.fixture(scope="module")
 def registry_object():
-    adapters = REPO_ROOT / "image-modules/adapters"
+    adapters = REPO_ROOT / "runtime/platform"
     source = "\n".join(
         (adapters / f"instrument-registry/src/dsp/{name}.s").read_text()
         for name in ("registry", "lifecycle", "rows", "protected")
@@ -334,7 +334,7 @@ uint32_t session_boundary(const uint32_t *words, uint32_t step) {
     helper.write_text(
         helper.read_text().replace("RESET_NOTIFICATION", str(int(reset_notification)))
     )
-    mod = REPO_ROOT / "image-modules/adapters/midi-events"
+    mod = REPO_ROOT / "runtime/platform/midi-events"
     linked = patchkit.cf_link(
         [
             mod / "src/cf/ownership.c",

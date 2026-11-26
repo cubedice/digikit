@@ -1,7 +1,7 @@
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
-#include "../../../image-modules/adapters/instrument-play/src/cf/sound-codec.h"
+#include "../../../runtime/platform/instrument-play/src/cf/sound-codec.h"
 
 static const uint16_t high[32] = {11, 3,   127, 127, 500, 127, 8,   4,   6,    100, 75,
                                   2,  0,   0,   127, 127, 4,   700, 100, 1000, 2,   2,

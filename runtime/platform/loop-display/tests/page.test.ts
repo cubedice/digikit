@@ -4,10 +4,11 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { test } from 'vitest';
 
-test('the loop controls: the crossfader, the counters, the held values and what a new loop does', () => {
-  const temp = mkdtempSync(join(tmpdir(), 'dk-loop-control-'));
+test('the loop page: the crossfader, ARM as one press, the drop, the texts of every state and what is drawn', () => {
+  const temp = mkdtempSync(join(tmpdir(), 'dk-loop-page-'));
   try {
-    const executable = join(temp, 'control');
+    const executable = join(temp, 'page');
+    const module = resolve('runtime/platform/loop-display');
     execFileSync(
       'cc',
       [
@@ -18,7 +19,8 @@ test('the loop controls: the crossfader, the counters, the held values and what 
         '-Werror',
         '-I',
         resolve('sdk/include'),
-        resolve('image-modules/adapters/loop-control/tests/control_harness.c'),
+        join(module, 'tests/page_harness.c'),
+        join(module, 'src/model.c'),
         '-o',
         executable,
       ],

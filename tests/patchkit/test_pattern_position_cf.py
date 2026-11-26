@@ -16,7 +16,7 @@ import pytest
 from tools.patchkit import patchkit, port_resolve
 
 ROOT = Path(__file__).resolve().parents[2]
-MOD = ROOT / "image-modules/adapters/pattern-position"
+MOD = ROOT / "runtime/platform/pattern-position"
 FW = ROOT / "firmware/Digitakt_II_OS1.17.syx"
 BASE, QUEUE = 0x47E00000, 0x47E10000
 PATTERN = 0x47F00000

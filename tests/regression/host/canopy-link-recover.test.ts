@@ -8,7 +8,7 @@ test('a faulted note transport is recovered after about a second, a bounded numb
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'canopy-link-recover-'));
   try {
     const root = path.resolve(import.meta.dirname, '../../..');
-    const source = path.join(root, 'image-modules/adapters/instrument-play/src/cf');
+    const source = path.join(root, 'runtime/platform/instrument-play/src/cf');
     const executable = path.join(directory, 'recover');
     execFileSync(
       'cc',

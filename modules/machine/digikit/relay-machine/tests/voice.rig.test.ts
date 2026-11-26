@@ -8,8 +8,8 @@ it('renders separate stereo tracks at the recorder phase and retires a cleared t
   const headers = path.join(root, 'sdk/dsp/contract');
   const header = readFileSync(path.join(headers, 'dk_relay.inc'), 'utf8');
   const op = Object.fromEntries([...header.matchAll(/^#define RLY_(\w+) (\d+)$/gm)].map(m => [m[1], Number(m[2])]));
-  const sources = ['image-modules/adapters/relay-storage/src/dsp/storage.s',
-    'image-modules/adapters/relay-storage/src/dsp/pool.s', 'modules/machine/digikit/relay-machine/src/dsp/voice.s'];
+  const sources = ['runtime/platform/relay-storage/src/dsp/storage.s',
+    'runtime/platform/relay-storage/src/dsp/pool.s', 'modules/machine/digikit/relay-machine/src/dsp/voice.s'];
   const tracks = 0x20111000;
   const ret = 0xb9f100;
   const rig = await RawRig.open({ objects: [...sources.map((source, i) => ({

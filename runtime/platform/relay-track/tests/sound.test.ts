@@ -17,7 +17,7 @@ test('stock Sound saves publish completed sample references and recall controls 
       '-no-pie',
       '-Isdk/include',
       '-Iports/bindings/include',
-      'image-modules/adapters/relay-track/tests/sound_harness.c',
+      'runtime/platform/relay-track/tests/sound_harness.c',
       '-o',
       exe,
     ]);

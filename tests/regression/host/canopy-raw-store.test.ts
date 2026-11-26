@@ -20,7 +20,7 @@ test('raw Sound records survive without CANOPY and fail closed on capacity', () 
         '-fsanitize=undefined',
         path.join(fixture, 'raw-store-test.c'),
         path.join(fixture, 'raw-store.c'),
-        path.join(root, 'image-modules/adapters/instrument-play/src/cf/sound-pool.c'),
+        path.join(root, 'runtime/platform/instrument-play/src/cf/sound-pool.c'),
         '-o',
         executable,
       ],

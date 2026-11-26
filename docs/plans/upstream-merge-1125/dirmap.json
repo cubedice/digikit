@@ -1,0 +1,20 @@
+{
+  "image-modules/adapters/copy-watch": "runtime/platform/copy-watch",
+  "image-modules/adapters/fxview": "runtime/platform/fxview",
+  "image-modules/adapters/instrument-play": "runtime/platform/instrument-play",
+  "image-modules/adapters/instrument-registry": "runtime/platform/instrument-registry",
+  "image-modules/adapters/keyboard-panel": "runtime/platform/keyboard-panel",
+  "image-modules/adapters/loop-control": "runtime/platform/loop-control",
+  "image-modules/adapters/loop-display": "runtime/platform/loop-display",
+  "image-modules/adapters/loop-storage": "runtime/platform/loop-storage",
+  "image-modules/adapters/midi-events": "runtime/platform/midi-events",
+  "image-modules/adapters/pattern-position": "runtime/platform/pattern-position",
+  "image-modules/adapters/phrase-control": "runtime/platform/phrase-control",
+  "image-modules/adapters/phrase-ui": "runtime/platform/phrase-ui",
+  "image-modules/adapters/relay-input": "runtime/platform/relay-input",
+  "image-modules/adapters/relay-storage": "runtime/platform/relay-storage",
+  "image-modules/adapters/relay-track": "runtime/platform/relay-track",
+  "image-modules/adapters/track-keyboard": "runtime/platform/track-keyboard",
+  "image-modules/points/machines/src/cf/dt2/src-pages.c": "runtime/platform/instrument-play/src/cf/src-pages.c",
+  "image-modules/points/machines/src/cf/dt2/src-pages.h": "runtime/platform/instrument-play/src/cf/src-pages.h"
+}

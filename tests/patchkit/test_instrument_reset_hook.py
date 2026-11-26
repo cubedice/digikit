@@ -96,7 +96,7 @@ argument: .long 0
 """)
     probe.write_text(probe.read_text().replace("ALLOW", str(int(allow_release))))
     linked = patchkit.cf_link(
-        [REPO_ROOT / "image-modules/adapters/midi-events/src/cf/reset.s", probe],
+        [REPO_ROOT / "runtime/platform/midi-events/src/cf/reset.s", probe],
         0x47E00000,
         {},
     )
