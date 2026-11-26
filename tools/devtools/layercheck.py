@@ -784,14 +784,6 @@ SC_POLICY_ID = {
     "tests/regression/host/canopy-settings.c": "digikit/canopy",
     "runtime/platform/track-keyboard/src/track-pool-admission.c": "digikit/relay-machine",
 }
-# The track keyboard's device test with CANOPY (the one instrument that plays through
-# the shared track keyboard on the DT2) loads the module, and the test project's
-# runtimeAcceptance record lists it: only that test, only that id, and only the
-# acceptance metadata of the project (its other fields are checked).
-SC_TRACK_KEYBOARD_TEST = {
-    "runtime/platform/track-keyboard/tests/canopy.device.test.ts": "digikit/canopy",
-}
-SC_TRACK_KEYBOARD_PROJECT = "runtime/platform/track-keyboard/tests/project.json"
 # The fork's hardware image runs three content modules together (CANOPY, Overloop, PRISM: patch set `canopy-overloop-prism`
 # of devices/digitakt-ii.toml). Two device tests load them together (all three; PRISM and Overloop in the transition PRISM's
 # page plays), and the acceptance records list them: only these files.
@@ -1615,7 +1607,7 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
         if b"\0" in data[:4096]:
             continue
         text = data.decode("utf-8", "replace")
-        if f in (SC_RUNTIME_PROJECT, SC_TRACK_KEYBOARD_PROJECT):
+        if f == SC_RUNTIME_PROJECT:
             acceptance = re.search(r'"runtimeAcceptance"\s*:\s*', text)
             if acceptance:
                 start = acceptance.end()
@@ -1628,7 +1620,6 @@ def sc_hits(root: Path, mods: list[Module]) -> list[tuple[str, int, Module, str]
             if (
                 f.startswith(d + "/")
                 or SC_POLICY_ID.get(f) == m.id
-                or SC_TRACK_KEYBOARD_TEST.get(f) == m.id
             ):
                 continue
             for n, line in enumerate(text.splitlines(), 1):

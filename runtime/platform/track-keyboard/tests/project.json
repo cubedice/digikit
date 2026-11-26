@@ -42,36 +42,6 @@
           "core/track-keyboard",
           "core/health"
         ]
-      },
-      {
-        "files": [
-          "canopy.device.test.ts"
-        ],
-        "devices": [
-          "dt2"
-        ],
-        "dsp": "sharc",
-        "modules": [
-          "digikit/canopy",
-          "core/services/machines",
-          "core/services/instrument",
-          "core/services/track-keyboard"
-        ],
-        "patchModules": [
-          "core/track-keyboard",
-          "core/instrument-play",
-          "core/health"
-        ],
-        "incidental": [
-          {
-            "module": "digikit/canopy",
-            "reason": "the instrument the track keyboard plays on the track; the test asserts the track keyboard's side, and CANOPY's own tests (modules/machine/digikit/canopy/tests) select on CANOPY's changes"
-          },
-          {
-            "module": "core/services/machines",
-            "reason": "the machine service CANOPY's types register with; the test asserts the track keyboard's ownership of a CANOPY track, not the machine rows"
-          }
-        ]
       }
     ]
   },

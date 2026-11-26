@@ -15,8 +15,8 @@ import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { moduleArtifact } from '@digi/regression/runtime/install.ts';
 import { seedModules, seedServices } from '@digi/regression/runtime/card-seed.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
-import { canopyPanel } from '../../../../modules/machine/digikit/canopy/tests/canopy-panel.ts';
-import { trackKeyboardSymbols } from './track-card.ts';
+import { canopyPanel } from './canopy-panel.ts';
+import { trackKeyboardSymbols } from '../../../../../runtime/platform/track-keyboard/tests/track-card.ts';
 
 describeOn('dt2', 'CANOPY shared track keyboard', () => {
   vi.setConfig({ hookTimeout: 600_000 });

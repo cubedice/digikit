@@ -107,6 +107,26 @@
           "core/track-keyboard",
           "core/health"
         ]
+      },
+      {
+        "files": [
+          "track-keyboard.device.test.ts"
+        ],
+        "devices": [
+          "dt2"
+        ],
+        "dsp": "sharc",
+        "modules": [
+          "digikit/canopy",
+          "core/services/machines",
+          "core/services/instrument",
+          "core/services/track-keyboard"
+        ],
+        "patchModules": [
+          "core/track-keyboard",
+          "core/instrument-play",
+          "core/health"
+        ]
       }
     ]
   },
