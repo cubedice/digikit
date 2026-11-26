@@ -91,9 +91,8 @@ describe('core/dsp-voice on the rig', () => {
     savedIntact(out);
     expect(out.regs.R4).toBe(out.in.R4);
     expect(out.regs.R8).toBe(out.in.R8);
-    // a slot whose type no row registers does not walk the table (the fork adds a constant check of core/instrument-play's V2 table: its
-    // address published, tested and the scan flag cleared, about 7 instructions; a walk costs a dozen per row)
-    expect(out.instructions).toBeLessThan(70);
+    // a slot whose type no row registers does not walk the table
+    expect(out.instructions).toBeLessThan(60);
   });
 
   it('a zero slot takes the stock path at the render hook and keeps the heartbeat', async () => {

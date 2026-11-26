@@ -135,8 +135,11 @@ On the DT2 1.17 and DN2 1.12 emulators; nothing ran on a device.
   - The fixtures `local-patch` and `local-step`: their lock files gain upstream's `dkneeds` dependency of `dkrt-sdk`.
   - `dsp-stats.rig.test.ts` links the DT2 tail, whose fork sections import thirteen optional symbols (instrument, phrase, RELAY,
     pool and position providers): the rig gives them 0, as an image without their modules does.
-  - `dsp-voice.rig.test.ts`: an unregistered type takes 66 instructions to the stock path where upstream bounds it at 60; the six are
-    the fork's constant check of the V2 table (its address published and tested, the scan flag cleared), not a walk. The bound is 70.
+  - `dsp-voice.rig.test.ts`: an unregistered type took 66 instructions to the stock path, where upstream bounds it at 60. The fork's
+    dispatch code (`services/machines/dks/dsp/dispatch-dt2.s`) cleared the V2 scan flag on every voice and tried the V2 table for a
+    type the mask had already refused, though the mask holds the V2 table's types too. A refused type now goes to the stock path at
+    once, and the flag is cleared only where a scan starts: 58 instructions, upstream's bound holds. The V2 table's cost is voice
+    0's, once per block (its address, and its types in the mask).
   - `tools/devtools/layercheck.py` as `ruff format` writes it.
 - **The merge gate** (`DIGI_GATE_BASE=origin/main mise run test`): 246 tasks pass, 8 fail, none from the merge.
   - `digikit/overloop:test-dsp` and `digikit/prism:test-dsp`: the heaviest block is 6 cycles over the cost each module.toml declares
