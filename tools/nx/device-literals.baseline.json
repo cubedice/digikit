@@ -124,6 +124,7 @@
   "modules/machine/digikit/canopy/tests/track-keyboard.device.test.ts": 7,
   "modules/machine/digikit/canopy/tests/track-switch.device.test.ts": 7,
   "modules/machine/digikit/canopy/tests/track.manual.device.test.ts": 4,
+  "modules/machine/digikit/canopy/tests/trig-audition.device.test.ts": 6,
   "modules/machine/digikit/canopy/tests/wheel-bend.device.test.ts": 8,
   "modules/machine/digikit/canopy/tests/worker-refill-proof.manual.device.test.ts": 5,
   "modules/machine/digikit/canopy/tools/carrier_probe.py": 4,
