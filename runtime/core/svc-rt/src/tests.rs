@@ -1,3 +1,4 @@
+// device-literals: allow (the `service!` device filter is spelled with the device name, and the test checks it)
 use super::*;
 
 // the imports a service file makes are the runtime's; this test binary links none, so each answers OK
@@ -39,6 +40,14 @@ mod stubs {
         DECLARED[2].fetch_add(1, SeqCst);
         0
     }
+    /// The patches declared, in order: (site, value, length).
+    pub static PATCHES: std::sync::Mutex<std::vec::Vec<(u32, u32, u32)>> =
+        std::sync::Mutex::new(std::vec::Vec::new());
+    #[no_mangle]
+    extern "C" fn dk_service_declare_patch(_: *mut u8, site: u32, value: u32, len: u32) -> i32 {
+        PATCHES.lock().unwrap().push((site, value, len));
+        0
+    }
     #[no_mangle]
     extern "C" fn dkc_device_id() -> u32 {
         0
@@ -51,9 +60,13 @@ mod ticked {
 
     pub struct S;
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
             assert_eq!(crate::init_ctx() as usize, 0x1234);
-            Ok(S)
+            slot.write(S);
+            Ok(())
         }
     }
     pub static TICKS: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
@@ -79,8 +92,12 @@ mod unticked {
 
     pub struct S;
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
-            Ok(S)
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S);
+            Ok(())
         }
     }
     crate::service!(S, "unticked", &[], parts = []);
@@ -127,11 +144,15 @@ mod provided {
         pub ticks: u32,
     }
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
-            Ok(S {
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S {
                 id: 100 + STARTS.fetch_add(1, SeqCst),
                 ticks: 0,
-            })
+            });
+            Ok(())
         }
         fn stop(&mut self, _: &crate::ImportCore) {
             STOPS.fetch_add(1, SeqCst);
@@ -170,6 +191,79 @@ mod provided {
     pub fn row() -> &'static dkrt_abi::provider::ProviderRow {
         &DK_SVC_ROW
     }
+}
+
+/// A service with patches: the values come from the instance `start` made, the length is the entry's, an entry with a device name is declared only on that device.
+mod patched {
+    use dkrt_abi::provider::{Provider, Status};
+
+    pub struct S {
+        pub table: u32,
+    }
+    impl Provider<crate::ImportCore> for S {
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S { table: 0x4100_2000 });
+            Ok(())
+        }
+    }
+    impl S {
+        fn table(&self) -> u32 {
+            self.table
+        }
+        fn count(&self) -> u32 {
+            self.table >> 12
+        }
+    }
+    crate::service!(
+        S,
+        "patched",
+        &[],
+        parts = [],
+        hooks = [],
+        fills = [],
+        patches = [
+            ("cf.test.patch.table", 4, S::table),
+            ("cf.test.patch.count", 2, S::count),
+            ("cf.test.patch.only_dt2", 1, S::count, dt2)
+        ]
+    );
+    static DEVICE: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+    fn device() -> u32 {
+        DEVICE.load(core::sync::atomic::Ordering::SeqCst)
+    }
+    pub fn declare(id: u32) -> i32 {
+        DEVICE.store(id, core::sync::atomic::Ordering::SeqCst);
+        let _ = dk_svc_start();
+        let r = unsafe { dk_svc_declare(core::ptr::null_mut(), device) };
+        dk_svc_stop();
+        r
+    }
+}
+
+#[test]
+fn the_patches_of_service_are_declared_with_the_values_start_computed_and_the_device_filter() {
+    use dkrt_abi::profiles::{DN2, DT2};
+    let h = |n: &str| name_hash(n);
+    let take = || std::mem::take(&mut *stubs::PATCHES.lock().unwrap());
+    take();
+    assert_eq!(patched::declare(DT2.id), 0);
+    assert_eq!(
+        take(),
+        [
+            (h("cf.test.patch.table"), 0x4100_2000, 4),
+            (h("cf.test.patch.count"), 0x4100_2000 >> 12, 2),
+            (h("cf.test.patch.only_dt2"), 0x4100_2000 >> 12, 1)
+        ]
+    );
+    assert_eq!(patched::declare(DN2.id), 0);
+    assert_eq!(
+        take().iter().map(|p| p.0).collect::<std::vec::Vec<_>>(),
+        [h("cf.test.patch.table"), h("cf.test.patch.count")],
+        "the dt2 entry is not declared on dn2"
+    );
 }
 
 fn whole() -> core::ops::Range<usize> {
@@ -259,8 +353,12 @@ mod exportless {
     use dkrt_abi::provider::{Provider, Status};
     pub struct S;
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
-            Ok(S)
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S);
+            Ok(())
         }
     }
     pub fn hook() {}
@@ -301,8 +399,12 @@ mod pretick {
 
     pub struct S;
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
-            Ok(S)
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S);
+            Ok(())
         }
     }
     impl Reentry<crate::ImportCore> for S {
@@ -387,8 +489,12 @@ mod described {
 
     pub struct S;
     impl Provider<crate::ImportCore> for S {
-        fn start(_: &crate::ImportCore) -> Result<S, Status> {
-            Ok(S)
+        fn start_in(
+            _: &crate::ImportCore,
+            slot: &mut core::mem::MaybeUninit<S>,
+        ) -> Result<(), Status> {
+            slot.write(S);
+            Ok(())
         }
     }
     impl Describe<crate::ImportCore> for S {

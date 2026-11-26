@@ -87,6 +87,12 @@ export interface MachineSpec {
 
 export const machineLabel = (s: MachineSpec): string => `${s.module}@${s.device}`;
 
+export function checkMachineGallery(spec: MachineSpec): void {
+  const gaps = galleryGaps(spec.module.split('#')[0]!).filter((g) => g.startsWith(`${spec.device}:`));
+  if (gaps.length)
+    throw new Error(`${spec.module}: ${gaps.join('; ')}; run \`mise run module:check ${spec.module}\` to write it`);
+}
+
 /** What decides the behaviour of the routine: two modules built from the same sources and parameters run once. */
 export const machineKey = (s: MachineSpec): string => JSON.stringify([s.device, s.sources, s.params]);
 
@@ -185,13 +191,13 @@ function dspSources(man: Toml, moddir: string, device: string): string[] {
 
 function typeNumber(mid: string, man: Toml, device: string, literal: string | null, n = 0): number {
   if (literal !== null && /^[0-9][0-9a-zA-Z_]*$/.test(String(literal))) return Number(literal);
-  const types = readToml(path.join(ROOT, 'image-modules/points/machines/types.toml'))[device];
+  const types = readToml(path.join(ROOT, 'runtime/platform/rows/types.toml'))[device];
   let mach: string | undefined = man.machine?.length ? man.machine[n].id : undefined;
   if (literal !== null) mach = String(literal).split('.')[1];
   const key = `${mid}:${mach}`;
   if (types.alloc && key in types.alloc) return Number(types.alloc[key]);
   if (man.module?.dynamic && 'dynamic_first' in types) return Number(types.dynamic_first);
-  throw new ConformError(`${mid}: no machine type for ${key} in core/machines types.toml [${device}]`);
+  throw new ConformError(`${mid}: no machine type for ${key} in core/rows types.toml [${device}]`);
 }
 
 /** `[conformance] rig_skip = "<why>"`: a module the rig cannot run (its DSP needs what the rig does not place); its own tests run it. */

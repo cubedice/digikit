@@ -392,3 +392,37 @@ doc = "Displaced SIMD register write."
     assert!(render(&[("voice.toml", text)]).is_ok());
     assert!(render(&[("voice.toml", &text.replace("s7", "s16"))]).is_err());
 }
+
+/// A patch site is a raw hook with `patch = N`: plain bytes of 1, 2 or 4 that a service replaces, so no handler, tail, stock path or exit goes with it.
+#[test]
+fn a_patch_site_is_a_raw_replace_hook_of_one_two_or_four_bytes() {
+    let regs = "{ in = [], clobbers = [] }";
+    for n in [1, 2, 4] {
+        let t = hook_text(
+            "cf.view.site.loop",
+            "replace",
+            regs,
+            &format!("patch = {n}\n"),
+        );
+        assert!(render(&[("t.toml", t.as_str())]).is_ok(), "patch = {n}");
+    }
+    for n in [0, 3, 8] {
+        let e = hook_error(
+            "cf.view.site.loop",
+            "replace",
+            regs,
+            &format!("patch = {n}\n"),
+        );
+        assert!(e.contains("1, 2 or 4 bytes"), "patch = {n}: {e}");
+    }
+    for (what, extra) in [
+        ("tail", "patch = 2\ntail = true\n"),
+        ("stock", "patch = 2\nstock = true\n"),
+        ("exits", "patch = 2\nexits = [\"cf.view.site.loop\"]\n"),
+    ] {
+        let e = hook_error("cf.view.site.loop", "replace", regs, extra);
+        assert!(e.contains("`patch = N` is only for"), "{what}: {e}");
+    }
+    let e = hook_error("cf.view.site.loop", "before", regs, "patch = 2\n");
+    assert!(e.contains("`patch = N` is only for"), "mode before: {e}");
+}

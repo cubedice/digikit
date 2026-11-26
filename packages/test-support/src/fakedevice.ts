@@ -255,14 +255,15 @@ export class FakeDevice implements DkTransport {
             be32(256),
             be32(0),
             be32(0),
-            [1], // one section
+            // one section, `machines` (rows, faults, a count of 1 type, the type 17 in the low byte of the first type word, the second word 0)
+            [1],
             be32(serviceHash('machines')),
             [5],
-            be32(1), // rows
-            be32(0), // faults
-            be32(1), // one type, guard on
-            be32(17), // types 0 to 3
-            be32(0), // types 4 to 7
+            be32(1),
+            be32(0),
+            be32(1),
+            be32(17),
+            be32(0),
           );
         };
         return ok(

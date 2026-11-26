@@ -5,7 +5,8 @@ import { repoRoot, type Device, type Session } from '@digi/test-support';
 import { parse } from 'smol-toml';
 import { freeRegions, type TestRuntime } from '../support.ts';
 import { openDigikitMenu } from './flows/menu.ts';
-import { REDRAW, SETTLE, word } from './fx-live.ts';
+import { REDRAW, SETTLE } from './panel-waits.ts';
+import { word } from './guest-access.ts';
 import {
   buildPanelProject,
   loadPanelProject,
@@ -226,7 +227,7 @@ interface Manifest {
 export function moduleManifests(): Map<string, Manifest> {
   const root = repoRoot();
   const roots = [
-    ...['modules', 'runtime', 'services', 'image-modules', 'tests/fixtures/modules'].map((dir) => path.join(root, dir)),
+    ...['modules', 'runtime', 'services', 'tests/fixtures/modules'].map((dir) => path.join(root, dir)),
     ...(process.env.PATCHKIT_MODULES ?? '').split(path.delimiter).filter(Boolean),
   ];
   const out = new Map<string, Manifest>();

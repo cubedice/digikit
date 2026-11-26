@@ -10,6 +10,111 @@ into a `.dkm` file. The digikit runtime loads the file from the card at boot. Yo
 Run every command from the repository root. Nothing here touches hardware. Flashing is a separate step (see "Safety and hardware" in
 [PATCHING.md](PATCHING.md)). No file in the repository contains firmware bytes.
 
+## DSP development loop
+
+Start on the SHARC rig. It can tell you whether the module sounds and behaves
+as intended without booting the instrument. Use the emulator for what the rig
+cannot see, such as page controls, the real send route, and a saved project.
+
+### Create and check
+
+After [setup](#2-set-up), scaffold a gain effect with
+`mise run module:new -- fx alice/crunch`. Use `machine` for a voice instead.
+Declare controls and routes in `src/module.c` and implement the DSP in
+`src/dsp/`. For an effect, keep the existing parameter word positions and
+write only the wet signal. The framework owns MIX, routing, and track sends.
+See [the effect declaration](#54-declaring-an-effect) and the
+[DSP SDK kernels](../sdk/dsp/README.md).
+
+Use the narrowest test that can observe the change. Start with a host test for
+math or control mapping, then a rig case for the real DSP words and samples.
+Keep device scenarios for integration the rig cannot prove.
+
+```sh
+pnpm nx:pilot run digikit/freqshift:test-dsp-conformance
+pnpm nx:pilot run digikit/freqshift:test-dsp
+mise run module:check -- digikit/freqshift
+```
+
+The first runs the shared DSP contract checks, including bounded output and
+cost. The second runs the effect's own named sound cases. To add yours, put
+deterministic cases in `tests/rig/*.toml` and register them with
+`rigSuite(import.meta.dirname)` in a `tests/*.rig.test.ts` file.
+Use the [sound-check guide](TESTING.md#sound-checks-testsrigtoml) and the
+[FREQ SHIFT cases](../modules/fx/digikit/freqshift/tests/rig/freqshift.toml)
+as starting points.
+`module:check` is the final module check and may boot an emulator. Check
+both DT2 and DN2 for a module that ships on both.
+
+### Render, compare and profile
+
+Build the [offline renderer inputs](INSTRUMENTATION.md#render-and-compare-audio-from-the-cli)
+if they are missing. This example keeps the input, build, route and block
+fixed, and changes only the send amount. Use a fresh output folder for
+each comparison.
+
+```sh
+run=out/runs/freqshift-send
+mise run wb:cli -- module render digikit/freqshift --device dt2 \
+  --case send/percussion --params-f32 20 --send-amount 0 \
+  --profile-block 375 --out "$run/dry"
+mise run wb:cli -- module render digikit/freqshift --device dt2 \
+  --case send/percussion --params-f32 20 --send-amount 96 \
+  --profile-block 375 --out "$run/wet"
+mise run wb:cli -- --format json audio compare "$run/dry/render.json" \
+  "$run/wet/render.json" --out "$run/compare"
+profile_file=$(jq -r '.profile.file' "$run/wet/render.json")
+mise run wb:cli -- --format json profile report "$run/wet/$profile_file"
+```
+
+- Listen to `audio.wav`. Check `render.json` for matching source inputs,
+  the parameter values, peak, full-scale frames and instructions per block.
+  If changing an idle or bypass path, check the expected unchanged samples
+  as well as whether the active setting sounds different.
+- Read `compare/comparison.json` for the differences. The CLI does not
+  align or level-match WAVs. If you make level-matched listening copies,
+  keep the raw WAVs for numeric comparison. For slow modulation, render
+  long enough to hear more than one cycle. In this example `inputMatch`
+  should be `same`, while `workload` is `different` because the send amount
+  is part of the workload settings.
+- The selected profile explains one block, not the whole render. Open the
+  same profile via **Open capture…** in Workbench to inspect available
+  functions and loops. The [worked SDK example](../sdk/dsp/README.md#worked-example-pluck)
+  shows how to profile the same blocks of two builds without changing the module.
+
+### Instrument and check in Workbench
+
+Use ordinary function labels and no extra instrumentation for hotspot or
+block-cost work. The rig can attribute instructions to functions and loops.
+On the emulator, use **Include DSP block costs** in Performance to find the
+cost of calls on the actual route. Enable hotspot collection separately if
+the emulator build supports it.
+
+Add a breadcrumb only when you need to locate a state transition or fault.
+In ColdFire C, include `<dk/core/trace.h>` and put
+`DK_TRACE_LOG("mode change", mode);` where the state changes.
+In SHARC assembly, include `"dk_trace.inc"` and put `DK_STEP(3, R0);` at the
+boundary you want to mark. Use `R0` only if it is dead there. Pack or run a
+separate debug build.
+
+```sh
+mkdir -p out/runs/freqshift-trace
+mise run module:pack -- digikit/freqshift --device dt2 --trace \
+  -o out/runs/freqshift-trace/freqshift-dt2.dkm
+mise run dk:dev -- digikit/freqshift --device dt2 --store digikit/freqshift --trace --keys 'shot:ready'
+```
+
+The [SDK tracing guide](../sdk/README.md#tracing) shows where to read the
+log and fault steps. Marks compile out without `--trace`. Use normal packs
+for both sides of a cost comparison, and do not ship the traced pack.
+
+For the musical check, boot a [saved emulator session](WORKBENCH-SESSIONS.md),
+load the same project and pattern, and run the same playback window for A and
+B. Record in Performance and save the `*.capture.json`. Open it offline
+in Profile or run `mise run wb:cli -- --format json profile report FILE`.
+Compare estimated mean and worst DSP block cost with the listening takes.
+Counts from the rig or emulator are instructions, not measured hardware cycles.
+
 ## 1. What a module is
 
 There are three kinds of content module. The packer infers the kind from what the module contains. `module.toml` has `[[machine]]` entries
@@ -152,8 +257,9 @@ release. A tool has neither list.
 An `lfo_shape` record is an LFO waveform: the body is the key (`DK_KEY_<ID>`), a 4-character name (space to tilde; the Digitone II shows the first 3) and 32 samples of `int16` (Q15), 72 bytes after the 8-byte record header (80 bytes). The `lfo` service gives the shape a value of the LFO WAVE parameter from 7 up (kept across boots in the settings key `lfo.shapes`, never 0x80 or more), and the LFO tick reads the samples with linear interpolation, 32-bit phase to Q31. A shape with no negative sample is unipolar. The service refuses a record whose key the module's header table (`[[record]]`) does not list. A sound that holds the number shows ERR and runs like RAND without the service, and runs as the triangle when the module is not loaded. Start from `module:new -- lfo-shape AUTHOR/NAME` (`sdk/templates/lfo-shape`, section 5.10).
 
 `[uses.dt2]` and `[uses.dn2]` hold the rows the module takes on each device: `machine_rows`, `param_rows`, `page_rows`, `record_bytes`, and the DSP cost
-(`dsp_cost_voice` for a machine, `dsp_cost_fx` for an effect: instructions per block). `module:check` runs `init` in the emulator and the conformance
-suite, and writes them. Never write them by hand. The device menu and the packer use them to tell whether the
+(`dsp_cost_voice` for a machine, `dsp_cost_fx` for an effect: instructions per block). `mise run module:check -- AUTHOR/NAME` builds the current
+system package and installs it on the temporary emulator card before running `init`. It writes the measured rows and `build/gen/gallery.json`,
+then measures the DSP cost in conformance. Never write these by hand. The device menu and the packer use them to tell whether the
 module fits.
 
 `[[object]]` names a built object:
@@ -636,8 +742,7 @@ The template `src/dsp/NAME.s` shows all of this in about 90 lines. Read it first
   effect its stored values only when the stored ID for its row is its own. Otherwise the effect gets its declared defaults. Effects count by row,
   so the same effects loaded in another order get defaults. A kit saved with effects also loads on stock firmware.
 - Not supported: p-locks, LFO and other modulation on a knob, MIDI CC, a second page for one effect, and a knob that does not reach the DSP as a
-  float. An image without `core/fxpages` refuses a module with a page (`E_NO_REGISTRY`). The Digitone II image needs `core/dynfx` and
-  `core/fxpages` in its module list (they are in its `device` patch set).
+  float. An image without the effect pages (`core/dynfx` and the page hooks of the fx service) refuses a module with a page (`E_NO_REGISTRY`). The Digitone II image needs `core/dynfx` in its module list (it is in its `device` patch set).
 - Text is printable ASCII. Write titles in mixed case. The firmware font draws a capital Q like an O.
 - Routes: a send effect gets the sum of the tracks' send amounts as its input block. Its wet output times MIX is added to the FX return. The
   user chooses the route in SETTINGS > FX ROUTING (the setting `fx/route/<module id>`; a pick reloads the module, so the effect keeps no state across it). A stored route that the effect no longer allows is
@@ -788,7 +893,9 @@ exports from `init`. For Rust providers using `dkrt_svc_rt::service!`, use its
 object that implements `Provider` (and the traits of the parts it adopts); its `service!` call names
 them: `service!(MyService, "my-service", &[], parts = [Tick], hooks = [], fills = [], exports = [...])`.
 
-A hook name may appear once per disjoint device set (`devices` in `[[hook]]`): the loader takes the entry for its own device and refuses a duplicate.
+A hook name may appear once per disjoint device set (`devices` in `[[hook]]`): the loader takes the entry for its own device and refuses a duplicate. `init` declares every hook of the file under its plain name, with no device in the Rust call: the loader matches each declaration to the manifest entry of its own device and drops the declaration of a hook that the manifest lists for another device only. A declaration that no entry of the manifest has, and an entry of its own device that was not declared, are refused (`E_DECL_KIND`).
+
+A service can also take a patch of the firmware: `[[patch]] name = "..."` (the name is a patch site of the port file) and `patches = [("name", 4, MyService::table)]` in `service!`; the function gives the bytes from the instance `start` made. See [PATCHING](PATCHING.md) "Patches".
 
 ```toml
 [[export]]

@@ -2,18 +2,43 @@
 
 use crate::api::{dkrt_load, dkrt_restart};
 use crate::health::{dkrt_health, DKRT_HEALTH};
+use crate::hooks;
 use crate::mailbox::mailbox_select;
 use crate::platform::st;
 use crate::state::{init_once, DKRT_MAILBOX, DKRT_POLLS, POLLS};
-use dkrt_abi::hooks::tick_phase;
-use crate::{admin_cmds, card, dlog, fault, intro, io, safe_mode, settings, store_writer, watch, worker};
-use crate::hooks;
+use crate::{
+    admin_cmds, card, dlog, fault, intro, io, safe_mode, settings, store_writer, watch, worker,
+};
 use core::ptr::{addr_of, addr_of_mut, read_volatile, write_volatile};
+use dkrt_abi::hooks::tick_phase;
 use dkrt_sdk::*;
 
-extern "C" {
-    fn instrument_play_tick();
+/// One step of the pass after the pre-phase work of `dkrt_tick`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum Step {
+    /// A hook phase of the services (or the modules' tick), measured as a span when the flag is set (the module files' jobs and the modules' tick are not).
+    Hook(u32, bool),
+    /// The UI ticks of the image adapters (`[[info]] tick = true`, `platform::image_ticks`): image features that run without a module or service to start them.
+    ImageTicks,
+    Settings,
+    Watch,
+    Mailbox,
 }
+
+/// The steps of one UI pass after the pre-phase work, in the order they run (the order the pass always had: the modules' tick runs after the mailbox). `Click::run` of the
+/// machines service (a module's click callback, run outside the owner) relies on `LAST` having run before the modules' tick, and a module tick relies on every service phase
+/// and the mailbox being over.
+pub(crate) const TICK_STEPS: [Step; 9] = [
+    Step::Hook(tick_phase::EARLY, true),
+    Step::Hook(tick_phase::FILES, false),
+    Step::Hook(tick_phase::LATE, true),
+    Step::Hook(tick_phase::LAST, true),
+    Step::ImageTicks,
+    Step::Settings,
+    Step::Watch,
+    Step::Mailbox,
+    Step::Hook(tick_phase::MODULES, false),
+];
 
 /// One tick phase of the services, measured as a span (owner `SPAN_PHASE | p`) while a span sink and clock are set.
 pub(crate) unsafe fn phase(p: u32) {
@@ -52,18 +77,31 @@ pub unsafe extern "C" fn dkrt_tick() {
     hooks::tick(tick_phase::POLL_DSP);
     worker::tick();
     io::tick();
-    phase(tick_phase::EARLY);
-    hooks::tick(tick_phase::FILES);
-    phase(tick_phase::LATE);
-    phase(tick_phase::LAST);
-    // the UI ticks of the image adapters (`[[info]] tick = true`): image features that run without a module or service to start them
-    crate::platform::image_ticks();
-    // optional (core/instrument-play): zero when the adapter is absent
-    if core::hint::black_box(instrument_play_tick as usize) != 0 {
-        instrument_play_tick();
+    let mut i = 0;
+    while i < TICK_STEPS.len() {
+        // an if chain, not a `match`: see the mailbox
+        if let Step::Hook(p, spanned) = TICK_STEPS[i] {
+            if spanned {
+                phase(p);
+            } else {
+                hooks::tick(p);
+            }
+        } else if TICK_STEPS[i] == Step::ImageTicks {
+            crate::platform::image_ticks();
+        } else if TICK_STEPS[i] == Step::Settings {
+            settings::tick();
+        } else if TICK_STEPS[i] == Step::Watch {
+            watch::tick();
+        } else {
+            mailbox();
+        }
+        i += 1;
     }
-    settings::tick();
-    watch::tick();
+    poll_all();
+}
+
+/// The mailbox step: runs the command the host wrote, if any.
+unsafe fn mailbox() {
     let mb = &mut *addr_of_mut!(DKRT_MAILBOX);
     let cmd = read_volatile(addr_of!(mb.cmd));
     if cmd != 0 {
@@ -90,7 +128,8 @@ pub unsafe extern "C" fn dkrt_tick() {
         write_volatile(addr_of_mut!(mb.seq), mb.seq.wrapping_add(1));
         write_volatile(addr_of_mut!(mb.cmd), 0);
     }
-    // the tick of every loaded module (`dk_module.tick`)
-    hooks::tick(tick_phase::MODULES);
     poll_all();
 }
+
+#[cfg(test)]
+mod tests;

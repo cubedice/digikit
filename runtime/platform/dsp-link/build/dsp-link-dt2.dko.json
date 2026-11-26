@@ -186,985 +186,642 @@
   },
   {
    "addend": 0,
-   "offset": 148,
-   "section": "seg_pmco",
-   "symbol": "_pattern_position_info",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 156,
-   "section": "seg_pmco",
-   "symbol": "_instrument_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 164,
-   "section": "seg_pmco",
-   "symbol": "_iv_lock_stage",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 172,
-   "section": "seg_pmco",
-   "symbol": "_phrase_control_info",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 180,
-   "section": "seg_pmco",
-   "symbol": "_relay_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 188,
-   "section": "seg_pmco",
-   "symbol": "_tk_pool_receive",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 197,
+   "offset": 149,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 210,
+   "offset": 156,
    "section": "seg_pmco",
    "symbol": "_dl_win1",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 216,
+   "offset": 162,
    "section": "seg_pmco",
    "symbol": "_dl_w0slots",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 222,
+   "offset": 168,
    "section": "seg_pmco",
    "symbol": "_dl_area",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 228,
+   "offset": 174,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 231,
+   "offset": 177,
    "section": "seg_pmco",
    "symbol": "_dl_slots",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 234,
+   "offset": 180,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 240,
+   "offset": 186,
    "section": "seg_pmco",
    "symbol": "_dl_win2",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 243,
+   "offset": 189,
    "section": "seg_pmco",
-   "symbol": "_dl_vcount",
+   "symbol": "_dl_win1_rows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 253,
+   "offset": 199,
    "section": "seg_pmco",
-   "symbol": "_dl_vrows",
+   "symbol": "_dl_win1_base",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 256,
+   "offset": 202,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 262,
+   "offset": 208,
    "section": "seg_pmco",
    "symbol": "_dl_win3",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 265,
+   "offset": 211,
    "section": "seg_pmco",
-   "symbol": "_dl_fcount",
+   "symbol": "_dl_win2_rows",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 275,
+   "offset": 221,
    "section": "seg_pmco",
-   "symbol": "_dl_frows",
+   "symbol": "_dl_win2_base",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 278,
+   "offset": 224,
    "section": "seg_pmco",
    "symbol": "_dl_wdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 284,
+   "offset": 230,
    "section": "seg_pmco",
-   "symbol": "_dl_win4",
+   "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 289,
+   "offset": 235,
    "section": "seg_pmco",
    "symbol": "_dl_stctl",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 292,
-   "section": "seg_pmco",
-   "symbol": "_dl_wdone",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 298,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 301,
-   "section": "seg_pmco",
-   "symbol": "_dl_iwords",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 305,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 312,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 319,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 322,
-   "section": "seg_pmco",
-   "symbol": "_dl_irows",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 326,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 333,
-   "section": "seg_pmco",
-   "symbol": "_dl_range",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 336,
+   "offset": 238,
    "section": "seg_pmco",
    "symbol": "_dl_wbase",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 342,
+   "offset": 244,
    "section": "seg_pmco",
    "symbol": "_dl_range",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 354,
+   "offset": 256,
    "section": "seg_pmco",
    "symbol": "_dl_sumdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 384,
+   "offset": 286,
    "section": "seg_pmco",
    "symbol": "_dl_good",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 387,
+   "offset": 289,
    "section": "seg_pmco",
    "symbol": "_dl_nerr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 391,
+   "offset": 293,
    "section": "seg_pmco",
    "symbol": "_dl_nerr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 394,
+   "offset": 296,
    "section": "seg_pmco",
    "symbol": "_dl_ack",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 400,
+   "offset": 302,
    "section": "seg_pmco",
    "symbol": "_dl_wbase",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 408,
+   "offset": 310,
    "section": "seg_pmco",
    "symbol": "_dl_copied",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 426,
+   "offset": 328,
    "section": "seg_pmco",
    "symbol": "_dl_stw",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 429,
+   "offset": 331,
    "section": "seg_pmco",
    "symbol": "_dl_cum",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 433,
+   "offset": 335,
    "section": "seg_pmco",
    "symbol": "_dl_cum",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 441,
+   "offset": 343,
    "section": "seg_pmco",
    "symbol": "_dl_ack",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 596,
+   "offset": 498,
    "section": "seg_pmco",
    "symbol": "_dl_status",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 599,
+   "offset": 501,
    "section": "seg_pmco",
    "symbol": "_dl_ack",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 604,
+   "offset": 506,
    "section": "seg_pmco",
    "symbol": "_dl_status",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 607,
+   "offset": 509,
    "section": "seg_pmco",
    "symbol": "_dl_ack",
    "type": "sharc.abs24"
   },
   {
    "addend": 4,
-   "offset": 610,
+   "offset": 512,
    "section": "seg_pmco",
    "symbol": "_dl_stctl",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 613,
+   "offset": 515,
    "section": "seg_pmco",
    "symbol": "_dl_stgen",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 617,
+   "offset": 519,
    "section": "seg_pmco",
    "symbol": "_dl_stw1",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 620,
+   "offset": 522,
    "section": "seg_pmco",
    "symbol": "_dl_stgen",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 625,
+   "offset": 527,
    "section": "seg_pmco",
    "symbol": "_dl_stpage",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 628,
+   "offset": 530,
    "section": "seg_pmco",
    "symbol": "_dk_stats",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 640,
+   "offset": 542,
    "section": "seg_pmco",
    "symbol": "_dl_stctl",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 646,
+   "offset": 548,
    "section": "seg_pmco",
    "symbol": "_dl_stw2",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 649,
+   "offset": 551,
    "section": "seg_pmco",
    "symbol": "_dk_stats",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 652,
+   "offset": 554,
    "section": "seg_pmco",
    "symbol": "_dl_stptr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 655,
+   "offset": 557,
    "section": "seg_pmco",
    "symbol": "_dv_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 659,
+   "offset": 561,
    "section": "seg_pmco",
    "symbol": "_dl_stw3",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 666,
+   "offset": 568,
    "section": "seg_pmco",
    "symbol": "_fx_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 670,
+   "offset": 572,
    "section": "seg_pmco",
    "symbol": "_dl_cdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 677,
+   "offset": 579,
    "section": "seg_pmco",
    "symbol": "_dl_cdone",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 680,
+   "offset": 582,
    "section": "seg_pmco",
    "symbol": "_dl_xid",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 684,
-   "section": "seg_pmco",
-   "symbol": "_dl_have_ack",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 687,
-   "section": "seg_pmco",
-   "symbol": "_tk_pool_quiet_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 691,
-   "section": "seg_pmco",
-   "symbol": "_tk_pool_quiet_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 694,
+   "offset": 586,
    "section": "seg_pmco",
    "symbol": "_dl_out",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 705,
+   "offset": 597,
    "section": "seg_pmco",
    "symbol": "_dl_cum",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 717,
+   "offset": 609,
    "section": "seg_pmco",
    "symbol": "_dl_status",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 725,
+   "offset": 617,
    "section": "seg_pmco",
    "symbol": "_dl_nerr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 734,
+   "offset": 626,
    "section": "seg_pmco",
    "symbol": "_dl_stptr",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 738,
+   "offset": 630,
    "section": "seg_pmco",
    "symbol": "_dl_nost",
    "type": "sharc.abs24"
   },
   {
    "addend": 8,
-   "offset": 761,
+   "offset": 653,
    "section": "seg_pmco",
    "symbol": "_dl_stctl",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 765,
+   "offset": 657,
    "section": "seg_pmco",
    "symbol": "_dl_stnov",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 769,
+   "offset": 661,
    "section": "seg_pmco",
    "symbol": "_dl_stnov",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 803,
+   "offset": 695,
    "section": "seg_pmco",
    "symbol": "_dl_xid",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 807,
+   "offset": 699,
    "section": "seg_pmco",
    "symbol": "_dl_stadv",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 810,
+   "offset": 702,
    "section": "seg_pmco",
    "symbol": "_dl_stpage",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 816,
+   "offset": 708,
    "section": "seg_pmco",
    "symbol": "_dl_stptr",
    "type": "sharc.abs32"
   },
   {
    "addend": 4,
-   "offset": 827,
+   "offset": 719,
    "section": "seg_pmco",
    "symbol": "_dl_stctl",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 847,
+   "offset": 739,
    "section": "seg_pmco",
    "symbol": "_dl_stpage",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 859,
+   "offset": 751,
    "section": "seg_pmco",
    "symbol": "_dl_stpage",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 866,
+   "offset": 758,
    "section": "seg_pmco",
    "symbol": "_dl_beat",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 870,
+   "offset": 762,
    "section": "seg_pmco",
    "symbol": "_dl_beat",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 880,
+   "offset": 772,
    "section": "seg_pmco",
    "symbol": "_dv_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 884,
+   "offset": 776,
    "section": "seg_pmco",
    "symbol": "_dl_novd",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 999,
+   "offset": 891,
    "section": "seg_pmco",
    "symbol": "_dv_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1012,
+   "offset": 904,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1017,
+   "offset": 909,
    "section": "seg_pmco",
    "symbol": "_fx_diag",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1021,
+   "offset": 913,
    "section": "seg_pmco",
    "symbol": "_dl_nofx",
    "type": "sharc.abs24"
   },
   {
    "addend": 0,
-   "offset": 1061,
+   "offset": 953,
    "section": "seg_pmco",
    "symbol": "_fx_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1074,
+   "offset": 966,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1079,
+   "offset": 971,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1087,
+   "offset": 979,
    "section": "seg_pmco",
    "symbol": "_dk_step",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1090,
+   "offset": 982,
    "section": "seg_pmco",
    "symbol": "_dk_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1101,
+   "offset": 993,
    "section": "seg_pmco",
    "symbol": "_dk_rec",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1104,
-   "section": "seg_pmco",
-   "symbol": "_dl_loop_status",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1107,
-   "section": "seg_pmco",
-   "symbol": "_dl_instrument_status",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1110,
-   "section": "seg_pmco",
-   "symbol": "_phrase_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1114,
-   "section": "seg_pmco",
-   "symbol": "_dl_no_phrase_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1117,
-   "section": "seg_pmco",
-   "symbol": "_phrase_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1120,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1123,
+   "offset": 996,
    "section": "seg_pmco",
    "symbol": "_dl_svm5",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1128,
+   "offset": 1001,
    "section": "seg_pmco",
    "symbol": "_dl_svm6",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1133,
+   "offset": 1006,
    "section": "seg_pmco",
    "symbol": "_dl_svl2",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1138,
+   "offset": 1011,
    "section": "seg_pmco",
    "symbol": "_dl_svl3",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1143,
+   "offset": 1016,
    "section": "seg_pmco",
    "symbol": "_dl_sv0",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1146,
+   "offset": 1019,
    "section": "seg_pmco",
    "symbol": "_dl_sv3",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1149,
+   "offset": 1022,
    "section": "seg_pmco",
    "symbol": "_dl_sv4",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1152,
+   "offset": 1025,
    "section": "seg_pmco",
    "symbol": "_dl_sv5",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1155,
+   "offset": 1028,
    "section": "seg_pmco",
    "symbol": "_dl_sv6",
    "type": "sharc.abs32"
   },
   {
    "addend": 0,
-   "offset": 1158,
+   "offset": 1031,
    "section": "seg_pmco",
    "symbol": "_dl_back",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1161,
-   "section": "seg_pmco",
-   "symbol": "_loop_ui_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1165,
-   "section": "seg_pmco",
-   "symbol": "_dl_loop_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1176,
-   "section": "seg_pmco",
-   "symbol": "_dl_loop_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1351,
-   "section": "seg_pmco",
-   "symbol": "_dl_loop_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1354,
-   "section": "seg_pmco",
-   "symbol": "_relay_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1358,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1363,
-   "section": "seg_pmco",
-   "symbol": "_dl_beat",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1369,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_control_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1374,
-   "section": "seg_pmco",
-   "symbol": "_relay_request",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1383,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1389,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_transfer_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1392,
-   "section": "seg_pmco",
-   "symbol": "_phrase_control_info",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1396,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_keep_loop",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1404,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1410,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_transfer_reply",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1413,
-   "section": "seg_pmco",
-   "symbol": "_loop_ui_status",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1417,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1420,
-   "section": "seg_pmco",
-   "symbol": "_relay_response",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1429,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1432,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_copy",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1441,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1528,
-   "section": "seg_pmco",
-   "symbol": "_dl_relay_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1531,
-   "section": "seg_pmco",
-   "symbol": "_instrument_reply",
-   "type": "sharc.abs32"
-  },
-  {
-   "addend": 0,
-   "offset": 1535,
-   "section": "seg_pmco",
-   "symbol": "_dl_instrument_status_return",
-   "type": "sharc.abs24"
-  },
-  {
-   "addend": 0,
-   "offset": 1624,
-   "section": "seg_pmco",
-   "symbol": "_dl_instrument_status_return",
    "type": "sharc.abs24"
   }
  ],
  "sections": [
   {
    "align": 8,
-   "hex": "0011000000000311000000000411000000000511000000000611000000007e723f800011000000007f723f000011000000003f733f000011000000003f733f80001100000000a50f0000a60f0100b20f0000b30f0000089c7d00830f0408800130103e70bf099a97030f0000ffff8401a304030f00005cd143c32006000000003e021018da509e973e0210084e5b44c200060000000003100000000043c3000600000000050f000400008401e505200600000000ddc2200600000000041100000000830f0000031100000000031100000000031100000000050f000400008401e505000600000000830f00000311000000003e0600000000031000000000850f020035c3220600000000031000000000d3c32006000000003e0210105e113e0210206e40830fab00000f00000000840f9b0000c26070bf01000f00000000840f7b0000c26070bf01000f00000000840f690000c26070bf01000f00000000840f290000c26070bf01000f00000000840f150000c26070bf01000f00000000840f110000c26070bf0153c32406000000003e0210000a9e3e0210003a5d3e020000330203cd200600000000830f100063c3020600000000030f02000000040f00000000800f400040c13e0600000000040f000000003e0600000000830f010003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f020003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f030003c3200600000000830f0300040f000000003e0600000000830f040003c3200600000000030f0000000033c20006000000003f703f89539533c2040600000000000f0200000030c3240600000000040f0000000044c2000600000000800f0300840140002006000000000411000000008001561443c3240600000000bf70bf01bf703f028001e3138001341455c20006000000003f71bf87050d00000900be57000000003e01000003133e0100003414ff70bf89840143233e02000005028001f0103e703f09509503c300060000000003100000000033c50311000000003e06000000003e0200000602031000000000800130103e703f0955c2000600000000050d00000600be5700000000be55008000003e0210000a9e830f030003c300060000000003100000000033c5031100000000050f000200008401e5050006000000000217000000000010030000e0030f3fffbf3f3e0104000300030fc00000c03e01040003130311030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e02300030060311030000e0000c002806000000000000000000000000000011030000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830f01000311000000003e0600000000830f03000311000000003e060000000003100000000000100000000030c3000600000000031100000000800f0000001100000000130f00000000000c00340600be5700800000be5700800000031000000000800f010030cc000600000000030f00000000031100000000040f0000000044c20006000000007e70bf0908979f01040f0000000044c20006000000007e70bf09089787013e060000000003100000000033c2200600000000000f0000000000c2a006000000003e06000000007e713f02850f6000800154147e703f090410000000003e0200004410050f0000d1a584015414b4950410000000003e0200004408840134140510000000003e020000551084015414b49500100000000000c20006000000003e70bf090896800133c5089780013e02007832f03e020000421034cd08960102860134240897010204100000000044c200060000000034c30206000000000896020244c508970202831500000400850f0000000c0010120003a60000050004a6000004003e010600342404a70000040005a70000050083150000060003100000000033c22006000000000510000000003e020000650300100000000006c03e70bf099a979b973e02000035100410000000003e020000441834cd840fa75734cd7e713f02860f600046c07e703f09b395ba95bb9505100000000055c5830f3200840f000053c32201020040150511000000007e71bf013f703f8900100000000000c500110000000008952e00000f2000a6d108952d00030f0000000033c20006000000003f70bf890896000000a5000042000896010000a5000043000896020000a5000057000896030000a5000058000896040000a500006c000896050000a500006d000896060000a5000081000896070000a5000082000896080000a5000096000896090000a50000970008960a0000a50000ab0008960b0000a50000ac0008960c0000a50000c00008960d0000a50000c10008960e0000a50000d50008960f0000a50000d6000896100000a50000ea000896110000a50000eb000896120000a50000ff000896130000a5000000010896140000a5000014010896150000a500001501030f000000003f70bf8908960000089701007e713f0008970000000f0000000008970200030f0000000033c20006000000003f70bf890896000000a5000029010896040000a500003e010896050000a500003f0108960100040f0000ffff04cc089682023e020000551005cd00a5000053010896030000a500006901030f000000003f70bf8908960000089701007e713f0008970000000f000000000897020000100000000000a500002a01830f000003110000000000100000000000a5000068017e713f0000a5000054010011000000003e06000000003e0600000000000f0000000000c2000600000000be06000000003e06000000000010000000003e70bf120010000000003e703f130010000000003e703f190010000000003e70bf190010000000000310000000000410000000000510000000000610000000003e0600000000000f0000000000c20006000000003e70bf0908960000030f564f314c03c32006000000007e71bf013f703f89050f564f334c0896010000a500007e013e021008355b3e020000550553cd50ce0896020000a5000092013e021008355b3e020000550553cd50ce0896030000a5000093013e021008355b3e020000550553cd50ce0896040000a50000a7013e021008355b3e020000550553cd50ce0896050000a50000a8013e021008355b3e020000550553cd50ce0896060000a50000bc013e021008355b3e020000550553cd50ce0896080000a5000079023e021008355b3e020000550553cd50ce0896090000a500007a023e021008355b3e020000550553cd50ce08960a0000a500008e023e021008355b3e020000550553cd50ce08960b0000a500008f023e021008355b3e020000550553cd50ce08960c0000a50000a3023e021008355b3e020000550553cd50ce08960d0000a50000a4023e021008355b3e020000550553cd50ce05a50000bd01000f564f334c00a500007d013e0600000000000f0000000000c20006000000003e70bf09001000000000830f0f0003cc0006000000003e70bf02130f0000000008960000030f4c52315803c3200600000000830f080053c3220600000000000f0000000000c20006000000003e70bf090896840133c2200600000000830f040053c3200600000000000f0000000000c2200600000000130f0000000008960000030f4c52325803c32006000000003e060000000008960000030f4c52325903c32006000000007e713f003e703f090896000000a500007d010896010000a500007e010896020000a5000092010896030000a5000093010896040000a50000a7010896050000a50000a8010896060000a50000bc010896070000a50000bd010896080000a5000079020896090000a500007a0208960a0000a500008e0208960b0000a500008f0208960c0000a50000a30208960d0000a50000a40208960000030f4c52325903c3800f000080663f003e0600000000000f0000000000c20006000000003e70bf097e71bf013f703f890896000000a50000d1010896010000a50000d2010896020000a50000e6010896030000a50000e7010896040000a50000fb010896050000a50000fc010896060000a5000010020896070000a5000011020896080000a5000025020896090000a50000260208960a0000a500003a0208960b0000a500003b0208960c0000a500004f0208960d0000a50000500208960e0000a50000640208960f0000a5000065023e0600000000",
+   "hex": "0011000000000311000000000411000000000511000000000611000000007e723f800011000000007f723f000011000000003f733f000011000000003f733f80001100000000a50f0000a60f0100b20f0000b30f0000089c7d00830f0408800130103e70bf099a97030f0000ffff8401a304030f00005cd143c32006000000003e021018da909e973e0210084e5b44c200060000000003100000000043c3000600000000050f000400008401e505200600000000ddc2200600000000041100000000830f0000031100000000031100000000031100000000050f000400008401e505000600000000830f00000311000000003e0600000000031000000000850f020035c3220600000000031000000000d3c32006000000003e0210105e113e0210206e40830fab0053c32406000000003e0210000a9e00c2200600000000830f100063c3020600000000030f02000000040f00000000800f400040c13e0600000000040f000000003e0600000000830f010003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f020003c3200600000000030f000000003e02000043043e020000330334c0040f000000003e0600000000830f030003c3200600000000830f0300040f000000000411000000008001561443c3240600000000bf70bf01bf703f028001e3138001341455c20006000000003f71bf87050d00000900be57000000003e01000003133e0100003414ff70bf89840143233e02000005028001f0103e703f09509503c300060000000003100000000033c50311000000003e06000000003e0200000602031000000000800130103e703f0955c2000600000000050d00000600be5700000000be55008000003e0210000a9e830f030003c300060000000003100000000033c5031100000000050f000200008401e5050006000000000217000000000010030000e0030f3fffbf3f3e0104000300030fc00000c03e01040003130311030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000011030000e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003e02300030060311030000e0000c002806000000000000000000000000000011030000e0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000830f01000311000000003e0600000000830f03000311000000003e060000000003100000000000100000000030c3000600000000031100000000800f0000001100000000130f00000000000c00340600be5700800000be5700800000031000000000800f010030cc000600000000030f00000000031100000000040f0000000044c20006000000007e70bf0908979f01040f0000000044c20006000000007e70bf09089787013e060000000003100000000033c20006000000007e713f02850f6000800154147e703f090410000000003e0200004410050f0000d1a584015414b4950410000000003e0200004408840134140510000000003e020000551084015414b49500100000000000c20006000000003e70bf090896800133c5089780013e02007832f03e020000421034cd08960102860134240897010204100000000044c200060000000034c30206000000000896020244c508970202831500000400850f0000000c0010120003a60000050004a6000004003e010600342404a70000040005a70000050083150000060003100000000033c22006000000000510000000003e020000650300100000000006c03e70bf099a979b973e02000035100410000000003e020000441834cd840fa75734cd7e713f02860f600046c07e703f09b395ba95bb9505100000000055c5830f3200840f000053c32201020040150511000000007e71bf013f703f8900100000000000c500110000000008952e00000f2000a6d108952d00030f0000000033c20006000000003f70bf890896000000a5000042000896010000a5000043000896020000a5000057000896030000a5000058000896040000a500006c000896050000a500006d000896060000a5000081000896070000a5000082000896080000a5000096000896090000a50000970008960a0000a50000ab0008960b0000a50000ac0008960c0000a50000c00008960d0000a50000c10008960e0000a50000d50008960f0000a50000d6000896100000a50000ea000896110000a50000eb000896120000a50000ff000896130000a5000000010896140000a5000014010896150000a500001501030f000000003f70bf8908960000089701007e713f0008970000000f0000000008970200030f0000000033c20006000000003f70bf890896000000a5000029010896040000a500003e010896050000a500003f0108960100040f0000ffff04cc089682023e020000551005cd00a5000053010896030000a500006901030f000000003f70bf8908960000089701007e713f0008970000000f000000000897020000100000000000a500002a01830f000003110000000000100000000000a5000068017e713f0000a5000054010011000000000010000000003e70bf120010000000003e703f130010000000003e703f190010000000003e70bf190010000000000310000000000410000000000510000000000610000000003e0600000000",
    "kind": "text",
    "name": "seg_pmco",
-   "size": 3254
+   "size": 2068
   },
   {
    "align": 8,
@@ -1202,37 +859,31 @@
    "size": 524288
   }
  ],
- "source_sha256": "3b4e89c8d07ff08af308c8444ee3c89822755881b2b8a84be8eabebc50e14338",
+ "source_sha256": "e62c4451bf72e2affda337711f2f56c27cc22b3592846230d226c5bf0be79e5b",
  "symbols": [
   {
    "global": false,
    "name": "_dl_ack",
    "section": "seg_pmco",
-   "value": 680
+   "value": 582
   },
   {
    "global": false,
    "name": "_dl_cdone",
    "section": "seg_pmco",
-   "value": 429
+   "value": 331
   },
   {
    "global": false,
    "name": "_dl_copied",
    "section": "seg_pmco",
-   "value": 420
+   "value": 322
   },
   {
    "global": false,
    "name": "_dl_good",
    "section": "seg_pmco",
-   "value": 397
-  },
-  {
-   "global": false,
-   "name": "_dl_have_ack",
-   "section": "seg_pmco",
-   "value": 697
+   "value": 299
   },
   {
    "global": true,
@@ -1242,45 +893,15 @@
   },
   {
    "global": false,
-   "name": "_dl_instrument_status",
-   "section": "seg_pmco",
-   "value": 1531
-  },
-  {
-   "global": false,
-   "name": "_dl_instrument_status_return",
-   "section": "seg_pmco",
-   "value": 1110
-  },
-  {
-   "global": false,
-   "name": "_dl_loop_status",
-   "section": "seg_pmco",
-   "value": 1161
-  },
-  {
-   "global": false,
-   "name": "_dl_loop_status_return",
-   "section": "seg_pmco",
-   "value": 1107
-  },
-  {
-   "global": false,
-   "name": "_dl_no_phrase_reply",
-   "section": "seg_pmco",
-   "value": 1120
-  },
-  {
-   "global": false,
    "name": "_dl_nofx",
    "section": "seg_pmco",
-   "value": 1079
+   "value": 971
   },
   {
    "global": false,
    "name": "_dl_nost",
    "section": "seg_pmco",
-   "value": 862
+   "value": 754
   },
   {
    "global": false,
@@ -1292,55 +913,19 @@
    "global": false,
    "name": "_dl_novd",
    "section": "seg_pmco",
-   "value": 1017
+   "value": 909
   },
   {
    "global": false,
    "name": "_dl_out",
    "section": "seg_pmco",
-   "value": 734
+   "value": 626
   },
   {
    "global": false,
    "name": "_dl_range",
    "section": "seg_pmco",
-   "value": 602
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_control_reply",
-   "section": "seg_pmco",
-   "value": 1435
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_copy",
-   "section": "seg_pmco",
-   "value": 1444
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_keep_loop",
-   "section": "seg_pmco",
-   "value": 1407
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_status",
-   "section": "seg_pmco",
-   "value": 1354
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_status_return",
-   "section": "seg_pmco",
-   "value": 1123
-  },
-  {
-   "global": false,
-   "name": "_dl_relay_transfer_reply",
-   "section": "seg_pmco",
-   "value": 1420
+   "value": 504
   },
   {
    "global": false,
@@ -1352,79 +937,73 @@
    "global": false,
    "name": "_dl_stadv",
    "section": "seg_pmco",
-   "value": 847
+   "value": 739
   },
   {
    "global": false,
    "name": "_dl_stnov",
    "section": "seg_pmco",
-   "value": 777
+   "value": 669
   },
   {
    "global": false,
    "name": "_dl_stw",
    "section": "seg_pmco",
-   "value": 610
+   "value": 512
   },
   {
    "global": false,
    "name": "_dl_stw1",
    "section": "seg_pmco",
-   "value": 640
+   "value": 542
   },
   {
    "global": false,
    "name": "_dl_stw2",
    "section": "seg_pmco",
-   "value": 652
+   "value": 554
   },
   {
    "global": false,
    "name": "_dl_stw3",
    "section": "seg_pmco",
-   "value": 666
+   "value": 568
   },
   {
    "global": false,
    "name": "_dl_sumdone",
    "section": "seg_pmco",
-   "value": 373
+   "value": 275
   },
   {
    "global": false,
    "name": "_dl_w0slots",
    "section": "seg_pmco",
-   "value": 231
+   "value": 177
   },
   {
    "global": false,
    "name": "_dl_wdone",
    "section": "seg_pmco",
-   "value": 336
+   "value": 238
   },
   {
    "global": false,
    "name": "_dl_win1",
    "section": "seg_pmco",
-   "value": 237
+   "value": 183
   },
   {
    "global": false,
    "name": "_dl_win2",
    "section": "seg_pmco",
-   "value": 259
+   "value": 205
   },
   {
    "global": false,
    "name": "_dl_win3",
    "section": "seg_pmco",
-   "value": 281
-  },
-  {
-   "global": false,
-   "name": "_dl_win4",
-   "section": "seg_pmco",
-   "value": 295
+   "value": 227
   },
   {
    "global": false,
@@ -1578,37 +1157,25 @@
   },
   {
    "global": true,
-   "name": "_dl_fcount",
+   "name": "_dl_win1_base",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "_dl_frows",
+   "name": "_dl_win1_rows",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "_dl_irows",
+   "name": "_dl_win2_base",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "_dl_iwords",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_dl_vcount",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_dl_vrows",
+   "name": "_dl_win2_rows",
    "section": null,
    "value": 0
   },
@@ -1635,76 +1202,10 @@
    "name": "_fx_rec",
    "section": null,
    "value": 0
-  },
-  {
-   "global": true,
-   "name": "_instrument_reply",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_iv_lock_stage",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_loop_ui_status",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_pattern_position_info",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_phrase_control_info",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_phrase_reply",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_relay_request",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_relay_response",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_relay_status",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_tk_pool_quiet_reply",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
-   "name": "_tk_pool_receive",
-   "section": null,
-   "value": 0
   }
  ],
  "toolchain": {
-  "instructions_redecoded": "681",
+  "instructions_redecoded": "422",
   "selache_rev": "967c1d1e4d02e41f483181964f0ba333558a1fa7"
  }
 }

@@ -104,3 +104,15 @@ it('makes the C and assembler sources of a Rust object and the headers of its in
   expect(packSourceInputs(root, object(), [dks])).toEqual([...sources, '{workspaceRoot}/adapters/play/src/cf/local.h']);
   expect(() => packSourceInputs(root, object(['../../../../outside']), [dks])).toThrow('outside the workspace');
 });
+
+it('adds the projects nested below a Cargo crate directory to the inputs of a module that builds the crate', () => {
+  write('modules/example/src/Cargo.toml', '[package]\nname = "module"\n');
+  write('modules/example/project.json', '{"name":"example/module"}');
+  write('modules/example/src/part/project.json', '{"name":"example/module-part"}');
+  write('modules/example/src/part/deeper/project.json', '{"name":"example/module-deeper"}');
+  const one = new Map([['example/module', { file, manifest: {}, objects: [{ sources: ['src/Cargo.toml'] }] }]]);
+  expect(packSourceInputs(root, one, [file])[0]).toEqual({
+    input: 'production',
+    projects: ['example/module', 'example/module-deeper', 'example/module-part'],
+  });
+});

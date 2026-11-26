@@ -204,6 +204,28 @@ fn the_appended_groups_are_the_last_ones_so_an_older_package_is_a_prefix() {
     assert_eq!(copy().header.minor, RESIDENT_MINOR);
 }
 
+#[test]
+fn observer_imports_extend_the_resident_2_4_prefix() {
+    use core::mem::{offset_of, size_of};
+    use dkrt_abi::resident::ImportRows;
+
+    let pointer = size_of::<*const ()>();
+    // These are the slots in the 2.4 group, not offsets derived from the new fields.
+    assert_eq!(offset_of!(ImportRows, dk_debug_setup), 32 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_device_track_count), 33 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_selected_track), 34 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_log_sink_set), 35 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_speed_flags), 36 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_top_view), 37 * pointer);
+    assert_eq!(offset_of!(ImportRows, dk_debug_read_parameter), 38 * pointer);
+
+    assert!(open(&copy(), 5).is_ok());
+    let mut old = copy();
+    old.header.minor = 4;
+    let refused = open(&old, 5).err().expect("observer imports require a 2.5 resident");
+    assert_eq!((refused.reason, refused.found, refused.need), (Reason::Minor, 4, 5));
+}
+
 /// `PackageState.package_bytes` was appended to a shared view (RC2s-3): a view layout change is a major bump (`resident.rs`, "Shared views"), so the major is 2. A package built
 /// for major 2 is refused by a core of major 1 (which has the shorter `PackageState`) and by a core of a later major, with the version reason: no package reads a view
 /// laid out for another major.

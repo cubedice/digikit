@@ -120,7 +120,11 @@ pub mod link {
 }
 
 pub mod machine {
-    // cf.machine.fn.current_track_type: no sig yet
+    unsafe extern "C" {
+        /// DT2: returns the current track's machine type as a signed long, -1 without a track; the SRC page hook calls it.
+        #[link_name = "cf.machine.fn.current_track_type"]
+        pub fn current_track_type(view: *mut u8) -> i32;
+    }
 
     // cf.machine.fn.dispatch: no sig yet
 
@@ -149,7 +153,7 @@ pub mod machine {
     }
 
     unsafe extern "C" {
-        /// Table of the machine list: one long per stock machine type (28 bytes on DT2, 20 on DN2), read by the machine list builder; core/machines copies it with the added types inserted.
+        /// Table of the machine list: one long per stock machine type (28 bytes on DT2, 20 on DN2), read by the machine list builder; core/rows copies it with the added types inserted.
         #[link_name = "cf.machine.data.list.table"]
         pub static LIST_TABLE: u8;
     }
@@ -524,7 +528,7 @@ pub mod page {
     }
 
     unsafe extern "C" {
-        /// The pointer operand (4 bytes) of `move.l #list,D0` in the FX view builder: the rodata list {12} of the track FX key's one-page view. core/fxpages substitutes its own list.
+        /// The pointer operand (4 bytes) of `move.l #list,D0` in the FX view builder: the rodata list {12} of the track FX key's one-page view. The fx service substitutes its own list.
         #[link_name = "cf.page.data.fx_key_list"]
         pub static FX_KEY_LIST: u8;
     }
@@ -552,7 +556,7 @@ pub mod param {
     // cf.param.fn.value_class: no sig yet
 
     unsafe extern "C" {
-        /// the parameter table (60-byte rows), by the signature of its reader. The lfo service reads its address to name the stock rows of the WAVE parameters (`cf.lfo.data.wave_row.N`) in the RAM copy that `core/params` makes.
+        /// the parameter table (60-byte rows), by the signature of its reader. The lfo service reads its address to name the stock rows of the WAVE parameters (`cf.lfo.data.wave_row.N`) in the RAM copy that `core/rows` makes.
         #[link_name = "cf.param.data.descriptor_table"]
         pub static DESCRIPTOR_TABLE: u8;
     }
@@ -1216,6 +1220,46 @@ pub mod view {
         assert!(core::mem::offset_of!(View, mgr) == 0x2c);
     };
 
+    /// Brain prefix to the first word of the embedded ViewController, as returned by brain.view_manager.
+    #[repr(C)]
+    pub struct ViewStackBrain {
+        pub _pad0: [u8; 64],
+        pub controller: u32,
+    }
+    #[cfg(target_arch = "m68k")]
+    const _: () = {
+        assert!(core::mem::size_of::<ViewStackBrain>() == 0x44);
+        assert!(core::mem::offset_of!(ViewStackBrain, controller) == 0x40);
+    };
+
+    /// ViewController prefix through the intrusive view-list sentinel.
+    #[repr(C)]
+    pub struct ViewStackController {
+        pub _pad0: [u8; 20],
+        pub sentinel: u32,
+        pub _pad1: [u8; 8],
+    }
+    #[cfg(target_arch = "m68k")]
+    const _: () = {
+        assert!(core::mem::size_of::<ViewStackController>() == 0x20);
+        assert!(core::mem::offset_of!(ViewStackController, sentinel) == 0x14);
+    };
+
+    /// View list node prefix. The sentinel's prev link points to the view currently at the top of the stack.
+    #[repr(C)]
+    pub struct ViewStackNode {
+        pub next: u32,
+        pub prev: u32,
+        pub view: u32,
+    }
+    #[cfg(target_arch = "m68k")]
+    const _: () = {
+        assert!(core::mem::size_of::<ViewStackNode>() == 0xc);
+        assert!(core::mem::offset_of!(ViewStackNode, next) == 0x0);
+        assert!(core::mem::offset_of!(ViewStackNode, prev) == 0x4);
+        assert!(core::mem::offset_of!(ViewStackNode, view) == 0x8);
+    };
+
     unsafe extern "C" {
         /// The Brain singleton.
         #[link_name = "cf.view.fn.brain.instance"]
@@ -1268,6 +1312,12 @@ pub mod view {
         /// The literal queue address of the UI loop's `pea <queue>` (the boot hook peeks the queue for a held safe-mode key).
         #[link_name = "cf.view.site.ui_loop.queue_lit"]
         pub static UI_LOOP_QUEUE_LIT: u8;
+    }
+
+    unsafe extern "C" {
+        /// The Brain singleton pointer variable (u32 in RAM, 0 until the Brain is made): the operand of the `tst.l` at the start of the Brain getter (cf.view.fn.brain.instance). The address of each firmware is in its port file. The device tests read the view stack through it (the [ui] brain_ptr fact of the device files).
+        #[link_name = "cf.view.value.brain"]
+        pub static BRAIN: u8;
     }
 
     /// The jsr at the top of the UI task's event loop that pops the next event; the hook point for the runtime's per-pass tick.

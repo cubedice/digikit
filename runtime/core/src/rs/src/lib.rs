@@ -54,6 +54,7 @@ mod worker;
 mod health;
 mod mailbox;
 mod platform;
+mod stock_kit;
 pub mod level;
 pub mod stage1;
 mod safe_mode;
@@ -134,6 +135,8 @@ mod spans_tests;
 mod contract_tests;
 #[cfg(test)]
 mod provider_ping_tests;
+#[cfg(test)]
+mod provider_step_assembly_tests;
 #[cfg(test)]
 mod svc_contract_tests;
 #[cfg(test)]

@@ -35,7 +35,7 @@ through that concept's functions, because something outside the service reads th
 
 | Static | File | Reader |
 | --- | --- | --- |
-| `DKRT_FROWS` | `src/rows.rs` | `core/dsp-link` (`_dl_frows = "fx.rows"` in its module.toml), the contract suite (`rows.kept`), the runtime's host tests of cleanup and invariants |
+| `DKRT_FROWS` | `src/rows.rs` | `core/dsp-link` (`_dl_win2_base = "window2.rows"` in its module.toml), the contract suite (`rows.kept`), the runtime's host tests of cleanup and invariants |
 | `DKRT_FXP` | `src/fxpage/state.rs` | the device tests `fx-kit-persist` and the shot module's link test (`sent`, `errors`, `seeds`) |
 | `DKRT_FXS` | `src/fxsend/state.rs` | the device test `fx-track-route` (`allow`, `dflt`) |
 | `DKRT_FXP_TAB`, `DKRT_FXP_ROWS`, `DKRT_FXP_LIST_BUF`, `DKRT_FXP_COUNT`, `DKRT_FXP_IDS`, `DKRT_FXP_DEFS`, `DKRT_FXP_PAINT` (the page painter `fxp_graph` calls), `DKRT_FXP_*` counters and cells | `src/fxpage/symbols.rs` | the assembler of the nine hooks (`dks/src/hooks.rs`) |
@@ -52,12 +52,12 @@ address of the holder of an effect's values (`src/fxpage/image.rs`). `Fx::start`
 
 How it works:
 
-- `Fx::start` is the file's `init` step before the hooks are installed: it binds the image table of `core/fxpages` (`fxpage::bind`) or refuses the file with `E_NO_REGISTRY`. A file that
-  starts has a table, so the resident query reads it without a core (`fxsend::bound_slots`). Then it finds the optional functions of the image, each an `[[info]]` entry found by the hash of
-  its name (0 when the image lacks it): the page painter `loop_ui_paint` into `DKRT_FXP_PAINT` (`fxpage::painter_setup`; no module of the image has it since Overloop's page moved to
-  `core/fxview`, finding 360, so the word stays 0 and `fxp_graph` takes the stock path), the holder of an effect's values `fx_held_values` of core/loop-control (`fxpage::held_setup`:
-  the tick reads that effect's knobs from it, never from the kit, and keeps its MIX at the record's default), and `phrase_bind`, `phrase_sends`, `phrase_ui_tick` of the phrase adapters
-  (`phrase::setup`).
+- `Fx::start` is the file's `init` step before the hooks are installed: it binds the table of the effect pages (`fxpage::bind`: the generated device facts of the core's device, `facts.rs` and `tables.rs` written by `patchkit gen` from the device files' `[fx]`, and the two blocks of `rows_info` that `core/rows` reserved) or refuses the file with `E_NO_REGISTRY` (no `rows_info`, no block, a block with too few rows, a device without facts). A file that
+  starts has a table, so the resident query reads it without a core (`fxsend::bound_slots`). Then it finds the optional functions of the image, each an
+  `[[info]]` entry found by the hash of its name (0 when the image lacks it): the page painter `loop_ui_paint` into `DKRT_FXP_PAINT` (`fxpage::painter_setup`; no module of the
+  image has it since Overloop's page moved to `core/fxview`, finding 360, so the word stays 0 and `fxp_graph` takes the stock path), the holder of an effect's values `fx_held_values`
+  of core/loop-control (`fxpage::held_setup`: the tick reads that effect's knobs from it, never from the kit, and keeps its MIX at the record's default), and `phrase_bind`,
+  `phrase_sends`, `phrase_ui_tick` of the phrase adapters (`phrase::setup`).
 - The phrase effect (PRISM, `src/phrase.rs`): a module whose DSP section imports `_phrase_control_info` (the import, never a module name). `DspPart::check_sections` refuses it unless it is
   one effect and no voice in an image with `phrase_bind`; `DspPart::admit` refuses a second one before anything is reserved (`E_BUSY`); `claim` reserves its row, whose MIX stays at unity
   (`dsp::fx_set_mix`); `fxpage::apply` binds the adapters' page to its row (`phrase_bind`: owner, physical row, native page, module id, title) and the tick does not read its kit values;
