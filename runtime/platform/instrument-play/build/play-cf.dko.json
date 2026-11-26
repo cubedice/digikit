@@ -466,462 +466,483 @@
   },
   {
    "addend": 0,
+   "offset": 8,
+   "section": ".rodata",
+   "symbol": "mf_src_page_count",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
    "offset": 12,
    "section": ".rodata",
-   "symbol": "cp_decode",
+   "symbol": "mf_src_apply_pages",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 16,
    "section": ".rodata",
-   "symbol": "cp_encode",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 20,
-   "section": ".rodata",
-   "symbol": "cp_fm_defaults",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 24,
-   "section": ".rodata",
-   "symbol": "cp_valid",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 28,
-   "section": ".rodata",
-   "symbol": "cp_wavetable_defaults",
+   "symbol": "instrument_mod_param",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 32,
    "section": ".rodata",
-   "symbol": "sr_decode",
+   "symbol": "cp_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 36,
    "section": ".rodata",
-   "symbol": "sr_encode",
+   "symbol": "cp_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 40,
    "section": ".rodata",
-   "symbol": "sa_get",
+   "symbol": "cp_fm_defaults",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 44,
    "section": ".rodata",
-   "symbol": "sa_put",
+   "symbol": "cp_valid",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 48,
    "section": ".rodata",
-   "symbol": "sa_seq",
+   "symbol": "cp_wavetable_defaults",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 52,
    "section": ".rodata",
-   "symbol": "sa_slot",
+   "symbol": "sr_decode",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 56,
    "section": ".rodata",
-   "symbol": "ip_sa_ensure",
+   "symbol": "sr_encode",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 60,
    "section": ".rodata",
-   "symbol": "ip_sa_store",
+   "symbol": "sa_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 64,
    "section": ".rodata",
-   "symbol": "ip_sa_tick",
+   "symbol": "sa_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 68,
    "section": ".rodata",
-   "symbol": "dk_ui_core_handle",
+   "symbol": "sa_seq",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 72,
    "section": ".rodata",
-   "symbol": "dkrt_instrument_generation",
+   "symbol": "sa_slot",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 76,
    "section": ".rodata",
-   "symbol": "dkrt_instrument_type",
+   "symbol": "ip_sa_ensure",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 80,
    "section": ".rodata",
-   "symbol": "dkrt_irq_mask",
+   "symbol": "ip_sa_store",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 84,
    "section": ".rodata",
-   "symbol": "dkrt_irq_restore",
+   "symbol": "ip_sa_tick",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 88,
    "section": ".rodata",
-   "symbol": "dkrt_settings_flush",
+   "symbol": "dk_ui_core_handle",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 92,
    "section": ".rodata",
-   "symbol": "dkrt_settings_get",
+   "symbol": "dkrt_instrument_generation",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 96,
    "section": ".rodata",
-   "symbol": "dkrt_settings_put",
+   "symbol": "dkrt_instrument_type",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 100,
    "section": ".rodata",
-   "symbol": "mf_src_register",
+   "symbol": "dkrt_irq_mask",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 104,
    "section": ".rodata",
-   "symbol": "mf_src_unregister",
+   "symbol": "dkrt_irq_restore",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 108,
    "section": ".rodata",
-   "symbol": "pp_current_pattern",
+   "symbol": "dkrt_settings_flush",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 112,
    "section": ".rodata",
-   "symbol": "tk_capture_note_list_commit",
+   "symbol": "dkrt_settings_get",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 116,
    "section": ".rodata",
-   "symbol": "tk_capture_panel_press",
+   "symbol": "dkrt_settings_put",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 120,
    "section": ".rodata",
-   "symbol": "tk_capture_panel_release",
+   "symbol": "mf_src_register",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 124,
    "section": ".rodata",
-   "symbol": "tk_panel_cancel",
+   "symbol": "mf_src_unregister",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 128,
    "section": ".rodata",
-   "symbol": "tk_panel_focus",
+   "symbol": "pp_current_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 132,
    "section": ".rodata",
-   "symbol": "tk_panel_native_record_on",
+   "symbol": "tk_capture_note_list_commit",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 136,
    "section": ".rodata",
-   "symbol": "tk_panel_off",
+   "symbol": "tk_capture_panel_press",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 140,
    "section": ".rodata",
-   "symbol": "tk_panel_on",
+   "symbol": "tk_capture_panel_release",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 144,
    "section": ".rodata",
-   "symbol": "tk_panel_record_audition",
+   "symbol": "tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 148,
    "section": ".rodata",
-   "symbol": "tk_panel_retrig",
+   "symbol": "tk_panel_focus",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 152,
    "section": ".rodata",
-   "symbol": "tk_pattern_cleared",
+   "symbol": "tk_panel_native_record_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 156,
    "section": ".rodata",
-   "symbol": "tk_pattern_copied",
+   "symbol": "tk_panel_off",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 160,
    "section": ".rodata",
-   "symbol": "tk_runtime_init",
+   "symbol": "tk_panel_on",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 164,
    "section": ".rodata",
-   "symbol": "tk_midi_channel_message",
+   "symbol": "tk_panel_record_audition",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 168,
    "section": ".rodata",
-   "symbol": "rtm_can_save",
+   "symbol": "tk_panel_retrig",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 172,
    "section": ".rodata",
-   "symbol": "rtm_mod_carrier",
+   "symbol": "tk_pattern_cleared",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 176,
    "section": ".rodata",
-   "symbol": "rtm_mod_param",
+   "symbol": "tk_pattern_copied",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 180,
    "section": ".rodata",
-   "symbol": "rtm_src",
+   "symbol": "tk_runtime_init",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 184,
    "section": ".rodata",
-   "symbol": "dl_reset_begin",
+   "symbol": "tk_midi_channel_message",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 188,
    "section": ".rodata",
-   "symbol": "dl_reset_quiesce",
+   "symbol": "rtm_can_save",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 192,
    "section": ".rodata",
-   "symbol": "pp_position",
+   "symbol": "rtm_mod_carrier",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 196,
    "section": ".rodata",
-   "symbol": "dynreg_view",
+   "symbol": "rtm_mod_param",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 200,
    "section": ".rodata",
-   "symbol": "ip_src_draw",
+   "symbol": "rtm_src",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 204,
    "section": ".rodata",
-   "symbol": "ip_mod_color",
+   "symbol": "dl_reset_begin",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 208,
    "section": ".rodata",
-   "symbol": "ip_mod_drift",
+   "symbol": "dl_reset_quiesce",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 212,
    "section": ".rodata",
-   "symbol": "ip_mod_mix",
+   "symbol": "pp_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 216,
    "section": ".rodata",
-   "symbol": "ip_mod_strum",
+   "symbol": "ui_machine_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 220,
    "section": ".rodata",
-   "symbol": "ip_mod_gate",
+   "symbol": "ip_src_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 224,
    "section": ".rodata",
-   "symbol": "ip_mod_swing",
+   "symbol": "ip_mod_color",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 228,
    "section": ".rodata",
-   "symbol": "ip_mod_position",
+   "symbol": "ip_mod_drift",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 232,
    "section": ".rodata",
-   "symbol": "ip_mod_scan_depth",
+   "symbol": "ip_mod_mix",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 236,
    "section": ".rodata",
-   "symbol": "ip_mod_scan_rate",
+   "symbol": "ip_mod_strum",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 240,
    "section": ".rodata",
-   "symbol": "ip_mod_timbre_env",
+   "symbol": "ip_mod_gate",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 244,
    "section": ".rodata",
-   "symbol": "ip_mod_wtfm_depth",
+   "symbol": "ip_mod_swing",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 248,
    "section": ".rodata",
-   "symbol": "ip_mod_wtfm_env",
+   "symbol": "ip_mod_position",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 252,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_depth",
+   "symbol": "ip_mod_scan_depth",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 256,
    "section": ".rodata",
-   "symbol": "ip_mod_balance",
+   "symbol": "ip_mod_scan_rate",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 260,
    "section": ".rodata",
-   "symbol": "ip_mod_feedback",
+   "symbol": "ip_mod_timbre_env",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 264,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_env",
+   "symbol": "ip_mod_wtfm_depth",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 268,
    "section": ".rodata",
-   "symbol": "ip_mod_fm_attack",
+   "symbol": "ip_mod_wtfm_env",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 272,
+   "section": ".rodata",
+   "symbol": "ip_mod_fm_depth",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 276,
+   "section": ".rodata",
+   "symbol": "ip_mod_balance",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 280,
+   "section": ".rodata",
+   "symbol": "ip_mod_feedback",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 284,
+   "section": ".rodata",
+   "symbol": "ip_mod_fm_env",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 288,
+   "section": ".rodata",
+   "symbol": "ip_mod_fm_attack",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 292,
    "section": ".rodata",
    "symbol": "ip_mod_fm_release",
    "type": "cf.32"
@@ -2003,6 +2024,41 @@
    "section": ".text.ip_sa_reset",
    "symbol": "dkrt_irq_restore",
    "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 68,
+   "section": ".text.mf_src_register",
+   "symbol": ".sec..bss.entries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 28,
+   "section": ".text.mf_src_unregister",
+   "symbol": ".sec..bss.entries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.mf_src_page_count",
+   "symbol": ".sec..bss.entries",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 144,
+   "section": ".text.mf_src_apply_pages",
+   "symbol": "mf_src_alloc",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 216,
+   "section": ".text.mf_src_apply_pages",
+   "symbol": "mf_src_free",
+   "type": "cf.32"
   }
  ],
  "sections": [
@@ -2015,10 +2071,10 @@
   },
   {
    "align": 4,
-   "hex": "495053310000000300000045000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+   "hex": "4d46583100000001000000000000000000000000495053310000000300000045000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
    "kind": "data",
    "name": ".rodata",
-   "size": 276
+   "size": 296
   },
   {
    "align": 2,
@@ -2481,10 +2537,51 @@
    "kind": "bss",
    "name": ".bss.store",
    "size": 332
+  },
+  {
+   "align": 2,
+   "hex": "2f027418202f00082200206f000c5f81b481640670ff241f4e754a8867f67201b29066f07410b4a8000466e82268000822095381e48966dc2228000c4a8167d4e78841f900000000243008044a826704b48166c02181080421890800428060b6",
+   "kind": "text",
+   "name": ".text.mf_src_register",
+   "size": 96
+  },
+  {
+   "align": 2,
+   "hex": "2f027418202f00082040222f000c5f88b488651a4a816716e78843f900000000b2b10804660842b1080042b10804241f4e75",
+   "kind": "text",
+   "name": ".text.mf_src_unregister",
+   "size": 50
+  },
+  {
+   "align": 2,
+   "hex": "2f027418222f000820015f80b480651841f900000000e789203018044a80670420301800241f4e75428060f8",
+   "kind": "text",
+   "name": ".text.mf_src_page_count",
+   "size": 44
+  },
+  {
+   "align": 2,
+   "hex": "4fefffe448d70c7c246f0020262f0024266a007c4a8b672c202a00802c009c8b222a008424062801988b84842a0b84857a03c4854a82660cb08b6508b2806504ba84651242aa0090428220024cd70c7c4fef001c4e7520035380e48867047401600e7a02ba8365142403e48cb48462ee71c247f30c00254b008060222a04e48dba8364e4e68c67d62803e58c2f044eb900000000588f4a8066102406e48ab4aa009062a642aa009060a0204bb485643073c222331c00224023812c005282b48366ea2540007c26402009d08425400080254000842f084eb900000000588f608a221360d2",
+   "kind": "text",
+   "name": ".text.mf_src_apply_pages",
+   "size": 228
+  },
+  {
+   "align": 2,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.entries",
+   "size": 256
   }
  ],
- "source_sha256": "95b16c5def5b9cddc36b3c7d9953c2fa166548d79e9595fdeb2357c519e8dcc2",
+ "source_sha256": "b5d16268039e9fa947a1de305a64e96fbfedd13f28e74bcaa5017ff97f71cf66",
  "symbols": [
+  {
+   "global": false,
+   "name": ".sec..bss.entries",
+   "section": ".bss.entries",
+   "value": 0
+  },
   {
    "global": false,
    "name": ".sec..bss.ip_sa_info",
@@ -2894,15 +2991,15 @@
    "value": 0
   },
   {
-   "global": true,
-   "name": "dynreg_view",
-   "section": null,
+   "global": false,
+   "name": "each_slot",
+   "section": ".text.each_slot",
    "value": 0
   },
   {
    "global": false,
-   "name": "each_slot",
-   "section": ".text.each_slot",
+   "name": "entries",
+   "section": ".bss.entries",
    "value": 0
   },
   {
@@ -2945,7 +3042,7 @@
    "global": true,
    "name": "instrument_image",
    "section": ".rodata",
-   "value": 0
+   "value": 20
   },
   {
    "global": true,
@@ -3555,14 +3652,44 @@
   },
   {
    "global": true,
-   "name": "mf_src_register",
+   "name": "mf_ext_info",
+   "section": ".rodata",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_alloc",
    "section": null,
    "value": 0
   },
   {
    "global": true,
-   "name": "mf_src_unregister",
+   "name": "mf_src_apply_pages",
+   "section": ".text.mf_src_apply_pages",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_free",
    "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_page_count",
+   "section": ".text.mf_src_page_count",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_register",
+   "section": ".text.mf_src_register",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "mf_src_unregister",
+   "section": ".text.mf_src_unregister",
    "value": 0
   },
   {
@@ -3834,14 +3961,20 @@
    "name": "tk_runtime_init",
    "section": null,
    "value": 0
+  },
+  {
+   "global": true,
+   "name": "ui_machine_view",
+   "section": null,
+   "value": 0
   }
  ],
  "toolchain": {
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "2764",
-  "isa_check": "90ad054bde91d3edb2c723467733c06d1eb1f11bea43248d8dd67c8d1b769f49",
+  "instructions_redecoded": "2928",
+  "isa_check": "c4222c94cbb043ed6942eeb9f1e59e7d0ac99efc2ddb5d70100ac82c9c65c585",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

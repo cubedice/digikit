@@ -279,7 +279,7 @@
    "addend": 0,
    "offset": 116,
    "section": ".rodata",
-   "symbol": "machines_info",
+   "symbol": "rows_info",
    "type": "cf.32"
   },
   {
@@ -369,7 +369,7 @@
    "size": 6
   }
  ],
- "source_sha256": "10858fb51642e58b2d34893adb4cf6810400f1c19512d091615f1e22b89ca60c",
+ "source_sha256": "6efc37720e39b76e846a8936df8e8412c72ea8718cf0bc77aae6b3ad5fe88319",
  "symbols": [
   {
    "global": true,
@@ -481,12 +481,6 @@
   },
   {
    "global": true,
-   "name": "machines_info",
-   "section": null,
-   "value": 0
-  },
-  {
-   "global": true,
    "name": "mf_src_register",
    "section": null,
    "value": 0
@@ -550,6 +544,12 @@
    "name": "relay_write_frame",
    "section": ".text",
    "value": 34
+  },
+  {
+   "global": true,
+   "name": "rows_info",
+   "section": null,
+   "value": 0
   },
   {
    "global": true,
@@ -671,7 +671,7 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
   "instructions_redecoded": "99",
-  "isa_check": "a9f7072a4a3b12fd3cc3fb13a1b54330b82354296eef4329a714768cae021795",
+  "isa_check": "7f6f48d5a2543734913d83bb1186cd701e69120c3dc81256ef37a471554e135c",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

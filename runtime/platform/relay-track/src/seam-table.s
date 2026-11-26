@@ -34,7 +34,7 @@ relay_image:
     .long pp_record_frames
     .long pp_record_steps
     .long pp_record_timing
-    .long machines_info
+    .long rows_info
     .long pp_position
     .long rtm_mod_rate
     .long rtm_mod_spacing

@@ -34,7 +34,7 @@
 #define RTX_pp_record_frames 26u
 #define RTX_pp_record_steps 27u
 #define RTX_pp_record_timing 28u
-#define RTX_machines_info 29u
+#define RTX_rows_info 29u
 #define RTX_pp_position 30u
 #define RTX_rtm_mod_rate 31u
 #define RTX_rtm_mod_spacing 32u
