@@ -6,7 +6,7 @@
 #define DK_TRACK_KEYBOARD_SEAM_H
 #include <stdint.h>
 #define TK_SEAM_MAGIC 0x544b5331u
-#define TK_SEAM_VERSION 2u
+#define TK_SEAM_VERSION 3u
 #define TK_SEAM_WORDS 64u
 #define TKX_tk_defaults 3u
 #define TKX_tk_track_defaults 4u

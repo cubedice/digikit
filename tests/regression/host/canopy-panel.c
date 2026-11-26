@@ -2,6 +2,9 @@
  * path of its own, so its tracks are the track keyboard's to play, and recording goes through the stock note action. */
 #include <assert.h>
 #include <stdio.h>
+/* The note action's caller is the stock performance handler (a TRIG press outside keyboard mode) while `performance` is set. */
+static int performance;
+#define IP_PANEL_PERFORMANCE_CALLER() (performance)
 #include "../../../runtime/platform/keyboard-panel/src/cf/panel.c"
 static uint8_t view[0x200], other[0x200], object[4];
 static uint32_t machine = 9, selected, instrument_track = 0, original_on, original_off, detaches;
@@ -32,15 +35,16 @@ uint32_t ip_panel_key_down(uint32_t key)
     assert(key == 0x12);
     return keyboard_held;
 }
+/* The project's trig mode (2: retrig), read through the view's controller (+0x94) when it has one. */
+static uint32_t trig_mode;
 uint32_t ip_panel_project_settings(uint32_t controller)
 {
-    (void)controller;
-    return 0;
+    return controller;
 }
 uint32_t ip_panel_trig_mode(uint32_t settings)
 {
-    (void)settings;
-    return 0;
+    assert(settings);
+    return trig_mode;
 }
 const uint8_t ip_panel_trig_return[1] = {0};
 uint32_t dkrt_instrument_type(void)
@@ -151,11 +155,23 @@ void tk_panel_record_audition(uint32_t track, uint32_t pitch)
     guarded_track = track;
     guarded_pitch = pitch;
 }
+static uint32_t retrigs, tk_trig_downs;
 int tk_panel_retrig(uint32_t key, uint32_t track)
 {
     (void)key;
-    (void)track;
+    if (track != IP_NONE)
+        ++retrigs;
     return 0;
+}
+/* A TRIG press of a track the track keyboard plays (the panel asks it on CANOPY's track only). */
+int tk_panel_trig_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    assert(key < 16 && track == instrument_track && pitch < 128 && velocity == 88);
+    if (!routed)
+        return 0;
+    tk_notes |= 1u << key;
+    ++tk_trig_downs;
+    return 1;
 }
 void tk_panel_cancel(void)
 {
@@ -316,6 +332,51 @@ int main(void)
     ip_panel_off(view, 10);
     active = 1;
     step_record = 0;
+
+    /* A TRIG press outside keyboard mode: the stock performance handler auditions the key's track. On CANOPY's track the track
+     * keyboard plays it and its release ends it, and the stock action runs for neither; another track stays stock. */
+    active = 0;
+    performance = 1;
+    downs = tk_downs;
+    ons = original_on;
+    offs = original_off;
+    press(0, 0, 60);
+    assert(tk_trig_downs == 1 && tk_downs == downs && original_on == ons && (tk_notes & 1u));
+    assert(ip_panel_press[0] == 0 && ip_panel_press[1] == 0 && ip_panel_press[2] == 60 &&
+           ip_panel_press[3] == 88);
+    ip_panel_off(view, 0);
+    assert(!(tk_notes & 1u) && original_off == offs);
+    press(1, 1, 60);
+    assert(tk_trig_downs == 1 && original_on == ons + 1);
+    ip_panel_off(view, 1);
+    assert(original_off == offs + 1);
+    /* Without the track keyboard's route it stays stock. */
+    routed = 0;
+    press(0, 0, 60);
+    assert(tk_trig_downs == 1 && original_on == ons + 2);
+    ip_panel_off(view, 0);
+    routed = 1;
+    /* A press that records stays stock: live recording records the trig. */
+    live = 1;
+    press(2, 0, 60);
+    assert(tk_trig_downs == 1 && original_on == ons + 3);
+    ip_panel_off(view, 2);
+    live = 0;
+    /* In retrig mode the track keyboard retriggers the track, as before. */
+    *(uint32_t *)(view + 0x94) = 1;
+    trig_mode = 2;
+    press(3, 0, 60);
+    assert(retrigs == 1 && tk_trig_downs == 1 && original_on == ons + 4);
+    ip_panel_off(view, 3);
+    *(uint32_t *)(view + 0x94) = 0;
+    trig_mode = 0;
+    /* Another caller of the note action outside keyboard mode is not a TRIG press: stock. */
+    performance = 0;
+    press(4, 0, 60);
+    assert(tk_trig_downs == 1 && original_on == ons + 5 && original_off == offs + 4);
+    ip_panel_off(view, 4);
+    assert(original_off == offs + 5);
+    active = 1;
 
     /* While a step entry holds KEYBOARD on CANOPY's track, the track keyboard keeps its focus there. */
     step_record = 1;

@@ -166,8 +166,10 @@ On the DT2 1.17 and DN2 1.12 emulators; nothing ran on a device.
   with the adapter's table (`mf_srcpage_ext`) and `mf_typearg`'s MOD answers have no unit test, only the device tests of CANOPY.
 - **Service-run C under `runtime/platform`.** The C and assembler of the fork's three services still live in their adapters'
   folders (the seams' tables), where upstream's layout puts only flashed code.
-- **A TRIG press outside keyboard mode on a CANOPY track.** Silent since #19 (above); the panel should hand it to the track
-  keyboard as it does a step entry, with a device test of the press and PRISM's coexistence test as the check.
+- **A TRIG press outside keyboard mode on a CANOPY track.** Silent since #19 (above). Fixed after the merge on
+  `fix/canopy-plain-trig`: the panel hands such a press to the track keyboard (`tk_panel_trig_on`), tested by
+  `modules/machine/digikit/canopy/tests/trig-audition.device.test.ts` and PRISM's coexistence test. Before #19, on the tree of
+  `741d059c5`, the press peaked at -33.2 dB, the level of a keyboard-mode press.
 - **RELAY's README.** The web gallery requires one of every shipped module.
 - **Upstream's.** `service_symbol`'s package reads (the pluck menu scenario), the debug harness's pointer cast and the sample-pool
   tests on a 64-bit host, and SHOT's DN2 retrigger levels: to report upstream, not to change here.

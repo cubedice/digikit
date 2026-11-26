@@ -23,7 +23,7 @@ path = "build/keyboard-panel-cf.dko.json"
 sources = ["src/cf/panel.c", "src/cf/panel.s", "src/cf/src-clock.c"]
 place = "cf.expansion"
 devices = ["dt2"]
-optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig"]
+optional = ["tk_capture_note_list_commit", "tk_capture_panel_press", "tk_capture_panel_release", "tk_panel_cancel", "tk_panel_focus", "tk_panel_native_record_on", "tk_panel_off", "tk_panel_on", "tk_panel_record_audition", "tk_panel_retrig", "tk_panel_trig_on"]
 
 [object.externs]
 ip_panel_active = "cf.page.site.instrument_panel_active"

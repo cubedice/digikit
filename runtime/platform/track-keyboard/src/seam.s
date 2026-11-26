@@ -190,12 +190,22 @@ tk_panel_on:
 1:
     moveq #0,%d0
     rts
+    .globl tk_panel_trig_on
+tk_panel_trig_on:
+    move.l slot.tk_vec,%d0
+    beq.s 1f
+    movea.l %d0,%a1
+    movea.l 80(%a1),%a1
+    jmp (%a1)
+1:
+    moveq #0,%d0
+    rts
     .globl tk_panel_off
 tk_panel_off:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 80(%a1),%a1
+    movea.l 84(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -205,7 +215,7 @@ tk_panel_retrig:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 84(%a1),%a1
+    movea.l 88(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -215,7 +225,7 @@ tk_panel_cancel:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 88(%a1),%a1
+    movea.l 92(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -224,7 +234,7 @@ tk_panel_focus:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 92(%a1),%a1
+    movea.l 96(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -233,7 +243,7 @@ tk_panel_native_record_on:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 96(%a1),%a1
+    movea.l 100(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -243,7 +253,7 @@ tk_panel_record_audition:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 100(%a1),%a1
+    movea.l 104(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -252,7 +262,7 @@ tk_capture_panel_press:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 104(%a1),%a1
+    movea.l 108(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -261,7 +271,7 @@ tk_capture_panel_release:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 108(%a1),%a1
+    movea.l 112(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -270,7 +280,7 @@ tk_capture_note_list_commit:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 112(%a1),%a1
+    movea.l 116(%a1),%a1
     jmp (%a1)
 1:
     rts
@@ -279,7 +289,7 @@ tk_midi_channel_message:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 116(%a1),%a1
+    movea.l 120(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -289,7 +299,7 @@ tk_picker_key:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 120(%a1),%a1
+    movea.l 124(%a1),%a1
     jmp (%a1)
 1:
     moveq #0,%d0
@@ -299,7 +309,7 @@ tk_picker_led:
     move.l slot.tk_vec,%d0
     beq.s 1f
     movea.l %d0,%a1
-    movea.l 124(%a1),%a1
+    movea.l 128(%a1),%a1
     jmp (%a1)
 1:
     moveq #-1,%d0

@@ -34,6 +34,16 @@ static uint16_t shared_live_record[16];
 volatile uint32_t ip_panel_debug[8];
 /* Key presses handed to the stock path for recording (proof counter). */
 volatile uint32_t ip_panel_recorded;
+/* The last press the track keyboard plays outside recording (a key in keyboard mode, a TRIG press): key, track, pitch and
+ * velocity as the stock caller passed them (evidence for the device tests). */
+volatile uint32_t ip_panel_press[4];
+static void press_seen(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+{
+    ip_panel_press[0] = key;
+    ip_panel_press[1] = track;
+    ip_panel_press[2] = pitch;
+    ip_panel_press[3] = velocity;
+}
 static uint32_t word(const uint8_t *p, uint32_t n)
 {
     return *(const uint32_t *)(p + n);
@@ -58,7 +68,14 @@ static int32_t step_note(const uint8_t *p, uint32_t track, uint32_t step)
 }
 extern int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     __attribute__((weak));
+extern int tk_panel_trig_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
+    __attribute__((weak));
 extern int tk_panel_off(uint32_t key) __attribute__((weak));
+/* The note action's caller is the stock performance handler: a TRIG press outside keyboard mode auditions the key's track.
+ * (The host driver defines it: there the caller is the test.) */
+#ifndef IP_PANEL_PERFORMANCE_CALLER
+#define IP_PANEL_PERFORMANCE_CALLER() (__builtin_return_address(0) == ip_panel_trig_return)
+#endif
 extern int tk_panel_native_record_on(uint32_t key, uint32_t track, uint32_t pitch,
                                      uint32_t velocity) __attribute__((weak));
 extern void tk_panel_record_audition(uint32_t track, uint32_t pitch) __attribute__((weak));
@@ -115,6 +132,7 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
             if (IP_HAVE(tk_panel_cancel) && !shared_step)
                 tk_panel_cancel();
         } else if (IP_HAVE(tk_panel_on) && tk_panel_on(key, track, pitch, velocity)) {
+            press_seen(key, track, pitch, velocity);
             return;
         }
     }
@@ -135,11 +153,18 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
     /* The same stock action also auditions keyboard and recording notes.
      * Check the performance caller and its trig mode. */
     if (!keyboard && IP_HAVE(tk_panel_retrig) && key < 16 && track < 16 && pitch < 128 &&
-        __builtin_return_address(0) == ip_panel_trig_return) {
+        IP_PANEL_PERFORMANCE_CALLER()) {
         uint32_t controller = word(view, 0x94);
         uint32_t settings = controller ? ip_panel_project_settings(controller) : 0;
         if (settings && ip_panel_trig_mode(settings) == 2)
             tk_panel_retrig(key, track);
+        /* A TRIG press that neither records nor retriggers auditions the key's track. CANOPY has no stock voice to audition
+         * with: on its track the track keyboard plays the press, and its release ends it (ip_panel_off). */
+        else if (!recording && IP_HAVE(tk_panel_trig_on) && canopy_track(view, track) &&
+                 tk_panel_trig_on(key, track, pitch, velocity)) {
+            press_seen(key, track, pitch, velocity);
+            return;
+        }
     }
     ip_panel_original_on(view, key, track, pitch, velocity, a, b, c);
 }

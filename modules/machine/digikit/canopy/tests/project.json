@@ -60,7 +60,8 @@
       },
       {
         "files": [
-          "step-audition.device.test.ts"
+          "step-audition.device.test.ts",
+          "trig-audition.device.test.ts"
         ],
         "devices": [
           "dt2"
@@ -76,12 +77,6 @@
           "core/instrument-play",
           "core/track-keyboard",
           "core/health"
-        ],
-        "tags": [
-          "S:machines",
-          "A:core/instrument-play",
-          "S:instrument",
-          "S:track-keyboard"
         ]
       },
       {
