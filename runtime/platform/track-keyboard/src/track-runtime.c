@@ -42,6 +42,11 @@ static uint8_t retrig_track[TK_NOTES];
 static uint16_t retrig_keys;
 volatile uint32_t tk_panel_claim_hits;
 static bool polling;
+/* The working copy of the edited pattern (keep_working_copy): its address, the fingerprint of its settings, when they last
+ * changed, whether the working copy is behind them, and the block of the last look. */
+static uint32_t work_pattern, work_print, work_changed, work_looked;
+static bool work_behind;
+static void keep_working_copy(uint32_t now);
 static TkNotesDraft draft;
 static dk_ui_menu *notes_menu, *note_menu, *selector_menu, *pool_menu;
 static bool notes_dirty, notes_choosing_step, notes_existing_step;
@@ -313,9 +318,52 @@ static void poll(void)
         }
     }
     tk_native_drain();
+    keep_working_copy(now);
     if (draft.open && now - notes_title_at >= 120u && dk_ui_core_menu_front(notes_menu)) {
         notes_title_at = now;
         notes_update_title();
+    }
+}
+
+/* A power cycle brings back the firmware's working copy of the project, and a track keyboard edit does not reach it by itself
+ * (finding 374). Four times a second this fingerprints the settings of the pattern being edited; two seconds after they last
+ * changed it writes them into the pattern's record there. A pattern that is left with an unwritten change is written at once. */
+enum { WORK_LOOK_BLOCKS = 375u, WORK_QUIET_BLOCKS = 3000u };
+
+static uint32_t settings_print(uint32_t address)
+{
+    const TkPattern *p = address ? tk_pattern_fw_peek(address) : NULL;
+    if (!p)
+        return 0;
+    const uint8_t *bytes = (const uint8_t *)p;
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < sizeof *p; ++i)
+        h = (h ^ bytes[i]) * 16777619u;
+    return h | 1u;
+}
+
+static void keep_working_copy(uint32_t now)
+{
+    if (now - work_looked < WORK_LOOK_BLOCKS)
+        return;
+    work_looked = now;
+    if (editing_pattern != work_pattern) {
+        /* also a change since the last look, made just before the pattern was left */
+        if (work_pattern && (work_behind || settings_print(work_pattern) != work_print))
+            (void)tk_pattern_fw_work_write(work_pattern);
+        work_pattern = editing_pattern;
+        work_print = settings_print(work_pattern);
+        work_behind = false;
+        return;
+    }
+    uint32_t print = settings_print(work_pattern);
+    if (print != work_print) {
+        work_print = print;
+        work_changed = now;
+        work_behind = work_pattern != 0;
+    } else if (work_behind && now - work_changed >= WORK_QUIET_BLOCKS) {
+        (void)tk_pattern_fw_work_write(work_pattern);
+        work_behind = false;
     }
 }
 

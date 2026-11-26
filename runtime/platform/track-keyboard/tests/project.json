@@ -29,7 +29,8 @@
           "pool.device.test.ts",
           "storage.device.test.ts",
           "track-clipboard.device.test.ts",
-          "trig-clipboard.device.test.ts"
+          "trig-clipboard.device.test.ts",
+          "working-copy.device.test.ts"
         ],
         "devices": [
           "dt2"

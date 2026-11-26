@@ -57,7 +57,10 @@ their individual timing within each of 32 captured steps per pattern.
 
 The pattern extension also carries track defaults, helper requests and
 sparse step locks. It is saved alongside the stock pattern and follows
-pattern copy and undo. Native grid track copy, paste, clear and undo also
+pattern copy and undo. About two seconds after an edit it is also written
+into the firmware's working copy of the project, which a power cycle
+brings back, so the settings survive one without a project save
+(finding 374). Native grid track copy, paste, clear and undo also
 preserve the corresponding track settings, locks and recorded notes.
 Hold a trig in grid recording and press RECORD, STOP or PLAY to copy,
 paste or clear its locks and recipe. Repeat paste or clear on the same

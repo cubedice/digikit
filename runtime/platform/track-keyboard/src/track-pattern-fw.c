@@ -10,6 +10,14 @@ enum {
     PATTERN_BYTES = 0x1db8c,
     TRACK_BYTES = 0x6a5,
     PROJECT_PATTERNS = 0x41776cb8,
+    /* The firmware's working copy of the project: the arena that its boot record holds, that its power-off writer stores and that a
+     * boot restores (finding 40). Project pattern i has its v4 record at WORK_RECORDS + i * WORK_RECORD_BYTES, the record's first
+     * word the version 4 (finding 374). */
+    WORK_ARENA = 0x4099d588,
+    WORK_ARENA_BYTES = 0xdd9714,
+    WORK_RECORDS = 0x310,
+    WORK_RECORD_BYTES = 0x15c00,
+    WORK_RECORD_VERSION = 4,
 };
 
 typedef struct {
@@ -26,10 +34,14 @@ extern uintptr_t tk_fw_project(void);
 static TkPattern *pattern_slots[PATTERNS];
 static Temporary temporary[TEMPORARIES];
 static uint8_t *record_bytes;
+/* The working-copy writer's own encoding: the save hook's buffer is the firmware's save task's. */
+static uint8_t *work_bytes;
 static volatile uint32_t revision;
 static uint32_t age;
 
 volatile uint32_t tk_storage_info[5]; /* loads, saves, copies, full records, allocation failures */
+volatile uint32_t
+    tk_work_info[3]; /* working-copy writes, no record there, settings that did not fit */
 
 static int slot(uint32_t address)
 {
@@ -330,6 +342,44 @@ uint32_t tk_pattern_fw_save(uint8_t *record, uint32_t address, uint32_t result)
         ++tk_storage_info[1];
     dkrt_irq_restore(sr);
     return valid ? result : 0;
+}
+
+/* A track keyboard edit changes no stock byte, so the firmware never serializes the pattern into its working copy again, and a power
+ * cycle brings back the settings of the last time it did (finding 374). This writes them into the pattern's record there, as the
+ * save hook writes them into a record the firmware serializes. The encoding runs with interrupts enabled; only the write into the
+ * record is masked, so that the firmware's save task cannot interleave with it (a later serialization of the pattern runs the save
+ * hook, which writes the same settings). */
+bool tk_pattern_fw_work_write(uint32_t address)
+{
+    int index = slot(address);
+    if (index < 0)
+        return false;
+    uint32_t at = (uint32_t)WORK_ARENA + (uint32_t)WORK_RECORDS +
+                  (uint32_t)index * (uint32_t)WORK_RECORD_BYTES;
+    if (at + (uint32_t)WORK_RECORD_BYTES > (uint32_t)WORK_ARENA + (uint32_t)WORK_ARENA_BYTES ||
+        *(const volatile uint32_t *)(uintptr_t)at != WORK_RECORD_VERSION) {
+        ++tk_work_info[1];
+        return false;
+    }
+    if (!work_bytes) {
+        work_bytes = allocate(TK_PATTERN_BYTES);
+        if (!work_bytes) {
+            ++tk_storage_info[4];
+            return false;
+        }
+    }
+    const TkPattern *p = lookup(address, PATTERN_BYTES);
+    size_t size = p ? tk_pattern_encoded_size(p) : 0;
+    if (size == TK_PATTERN_HEADER)
+        size = 0;
+    bool valid = !size || tk_pattern_encode(p, work_bytes, size);
+    if (valid) {
+        uint32_t sr = dkrt_irq_mask();
+        valid = tk_record_write((uint8_t *)(uintptr_t)at, work_bytes, size);
+        dkrt_irq_restore(sr);
+    }
+    ++tk_work_info[valid ? 0 : 2];
+    return valid;
 }
 
 void tk_pattern_fw_load(uint32_t address, const uint8_t *record, uint32_t result)
