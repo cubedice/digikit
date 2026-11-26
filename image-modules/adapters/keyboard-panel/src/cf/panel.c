@@ -83,12 +83,15 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
                  uint32_t a, uint32_t b, uint32_t c)
 {
     int keyboard = ip_panel_active(word(view, 0xa0));
-    int canopy = keyboard && key < 16 && canopy_track(view, track);
     /* KeyboardView +0x98 holds the recorder state. */
     uint32_t seq = word(view, 0x98);
     int live = seq && ip_panel_live_record(seq), held = seq && ip_panel_trig_held(seq),
         step = seq && ip_panel_step_record(seq);
     int recording = live || held || step;
+    /* Step recording takes its notes with KEYBOARD held while keyboard mode is off (finding 349): such a press is a keyboard
+     * note too, so a CANOPY track's entry sounds through the track keyboard. */
+    int entry = step && !keyboard && key < 16 && ip_panel_key_down(0x12);
+    int canopy = (keyboard || entry) && key < 16 && canopy_track(view, track);
     /* Step entry and a held trig on a CANOPY track: the stock note action
      * records the note and the track keyboard sounds it (CANOPY has no stock
      * voice of its own to audition with). */

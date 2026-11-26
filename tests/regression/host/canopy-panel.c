@@ -296,6 +296,27 @@ int main(void)
         step_record = 0;
     }
 
+    /* Step entry with KEYBOARD held while keyboard mode is off: the note action runs, the stock action records the note and the
+     * track keyboard sounds it on CANOPY's track; the note-off pairs both. On another track the stock action alone sounds it. */
+    step_record = keyboard_held = 1;
+    active = 0;
+    downs = tk_downs;
+    unsigned ons = original_on, offs = original_off;
+    press(10, 0, 69);
+    assert(original_on == ons + 1 && tk_downs == downs + 1 && (tk_notes & (1u << 10)));
+    ip_panel_off(view, 10);
+    assert(!(tk_notes & (1u << 10)) && original_off == offs + 1);
+    press(10, 2, 69);
+    assert(original_on == ons + 2 && tk_downs == downs + 1);
+    ip_panel_off(view, 10);
+    /* Without KEYBOARD held the press is no keyboard note: stock alone. */
+    keyboard_held = 0;
+    press(10, 0, 69);
+    assert(original_on == ons + 3 && tk_downs == downs + 1);
+    ip_panel_off(view, 10);
+    active = 1;
+    step_record = 0;
+
     /* While a step entry holds KEYBOARD on CANOPY's track, the track keyboard keeps its focus there. */
     step_record = 1;
     press(7, 0, 60);
