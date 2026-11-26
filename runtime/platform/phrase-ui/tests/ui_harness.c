@@ -94,15 +94,26 @@ static void encoders(void)
     assert(pu_turn(&s, 1, -3, 1) == PU_OWN && raw[PH_P_RATE] == 508 - PH_RATE_COARSE - 2);
     assert(pu_turn(&s, 1, 1000, 0) == PU_OWN && raw[PH_P_RATE] == PH_RATE_MAX);
     assert(pu_turn(&s, 1, -1000, 0) == PU_OWN && raw[PH_P_RATE] == 0);
-    /* G is INPT's switch, also without a loop: right LOOP, left LIVE, once each way. H is taken and writes nothing. */
+    /* G is INPT's switch, also without a loop: four ticks to the right LOOP, four to the left LIVE. A tick toward the
+     * position it is at clears the count, so the tick a knob makes as it is let go of switches nothing. H is taken and
+     * writes nothing. */
     uint32_t before = writes;
     for (uint32_t encoder = 6; encoder < 8; ++encoder)
         assert(pu_parameter(encoder) == PH_PARAM_COUNT);
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before);
+    assert(pu_turn(&s, 6, 2, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before);
     assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1 && writes == before + 1);
     assert(pu_turn(&s, 6, 5, 0) == PU_OWN && raw[PH_P_INPT] == 1 && writes == before + 1);
     assert(pu_turn(&s, 6, 0, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    /* one accelerated event of five counts four: LIVE at once */
     assert(pu_turn(&s, 6, -5, 1) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
-    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
+    /* the tick back of a knob let go of: LIVE stays */
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
+    /* a tick toward LIVE clears the count: three more to the right do not reach LOOP, a fourth does */
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 2);
+    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1 && writes == before + 3);
+    assert(pu_turn(&s, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0 && writes == before + 4);
     before = writes;
     assert(pu_turn(&s, 7, 5, 0) == PU_OWN && pu_turn(&s, 7, -5, 1) == PU_OWN);
     assert(writes == before);
@@ -606,7 +617,7 @@ static void loop_page(void)
     report(LS_TRACK, 0, 16, 0, 0, 0.0f);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 0);
-    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, 4, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     for (uint32_t i = 0; i < 3 * PU_LOOP_GONE; ++i)
         pu_loop(&s);
     assert(raw[PH_P_INPT] == 1);
@@ -615,7 +626,7 @@ static void loop_page(void)
     same(p.cells[6].state, "SILENT");
     tap(&s, PU_PUSH + 6);
     assert(raw[PH_P_INPT] == 1);
-    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     tap(&s, PU_PUSH + 6);
     assert(raw[PH_P_INPT] == 0);
     assert(pu_turn(&s, 7, 5, 0) == PU_OWN && home_xfad == 0);
@@ -672,17 +683,25 @@ static void loop_page(void)
     pu_page(&s, &p);
     same(p.cells[7].value, "LIVE");
     assert(p.cells[7].fader == 1);
-    /* G: a press switches nothing; a tick to the left is LIVE and to the right LOOP; the header names the loop only while
-     * PRISM hears it. */
+    /* G: a press switches nothing; four ticks to the left are LIVE and to the right LOOP; the header names the loop only
+     * while PRISM hears it. The owner's case on the device: a turn to LIVE over a held loop, then the tick back of the
+     * knob let go of, and LIVE stays. */
     tap(&s, PU_PUSH + 6);
     assert(raw[PH_P_INPT] == 1);
-    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && pu_turn(&s, 6, -1, 0) == PU_OWN &&
+           raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, -2, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && pu_turn(&s, 6, 1, 0) == PU_OWN &&
+           raw[PH_P_INPT] == 0);
+    for (uint32_t i = 0; i < 3 * PU_LOOP_GONE; ++i)
+        pu_loop(&s);
+    assert(raw[PH_P_INPT] == 0);
     pu_page(&s, &p);
     assert(!p.line[0]);
     same(p.zone, "ECHO");
-    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, 4, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     assert(pu_turn(&s, 6, 3, 0) == PU_OWN && raw[PH_P_INPT] == 1);
-    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* Arming again while the loop plays keeps the crossfader and its armed state. */
     tap(&s, PU_PUSH + 7);
     assert(home_arms == 2);
@@ -704,7 +723,7 @@ static void loop_page(void)
     report(LS_TRACK, 2, 16, 0, 0, 0.0f);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 0);
-    assert(pu_turn(&s, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, 6, 4, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     pu_loop(&s);
     pu_loop(&s);
     assert(raw[PH_P_INPT] == 1);
@@ -712,7 +731,7 @@ static void loop_page(void)
     same(p.cells[6].state, "SILENT");
     draw_page(&p, &d, 0);
     assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "SILENT"));
-    assert(pu_turn(&s, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
     PhraseUi late;
     memset(&late, 0, sizeof(late));
@@ -742,13 +761,13 @@ static void loop_page(void)
     same(p.cells[7].value, "--");
     same(p.cells[7].state, "NO LOOP");
     /* once: G at LOOP again stays while the loop effect still does not report */
-    assert(pu_turn(&late, 6, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&late, 6, 4, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     for (uint32_t i = 0; i < 3 * PU_LOOP_GONE; ++i)
         pu_loop(&late);
     assert(raw[PH_P_INPT] == 1);
     pu_page(&late, &p);
     same(p.cells[6].state, "SILENT");
-    assert(pu_turn(&late, 6, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&late, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     uint32_t arms = home_arms;
     tap(&late, PU_PUSH + 7);
     assert(home_arms == arms);
@@ -914,7 +933,7 @@ static void tracks(void)
     assert(raw[PH_P_INPT] == 1 && raw[PH_P_TRKS] == PH_TRACKS_ALL);
     /* A turn of G while it is held still switches, and release keeps that choice. */
     hold_g(&s);
-    assert(pu_turn(&s, PU_SELECT, -1, 0) == PU_OWN && raw[PH_P_INPT] == 0);
+    assert(pu_turn(&s, PU_SELECT, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     release_g(&s);
     assert(raw[PH_P_INPT] == 0);
 
@@ -922,7 +941,7 @@ static void tracks(void)
     report(LS_TRACK, 1, 16, 0, 0, 0.0f);
     pu_loop(&s);
     raw[PH_P_TRKS] = 0;
-    assert(pu_turn(&s, PU_SELECT, 1, 0) == PU_OWN && raw[PH_P_INPT] == 1);
+    assert(pu_turn(&s, PU_SELECT, 4, 0) == PU_OWN && raw[PH_P_INPT] == 1);
     hold_g(&s);
     release_g(&s);
     assert(raw[PH_P_INPT] == 1);
