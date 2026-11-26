@@ -143,7 +143,7 @@ void pu_page(const PhraseUi *s, PhrasePage *page)
     pu_format(text, PH_P_RPTS, repeats);
     cell(&page->cells[2], "RPTS", hold ? "INF" : text, hold ? "HOLD" : "", hold);
     pu_format(text, PH_P_COLR, colour);
-    cell(&page->cells[3], "COLR", text, colour < 64 ? "DARK" : colour > 64 ? "BRIT" : "", 0);
+    cell(&page->cells[3], "COLR", text, pu_colour_name(colour), 0);
     pu_format(text, PH_P_HALO, halo);
     cell(&page->cells[4], "HALO", text, "", 0);
     pu_format(text, PH_P_SKEW, skew);
@@ -219,11 +219,11 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
         }
         break;
     }
-    case 3: { /* Filled on the dark side, outlined from the centre towards bright. */
+    case 3: { /* Filled below the uncoloured point, outlined from it up. */
         int radius = 1 + (p->colour * 6 + 63) / 127, size = 2 * radius + 1;
         int left = x - radius, top = y + 7 - radius;
         box(c, left, top, size, size, 1);
-        if (p->colour >= 64)
+        if (p->colour >= PH_COLR_CLEAN)
             box(c, left + 1, top + 1, size - 2, size - 2, 0);
         break;
     }
@@ -337,8 +337,8 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
         char tone[8];
         if (show_values && i != 1) {
             caption = k->value;
-            if (i == 3 && p->colour != 64) {
-                tone[0] = p->colour < 64 ? '-' : '+';
+            if (i == 3 && p->colour != PH_COLR_CLEAN) {
+                tone[0] = p->colour < PH_COLR_CLEAN ? '-' : '+';
                 copy(tone + 1, k->value);
                 caption = tone;
             } else if (i == 7 && p->armed && !p->loop_ready) {

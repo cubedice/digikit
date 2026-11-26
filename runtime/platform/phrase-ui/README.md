@@ -17,7 +17,7 @@ carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX 
 | A | ZONE, four ticks a zone | FLIP | the zone's name below the eight zone marks, `FLIP` inverted |
 | B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `FREE` or `SYNC` |
 | C | RPTS, dashes to ∞ | HOLD | the number, or `INF` with `HOLD` inverted |
-| D | COLR | | Signed distance from the centre. Negative darkens and positive brightens |
+| D | COLR | | Signed distance from the uncoloured point (96, three quarters of the way up). Negative darkens and positive thins and brightens |
 | E | HALO | | the number |
 | F | SKEW | Cycle SKEW, PONG, SWAP | `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
 | G | INPT, a two-position switch: a tick to the right LOOP, to the left LIVE, at any time (also without a loop) | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`), or `SILENT` at LOOP while there is no loop; while G is held the tracks and `TRIGS` inverted |

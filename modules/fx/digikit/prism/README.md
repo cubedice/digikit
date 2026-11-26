@@ -8,7 +8,8 @@ It is a send effect of the effect framework: it hears the tracks you choose on i
 PRISM's output is added to the FX return, and the dry tracks are not touched. With Overloop it plays a transition: it hears
 Overloop's loop instead of the tracks (INPT), and Overloop's crossfader and ARM are on its page. Steps 1 to 4 of
 [the redesign](../../../../docs/plans/prism-overloop-redesign.md) are built: the engine
-([finding 358](../../../../docs/findings/358-prism-repeater-engine.md)), the send path with the one page
+([finding 358](../../../../docs/findings/358-prism-repeater-engine.md); COLR as it is now is
+[finding 373](../../../../docs/findings/373-prism-colour-table.md)), the send path with the one page
 ([finding 359](../../../../docs/findings/359-prism-send-effect-and-page.md)), and the loop as its input with the transition on
 its page ([finding 361](../../../../docs/findings/361-prism-loop-input-and-return.md)), proven on the SHARC-only rig and the
 emulated Digitakt II; the tracks chosen with the TRIG keys in place of the PRS send amounts are
@@ -49,7 +50,7 @@ time or sync ratio directly. Hold FUNC + FX to see the other formatted values, i
 the labels. The MIX meter sits at the lower left like the stock FX level strip.
 
 RPTS adds horizontal dashes and shows ∞ at unity, above unity, or in HOLD. COLR grows from a solid square to an
-outline at the neutral point. HALO starts with one visible ring. The other rings move away from the center as you turn it
+outline at the uncoloured point, three quarters of the way up. HALO starts with one visible ring. The other rings move away from the center as you turn it
 up and converge when you turn it down.
 
 The header shows FREE or SYNC, input status, and NO LOOP before a capture. FLIP, HOLD, and ARMD appear above the MIX
@@ -66,7 +67,7 @@ input graphic closes once captured audio is available.
 | A | ZONE, four ticks a zone. With SYNC each zone is an octave of the synced time (below). Press: FLIP (`FLIP` under the zone name, inverted) |
 | B | RATE. Free: the time in milliseconds, a coarse step a tick; with FUNC held a fine step (1016 of them across the zone). Press: SYNC on or off (`SYNC` or `FREE`); with SYNC the encoder steps through thirteen ratios of the zone's 1/1, four ticks each, from `/2` (shortest) to `X2` (longest), `1/1` in the middle |
 | C | RPTS, 0 to 127; 96 holds a repeat at its level. Press: HOLD (`INF` and `HOLD`, inverted) |
-| D | COLR. The centre is 0 on screen. Negative values darken the repeats and positive values brighten them |
+| D | COLR. Three quarters of the way up the repeats are uncoloured: 0 on screen, and where a device without stored values starts. Turning down from there goes through tape, a BBD's mid-range crunch and a warm BBD to an oil can, each darker; turning up thins and brightens the repeats. The number is the distance from the uncoloured point, `-` below it and `+` above |
 | E | HALO, 0 to 127. Spreads the repeats in stereo and adds a darker reverb tail. The upper half adds slow movement to the tail |
 | F | Press to cycle through `SKEW`, `PONG` and `SWAP`. Turn to change the offset in SKEW or SWAP. Hold FUNC + FX to show the offset. |
 | G | INPT, a two-position switch turned by the knob: right is LOOP (PRISM hears Overloop's loop), left is LIVE (PRISM hears the tracks it is given). The switch crossfades over 5 ms. Hold G and use TRIG keys to choose tracks. Changing the selection switches silent LOOP to LIVE when there is no capture. INPT goes to LOOP at an armed change that takes a loop, and to LIVE when the loop is dropped or Overloop stops reporting for a while. |
@@ -136,7 +137,7 @@ tuned); `core/phrase-control` fills them from the page's values.
 | RATE | 0..1 | The time inside the zone, `low * (high / low) ^ RATE`. A change glides: the pitch of what is on the tape bends, like tape (at most an octave down or a fifth up). |
 | SYNC | on, off | On: the time is the frames the control provider gives (a ratio of the zone's 1/1 at the tempo, below); ZONE and RATE are then not read. Each change crossfades; the pitch does not bend. |
 | RPTS | 0..1 | Repeats. 0 is one echo; 0.75 holds a repeat at its level for ever; above it the level grows by up to 1.1 a repeat until the limiter holds it. |
-| COLR | -1..1 | Colour of the repeats. Centre: flat. Toward dark every repeat loses highs (down to a low pass at 800 Hz), saturates a little and drifts slowly in pitch. Toward bright every repeat loses lows (up to a high pass at 1 kHz). |
+| COLR | -1..1 | Colour of the repeats, after the Mimeophon's Color. 0.5: uncoloured. Below it every repeat passes a low pass, a high pass and a saturation whose settings follow a table: tape (0.25: 8 kHz), a mid-range crunch (-0.25: 350 Hz to 2.8 kHz, the most saturation), a warm BBD (-0.5: 2 kHz), an oil can (-1: 150 to 600 Hz), with more slow pitch drift the further down. Above it every repeat loses lows (up to a high pass at 900 Hz) and its top is lifted a little. |
 | HALO | 0..1 | Spreads each repeat and brings up a damped stereo reverb, audible with RPTS at 0. Above halfway, two slow motions vary the diffusion. 0 is an exact bypass |
 | SKEW | -1..1 | Above 0 the left side is shorter and the right longer by the same ratio (up to 1.5). Below 0 the reverse applies. A change glides. |
 | Feedback route | SKEW, PONG, SWAP | In SKEW, feedback stays on its side. PONG sums the input to mono and sends equal-time echoes alternating left and right. SWAP crosses the stereo feedback paths and uses the stored skew offset. Both the route and the skew offset are saved. |
@@ -152,15 +153,16 @@ is a crossfade of 20 ms between two read heads with equal power.
 ```
  input (the tracks it hears, at full send) ──────────┐
                                                      ▼
- tape ──► two heads a side ──► DC blocker ──► COLR ──► HALO ──┬──► + HALO reverb ──► x MIX ──► FX return
-  ▲                                                           │
-  └──────────── + ◄──── limiter ◄──── x gain of RPTS ◄────────┘
+ tape ──► two heads a side ──► COLR ──► HALO ──┬──► + HALO reverb ──► x MIX ──► FX return
+  ▲                                            │
+  └───── + ◄──── limiter ◄──── x gain of RPTS ◄┘
 ```
 
 - `src/dsp/prism.s`: the entry, the checks of the mailbox and the lease, the plan of a block (times, hold state, each
   side's head program), the status.
 - `src/dsp/heads.s`: the read heads: glide, crossfade, reverse segments, the held loop.
-- `src/dsp/loop.s`: the DC blocker and the colour filter; the output, the limiter and the write to the tape.
+- `src/dsp/loop.s`: the colour filter (its high pass is the DC blocker where the repeats are uncoloured) and its
+  table; the output, the limiter and the write to the tape.
 - `src/dsp/halo.s` spreads the repeats through four lattice all-pass lines of 97, 137, 191, and 251 frames. Two damped,
   cross-coupled lines at half rate add a longer stereo reverb to the wet return. The same HALO knob controls both stages.
 
@@ -171,7 +173,7 @@ HOLD freezes the tape, and COLR and HALO continue to shape the output. See findi
 ## Verification
 
 ```bash
-pnpm nx:pilot run digikit/prism:test-rig          # the engine on the SHARC-only rig, and PRISM coupled with Overloop, about 3 minutes
+pnpm nx:pilot run digikit/prism:test-dsp          # the engine on the SHARC-only rig, and PRISM coupled with Overloop, about 3 minutes
 pnpm nx:pilot run core/phrase-control:test-host   # the control provider: values to control words, SYNC's zones and ratios, the transport
 pnpm nx:pilot run core/phrase-ui:test-host        # the page: encoders, presses, the cells' texts, what is drawn
 pnpm nx:pilot run digikit/prism:test-device       # the emulated Digitakt II: the page, the send path, beside CANOPY and Overloop, the transition
@@ -181,7 +183,7 @@ pnpm nx:pilot run digikit/prism:pack              # the package for the Digitakt
 `tests/engine.rig.test.ts` runs the assembled engine behind the production effect adapter, with stand-ins for the storage
 descriptor and the two mailboxes (`tests/provider.s`, `tests/engine-rig.ts`). Each claim above has a number there: the
 click measure at every kind of jump, the pitch during a glide and through a jump, the level from repeat to repeat, the
-tilt a repeat at both ends of COLR, HALO at 0 against a build without it, the times of the two sides, the held loop turn
+loss a repeat in three bands at the rows of COLR's table and between them, HALO at 0 against a build without it, the times of the two sides, the held loop turn
 against turn and the bank's words while held. It prints the numbers at its end. Every block of every case is held to the
 effect contract (the hook returns, the registers come back, no fault, finite output), the module's stores are held to
 its state, its output, its bank and its words of the wet mailbox, and the heaviest block is the `dsp_cost_fx` of
@@ -207,7 +209,7 @@ node modules/fx/digikit/prism/tests/render-audio.ts out/runs/prism-audio hold-mo
 
 writes `<name>.wav` (the input plus the wet signal, each at half level), `wet/<name>.wav` and, for a full run,
 `README.txt` with each file's input, controls and changes: every zone with a plucked note and with a chord, RATE moved
-free and in SYNC steps, zone changes, RPTS from 0 to 1, COLR from dark to bright, HALO in steps, SKEW, FLIP, and HOLD with
+free and in SYNC steps, zone changes, RPTS from 0 to 1, COLR at every row of its table, HALO in steps, SKEW, FLIP, and HOLD with
 ZONE, RATE and FLIP moved. It prints one line a file (`hold-moves: 28.0 s of audio in 28 s`). The files are renders of the
 rig, not recordings of a device, and are never committed.
 

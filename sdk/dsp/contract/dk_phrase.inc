@@ -37,7 +37,7 @@
 //   SYNC_TIME int frames  with SYNC: the time, a ratio of the zone's 1/1 at the tempo (the provider's, below). A change
 //                         crossfades.
 //   RPTS      float 0..1  repeats: 0 one echo, 0.75 unity, 1 a gain of 1.1.
-//   COLR      float -1..1 colour of the repeats: below 0 dark, 0 flat, above 0 bright; its square is the amount of the filter.
+//   COLR      float -1..1 colour of the repeats: 0.5 uncoloured, darker below it down to -1, thinner and brighter above it.
 //   HALO      float 0..1  diffusion inside the repeat path; 0 is an exact bypass.
 //   SKEW      float -1..1 above 0 the left side is shorter and the right longer by up to 1.5; below 0 the reverse. A change glides.
 //   MIX       float 0..1  level of the wet output (the engine writes the wet signal only; the effect row's own mix stays 1).
@@ -105,7 +105,8 @@
 //   ZONE 0..7; RATE 0..PH_RATE_MAX in fine steps (an encoder detent is PH_RATE_COARSE of them); SYNC, FLIP, HOLD 0 or 1;
 //   ROUTE selects straight feedback, mono ping-pong, or stereo feedback swap; saved.
 //   RATIO 0..PH_SYNC_RATIOS - 1, the ratio of the zone's 1/1 used with SYNC (below); RPTS 0..127 with PH_RPTS_UNITY as
-//   unity; COLR and SKEW 0..127 with 64 as the centre; HALO, MIX 0..127; INPT 0 or 1, not saved: the page's G turns it at
+//   unity; COLR 0..127 with PH_COLR_CLEAN as the uncoloured point; SKEW 0..127 with 64 as the centre; HALO, MIX
+//   0..127; INPT 0 or 1, not saved: the page's G turns it at
 //   any time, and it goes to LOOP by itself at a new loop and to LIVE when the loop is dropped or the loop effect stops
 //   reporting. XFAD is unused: the crossfader is the loop effect's (dkrt_loop_*).
 //   TRKS 0..PH_TRACKS_ALL: the tracks PRISM hears at LIVE, bit t for track t + 1 (the TRIG keys while G is held on the
@@ -136,6 +137,7 @@
 #define PH_RATE_MAX 1016
 #define PH_RATE_COARSE 8
 #define PH_RPTS_UNITY 96
+#define PH_COLR_CLEAN 96
 // SYNC, after the Mimeophon: the beat (a quarter note at the pattern's tempo) is the 1/1 of the zone Z0 whose centre (the
 // geometric mean of its free range, sqrt(low * high)) lies nearest it in log terms; each zone above doubles the 1/1, each
 // below halves it. RATIO picks one of PH_SYNC_RATIOS ratios of it, shortest first: 1/2, 4/7, 3/5, 2/3, 3/4, 4/5, 1/1 (index

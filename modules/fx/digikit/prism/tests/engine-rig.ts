@@ -78,7 +78,7 @@ export interface Controls {
   syncTime: number;
   /** 0..1: 0.75 is unity */
   rpts: number;
-  /** -1 dark .. 1 bright */
+  /** -1 the darkest .. 0.5 uncoloured (COLOUR_CLEAN) .. 1 thin and bright */
   colr: number;
   halo: number;
   /** -1..1: above 0 the left side is the shorter one */
@@ -114,7 +114,7 @@ export const DEFAULTS: Controls = {
   swap: false,
   syncTime: 12000,
   rpts: 0.5,
-  colr: 0,
+  colr: 0.5,
   halo: 0,
   skew: 0,
   mix: 1,
@@ -132,6 +132,63 @@ export const ZONES: readonly (readonly [number, number])[] = [
   [62400, 259200],
   [129600, 513600],
 ];
+
+/** COLR where the repeats are uncoloured (PRISM_COLOUR_CLEAN). */
+export const COLOUR_CLEAN = 0.5;
+
+/**
+ * COLR's rows from -1 to 1 in steps of 0.25 (loop.s `_prism_colours`): the low pass in Hz, or its coefficient `lowK` where
+ * it is 1 (none) or above (the top lifted); the high pass in Hz; the saturation 0..1. In the words of the Mimeophon's
+ * manual: oil can, towards a warm BBD, warm BBD, mid-range crunch, towards tape, tape, clean, towards early digital,
+ * thin early digital.
+ */
+export const COLOURS: readonly { low?: number; lowK?: number; high: number; drive: number }[] = [
+  { low: 600, high: 150, drive: 0.6 },
+  { low: 1100, high: 80, drive: 0.5 },
+  { low: 2000, high: 40, drive: 0.5 },
+  { low: 2800, high: 350, drive: 1 },
+  { low: 4200, high: 180, drive: 0.7 },
+  { low: 8000, high: 50, drive: 0.3 },
+  { lowK: 1, high: 2, drive: 0 },
+  { lowK: 1.12, high: 300, drive: 0 },
+  { lowK: 1.25, high: 900, drive: 0 },
+];
+
+/** The coefficient of a one-pole low pass at `hz`: lp += k (x - lp). */
+export const poleK = (hz: number): number => 1 - Math.exp((-2 * Math.PI * hz) / FS);
+
+/** The engine's three numbers of a row: the low pass's coefficient, the high pass's and a third of the saturation. */
+export function colourRow(row: number): [number, number, number] {
+  const c = COLOURS[row]!;
+  return [c.lowK ?? poleK(c.low!), poleK(c.high), c.drive / 3];
+}
+
+/** The three numbers at a COLR: straight lines between the rows. */
+export function colourNumbers(colr: number): [number, number, number] {
+  const at = (Math.min(1, Math.max(-1, colr)) + 1) * 4;
+  const row = Math.min(COLOURS.length - 2, Math.floor(at));
+  const a = colourRow(row);
+  const b = colourRow(row + 1);
+  return [0, 1, 2].map((k) => a[k]! + (b[k]! - a[k]!) * (at - row)) as [number, number, number];
+}
+
+/** The gain of one pass through the colour filter at `hz` for a small signal (no saturation). */
+export function colourGain(colr: number, hz: number): number {
+  const [low, high] = colourNumbers(colr);
+  const w = (2 * Math.PI * hz) / FS;
+  // a one-pole low pass k / (1 - (1 - k) z^-1) at z = e^(jw)
+  const pole = (k: number): [number, number] => {
+    const re = 1 - (1 - k) * Math.cos(w);
+    const im = (1 - k) * Math.sin(w);
+    const d = re * re + im * im;
+    return [(k * re) / d, (-k * im) / d];
+  };
+  // the high pass takes the low pass of the sample before off the signal: (1 - k / 2) (1 - z^-1 L)
+  const [hr, hi] = pole(high);
+  const delayed: [number, number] = [hr * Math.cos(w) + hi * Math.sin(w), hi * Math.cos(w) - hr * Math.sin(w)];
+  const [lr, li] = pole(low);
+  return (1 - high / 2) * Math.hypot(1 - delayed[0], delayed[1]) * Math.hypot(lr, li);
+}
 
 /** The time in frames the engine's law gives for a zone and a rate: low * (high / low) ^ rate. */
 export function zoneTime(zone: number, rate: number): number {

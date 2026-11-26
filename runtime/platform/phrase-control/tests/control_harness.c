@@ -86,7 +86,7 @@ static void controls(void)
     assert(f(word(PH_C_RATE)) == 0.5f);
     assert(word(PH_C_FLAGS) == 0);
     assert(f(word(PH_C_RPTS)) == 0.375f);
-    assert(f(word(PH_C_COLR)) == 0.0f && f(word(PH_C_SKEW)) == 0.0f && f(word(PH_C_HALO)) == 0.0f);
+    assert(f(word(PH_C_COLR)) == 0.5f && f(word(PH_C_SKEW)) == 0.0f && f(word(PH_C_HALO)) == 0.0f);
     assert(f(word(PH_C_MIX)) == 100.0f / 127.0f);
     /* each raw value becomes its control word; the ends are exact */
     assert(dkrt_phrase_set(PH_P_ZONE, 0) == 0 && word(PH_C_ZONE) == 1);
@@ -102,6 +102,10 @@ static void controls(void)
     assert(dkrt_phrase_set(PH_P_COLR, 0) == 0 && f(word(PH_C_COLR)) == -1.0f);
     assert(dkrt_phrase_set(PH_P_COLR, 127) == 0 && f(word(PH_C_COLR)) == 1.0f);
     assert(dkrt_phrase_set(PH_P_COLR, 64) == 0 && f(word(PH_C_COLR)) == 0.0f);
+    assert(dkrt_phrase_set(PH_P_COLR, PH_COLR_CLEAN) == 0 &&
+           f(word(PH_C_COLR)) == 0.5f); /* uncoloured, exactly */
+    /* a row of the engine's table every 16 steps below it */
+    assert(dkrt_phrase_set(PH_P_COLR, 48) == 0 && f(word(PH_C_COLR)) == -0.25f);
     assert(dkrt_phrase_set(PH_P_SKEW, 0) == 0 && f(word(PH_C_SKEW)) == -1.0f);
     assert(dkrt_phrase_set(PH_P_SKEW, 127) == 0 && f(word(PH_C_SKEW)) == 1.0f);
     assert(dkrt_phrase_set(PH_P_HALO, 127) == 0 && f(word(PH_C_HALO)) == 1.0f);
@@ -432,6 +436,22 @@ static void tracks(void)
     memset(a, 0x55, sizeof(a));
     assert(phrase_sends(a) == 0 && a[0] == 0x55 && phrase_sends(0) == 0);
 }
+/* COLR of a record from before its uncoloured point moved (formats 3 and 4: uncoloured at 64, the centre) loads at the
+ * same share of the way to either end; a record of this format loads as it is. */
+static void colour_formats(void)
+{
+    static const struct {
+        u32 format, saved, loaded;
+    } cases[] = {{4, 64, PH_COLR_CLEAN}, {3, 64, PH_COLR_CLEAN}, {4, 0, 0},   {4, 32, 48},
+                 {4, 127, 127},          {4, 96, 111},           {5, 64, 64}, {5, 96, 96}};
+    for (u32 i = 0; i < sizeof(cases) / sizeof(cases[0]); ++i) {
+        store(PH_PARAM_COUNT, 1);
+        saved[2] = (uint8_t)cases[i].format;
+        saved[4 + 4 * PH_P_COLR + 3] = (uint8_t)cases[i].saved;
+        restart(40 + i);
+        assert(dkrt_phrase_get(PH_P_COLR) == cases[i].loaded);
+    }
+}
 int main(void)
 {
     /* no owner: nothing is published as enabled and nothing can be set */
@@ -442,7 +462,7 @@ int main(void)
     sync_times();
     status_assembly();
     /* The settings are global and survive the owner: every value but HOLD. */
-    assert(writes && saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[2] == 4);
+    assert(writes && saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[2] == 5);
     u32 before[PH_PARAM_COUNT];
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         before[i] = dkrt_phrase_get(i);
@@ -485,5 +505,6 @@ int main(void)
     assert(!dkrt_phrase_get(PH_P_HOLD) && !dkrt_phrase_get(PH_P_INPT) &&
            !dkrt_phrase_get(PH_P_XFAD) && dkrt_phrase_get(PH_P_TRKS) == PH_TRACKS_ALL);
     tracks();
+    colour_formats();
     return 0;
 }

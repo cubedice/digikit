@@ -1,14 +1,15 @@
 // PRISM repeat path around the heads: the colour filter in front of HALO, and behind it the output, the feedback and the
 // write to the tape.
 //
-// Colour (_prism_colour), on PS_Y in place: a DC blocker (2 Hz, unity above it), then one of
-//   dark    y = x + w (lp(x) - x), lp a one-pole low pass at 800 Hz: the highs fall by 1 - w a pass, and at w = 1 it is
-//           the low pass. Then a gentle saturation, t - w t^3 / 3 with t = y limited to +-1.
-//   bright  y = x + w (hp(x) - x), hp a one-pole high pass at 1 kHz: the lows fall by 1 - w a pass, and at w = 1 it is
-//           the high pass.
-//   centre  nothing.
-// w is the amount on COLR's side, the square of COLR. COLR moves smoothly (PRISM_SMOOTH) and passes the centre at a block's
-// end; there w has no slope, so the change of filter is no kink.
+// Colour (_prism_colour), on PS_Y in place, one chain at every position of COLR:
+//   high pass   y = (1 - k / 2) (x - lp), then lp += k (x - lp): one pole, exactly 1 at the top of the band and less
+//               below it, so a repeat at unity never grows through it (2 Hz where the repeats are uncoloured: only DC
+//               goes)
+//   low pass    one pole, lp += k (y - lp); k = 1 passes the signal as it is, and k above 1 lifts the top
+//   saturation  y - w t^3 / 3 with t = y limited to +-1; none at w = 0
+// The three numbers come from a table of nine rows over COLR (_prism_colours, below), straight lines between the rows.
+// COLR moves smoothly (PRISM_SMOOTH), and the three numbers move through a block in 32 equal steps, so a change is no
+// kink.
 //
 // Loop (_prism_loop): the output is the wet signal times MIX. The feedback is the wet signal times the gain of RPTS
 // through a limiter that is exact up to PRISM_LIMIT_KNEE and bends to a ceiling of twice that, so a gain of 1 keeps a
@@ -34,22 +35,20 @@ _prism_colour:
     R2 = R11;
     CALL _pr_smooth;
     DM(PS_COLOUR_MID,I5) = R1;
-    R12 = R0;
-    // From one side to the other: to the centre in this block.
-    F0 = F11 * F12;
-    R1 = 0;
-    COMP(F0,F1);
-    IF GE JUMP _pc_step;
-    R12 = 0;
-_pc_step:
-    DM(PS_COLOUR,I5) = R12;
-    // The amount is the square of COLR: at the centre, where the filter changes sides, it has no slope.
-    F0 = ABS F11;
-    F11 = F11 * F0;
-    F0 = ABS F12;
-    F12 = F12 * F0;
-    F13 = F12 - F11;
-    R1 = 0x3d000000;
+    DM(PS_COLOUR,I5) = R0;
+    // The numbers at the block's end, then at its start (COLR as the last block left it), and their steps.
+    CALL _pc_numbers;
+    R10 = R9;
+    R12 = R5;
+    R13 = R2;
+    R0 = R11;
+    CALL _pc_numbers;
+    R1 = 0x3d000000; // 1/32
+    F10 = F10 - F9;
+    F10 = F10 * F1;
+    F12 = F12 - F5;
+    F12 = F12 * F1;
+    F13 = F13 - F2;
     F13 = F13 * F1;
     R0 = I5;
     R1 = PS_Y * 4;
@@ -59,125 +58,80 @@ _pc_step:
     R1 = PS_FILT_L * 4;
     R0 = R0 + R1;
     I3 = R0;
-    R5 = PRISM_DC_COEFF;
-    R3 = PRISM_DC_GAIN;
-    // The side is that of whichever of the two amounts is not 0.
-    F0 = F11 + F12;
-    R1 = 0;
-    COMP(F0,F1);
-    IF LT JUMP _pc_dark;
-    IF GT JUMP _pc_bright;
-    CALL _pc_centre_side;
-    MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
-    CALL _pc_centre_side;
-    RTS;
-_pc_dark:
-    R9 = PRISM_DARK_COEFF;
     R14 = 0x3f800000;
     R15 = 0xbf800000;
-    R2 = 0x3eaaaaab; // 1/3
-    F4 = -F13;
-    CALL _pc_dark_side;
+    CALL _pc_side;
     MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
-    CALL _pc_dark_side;
-    RTS;
-_pc_bright:
-    R9 = PRISM_BRIGHT_COEFF;
-    R2 = PRISM_BRIGHT_GAIN;
-    CALL _pc_bright_side;
-    MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
-    CALL _pc_bright_side;
+    CALL _pc_side;
     RTS;
 
-// One side, 32 samples at I0 in place (advanced), I3 its filters, F5 and F3 the DC blocker's coefficient and gain:
-// y = gain (x - x1) + coefficient y1. The colour filters are left on the signal, so that they start from it when the
-// colour comes on.
-_pc_centre_side:
-    F6 = DM(FL_DC_X,I3);
-    F7 = DM(FL_DC_Y,I3);
-    LCNTR = 32, DO _pc_centre UNTIL LCE;
-        F0 = DM(I0,M5);
-        F1 = F0 - F6;
-        R6 = R0;
-        F1 = F1 * F3;
-        F7 = F7 * F5;
-        F7 = F7 + F1;
-_pc_centre: DM(I0,M6) = R7;
-    DM(FL_DC_X,I3) = R6;
-    DM(FL_DC_Y,I3) = R7;
-    DM(FL_DARK,I3) = R7;
-    DM(FL_BRIGHT_X,I3) = R7;
-    R0 = 0;
-    DM(FL_BRIGHT_Y,I3) = R0;
+// The numbers of COLR F0 (-1..1): F9 the low pass's coefficient, F5 the high pass's, F2 a third of the saturation.
+// Uses F0, F1, F6, F7 and I4.
+_pc_numbers:
+    R1 = 0x3f800000;
+    F0 = F0 + F1;
+    R1 = 0x40800000;
+    F0 = F0 * F1; // 0..8: the row and the way to the next one
+    R1 = TRUNC F0;
+    R6 = PRISM_COLOUR_ROWS - 2;
+    COMP(R1,R6);
+    IF GT R1 = PASS R6;
+    F6 = FLOAT R1;
+    F0 = F0 - F6;
+    R6 = LSHIFT R1 BY 3;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R6;
+    R6 = _prism_colours;
+    R1 = R1 + R6;
+    I4 = R1;
+    F6 = DM(0,I4);
+    F7 = DM(3,I4);
+    F7 = F7 - F6;
+    F7 = F7 * F0;
+    F9 = F6 + F7;
+    F6 = DM(1,I4);
+    F7 = DM(4,I4);
+    F7 = F7 - F6;
+    F7 = F7 * F0;
+    F5 = F6 + F7;
+    F6 = DM(2,I4);
+    F7 = DM(5,I4);
+    F7 = F7 - F6;
+    F7 = F7 * F0;
+    F2 = F6 + F7;
     RTS;
 
-// As above with the dark filter: F9 its coefficient, F11 the amount before the block (negative), F4 the step of the
-// amount, F14 and F15 +-1, F2 a third. F11 is the signed amount before the block.
-_pc_dark_side:
-    F6 = DM(FL_DC_X,I3);
-    F7 = DM(FL_DC_Y,I3);
-    F8 = DM(FL_DARK,I3);
-    F10 = -F11;
-    LCNTR = 32, DO _pc_dark_sample UNTIL LCE;
+// One side, 32 samples at I0 in place (advanced), I3 its filters. F9, F5 and F2 are the numbers before the block and F10,
+// F12 and F13 their steps (kept for the other side); F14 and F15 are +-1. Uses F0, F1, F3, F4, F6, F7, F8 and F11.
+_pc_side:
+    F7 = DM(FL_HIGH,I3);
+    F8 = DM(FL_LOW,I3);
+    R4 = R9;
+    R3 = R5;
+    R11 = R2;
+    R6 = 0x3f000000;
+    LCNTR = 32, DO _pc_sample UNTIL LCE;
         F0 = DM(I0,M5);
-        F1 = F0 - F6;
-        R6 = R0;
-        F1 = F1 * F3;
-        F7 = F7 * F5;
-        F7 = F7 + F1;
-        F1 = F7 - F8;
-        F1 = F1 * F9;
+        F3 = F3 + F12;
+        F1 = F0 - F7;
+        F0 = F1 * F3;
+        F7 = F7 + F0;
+        F0 = F0 * F6;
+        F0 = F1 - F0;
+        F4 = F4 + F10;
+        F1 = F0 - F8;
+        F1 = F1 * F4;
         F8 = F8 + F1;
-        F10 = F10 + F4;
-        F1 = F8 - F7;
-        F1 = F1 * F10;
-        F0 = F7 + F1;
-        F0 = MIN(F0,F14);
+        F11 = F11 + F13;
+        F0 = MIN(F8,F14);
         F0 = MAX(F0,F15);
         F1 = F0 * F0;
         F1 = F1 * F0;
-        F1 = F1 * F2;
-        F1 = F1 * F10;
-        F0 = F0 - F1;
-_pc_dark_sample: DM(I0,M6) = R0;
-    DM(FL_DC_X,I3) = R6;
-    DM(FL_DC_Y,I3) = R7;
-    DM(FL_DARK,I3) = R8;
-    DM(FL_BRIGHT_X,I3) = R7;
-    R0 = 0;
-    DM(FL_BRIGHT_Y,I3) = R0;
-    RTS;
-
-// As above with the bright filter, hp = gain (x - x1) + coefficient hp1: F9 its coefficient and F2 its gain, F11 the
-// amount before the block, F13 its step.
-_pc_bright_side:
-    F6 = DM(FL_DC_X,I3);
-    F7 = DM(FL_DC_Y,I3);
-    F12 = DM(FL_BRIGHT_X,I3);
-    F8 = DM(FL_BRIGHT_Y,I3);
-    R10 = R11;
-    LCNTR = 32, DO _pc_bright_sample UNTIL LCE;
-        F0 = DM(I0,M5);
-        F1 = F0 - F6;
-        R6 = R0;
-        F1 = F1 * F3;
-        F7 = F7 * F5;
-        F7 = F7 + F1;
-        F1 = F7 - F12;
-        R12 = R7;
-        F1 = F1 * F2;
-        F8 = F8 * F9;
-        F8 = F8 + F1;
-        F10 = F10 + F13;
-        F1 = F8 - F7;
-        F1 = F1 * F10;
-        F0 = F7 + F1;
-_pc_bright_sample: DM(I0,M6) = R0;
-    DM(FL_DC_X,I3) = R6;
-    DM(FL_DC_Y,I3) = R7;
-    DM(FL_BRIGHT_X,I3) = R12;
-    DM(FL_BRIGHT_Y,I3) = R8;
-    DM(FL_DARK,I3) = R7;
+        F1 = F1 * F11;
+        F0 = F8 - F1;
+_pc_sample: DM(I0,M6) = R0;
+    DM(FL_HIGH,I3) = R7;
+    DM(FL_LOW,I3) = R8;
     RTS;
 
 _prism_loop:
@@ -503,3 +457,7 @@ _lp_store:
     R8 = R8 - 1;
     IF GT JUMP _lp_sample;
     RTS;
+
+// COLR's table: the low pass's coefficient, the high pass's and a third of the saturation, three floats a row, nine rows
+// from COLR -1 to 1 in steps of 0.25 (tests/engine.rig.test.ts checks it against the list in tests/engine-rig.ts).
+.PKHEX _prism_colours, f6b19a3ddb479f3ccdcc4c3e6052093e79ad2a3cabaa2a3ed5dc6b3edc1fab3babaa2a3e611c9d3e886c373dabaaaa3e4c89d83e64c3be3cefee6e3e1f2a263f08c4d53bcdcccc3d0000803f853d893900000000295c8f3f72bb1d3d000000000000a03fa99ae33d00000000;

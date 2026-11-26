@@ -5,7 +5,7 @@
 // One block:
 //   plan (this file)    the controls become the two sides' times, the hold state and each side's head program
 //   heads (heads.s)     the heads read the tape as the last block left it: PS_Y
-//   colour (loop.s)     DC blocker and the colour filter, in place
+//   colour (loop.s)     the colour filter, in place
 //   halo (halo.s)       the diffusion network, in place: PS_Y is now the wet signal
 //   loop (loop.s)       output = wet * MIX; feedback = limit(wet * gain); the tape takes input + feedback
 //   late (halo.s)       a damped stereo reverb added to the wet output, after the tape write
@@ -666,8 +666,9 @@ _pl_reach:
     IF GT R0 = PASS R1;
     DM(PS_LIMIT,I5) = R0;
 
-    // ---- the slow drift of the dark side, by the dark amount (the square of COLR, as last block left it): a triangle,
-    // the left side against the right. None while the tape stands or plays backwards, and none without the dark side.
+    // ---- the slow drift below the uncoloured point of COLR (as last block left it), by the square of the distance
+    // from it: a triangle, the left side against the right. None while the tape stands or plays backwards, and none from
+    // the uncoloured point up.
     F0 = DM(PS_LFO,I5);
     R1 = PRISM_DRIFT_STEP;
     F0 = F0 + F1;
@@ -684,8 +685,11 @@ _pl_lfo:
     F0 = F0 * F1;
     R1 = 0x3f800000;
     F4 = F0 - F1;
-    F5 = DM(PS_COLOUR,I5);
-    F5 = -F5;
+    F1 = DM(PS_COLOUR,I5);
+    R5 = PRISM_COLOUR_CLEAN;
+    F5 = F5 - F1;
+    R1 = PRISM_DRIFT_REACH;
+    F5 = F5 * F1;
     R1 = 0x3f800000;
     F5 = MIN(F5,F1);
     R1 = 0;

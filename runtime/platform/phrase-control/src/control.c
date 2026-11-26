@@ -19,7 +19,7 @@ static u32 assembling[PH_STATUS_WORDS];
 static char key[48], sends_key[48];
 static char title[24];
 /* Format 4 stores an explicit route. Format 3 stored a switch, or an older prefix without tracks or routing. */
-enum { LEGACY_FORMAT = 3, SAVE_FORMAT = 4 };
+enum { LEGACY_FORMAT = 3, CENTRED_FORMAT = 4, SAVE_FORMAT = 5 };
 
 static u32 bits(float v)
 {
@@ -50,13 +50,13 @@ static void defaults(void)
 {
     for (u32 i = 0; i < PH_PARAM_COUNT; ++i)
         raw[i] = 0;
-    /* Zone 5 (150 ms to 1 s) in its middle, the zone's 1/1 with SYNC, half the way to unity, flat, no halo, both sides
+    /* Zone 5 (150 ms to 1 s) in its middle, the zone's 1/1 with SYNC, half the way to unity, uncoloured, no halo, both sides
      * alike, the wet signal most of the way up. */
     raw[PH_P_ZONE] = 4;
     raw[PH_P_RATE] = PH_RATE_MAX / 2;
     raw[PH_P_RATIO] = PH_SYNC_UNITY;
     raw[PH_P_RPTS] = PH_RPTS_UNITY / 2;
-    raw[PH_P_COLR] = 64;
+    raw[PH_P_COLR] = PH_COLR_CLEAN;
     raw[PH_P_SKEW] = 64;
     raw[PH_P_MIX] = 100;
 }
@@ -101,9 +101,9 @@ static void load(void)
     defaults();
     int n = dkrt_settings_get(key, value, sizeof(value));
     u32 count = 0;
-    if (n >= 4 && value[0] == 'P' && value[1] == 'H' &&
-        (value[2] == SAVE_FORMAT || value[2] == LEGACY_FORMAT) && value[3] >= PH_P_TRKS &&
-        value[3] <= PH_PARAM_COUNT && n == 4 + 4 * (int)value[3])
+    if (n >= 4 && value[0] == 'P' && value[1] == 'H' && value[2] >= LEGACY_FORMAT &&
+        value[2] <= SAVE_FORMAT && value[3] >= PH_P_TRKS && value[3] <= PH_PARAM_COUNT &&
+        n == 4 + 4 * (int)value[3])
         count = value[3];
     for (u32 i = 0; i < count; ++i) {
         u32 v = 0;
@@ -113,6 +113,12 @@ static void load(void)
     }
     if (count > PH_P_ROUTE && value[2] == LEGACY_FORMAT && raw[PH_P_ROUTE])
         raw[PH_P_ROUTE] = raw[PH_P_SKEW] == 64 ? PH_ROUTE_PONG : PH_ROUTE_SWAP;
+    /* Up to format 4 COLR was uncoloured at 64, its centre: the same share of the way to either end now. */
+    if (count > PH_P_COLR && value[2] <= CENTRED_FORMAT) {
+        u32 v = raw[PH_P_COLR];
+        raw[PH_P_COLR] =
+            v < 64 ? v * PH_COLR_CLEAN / 64 : PH_COLR_CLEAN + (v - 64) * (127 - PH_COLR_CLEAN) / 63;
+    }
     raw[PH_P_HOLD] = raw[PH_P_INPT] = raw[PH_P_XFAD] = 0;
     /* No tracks of its own (a record from before, another format or none): the ones the send amounts gave. They are saved
      * with the next change of any value. */
@@ -171,6 +177,13 @@ static float centred(u32 v)
 {
     return v >= 64 ? (float)(v - 64) / 63.0f : -(float)(64 - v) / 64.0f;
 }
+/* COLR as the engine takes it: 0 .. PH_COLR_CLEAN is -1 .. 0.5 (uncoloured, exactly), the rest of the way up to 1. */
+static float colour(u32 v)
+{
+    if (v <= PH_COLR_CLEAN)
+        return (float)v * (1.5f / PH_COLR_CLEAN) - 1.0f;
+    return 0.5f + (float)(v - PH_COLR_CLEAN) * (0.5f / (127 - PH_COLR_CLEAN));
+}
 static void publish(void)
 {
     u32 next = published ^ 1, *c = control[next];
@@ -189,7 +202,7 @@ static void publish(void)
                       (route == PH_ROUTE_SWAP ? PH_F_SWAP : 0));
     /* SYNC_TIME is filled in per block from the tempo (sync_frames). */
     W(PH_C_RPTS, bits(repeats(raw[PH_P_RPTS])));
-    W(PH_C_COLR, bits(centred(raw[PH_P_COLR])));
+    W(PH_C_COLR, bits(colour(raw[PH_P_COLR])));
     W(PH_C_HALO, bits((float)raw[PH_P_HALO] / 127.0f));
     W(PH_C_SKEW, route == PH_ROUTE_PONG ? 0 : bits(centred(raw[PH_P_SKEW])));
     W(PH_C_MIX, bits((float)raw[PH_P_MIX] / 127.0f));

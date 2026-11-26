@@ -242,8 +242,8 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect(await value(PH.PH_P_RPTS!)).toBe(50);
     expect(float((await control())('PH_C_RPTS'))).toBeCloseTo((50 * 0.75) / PH.PH_RPTS_UNITY!, 5);
     await turn('ENC D', -4);
-    expect(await value(PH.PH_P_COLR!)).toBe(60);
-    expect(float((await control())('PH_C_COLR'))).toBeCloseTo(-4 / 64, 5);
+    expect(await value(PH.PH_P_COLR!)).toBe(PH.PH_COLR_CLEAN! - 4);
+    expect(float((await control())('PH_C_COLR'))).toBeCloseTo(0.5 - (4 * 1.5) / PH.PH_COLR_CLEAN!, 5);
     await turn('ENC E', 5);
     expect(await value(PH.PH_P_HALO!)).toBe(5);
     expect(float((await control())('PH_C_HALO'))).toBeCloseTo(5 / 127, 5);
@@ -258,7 +258,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     record(artifacts, 'page-turned', turned);
     expect(turned.cells.slice(2, 6).map((cell) => [cell.value, cell.state])).toEqual([
       ['50', ''],
-      ['4', 'DARK'],
+      ['4', 'TAPE'],
       ['5', ''],
       ['R 3', ''],
     ]);

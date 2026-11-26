@@ -87,7 +87,7 @@ void pu_leave(PhraseUi *);
 /* The parameter an encoder turns now (RATE's encoder turns RATIO with SYNC), or PH_PARAM_COUNT for none. */
 uint32_t pu_parameter(uint32_t encoder);
 /* The text of a value, at most 7 characters: a zone's name, a SYNC ratio ("/2", "/1.33", "1/1", "X1.5", "X2"), COLR's
- * distance from the centre, SKEW's distance with the longer side ("L 12", "R 30"), the number itself for the rest. */
+ * distance from its uncoloured point, SKEW's distance with the longer side ("L 12", "R 30"), the number itself for the rest. */
 void pu_format(char out[16], uint32_t parameter, uint32_t raw);
 /* A time in frames as text: "375 MS" below a second, "1.25 S" below ten, "10.7 S" from there. */
 void pu_time(char out[16], uint32_t frames);
@@ -95,4 +95,7 @@ void pu_time(char out[16], uint32_t frames);
  * same ratio), 0 without a status. */
 uint32_t pu_frames(const PhraseUi *);
 const char *pu_zone_name(uint32_t zone);
+/* The colour of the repeats at a COLR, after the delays its range goes through: "OIL" (an oil can), "BBD", "CRUN" (a
+ * BBD's mid-range crunch), "TAPE", nothing at the uncoloured point, "DIGI" (a thin early digital delay) above it. */
+const char *pu_colour_name(uint32_t raw);
 #endif

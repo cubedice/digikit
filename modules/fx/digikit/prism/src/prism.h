@@ -20,12 +20,13 @@
 #define PRISM_GLIDE_MAX 0x3f000000
 #define PRISM_GLIDE_RATE 0x3a800000
 #define PRISM_GLIDE_EASE 0x3b800000
-/* COLR at 48 kHz. The dark side's low pass (800 Hz): lp += k (x - lp), k = 1 - exp(-2 pi 800 / 48000). The bright side's
- * high pass (1 kHz): hp = g (x - x1) + r hp1, r = exp(-2 pi 1000 / 48000), g = (1 + r) / 2. */
-#define PRISM_DARK_COEFF 0x3dcb9e5b
-#define PRISM_BRIGHT_COEFF 0x3f60971c
-#define PRISM_BRIGHT_GAIN 0x3f704b8e
-/* The slow drift of the dark side: at most 30 frames and at most 2 % of the time, at 0.6 Hz (a triangle). */
+/* COLR's table (loop.s, _prism_colours) has this many rows, from COLR -1 to 1; the repeats are uncoloured at
+ * PRISM_COLOUR_CLEAN (0.5: three quarters of the way up, the seventh row). */
+#define PRISM_COLOUR_ROWS 9
+#define PRISM_COLOUR_CLEAN 0x3f000000
+/* The slow drift below the uncoloured point, by the square of the distance from it (1 at COLR -1): at most 30 frames and
+ * at most 2 % of the time, at 0.6 Hz (a triangle). PRISM_DRIFT_REACH is 1 / 1.5, the distance to COLR -1. */
+#define PRISM_DRIFT_REACH 0x3f2aaaab
 #define PRISM_DRIFT_FRAMES 0x41f00000
 #define PRISM_DRIFT_SHARE 0x3ca3d70a
 #define PRISM_DRIFT_STEP 0x39d1b717
@@ -48,9 +49,6 @@
 #define PRISM_LATE_DAMP 0x3eb33333     /* one-pole coefficient: 0.35 */
 #define PRISM_LATE_BASE 0x3ea147ae     /* HALO * (0.315 + HALO * 0.585) */
 #define PRISM_LATE_SLOPE 0x3f15c28f
-/* The DC blocker in front of the colour filter (2 Hz): y = g (x - x1) + r y1, r = 1 - 2 pi 2 / 48000, g = (1 + r) / 2. */
-#define PRISM_DC_COEFF 0x3f7feed8
-#define PRISM_DC_GAIN 0x3f7ff76c
 /* RPTS, COLR, HALO and MIX follow their controls through two stages, each moving by this share of its distance a block
  * (1/16: a jump is half way after about 18 ms), and take the value asked for when both are within PRISM_SMOOTH_NEAR (1e-4)
  * of it. Two stages: neither the value nor its slope jumps, so a jump of a control is no kink in the signal. */
@@ -197,15 +195,11 @@
 #define CH_KEYGEN 21
 #define CH_HOLD_SPAN 22
 
-/* The filters of one side (loop.s): the DC blocker's last input and output, the dark low pass, and the bright high pass's
- * last input and output. */
+/* The filters of one side (loop.s): the low pass the high pass takes off the signal, and the colour's low pass. */
 #define PS_FILT_L 192
 #define PS_FILT_R 200
-#define FL_DC_X 0
-#define FL_DC_Y 1
-#define FL_DARK 2
-#define FL_BRIGHT_X 3
-#define FL_BRIGHT_Y 4
+#define FL_HIGH 0
+#define FL_LOW 1
 
 /* The block's signals, 32 left then 32 right: the heads' output, which the colour filter and HALO change in place into
  * the wet signal, and the feedback the write adds to the tape. */
