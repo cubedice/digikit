@@ -452,7 +452,7 @@ def cmd_port(a: CF, b: CF, name: str) -> list[str]:
             out.append("  (reverse) %s [%s]" % (b.label(e), method))
     if len(out) == 1:
         out.append(
-            "  no recorded match (uv run python -m tools.coldfire.cfmatch run %s %s writes them)"
+            "  no recorded match (uv run python -m tools.coldfire.cfmatch match %s %s --write writes them)"
             % (a.db_name, b.db_name)
         )
     return out
