@@ -437,8 +437,15 @@ int mt_reply_reordered(const MtReplyGuard *g, const uint32_t *reply)
 {
     uint32_t behind, i, j;
     int bracketed = 0;
-    if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply) ||
-        !session_reply(reply[0]) || mt_reply_session(reply) != g->expected)
+    if (!g->ready || !g->expected || g->invalid || !mt_reply_valid(reply))
+        return 0;
+    if (reply[0] == MT_REPLY_MAGIC) {
+        /* A pre-session frame from before the bind, read late from the other reply row (the
+         * DSP writes no pre-session frame once bound, and a heartbeat names one frame). */
+        behind = g->bound - mt_reply_heartbeat(reply);
+        return behind && behind <= MT_REPLY_REORDER_LAG;
+    }
+    if (!session_reply(reply[0]) || mt_reply_session(reply) != g->expected)
         return 0;
     behind = g->heartbeat - mt_reply_heartbeat(reply);
     if (!behind || behind >= 0x80000000u)
@@ -518,8 +525,10 @@ void mt_reply_guard_tick(MtReplyGuard *g, const uint32_t *reply, uint32_t block)
             g->seen = 1;
             g->heartbeat = mt_reply_heartbeat(reply);
             g->block = block;
-            if (session_reply(reply[0]))
+            if (session_reply(reply[0]) && !g->ready) {
                 g->ready = 1;
+                g->bound = g->heartbeat;
+            }
             for (i = 0; i < MT_REPLY_WORDS; ++i)
                 g->history[g->history_next][i] = reply[i];
             g->history_next = (g->history_next + 1) & 7u;
