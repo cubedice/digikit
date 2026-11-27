@@ -135,7 +135,7 @@ at 40 reached the cap: curve 4 needs 8.96 for 100 over 40, so the note sounded a
 
 ## On the device [D]
 
-Image `51c24268b85b5eeb` (proto/stock-chord a1e0049a7) on the owner's Digitakt II with CANOPY, Overloop, PRISM, RELAY, the remote and
+Image `51c24268b85b5eeb` (this change before its load limits and velocity) on the owner's Digitakt II with CANOPY, Overloop, PRISM, RELAY, the remote and
 `digikit/debug`, the owner's project loaded and the transport stopped. The DSP's block time from core/health's one-second windows (`health_hs`,
 the DSP's own EMUCLK count of its block handler, read over PEEK); percentages of an assumed 1 GHz block (666,667 cycles). Keys through
 `digikit/remote` on track 10 (ONESHOT) of pattern A02, retriggered every 400 ms; averages of the whole windows:
@@ -175,13 +175,56 @@ Two assembler facts found on the way: an immediate such as `3 * 0x1d8` assembles
 `DL_TAIL_WORDS - 158` assembles as written). Data symbols of an image object are exported without `.GLOBAL` (with it, patchkit refuses
 "exported twice").
 
+## Voice records in L1 [D]
+
+The stock voice records are in L1 block 0 (`0x2412cc`). The extra records (`_cs_rec`, 45,312 bytes), `_hv_state`, the scratch block and the
+chord code are in L2 (`dsp.l2`, the region of image objects), reached through the SHARC+ L1 caches (16 KiB each for instructions, DM and PM, at
+the block tops; finding 100). On the device a stock note costs 1.13 cycles per interpreter instruction (8,200 for 7,220), and an extra note
+about 1.34: roughly 8,000 instructions (two renders, the guard, the sum, the step and the budget) for 10,700 cycles. If the L2 records caused
+all of the difference, records in L1 would save about 1,700 cycles per extra note (15 %); misses of our own L2 code in the instruction cache
+would leave less.
+
+- Free L1 (finding 100, static): block 2 `0x300000-0x31c000` (112 KiB, below its cache) and block 1 `0x2d7564-0x2ec000` (84,636 bytes). The
+  20 literals of the stock image that fall into block 2 are numbers, not addresses: `R2 = 0x300000` at `0x1c8e57` is a value, and
+  `0x305700` (3,168,000, 66 s at 48 kHz) is an offset (`DM(I4 + 0x305700)`) into DDR buffers.
+- A measurement build (not kept) moved the hidden voices' records to `0x300000`, zeroed once by the first hidden voice, and kept the copies
+  in L2, so that one device session compares the two on one track (before: a copy 10,700 and a hidden voice 11,200 per note, both in L2).
+- Emulator, that build: after boot all 114,688 bytes of block 2 below its cache are unwritten (the emulator tracks bytes nothing has
+  written). The test passed unchanged, the hidden voice played from its L1 record, and a pattern every 256 bytes over `0x30c000-0x31c000` was
+  unchanged after the whole test. The emulator counts instructions, not stalls, so only the device can show the gain.
+- On the device (that build, image `53808f9c184fe10e`; the same project, track and keys as above; averages of the whole windows):
+
+  | | cycles per block | |
+  | --- | --- | --- |
+  | idle | 439,100 | |
+  | one stock note (POLY off) | 447,600 | +8,300 |
+  | CHRD MAJ6: the note and three copies (L2) | 480,100 | 10,830 per copy |
+  | idle after it (the track keeps the shape) | 441,300 | +2,200 |
+  | CHRD PLAY, one key | 447,000 | |
+  | four keys: three hidden voices (L1) | 478,900 | 10,640 per voice |
+  | idle after them | 439,000 | +0 |
+
+  In L2 a hidden voice cost 500 more than a copy (11,200 against 10,700); with its records in L1 it costs 190 less (10,640 against 10,830).
+  Records in L1 save about 600 to 700 cycles per extra note (6 %), far below the 1,700 the cycles per instruction allowed: most of the extra
+  note's excess over a stock note (about 2,300) is elsewhere, in our own instructions (the guard and the sum or ramp pass over each record's
+  block, about 400 per record) and in the code and the scratch block in L2. The windows of the four keys vary by about 2,000 between them, so
+  the figure is good to a few hundred cycles.
+- To place data there in a build for main: a `dsp.l1` region in the port (block 2 below its cache, with this evidence), patchkit's placement
+  of an object or a data section in it, and a boot-stream block for it. `dsp.rs` `append_block` takes only L2 targets now. A fill block (one
+  16-byte header) would zero the records without adding 45 KB to the stream, which the ColdFire sends whole (at most `0xfffff` bytes); or the
+  DSP zeroes them at first use, as the measurement build did. The rigs need an L1 stand-in.
+
 ## Open [O]
 
-- The budget assumes a 1 GHz block (666,667 cycles): with a slower clock 560,000 cycles would leave less margin. The new build has not run on
-  the device: its idle cost of a track with a chord set, and the budget, are measured in the emulator only.
+- The budget assumes a 1 GHz block (666,667 cycles): with a slower clock 560,000 cycles would leave less margin. On the device (above) a
+  track's hidden path ends with its notes, but a track that keeps a chord shape with copies still costs about 2,200 cycles per block: it
+  stays on the chord path to see the owner's next note-on. The budget was not reached there (block maximum 75 %).
 - The notes of a chord share the track's amp envelope and filter; a release of one note of a held chord is not possible. Hidden voices have
   their own fade in and out but the track's envelope and filter still shape them all (paraphonic). A per-voice stock envelope and filter would
   need the inline set-up of `FUN_1c642a` reproduced on private state.
+- Records in L1 save about 6 % of an extra note (above): too little for a `dsp.l1` region in patchkit, and dropped (2026-11-27). Tighter
+  guard and sum (or ramp) loops would save about as much (500 to 700 cycles per extra note) without it: the guard must clear a block before it
+  is added, so the two stay two passes. Velocity was not checked on the device (the remote's keys have one velocity).
 - A hidden voice's velocity factor is at most 8.0. On a steep curve a soft first key and a hard second key need more (curve 4: 8.96 for 100
   over 40), and the second key then sounds below its level. Raising the owner's latched factor to the loudest note's and scaling the owner's
   own block down instead would keep every factor at most 1, but writes stock state (the latch, finding 135).
