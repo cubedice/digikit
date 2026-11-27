@@ -1,5 +1,5 @@
 import { button, withinRuntimeDeadline, type Session } from '@digi/test-support';
-import { aggregate } from '../support.ts';
+import { aggregate } from '../aggregate-error.ts';
 import { deviceProfile, portAnchorAddress } from './device-data.ts';
 
 type PanelSession = Pick<Session, 'options' | 'status'> & {

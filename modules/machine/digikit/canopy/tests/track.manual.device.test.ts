@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { repoRoot, withinRuntimeDeadline } from '@digi/test-support';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
-import { withSession } from '@digi/regression/support.ts';
+import { withSession } from '@digi/regression/session-handle.ts';
 import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
 import { liveProtocol } from '@digi/regression/runtime/protocol.ts';

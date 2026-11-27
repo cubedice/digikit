@@ -10,7 +10,7 @@ import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runti
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
 import { cardAfter, overlayRecords } from '@digi/regression/runtime/write-safety.ts';
-import { withSession } from '@digi/regression/support.ts';
+import { withSession } from '@digi/regression/session-handle.ts';
 import { expect, test } from 'vitest';
 import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 

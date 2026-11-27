@@ -3,10 +3,10 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { withSession } from '../support.ts';
+import { withSession } from '../session-handle.ts';
 import { liveOptions } from './live-options.ts';
 import { liveProtocol } from './protocol.ts';
-import { moduleArtifact } from './install.ts';
+import { moduleArtifact } from './module-artifact.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
 const h = withSession({ ...liveOptions('dt2'), dsp: 'sharc', restart: false });

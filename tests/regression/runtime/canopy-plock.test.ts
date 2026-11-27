@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { repoRoot } from '@digi/test-support';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
-import { withSession } from '../support.ts';
+import { withSession } from '../session-handle.ts';
 import { liveOptions } from './live-options.ts';
 import { liveSampleFolder, seededCard } from './live-card.ts';
 import { liveProtocol } from './protocol.ts';

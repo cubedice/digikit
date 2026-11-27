@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, expect, onTestFinished, test, vi } from 'vitest';
 import { repoRoot } from '@digi/test-support';
-import { withSession } from '@digi/regression/support.ts';
+import { withSession } from '@digi/regression/session-handle.ts';
 import { describeOn } from '@digi/regression/runtime/devices.ts';
 import { liveOptions } from '@digi/regression/runtime/live-options.ts';
 import { liveSampleFolder, seededCard } from '@digi/regression/runtime/live-card.ts';
@@ -12,7 +12,7 @@ import { prepareRuntimePlanListedOffline } from '@digi/regression/runtime/runtim
 import { instrumentSymbols } from '@digi/regression/runtime/instrument-symbols.ts';
 import { waitInstrumentReady } from '@digi/regression/runtime/instrument-ready.ts';
 import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
-import { moduleArtifact } from '@digi/regression/runtime/install.ts';
+import { moduleArtifact } from '@digi/regression/runtime/module-artifact.ts';
 import { sessionRt } from '@digi/regression/runtime/session-rt.ts';
 import { REDRAW, SETTLE } from '@digi/regression/runtime/panel-waits.ts';
 import { seedModules } from '@digi/regression/runtime/card-seed.ts';

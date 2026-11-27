@@ -3,8 +3,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
-import { withSession } from '../support.ts';
-import { installModule } from './install.ts';
+import { withSession } from '../session-handle.ts';
+import { installModule } from './module-install.ts';
 import { liveProtocol } from './protocol.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';
 
