@@ -158,9 +158,10 @@ void ip_panel_on(uint8_t *view, uint32_t key, uint32_t track, uint32_t pitch, ui
         uint32_t settings = controller ? ip_panel_project_settings(controller) : 0;
         if (settings && ip_panel_trig_mode(settings) == 2)
             tk_panel_retrig(key, track);
-        /* A TRIG press that neither records nor retriggers auditions the key's track. CANOPY has no stock voice to audition
-         * with: on its track the track keyboard plays the press, and its release ends it (ip_panel_off). */
-        else if (!recording && IP_HAVE(tk_panel_trig_on) && canopy_track(view, track) &&
+        /* A TRIG press that neither records nor retriggers auditions the key's track. The stock audition is one note of the
+         * track's own voice: it ignores KEYS and ARP, and CANOPY has no stock voice to audition with. The track keyboard plays
+         * the press where it plays the track's keys (it declines otherwise), and the release ends it (ip_panel_off). */
+        else if (!recording && IP_HAVE(tk_panel_trig_on) &&
                  tk_panel_trig_on(key, track, pitch, velocity)) {
             press_seen(key, track, pitch, velocity);
             return;

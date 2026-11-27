@@ -163,11 +163,13 @@ int tk_panel_retrig(uint32_t key, uint32_t track)
         ++retrigs;
     return 0;
 }
-/* A TRIG press of a track the track keyboard plays (the panel asks it on CANOPY's track only). */
+/* A TRIG press, which the panel offers for every track: the track keyboard plays it on the tracks whose keys it plays (`trig_played`:
+ * CANOPY's track, a stock track with KEYS POLY or ARP on) and declines the others. */
+static uint32_t trig_played = 1;
 int tk_panel_trig_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    assert(key < 16 && track == instrument_track && pitch < 128 && velocity == 88);
-    if (!routed)
+    assert(key < 16 && track < 16 && pitch < 128 && velocity == 88);
+    if (!routed || !(trig_played & (1u << track)))
         return 0;
     tk_notes |= 1u << key;
     ++tk_trig_downs;
@@ -334,7 +336,8 @@ int main(void)
     step_record = 0;
 
     /* A TRIG press outside keyboard mode: the stock performance handler auditions the key's track. On CANOPY's track the track
-     * keyboard plays it and its release ends it, and the stock action runs for neither; another track stays stock. */
+     * keyboard plays it and its release ends it, and the stock action runs for neither; a track whose keys it does not play stays
+     * stock. */
     active = 0;
     performance = 1;
     downs = tk_downs;
@@ -376,6 +379,17 @@ int main(void)
     assert(tk_trig_downs == 1 && original_on == ons + 5 && original_off == offs + 4);
     ip_panel_off(view, 4);
     assert(original_off == offs + 5);
+    /* A stock track whose keys the track keyboard plays (KEYS POLY or ARP on): its TRIG press sounds its chord or arp through the
+     * track keyboard, not the stock one-note audition, and its release ends it. */
+    performance = 1;
+    trig_played |= 1u << 1;
+    press(5, 1, 60);
+    assert(tk_trig_downs == 2 && original_on == ons + 5 && (tk_notes & (1u << 5)));
+    assert(ip_panel_press[0] == 5 && ip_panel_press[1] == 1);
+    ip_panel_off(view, 5);
+    assert(!(tk_notes & (1u << 5)) && original_off == offs + 5);
+    trig_played = 1;
+    performance = 0;
     active = 1;
 
     /* While a step entry holds KEYBOARD on CANOPY's track, the track keyboard keeps its focus there. */

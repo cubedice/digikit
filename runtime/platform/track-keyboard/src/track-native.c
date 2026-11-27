@@ -114,6 +114,13 @@ void tk_native_set_hidden(uint8_t track, uint8_t voices)
         hidden_capacity[track] = voices <= TK_COPIES ? voices : TK_COPIES;
 }
 
+/* The owner's held note (NOTE_HELD) still counts against the track's limit here (tk_native_event), while the engine has released its key:
+ * without the slot taken off, the engine would send a key the track declines, and the key would show as held and never sound. */
+uint8_t tk_native_voices(uint8_t track, uint8_t limit)
+{
+    return track < TK_TRACKS && owner_faded[track] && limit > 1 ? (uint8_t)(limit - 1u) : limit;
+}
+
 /* The 18 low bits of a hidden-voice word: the gate in bit 17, the serial in 14-16, the pitch in 7-13, the velocity in 0-6. */
 static uint32_t hidden_bits(bool gate, uint8_t serial, uint8_t pitch, uint8_t velocity)
 {

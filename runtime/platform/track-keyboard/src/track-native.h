@@ -29,6 +29,9 @@ int tk_native_kind(uint8_t track);
 uint8_t tk_native_copies(uint8_t track);
 /* How many hidden voices a TK_NATIVE_AUDIO track has (finding 375): a pitch no track of its group can take plays on one of them. */
 void tk_native_set_hidden(uint8_t track, uint8_t voices);
+/* The voices the engine may give `track` out of `limit` (its group and its hidden voices): one fewer while the owner's released note is held
+ * faded for its hidden voices, a slot that sounds no key; the engine then steals its oldest note for a new key (finding 375). */
+uint8_t tk_native_voices(uint8_t track, uint8_t limit);
 void tk_native_backend(bool midi, TkTrackBackend *out);
 void tk_native_relay_backend(TkTrackBackend *out);
 bool tk_native_relay_sound(uintptr_t sound);

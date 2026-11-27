@@ -24,7 +24,10 @@ voices. For ONESHOT, WERP, STRETCH, REPITCH, GRID and SLICE, turn POLY on
 and play. AUTO uses the selected track for the first voice and borrows
 eligible empty audio tracks for the extra pitches, with transport running
 or stopped. Each borrowed track returns to the pool after its release
-tail finishes.
+tail finishes. With POLY or ARP on, a TRIG press outside KEYBOARD (the
+audition of the key's track) plays through the track keyboard as well, so
+it sounds the chord or the arpeggio; with both off the stock one-note
+audition plays.
 
 A chord of up to four notes without strum plays on the track's own voice
 on ONESHOT, WERP, REPITCH, GRID and SLICE: the track keyboard sends its
@@ -32,7 +35,8 @@ first note, and the DSP plays the other notes as copies of that voice, so
 the chord borrows no track. The notes share the track's filter and amp
 envelope. STRETCH, strummed chords, chords of more notes and user chords
 with their own velocities still take a voice per note
-(docs/findings/375-stock-voice-chords.md).
+(docs/findings/375-stock-voice-chords.md). The keyboard on KEYS marks
+every note that sounds, a chord's copies included, and dots the held keys.
 
 On the same machines a track also has three hidden voices for further
 keys. A key that no track of the group can take while the track's own

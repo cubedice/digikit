@@ -125,6 +125,9 @@ void tk_service_stop(void);
 bool tk_trig_ready(uint8_t track);
 uint8_t tk_trig_voice_capacity(uint8_t track);
 int tk_trig_arp_pitch(uint8_t track, uint32_t *token);
+/* The KEYS page's keyboard: the pitch classes the track sounds (bit c for c = pitch % 12; a chord the backend plays as copies of one
+ * voice shows every note), and in *held those of its held keys. */
+uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held);
 uint8_t tk_trig_held_pitches(uint8_t track, uint8_t pitches[TK_NOTES]);
 bool tk_trig_display(uint8_t track, TkParams *out);
 bool tk_trig_write(uint8_t track, enum TkControl control, int value);

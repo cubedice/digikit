@@ -287,7 +287,8 @@ static void poll(void)
             (registered & mask) && type == TK_NATIVE_AUDIO ? tk_native_copies(track) : 0;
         if (type != TK_NATIVE_CANOPY && (type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) &&
             (registered & mask))
-            tk_service_set_voice_capacity(track, (uint8_t)(tk_pool_fw_limit(track) + extra));
+            tk_service_set_voice_capacity(
+                track, tk_native_voices(track, (uint8_t)(tk_pool_fw_limit(track) + extra)));
         if (registered & mask) {
             tk_service_set_copies(track, extra);
             tk_native_set_hidden(track, extra);
@@ -455,12 +456,13 @@ int tk_panel_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
     return panel_press(key, track, pitch, velocity, true);
 }
 
-/* A TRIG press outside keyboard mode on a CANOPY track (core/keyboard-panel): the stock path auditions the key's track, and
- * CANOPY has no stock voice to audition with. The track keyboard plays it as a press of the track; tk_panel_off ends it. */
+/* A TRIG press outside keyboard mode (core/keyboard-panel): the stock path auditions the key's track with one note of its own
+ * voice, which ignores KEYS and ARP, and CANOPY has no stock voice to audition with. The track keyboard plays the press as a press
+ * of the track wherever it plays the track's keys (POLY or ARP on: tk_service_press); tk_panel_off ends it. Otherwise it declines
+ * (0) and the stock audition plays. */
 int tk_panel_trig_on(uint32_t key, uint32_t track, uint32_t pitch, uint32_t velocity)
 {
-    return track < TK_TRACKS && kind[track] == TK_NATIVE_CANOPY &&
-           panel_press(key, track, pitch, velocity, false);
+    return track < TK_TRACKS && panel_press(key, track, pitch, velocity, false);
 }
 
 /* Live recording on an audio or CANOPY track: the stock note action records the note and the track keyboard sounds it. */

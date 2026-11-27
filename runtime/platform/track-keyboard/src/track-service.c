@@ -615,6 +615,16 @@ uint8_t tk_trig_voice_capacity(uint8_t track)
     return tk_trig_ready(track) ? tracks[track].backend.voices : 0;
 }
 
+/* The pitch classes a sent note sounds: its own, and those of the chord notes the backend plays as copies of its voice (finding 375). */
+static uint16_t sounding_classes(const TkNoteEvent *note)
+{
+    uint16_t classes = (uint16_t)(1u << (note->pitch % 12u));
+    for (unsigned k = 0; k < note->copies && k < TK_COPIES; ++k)
+        /* An interval is -32 .. 31 (rebuild): 120 keeps the sum positive. */
+        classes |= (uint16_t)(1u << ((unsigned)(note->pitch + 120 + note->intervals[k]) % 12u));
+    return classes;
+}
+
 uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held)
 {
     *held = 0;
@@ -627,9 +637,9 @@ uint16_t tk_trig_pitch_display(uint8_t track, uint16_t *held)
     const TkState *state = t->live_has_priority ? &t->live : &t->sequence;
     for (unsigned i = 0; i < TK_NOTES; ++i)
         if (state->voices[i].sent)
-            sounding |= (uint16_t)(1u << (state->voices[i].note.pitch % 12u));
+            sounding |= sounding_classes(&state->voices[i].note);
     if (state->arp_voice.sent)
-        sounding |= (uint16_t)(1u << (state->arp_voice.note.pitch % 12u));
+        sounding |= sounding_classes(&state->arp_voice.note);
     return sounding;
 }
 
