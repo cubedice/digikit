@@ -68,6 +68,8 @@ RING_A, RING_B = (
     0x200A2000,
 )  # stand-ins for the two reply records (the breadcrumbs are written into both)
 REC = 0x1D8
+# stands in for the stock velocity curves (5 x 128 floats); no rig plays a hidden voice
+VEL_CURVES = DIAG + 0x1000
 TYPE = 8
 
 
@@ -83,6 +85,7 @@ def core_externs() -> dict[str, int]:
         "_fw_param_rec": PARAM_REC,
         "_fw_release_latch": RELEASE,
         "_fw_unpack": UNPACK_BP,
+        "_fw_vel_curves": VEL_CURVES,
         "_instrument_voice_rows": 0,
         "_dv_table": TABLE,
         "_dv_diag": DIAG,

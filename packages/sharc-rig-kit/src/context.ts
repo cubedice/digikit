@@ -24,6 +24,7 @@ export const SLOT_WORDS = 16; // DK_SLOTS of sdk/dsp/contract/dk_stub.inc
 export const SLOTS = DIAG + 0x780; // `_dl_slots`: the 16 slot words of core/dsp-link (sdk/dsp/contract/dk_stub.inc)
 export const PARAM_REC = 0x2506ec; // DT2 1.17 param record base (the stock literal)
 export const RELEASE = DIAG + 0x800; // release bytes: byte v is 1 for about a block after voice v's note-off
+export const VEL_CURVES = DIAG + 0x1000; // stands in for the stock velocity curves (5 x 128 floats); no rig plays a hidden voice
 export const REC = 0x1d8; // bytes of a voice record
 
 /** Byte address to normal-word address. */

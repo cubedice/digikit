@@ -47,6 +47,7 @@
 .GLOBAL _cs_receive;
 .EXTERN _fw_render_next;
 .EXTERN _fw_type_cache;
+.EXTERN _fw_vel_curves;
 .EXTERN _fw_unpack;
 .EXTERN _fw_frame;
 .EXTERN _dl_slots;
@@ -404,6 +405,9 @@ _hv_add:
     CALL _hv_state_addr;
     F8 = DM(2, I1);
     F12 = DM(1, I1);
+    F0 = DM(7, I1);                       // its velocity factor (`_hv_velocity`)
+    F8 = F8 * F0;
+    F12 = F12 * F0;
     DK_RESTORE(R0, 14);
     I1 = R0;
     I4 = _cs_scratch;
@@ -623,8 +627,8 @@ _cs_spend:
     RTS;
 
 // I1 = the state of hidden voice h (R7) of track t (R9): `_hv_state` + (4 t + h) * 32, 8 words: 0 the word the track keyboard sent (0: none),
-// 1 the envelope at the end of this block, 2 at its start, 3 the pitch ratio (h 0: the track's note), 4 what the ratio was taken for (note << 8 |
-// pitch), 5 and 6 the note each voice of the pair took (0x100 | serial). Clobbers R0, R1.
+// 1 the envelope at the end of this block, 2 at its start, 3 the pitch ratio (h 0: the track's note), 4 what the ratio and the velocity factor
+// were taken for (`_hv_run`), 5 and 6 the note each voice of the pair took (0x100 | serial), 7 the velocity factor. Clobbers R0, R1.
 _hv_state_addr:
     R0 = LSHIFT R9 BY 2;
     R0 = R0 + R7;
@@ -665,8 +669,9 @@ _hv_oo:
 // 20-23, h in 18-19, the gate in 17, a serial in 14-16, the pitch in 7-13 (a MIDI note), the velocity in 0-6. A new serial while the gate is open
 // starts the voice: the owner's record is copied, its buffers and filter state cleared and its phase seeded as the firmware's arm does (start, or end
 // minus one sample when reversed); a new serial with the gate closed only ends it. Every block its step is the owner's times
-// 2^((pitch - the track's note) / 12), and the even voice moves its envelope: up by 1/3 per block (2 ms) while the gate is open, 0.97 per block
-// once it closed, 0 below 0.0005. Keeps R3-R7, R9, R10, R13; clobbers R0-R2, R8, R11, R12, I1, I4.
+// 2^((pitch - the track's note) / 12), its level is the stock velocity curve's for its velocity over the owner's (`_hv_velocity`), and the even
+// voice moves its envelope: up by 1/3 per block (2 ms) while the gate is open, 0.97 per block once it closed, 0 below 0.0005. Keeps R4-R7, R9,
+// R10, R13; clobbers R0-R3, R8, R11, R12, I1, I4.
 _hv_prepare:
     CALL _hv_state_addr;
     R11 = DM(0, I1);
@@ -753,21 +758,44 @@ _hv_gone:
     DM(110, I4) = R0;
     RTS;
 _hv_run:
+    // What the ratio and the velocity factor are taken for (word 4): the owner's velocity in bits 0-6 (frame halfword 26 + t, velocity << 8, as
+    // the stock unpack reads it), the track's velocity curve in 7-9 (halfword 42 + t, clamped to 0 .. 4 as the unpack does), the track's note
+    // in 10-17, the note's velocity and pitch (bits 0-13 of its word) in 18-31. They change rarely, and the two are taken again only then.
+    R0 = 26;
+    R0 = R0 + R9;
+    CALL _dv_frame_hw;
+    R8 = FEXT R0 BY 8:7;
+    R0 = 42;
+    R0 = R0 + R9;
+    CALL _dv_frame_sw;
+    R1 = 0;
+    R0 = MAX(R0, R1);
+    R1 = 4;
+    R0 = MIN(R0, R1);
+    R0 = LSHIFT R0 BY 7;
+    R8 = R8 OR R0;
+    R0 = DM(-17, I6);                     // the track's note
+    R0 = FEXT R0 BY 0:8;
+    R0 = LSHIFT R0 BY 10;
+    R8 = R8 OR R0;
+    R0 = FEXT R11 BY 0:14;
+    R0 = LSHIFT R0 BY 18;
+    R8 = R8 OR R0;
     CALL _hv_state_addr;
+    R0 = DM(4, I1);
+    COMP(R0, R8);
+    IF EQ JUMP _hv_step;
+    DM(4, I1) = R8;
     R0 = FEXT R11 BY 7:7;                 // the note's pitch
     R1 = DM(-17, I6);                     // the track's note
-    R2 = LSHIFT R1 BY 8;
-    R2 = R2 OR R0;
-    R8 = DM(4, I1);
-    COMP(R2, R8);
-    IF EQ JUMP _hv_step;
-    DM(4, I1) = R2;
     R0 = R0 - R1;
     F0 = FLOAT R0;
     R1 = 0x3daaaaab;                      // 1/12
     F0 = F0 * F1;
     CALL _dv_exp2;
     DM(3, I1) = F0;
+    CALL _hv_velocity;
+    DM(7, I1) = F0;
 _hv_step:
     R8 = DM(3, I1);
     I1 = R12;
@@ -796,6 +824,47 @@ _hv_rel:
     R0 = 0;
 _hv_rs:
     DM(1, I1) = R0;
+    RTS;
+
+// F0 = the velocity factor of a hidden voice (the key R8 of `_hv_run`): the entry of the track's velocity curve c for the note's velocity over
+// its entry for the owner's (`_fw_vel_curves`: five curves of 128 floats, the table the stock unpack reads; the stock voice's velocity factor is
+// 127/128 of the entry of its own note, latched at its note-on, so the hidden voice sounds at the level the stock voice gives its velocity).
+// 1.0 when the owner's entry is not a finite number of at least 2^-20; at most 8.0. Clobbers R0-R3, R8, I4.
+_hv_velocity:
+    R0 = FEXT R8 BY 7:3;
+    R0 = LSHIFT R0 BY 9;
+    R1 = _fw_vel_curves;
+    R2 = R0 + R1;                         // curve c
+    R0 = FEXT R8 BY 0:7;
+    R0 = LSHIFT R0 BY 2;
+    R0 = R0 + R2;
+    I4 = R0;
+    R1 = DM(0, I4);                       // the owner's entry
+    R0 = FEXT R8 BY 18:7;
+    R0 = LSHIFT R0 BY 2;
+    R0 = R0 + R2;
+    I4 = R0;
+    R2 = DM(0, I4);                       // the note's entry
+    R0 = 0x3f800000;
+    R3 = 0x35800000;                      // 2^-20 (the bits of positive floats order as integers)
+    COMP(R1, R3);
+    IF LT RTS;
+    R3 = 0x7f800000;
+    COMP(R1, R3);
+    IF GE RTS;
+    F0 = RECIPS F1;                       // 1 / the owner's entry to 8 bits, then two Newton steps
+    R3 = 0x40000000;                      // 2.0
+    F8 = F0 * F1;
+    F8 = F3 - F8;
+    F0 = F0 * F8;
+    F8 = F0 * F1;
+    F8 = F3 - F8;
+    F0 = F0 * F8;
+    F0 = F0 * F2;
+    R1 = 0;
+    R0 = MAX(R0, R1);                     // (the bits as integers: a negative factor is 0, one above 8.0 or not finite 8.0)
+    R1 = 0x41000000;
+    R0 = MIN(R0, R1);
     RTS;
 
 // R0 = 1 when voice v renders hidden voice h (R7) of track t (R9) this block: it has a word, this voice took its note, its envelope is not 0 at both

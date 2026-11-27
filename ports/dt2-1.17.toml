@@ -6284,6 +6284,17 @@ sha256 = "aa85dee071b926c095ed94ee8bad29cc5add87caf86276bf2c85bd0e565feee4"
 mark = "D"
 rule = "fw/dsp/voice:sharc_literal"
 
+[[anchor]]
+name = "dsp.voice.value.velocity_curves"
+cpu = "sharc"
+kind = "value"
+addr = 0x8045a9b8
+src = 0x28384ad6
+len = 6
+sha256 = "802b5ba1ac2c7540e31ead97b216a0ef23fd943fa8a18a50bfcd19fd6ae8480f"
+mark = "D"
+rule = "fw/dsp/voice:sharc_literal"
+
 [[hook]]
 name = "cf.filter.hook.test_bound_patch"
 site = "cf.filter.site.test_bound"
