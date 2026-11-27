@@ -60,6 +60,7 @@ bool tk_pool_project_frame(uint16_t frame[TK_POOL_NATIVE_HALFWORDS],
  * is one wire halfword. */
 enum { TK_POOL_CHORD_ENTRIES = 2, TK_POOL_LINK_WORDS = 1 + TK_POOL_WORDS };
 #define TK_CHORD_MAGIC 0xc5000000u
+#define TK_HIDDEN_MAGIC 0xc6000000u
 
 /* UI publication and interrupt-side consumers of the same snapshot. */
 void tk_pool_publish_frame(const TkPool *pool);
@@ -67,6 +68,9 @@ void tk_pool_publish_frame(const TkPool *pool);
  * in 12-17, 6-11 and 0-5), 0 for none. UI task. The frame sends one track's word per block: a changed one at once and twice more, the
  * others in turn. */
 void tk_pool_link_chord(uint8_t track, uint32_t shape);
+/* Hidden voice `voice` (1 .. 3; 0: the track's own note) of a track: the 18 low bits of its word (the gate in bit 17, a serial in 14-16, the
+ * pitch in 7-13, the velocity in 0-6). It goes out in the same frame word as the shapes, changed ones first. */
+void tk_pool_link_hidden(uint8_t track, uint8_t voice, uint32_t bits);
 void tk_pool_link_write(uintptr_t tx, unsigned entry);
 const uint16_t *tk_pool_link_project(const uint16_t *src);
 void tk_pool_link_reply(const volatile uint16_t *reply);

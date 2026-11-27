@@ -329,6 +329,59 @@ static void automatic_checks(const TkTrackBackend *midi, const TkTrackBackend *a
     assert(tk_native_idle(0));
 }
 
+static uint32_t link_word_now(void)
+{
+    uint16_t queue[4 * TK_POOL_LINK_WORDS] = {0};
+    tk_pool_link_write((uintptr_t)queue, 0);
+    return queue[1] | (uint32_t)queue[3] << 16;
+}
+
+/* Whether `want` goes out in the frame word before the pool map within 240 blocks (every word's turn comes in 80). */
+static bool link_sent(uint32_t want)
+{
+    bool seen = false;
+    for (unsigned i = 0; i < 240; ++i)
+        seen |= link_word_now() == want;
+    return seen;
+}
+
+static void hidden_checks(const TkTrackBackend *audio)
+{
+    /* Hidden voices (finding 375): a stock track with no helper plays a further pitch on a hidden voice of its own, and the owner's note
+     * waits for it with its stock note-off. */
+    kind[0] = TK_NATIVE_AUDIO;
+    helper_mask = 0;
+    automatic = false;
+    tk_native_set_hidden(0, TK_COPIES);
+    unsigned first = count;
+    assert(post(audio, 0, 40, 60, 100));
+    tk_native_drain();
+    assert(count == first + 1 && sent[first].track == 0 && sent[first].pitch == 60);
+    assert(post(audio, 0, 41, 64, 90));
+    tk_native_drain();
+    assert(count == first + 1 && tk_native_sounding(0, 41)); /* no stock note */
+    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 18 | 1u << 17 | 1u << 14 | 64u << 7 | 90u));
+    /* the owner's key up: its sample fades (its gate closes), its stock note-off waits */
+    assert(post(audio, 0, 40, 60, 0));
+    tk_native_drain();
+    assert(count == first + 1 && !tk_native_idle(0));
+    assert(link_sent(TK_HIDDEN_MAGIC));
+    /* the hidden key up: its gate closes, and the owner's stock note-off goes */
+    assert(post(audio, 0, 41, 64, 0));
+    tk_native_drain();
+    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 18 | 1u << 14 | 64u << 7));
+    assert(count == first + 2 && sent[first + 1].track == 0 && !sent[first + 1].velocity);
+    assert(tk_native_idle(0));
+    /* the owner's next note opens its gate again */
+    assert(post(audio, 0, 42, 62, 100));
+    tk_native_drain();
+    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 17));
+    assert(post(audio, 0, 42, 62, 0));
+    tk_native_drain();
+    assert(tk_native_idle(0));
+    tk_native_set_hidden(0, 0);
+}
+
 void track_native_checks(void)
 {
     relay_checks();
@@ -382,4 +435,5 @@ void track_native_checks(void)
     assert(tk_native_idle(0));
     midi_wire_budget(&midi);
     automatic_checks(&midi, &audio);
+    hidden_checks(&audio);
 }

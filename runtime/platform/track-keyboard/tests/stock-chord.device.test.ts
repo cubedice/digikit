@@ -85,10 +85,10 @@ describeOn('dt2', 'stock chords on one track', () => {
     await turn(1, 12); // KEYS POLY on
     await tap('KEYBOARD');
 
-    const render = async (label: string, during?: () => Promise<void>) => {
+    const render = async (label: string, during?: () => Promise<void>, key = 'TRIG 9') => {
       await waitEmulated(session, 1300); // the sample lasts one second at its own pitch
       const file = path.join(session.runDir, `chord-${label}.wav`);
-      await edge('TRIG 9', true);
+      await edge(key, true);
       try {
         await waitEmulated(session, 50);
         await during?.();
@@ -99,7 +99,7 @@ describeOn('dt2', 'stock chords on one track', () => {
           await session.client.call('pcm.tap', { action: 'capture_stop' });
         }
       } finally {
-        await edge('TRIG 9', false);
+        await edge(key, false);
       }
       return readFloatWav(file);
     };
@@ -155,6 +155,49 @@ describeOn('dt2', 'stock chords on one track', () => {
     });
     const guardedLevels = levels(guarded);
     const again = levels(await render('again'));
+
+    // Hidden voices: CHRD PLAY again, two keys on track 1 with no helper. The second key plays on a hidden voice; the first key up fades its own
+    // note while the second plays on, and its stock note-off waits for the second.
+    await turn(2, -4); // KEYS CHRD PLAY
+    const single13 = await render('single-13', undefined, 'TRIG 13');
+    const f1 = fundamental(single13);
+    await waitEmulated(session, 1300);
+    let both = { active: 0, hidden: 0 };
+    const capture = async (label: string) => {
+      const file = path.join(session.runDir, `hidden-${label}.wav`);
+      await session.client.call('pcm.tap', { action: 'capture', path: file });
+      try {
+        await waitEmulated(session, 120);
+      } finally {
+        await session.client.call('pcm.tap', { action: 'capture_stop' });
+      }
+      return readFloatWav(file);
+    };
+    let pair: Float32Array;
+    let after9: Float32Array;
+    await edge('TRIG 9', true);
+    try {
+      await waitEmulated(session, 40);
+      await edge('TRIG 13', true);
+      try {
+        await waitEmulated(session, 60);
+        const hidden = await dspWords(session, dsp('_hv_state') + 32, 1);
+        both = { active: await word('tk_native_audio_active'), hidden: hidden[0]! };
+        pair = await capture('pair');
+        await edge('TRIG 9', false);
+        await waitEmulated(session, 150);
+        after9 = await capture('after-9');
+      } finally {
+        await edge('TRIG 13', false);
+      }
+    } finally {
+      await edge('TRIG 9', false);
+    }
+    await waitEmulated(session, 300);
+    const tail = await capture('tail');
+    const at = (pcm: Float32Array) => ({ f0: tone(pcm, f0, 0), f1: tone(pcm, f1, 0), finite: pcm.every(Number.isFinite) });
+    const hiddenReport = { f1, both, pair: at(pair!), after9: at(after9!), tail: at(tail), faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]! };
+    console.info('HIDDEN VOICES', JSON.stringify(hiddenReport));
     console.info('STOCK CHORD', JSON.stringify({ f0, reference, triad, held, guard, guarded: guardedLevels, again }));
 
     const root = reference.root[0];
@@ -177,6 +220,17 @@ describeOn('dt2', 'stock chords on one track', () => {
       expect(guardedLevels.root[channel], 'the owner plays on').toBeGreaterThan(0.5 * root);
       expect(guardedLevels.fifth[channel], 'the other copy plays on').toBeGreaterThan(0.5 * root);
     }
+    expect(Math.abs(f1 - f0), 'two keys, two pitches').toBeGreaterThan(20);
+    expect(hiddenReport.both.active, 'the second key took no helper').toBe(1);
+    expect(hiddenReport.both.hidden >>> 24, 'it plays on hidden voice 1 of track 1').toBe(0xc6);
+    expect((hiddenReport.both.hidden >>> 17) & 1, 'its gate is open').toBe(1);
+    expect(hiddenReport.pair.f0, 'both keys sound').toBeGreaterThan(0.5 * root);
+    expect(hiddenReport.pair.f1).toBeGreaterThan(0.5 * root);
+    expect(hiddenReport.after9.f0, 'the first key up: its note fades').toBeLessThan(0.1 * root);
+    expect(hiddenReport.after9.f1, 'the second plays on').toBeGreaterThan(0.5 * root);
+    expect(hiddenReport.tail.f1, 'both keys up: the track releases').toBeLessThan(0.1 * root);
+    expect(hiddenReport.pair.finite && hiddenReport.after9.finite && hiddenReport.tail.finite).toBe(true);
+    expect(hiddenReport.faults, 'only the two copies the test broke').toBe(guard.faults);
     await session.expectNoFault('stock chords');
   });
 });

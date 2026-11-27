@@ -27,6 +27,8 @@ int tk_native_kind(uint8_t track);
 /* The chord notes a TK_NATIVE_AUDIO track (the caller checks the kind) plays as copies of one voice (finding 375): TK_COPIES for a stock
  * sample machine whose voice the DSP's chord path renders, 0 for STRETCH (its renderer is not hooked). */
 uint8_t tk_native_copies(uint8_t track);
+/* How many hidden voices a TK_NATIVE_AUDIO track has (finding 375): a pitch no track of its group can take plays on one of them. */
+void tk_native_set_hidden(uint8_t track, uint8_t voices);
 void tk_native_backend(bool midi, TkTrackBackend *out);
 void tk_native_relay_backend(TkTrackBackend *out);
 bool tk_native_relay_sound(uintptr_t sound);

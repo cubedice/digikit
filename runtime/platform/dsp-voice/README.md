@@ -25,8 +25,9 @@ example). On its own it changes nothing: a patched image with no registered mach
 - Stock chords (emulator only so far): a voice marked in `_cs_vmask` on a stock machine also renders up to three copies of its voice
   record at other pitches with the stock sample renderer and sums them into its block, so a stock sample track plays a chord by itself; the
   notes share the track's filter and amp envelope. The track keyboard sends each track's chord shape through the frame (`_cs_receive`). A
-  copy whose block is not finite or exceeds 8.0 ends and is not added (`_cs_faults`). Unmarked voices pay three instructions
-  (docs/findings/375-stock-voice-chords.md).
+  copy whose block is not finite or exceeds 8.0 ends and is not added (`_cs_faults`). The same records also serve as hidden voices (`_cs_hmask`):
+  further keys of the track with their own note-on, pitch and fade, under the track's filter and amp envelope. Unmarked voices pay three
+  instructions (docs/findings/375-stock-voice-chords.md).
 
 ## The runtime guard (Digitakt II, runtime 5)
 

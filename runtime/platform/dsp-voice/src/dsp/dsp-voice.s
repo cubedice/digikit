@@ -33,6 +33,7 @@
 #define CS_COPIES 3                       // copies per voice
 #define CS_VOICE_BYTES 0x588              // CS_COPIES records: the copies of one voice
 #define CS_MAGIC 0xc5                     // the top byte of a shape word
+#define CS_HIDDEN_MAGIC 0xc6              // the top byte of a hidden-voice word
 #define CS_STOCK_TYPES 7                  // machine types below this one are the engine's own
 #define CS_LIMIT 0x41000000               // 8.0: the largest magnitude a copy's sample may have
 
@@ -141,9 +142,12 @@ _cs_test:
 // The chord routine, in place of the renderer (the stock contract: R4 = record, R8 = output block, R12 = the caller's tick, R14 = the voice loop counter,
 // I6 = the frame of the caller's CJUMP). The row of track t in `_cs_cfg` (6 words): n copies (0 .. 3), gain (float; 0 leaves the sum as it is), the ratios
 // 1 .. 3 (float, the pitch of copy e over the owner's), the shape word it came from. The copies of voice v are `_cs_rec` + (3 v + e) * 0x1d8.
-// Callee-saved registers it uses are saved in its frame; the context's L1 and L4 are put back before each call of firmware code.
+// A track with no copies whose bit is set in `_cs_hmask` plays hidden voices in the same records instead: voice h (1 .. 3) of its own note-on, pitch
+// and envelope, and the owner's own note gets an envelope too (h 0); see `_hv_prepare`. Callee-saved registers it uses are saved in its frame; the
+// context's L1 and L4 are put back before each call of firmware code. Frame slots: 2-12 the saved registers, 13-15 R4, R8, R12, 16 the hidden voices
+// are on, 17 the track's note.
 _cs_voice:
-    DK_ENTER(16);
+    DK_ENTER(18);
     DK_SAVE(2, R3);
     DK_SAVE(3, R5);
     DK_SAVE(4, R6);
@@ -172,7 +176,6 @@ _cs_voice:
     R5 = R0 + R1;                         // the track's row
     I4 = R5;
     R10 = DM(0, I4);                      // n
-    R3 = DM(1, I4);                       // gain
     R0 = 0;
     R10 = MAX(R10, R0);
     R0 = CS_COPIES;
@@ -183,6 +186,10 @@ _cs_voice:
     R0 = R13 * R0 (SSI);
     R1 = _cs_rec;
     R6 = R0 + R1;                         // copy 0 of this voice
+    R0 = 0;
+    DK_SAVE(16, R0);
+    R10 = PASS R10;
+    IF EQ JUMP _hv_check;
     // The owner's note-on: its sample pointer (+0) or phase (+0x1b0, Q31 int64) is not what its last render left (`_cs_last`, 4 words per voice): the
     // firmware's arm seeded them, and the copies of the last note are stale (word 3, the copies taken for the note, goes to 0). The record's own
     // note-on mark (+0x1b9) cannot serve: the stock renderer ends a voice whose mark is set.
@@ -234,7 +241,7 @@ _cs_tkn:
     I1 = R8;
     DM(3, I1) = R7;
 _cs_steps:
-    // Every block: the step of copy e (+0x1a8, a signed Q31 int64, low word first) is the owner's step times ratio e, so the owner's pitch changes carry over.
+    // Every block: the step of copy e is the owner's step times ratio e, so the owner's pitch changes carry over.
     R7 = 0;
 _cs_stl:
     COMP(R7, R10);
@@ -248,37 +255,37 @@ _cs_stl:
     I4 = R0;
     R12 = DM(0, I4);                      // ratio e
     I4 = R4;
-    R0 = DM(106, I4);                     // the owner's step, low word
-    R1 = DM(107, I4);                     // high word
-    R0 = LSHIFT R0 BY -1;
-    F0 = FLOAT R0;
-    R2 = 1;
-    F0 = SCALB F0 BY R2;
-    F1 = FLOAT R1;
-    R2 = 32;
-    F1 = SCALB F1 BY R2;
-    F0 = F0 + F1;
-    F0 = F0 * F12;
-    R2 = -32;
-    F1 = SCALB F0 BY R2;
-    R1 = TRUNC F1;                        // the new high word (toward zero)
-    F2 = FLOAT R1;
-    R2 = 32;
-    F2 = SCALB F2 BY R2;
-    F0 = F0 - F2;                         // what the low word holds
-    IF GE JUMP _cs_stp;
-    R1 = R1 - 1;
-    R8 = 0x4f800000;                      // 2^32
-    F0 = F0 + F8;
-_cs_stp:
-    R2 = -1;
-    F0 = SCALB F0 BY R2;
-    R0 = TRUNC F0;
-    R0 = LSHIFT R0 BY 1;
-    DM(106, I1) = R0;
-    DM(107, I1) = R1;
+    CALL _cs_scale;
     R7 = R7 + 1;
     JUMP _cs_stl;
+_hv_check:
+    // No copies: the hidden voices, when the track has them (bit t of _cs_hmask)
+    R0 = DM(_cs_hmask);
+    R1 = 0;
+    R1 = R1 - R9;
+    R0 = LSHIFT R0 BY R1;
+    BTST R0 BY 0;
+    IF SZ JUMP _cs_render;
+    R0 = 1;
+    DK_SAVE(16, R0);
+    R0 = 1;
+    R0 = R0 + R9;
+    CALL _dv_frame_hw;                    // halfword 1 + t of the frame copy: the track's note << 8
+    R0 = LSHIFT R0 BY -8;
+    DK_SAVE(17, R0);
+    R7 = 0;
+    CALL _hv_state_addr;
+    DK_RESTORE(R2, 17);
+    DM(3, I1) = R2;                       // (the track's note as the DSP sees it, for tests: word 3 of the owner's state)
+    CALL _hv_owner_env;
+    R7 = 1;
+_hv_pl:
+    R0 = 4;
+    COMP(R7, R0);
+    IF GE JUMP _cs_render;
+    CALL _hv_prepare;
+    R7 = R7 + 1;
+    JUMP _hv_pl;
 _cs_render:
     DK_RESTORE(R0, 11);
     L1 = R0;
@@ -302,10 +309,75 @@ _cs_render:
     DM(1, I1) = R0;
     R0 = DM(109, I4);
     DM(2, I1) = R0;
+    DK_RESTORE(R0, 16);
+    R0 = PASS R0;
+    IF EQ JUMP _cs_copies;
+    // The owner's own note: its envelope (state 0) on its block
+    R7 = 0;
+    CALL _hv_state_addr;
+    F8 = DM(2, I1);
+    F12 = DM(1, I1);
+    R0 = 0x3f800000;
+    COMP(F8, F0);
+    IF NE JUMP _hv_oramp;
+    COMP(F12, F0);
+    IF EQ JUMP _hv_rend;
+_hv_oramp:
+    DK_RESTORE(R0, 14);
+    I1 = R0;
+    CALL _cs_ramp;
+_hv_rend:
+    R7 = 1;
+_hv_rl:
+    R0 = 4;
+    COMP(R7, R0);
+    IF GE JUMP _cs_gain;
+    CALL _hv_audible;
+    R0 = PASS R0;
+    IF EQ JUMP _hv_rn;
+    R0 = -1;
+    R0 = R0 + R7;
+    R1 = CS_REC_BYTES;
+    R0 = R0 * R1 (SSI);
+    R4 = R0 + R6;
+    R8 = _cs_scratch;
+    DK_RESTORE(R12, 15);
     DK_RESTORE(R0, 11);
     L1 = R0;
     DK_RESTORE(R0, 12);
     L4 = R0;
+    DK_CALL(_dv_idle, _cs_r2);            // the stock renderer on hidden voice h
+    L1 = 0;
+    L4 = 0;
+    CALL _cs_check;
+    R2 = PASS R2;
+    IF EQ JUMP _hv_add;
+    R0 = -1;
+    R0 = R0 + R7;
+    R1 = CS_REC_BYTES;
+    R0 = R0 * R1 (SSI);
+    R0 = R0 + R6;
+    I4 = R0;
+    R0 = DM(110, I4);                     // byte +0x1b8: ACTIVE
+    R1 = 0xffffff00;
+    R0 = R0 AND R1;
+    DM(110, I4) = R0;
+    R0 = DM(_cs_faults);
+    R0 = R0 + 1;
+    DM(_cs_faults) = R0;
+    JUMP _hv_rn;
+_hv_add:
+    CALL _hv_state_addr;
+    F8 = DM(2, I1);
+    F12 = DM(1, I1);
+    DK_RESTORE(R0, 14);
+    I1 = R0;
+    I4 = _cs_scratch;
+    CALL _cs_ramp_add;
+_hv_rn:
+    R7 = R7 + 1;
+    JUMP _hv_rl;
+_cs_copies:
     R7 = 0;
 _cs_rl:
     COMP(R7, R10);
@@ -315,21 +387,15 @@ _cs_rl:
     R4 = R0 + R6;
     R8 = _cs_scratch;
     DK_RESTORE(R12, 15);
+    DK_RESTORE(R0, 11);
+    L1 = R0;
+    DK_RESTORE(R0, 12);
+    L4 = R0;
     DK_CALL(_dv_idle, _cs_r1);            // the stock renderer on copy e
     L1 = 0;
     L4 = 0;
-    // The guard: every sample finite and at most 8.0 in magnitude (its bits without the sign at most those of 8.0). Otherwise the copy ends (ACTIVE
-    // clear: the renderer zero-fills it from now on), is counted and its block is not added.
-    I4 = _cs_scratch;
-    R2 = 0;
-    R8 = CS_LIMIT;
-    R12 = 0x7fffffff;
-    LCNTR = 32, DO _cs_gd UNTIL LCE;
-    R0 = DM(0, I4);
-    R0 = R0 AND R12;
-    COMP(R0, R8);
-    IF GT R2 = PASS R12;
-_cs_gd: MODIFY(I4, 1) (NW);
+    // The guard: a copy whose block is bad ends (ACTIVE clear: the renderer zero-fills it from now on), is counted and is not added.
+    CALL _cs_check;
     R2 = PASS R2;
     IF EQ JUMP _cs_sum;
     R0 = CS_REC_BYTES;
@@ -356,16 +422,17 @@ _cs_sum:
     MODIFY(I4, 1) (NW);
 _cs_add: MODIFY(I1, 1) (NW);
 _cs_next:
-    DK_RESTORE(R0, 11);
-    L1 = R0;
-    DK_RESTORE(R0, 12);
-    L4 = R0;
     R7 = R7 + 1;
     JUMP _cs_rl;
 _cs_gain:
+    R0 = 24;
+    R0 = R9 * R0 (SSI);
+    R1 = _cs_cfg;
+    R0 = R0 + R1;
+    I4 = R0;
+    R3 = DM(1, I4);                       // gain (read again: the hidden voices' exp2 clobbers R3)
     R3 = PASS R3;
     IF EQ JUMP _cs_out;
-    L1 = 0;
     DK_RESTORE(R0, 14);
     I1 = R0;
     LCNTR = 32, DO _cs_gl UNTIL LCE;
@@ -373,8 +440,6 @@ _cs_gain:
     F0 = F0 * F3;
     DM(0, I1) = F0;
 _cs_gl: MODIFY(I1, 1) (NW);
-    DK_RESTORE(R0, 11);
-    L1 = R0;
 _cs_out:
     DK_RETADDR;
     DK_RESTORE(R3, 2);
@@ -392,11 +457,312 @@ _cs_out:
     L4 = R0;
     DK_LEAVE(R13, 9);
 
-// The shape word of one track (R1; the track keyboard's frame word before its pool map, `_tk_pool_receive` calls this): CS_MAGIC in bits 24-31, the track
-// in 20-23, the copies in 18-19 and three intervals in semitones (6 bits, signed) in 12-17, 6-11 and 0-5. A word the track's row already holds changes
-// nothing; otherwise the row, its ratios and the track's two bits of `_cs_vmask` follow it. Uses R0-R5 and I0 (the receiver's).
+// ---- subroutines of the chord routine (CALL / RTS; the routine's frame stays in I6) ----
+
+// I1 = the state of hidden voice h (R7) of track t (R9): `_hv_state` + (4 t + h) * 32, 8 words: 0 the word the track keyboard sent (0: none),
+// 1 the envelope at the end of this block, 2 at its start, 3 the pitch ratio (h 0: the track's note), 4 what the ratio was taken for (note << 8 |
+// pitch), 5 and 6 the note each voice of the pair took (0x100 | serial). Clobbers R0, R1.
+_hv_state_addr:
+    R0 = LSHIFT R9 BY 2;
+    R0 = R0 + R7;
+    R0 = LSHIFT R0 BY 5;
+    R1 = _hv_state;
+    R0 = R0 + R1;
+    I1 = R0;
+    RTS;
+
+// The owner's envelope (state 0, I1), moved by the even voice: 1 while its gate is open or it never had a word (the firmware's own attack runs),
+// 0.97 per block once the track keyboard closed it (its key went up while other notes of the track still sound), 0 below 0.0005. Clobbers R0-R2.
+_hv_owner_env:
+    BTST R13 BY 0;
+    IF NOT SZ RTS;
+    R2 = DM(0, I1);
+    R0 = 0x3f800000;
+    R2 = PASS R2;
+    IF EQ JUMP _hv_oo;
+    BTST R2 BY 17;
+    IF NOT SZ JUMP _hv_oo;
+    R1 = DM(1, I1);
+    DM(2, I1) = R1;
+    R2 = 0x3f7851ec;
+    F0 = F1 * F2;
+    R2 = 0x3a03126f;
+    COMP(F0, F2);
+    IF GE JUMP _hv_os;
+    R0 = 0;
+_hv_os:
+    DM(1, I1) = R0;
+    RTS;
+_hv_oo:
+    DM(1, I1) = R0;
+    DM(2, I1) = R0;
+    RTS;
+
+// Hidden voice h (R7) of track t (R9) for voice v (R13; the owner's record R4, copy 0 R6). Its word (`_cs_receive`): 0xc6 in bits 24-31, t in
+// 20-23, h in 18-19, the gate in 17, a serial in 14-16, the pitch in 7-13 (a MIDI note), the velocity in 0-6. A new serial while the gate is open
+// starts the voice: the owner's record is copied, its buffers and filter state cleared and its phase seeded as the firmware's arm does (start, or end
+// minus one sample when reversed); a new serial with the gate closed only ends it. Every block its step is the owner's times
+// 2^((pitch - the track's note) / 12), and the even voice moves its envelope: up by 1/3 per block (2 ms) while the gate is open, 0.97 per block
+// once it closed, 0 below 0.0005. Keeps R3-R7, R9, R10, R13; clobbers R0-R2, R8, R11, R12, I1, I4.
+_hv_prepare:
+    CALL _hv_state_addr;
+    R11 = DM(0, I1);
+    R11 = PASS R11;
+    IF EQ RTS;
+    R0 = -1;
+    R0 = R0 + R7;
+    R1 = CS_REC_BYTES;
+    R0 = R0 * R1 (SSI);
+    R12 = R0 + R6;                        // its record for this voice: copy h - 1
+    R0 = FEXT R13 BY 0:1;
+    R0 = LSHIFT R0 BY 2;
+    R1 = I1;
+    R0 = R0 + R1;
+    R1 = 20;
+    R2 = R0 + R1;                         // the address of word 5 + (v & 1): the note this voice took
+    I4 = R2;
+    R0 = DM(0, I4);
+    R8 = FEXT R11 BY 14:3;
+    R1 = 0x100;
+    R8 = R8 OR R1;
+    COMP(R0, R8);
+    IF EQ JUMP _hv_run;
+    BTST R11 BY 17;
+    IF SZ JUMP _hv_gone;
+    I4 = R4;
+    R0 = DM(0, I4);
+    R0 = PASS R0;
+    IF EQ RTS;                            // no sample on the owner yet: the next block
+    I4 = R2;
+    DM(0, I4) = R8;
+    I4 = R4;
+    I1 = R12;
+    LCNTR = CS_REC_WORDS, DO _hv_cpw UNTIL LCE;
+    R0 = DM(0, I4);
+    DM(0, I1) = R0;
+    MODIFY(I4, 1) (NW);
+_hv_cpw: MODIFY(I1, 1) (NW);
+    I1 = R12;
+    MODIFY(I1, 1) (NW);
+    R0 = 0;
+    LCNTR = 96, DO _hv_zw UNTIL LCE;      // words 1 .. 96: the work buffer, the decimator state, the declick bytes, the previous sample
+    DM(0, I1) = R0;
+_hv_zw: MODIFY(I1, 1) (NW);
+    I1 = R12;
+    R0 = DM(102, I1);                     // START (+0x198)
+    R1 = DM(103, I1);
+    R2 = DM(110, I1);                     // +0x1b8 .. +0x1bb: ACTIVE, the mark, seed, REVERSE
+    BTST R2 BY 24;
+    IF SZ JUMP _hv_fwd;
+    R0 = DM(104, I1);                     // END (+0x1a0) minus one sample (2^31 in Q31)
+    R1 = DM(105, I1);
+    BTST R0 BY 31;
+    IF SZ R1 = R1 - 1;
+    R8 = 0x80000000;
+    R0 = R0 XOR R8;
+_hv_fwd:
+    DM(108, I1) = R0;                     // PHASE
+    DM(109, I1) = R1;
+    R8 = 0xffff0000;
+    R2 = R2 AND R8;
+    R8 = 1;
+    R2 = R2 OR R8;
+    DM(110, I1) = R2;                     // ACTIVE, the mark clear
+    BTST R13 BY 0;
+    IF NOT SZ JUMP _hv_run;
+    CALL _hv_state_addr;
+    R0 = 0;
+    DM(1, I1) = R0;                       // the envelope starts from 0
+    R0 = -1;
+    DM(4, I1) = R0;                       // and the ratio is taken again
+    JUMP _hv_run;
+_hv_gone:
+    I4 = R2;
+    DM(0, I4) = R8;
+    I4 = R12;
+    R0 = DM(110, I4);
+    R1 = 0xffffff00;
+    R0 = R0 AND R1;
+    DM(110, I4) = R0;
+    RTS;
+_hv_run:
+    CALL _hv_state_addr;
+    R0 = FEXT R11 BY 7:7;                 // the note's pitch
+    R1 = DM(-17, I6);                     // the track's note
+    R2 = LSHIFT R1 BY 8;
+    R2 = R2 OR R0;
+    R8 = DM(4, I1);
+    COMP(R2, R8);
+    IF EQ JUMP _hv_step;
+    DM(4, I1) = R2;
+    R0 = R0 - R1;
+    F0 = FLOAT R0;
+    R1 = 0x3daaaaab;                      // 1/12
+    F0 = F0 * F1;
+    CALL _dv_exp2;
+    DM(3, I1) = F0;
+_hv_step:
+    R8 = DM(3, I1);
+    I1 = R12;
+    R12 = PASS R8;
+    I4 = R4;
+    CALL _cs_scale;
+    BTST R13 BY 0;
+    IF NOT SZ RTS;                        // the odd voice uses the envelope the even voice moved
+    CALL _hv_state_addr;
+    R0 = DM(1, I1);
+    DM(2, I1) = R0;
+    BTST R11 BY 17;
+    IF SZ JUMP _hv_rel;
+    R1 = 0x3eaaaaab;                      // 1/3 per block: 2 ms from 0 to 1
+    F0 = F0 + F1;
+    R1 = 0x3f800000;
+    F0 = MIN(F0, F1);
+    DM(1, I1) = R0;
+    RTS;
+_hv_rel:
+    R1 = 0x3f7851ec;                      // 0.97 per block
+    F0 = F0 * F1;
+    R1 = 0x3a03126f;                      // 0.0005: the voice ends below this
+    COMP(F0, F1);
+    IF GE JUMP _hv_rs;
+    R0 = 0;
+_hv_rs:
+    DM(1, I1) = R0;
+    RTS;
+
+// R0 = 1 when voice v renders hidden voice h (R7) of track t (R9) this block: it has a word, this voice took its note, its envelope is not 0 at both
+// ends of the block and its sample has not ended. A voice whose envelope reached 0 ends (ACTIVE clear). Clobbers R0-R2, R8, R11, I1, I4.
+_hv_audible:
+    CALL _hv_state_addr;
+    R11 = DM(0, I1);
+    R0 = 0;
+    R11 = PASS R11;
+    IF EQ RTS;
+    R8 = FEXT R11 BY 14:3;
+    R1 = 0x100;
+    R8 = R8 OR R1;
+    R1 = FEXT R13 BY 0:1;
+    R1 = LSHIFT R1 BY 2;
+    R2 = I1;
+    R1 = R1 + R2;
+    I4 = R1;
+    R2 = DM(5, I4);
+    R0 = 0;
+    COMP(R2, R8);
+    IF NE RTS;
+    R1 = DM(1, I1);
+    R2 = DM(2, I1);
+    R1 = R1 OR R2;
+    R2 = -1;
+    R2 = R2 + R7;
+    R8 = CS_REC_BYTES;
+    R2 = R2 * R8 (SSI);
+    R2 = R2 + R6;
+    I4 = R2;
+    R2 = DM(110, I4);
+    R1 = PASS R1;
+    IF NE JUMP _hv_live;
+    R8 = 0xffffff00;
+    R2 = R2 AND R8;
+    DM(110, I4) = R2;
+    R0 = 0;
+    RTS;
+_hv_live:
+    R2 = FEXT R2 BY 0:8;
+    R0 = 0;
+    R2 = PASS R2;
+    IF EQ RTS;
+    R0 = 1;
+    RTS;
+
+// I1's step (+0x1a8, a signed Q31 int64, low word first) = I4's step times F12. Clobbers R0-R2, R8.
+_cs_scale:
+    R0 = DM(106, I4);
+    R1 = DM(107, I4);
+    R0 = LSHIFT R0 BY -1;
+    F0 = FLOAT R0;
+    R2 = 1;
+    F0 = SCALB F0 BY R2;
+    F1 = FLOAT R1;
+    R2 = 32;
+    F1 = SCALB F1 BY R2;
+    F0 = F0 + F1;
+    F0 = F0 * F12;
+    R2 = -32;
+    F1 = SCALB F0 BY R2;
+    R1 = TRUNC F1;                        // the new high word (toward zero)
+    F2 = FLOAT R1;
+    R2 = 32;
+    F2 = SCALB F2 BY R2;
+    F0 = F0 - F2;                         // what the low word holds
+    IF GE JUMP _cs_sc1;
+    R1 = R1 - 1;
+    R8 = 0x4f800000;                      // 2^32
+    F0 = F0 + F8;
+_cs_sc1:
+    R2 = -1;
+    F0 = SCALB F0 BY R2;
+    R0 = TRUNC F0;
+    R0 = LSHIFT R0 BY 1;
+    DM(106, I1) = R0;
+    DM(107, I1) = R1;
+    RTS;
+
+// The guard: R2 = 0 when every sample of the scratch block is finite and at most 8.0 in magnitude (its bits without the sign at most those of 8.0).
+// Clobbers R0, R2, R8, R12, I4.
+_cs_check:
+    I4 = _cs_scratch;
+    R2 = 0;
+    R8 = CS_LIMIT;
+    R12 = 0x7fffffff;
+    LCNTR = 32, DO _cs_gd UNTIL LCE;
+    R0 = DM(0, I4);
+    R0 = R0 AND R12;
+    COMP(R0, R8);
+    IF GT R2 = PASS R12;
+_cs_gd: MODIFY(I4, 1) (NW);
+    RTS;
+
+// I1's block (32 floats) times a ramp from F8 to F12 (sample k, 1 .. 32: F8 + (F12 - F8) k / 32). Clobbers R0, F8, F12, I1.
+_cs_ramp:
+    F12 = F12 - F8;
+    R0 = 0x3d000000;                      // 1/32
+    F12 = F12 * F0;
+    LCNTR = 32, DO _cs_rp UNTIL LCE;
+    F8 = F8 + F12;
+    F0 = DM(0, I1);
+    F0 = F0 * F8;
+    DM(0, I1) = F0;
+_cs_rp: MODIFY(I1, 1) (NW);
+    RTS;
+
+// I1's block plus I4's block times the same ramp. Clobbers R0, R1, F8, F12, I1, I4.
+_cs_ramp_add:
+    F12 = F12 - F8;
+    R0 = 0x3d000000;
+    F12 = F12 * F0;
+    LCNTR = 32, DO _cs_ra UNTIL LCE;
+    F8 = F8 + F12;
+    F0 = DM(0, I4);
+    F0 = F0 * F8;
+    F1 = DM(0, I1);
+    F0 = F0 + F1;
+    DM(0, I1) = F0;
+    MODIFY(I4, 1) (NW);
+_cs_ra: MODIFY(I1, 1) (NW);
+    RTS;
+
+// The track keyboard's word of one track (R1; its frame word before the pool map, `_tk_pool_receive` calls this). A shape word (CS_MAGIC in bits
+// 24-31): the track in 20-23, the copies in 18-19 and three intervals in semitones (6 bits, signed) in 12-17, 6-11 and 0-5; the track's row, its
+// ratios and its two bits of `_cs_vmask` follow it (a track with hidden voices keeps its bits). A hidden-voice word (CS_HIDDEN_MAGIC, see
+// `_hv_prepare`): stored in the voice's state; the track's bit of `_cs_hmask` and its two of `_cs_vmask` are set. A word a row already holds
+// changes nothing. Uses R0-R5 and I0 (the receiver's).
 _cs_receive:
     R0 = LSHIFT R1 BY -24;
+    R2 = CS_HIDDEN_MAGIC;
+    COMP(R0, R2);
+    IF EQ JUMP _hv_receive;
     R2 = CS_MAGIC;
     COMP(R0, R2);
     IF NE RTS;
@@ -417,11 +783,16 @@ _cs_receive:
     R0 = LSHIFT R0 BY R4;                 // voices 2t and 2t + 1
     R4 = DM(_cs_vmask);
     R5 = R4 OR R0;
-    R0 = NOT R0;
-    R4 = R4 AND R0;
     R3 = PASS R3;
-    IF NE R4 = PASS R5;
-    DM(_cs_vmask) = R4;
+    IF NE JUMP _cs_rxv;
+    R5 = R4;
+    R3 = DM(_cs_hmask);
+    BTST R3 BY R2;
+    IF NOT SZ JUMP _cs_rxv;
+    R0 = NOT R0;
+    R5 = R4 AND R0;
+_cs_rxv:
+    DM(_cs_vmask) = R5;
     R5 = R1;
     R4 = 14;
     CALL _cs_ratio;
@@ -432,6 +803,28 @@ _cs_receive:
     R4 = 26;
     CALL _cs_ratio;
     DM(4, I0) = F0;
+    RTS;
+_hv_receive:
+    R2 = FEXT R1 BY 20:4;                 // t
+    R3 = FEXT R1 BY 18:2;                 // h
+    R0 = LSHIFT R2 BY 2;
+    R0 = R0 + R3;
+    R0 = LSHIFT R0 BY 5;
+    R4 = _hv_state;
+    R0 = R0 + R4;
+    I0 = R0;
+    DM(0, I0) = R1;
+    R0 = 1;
+    R0 = LSHIFT R0 BY R2;
+    R4 = DM(_cs_hmask);
+    R4 = R4 OR R0;
+    DM(_cs_hmask) = R4;
+    R4 = LSHIFT R2 BY 1;
+    R0 = 3;
+    R0 = LSHIFT R0 BY R4;
+    R4 = DM(_cs_vmask);
+    R4 = R4 OR R0;
+    DM(_cs_vmask) = R4;
     RTS;
 
 // F0 = 2 ^ (i / 12) for the interval i of the shape word R5 that a left shift by R4 brings to bits 26-31. Clobbers R0-R3.
@@ -534,11 +927,13 @@ _dv_frame_sw:
 // Stock chords: bit v marks a chord voice; 16 track rows of 6 words (n, gain, ratio 1 .. 3, the shape word); the scratch block; per voice the owner's
 // sample pointer and phase after its last render and the copies taken for its note; the guard's count; the copies (32 voices x CS_COPIES x CS_REC_BYTES).
 .PKDATA _cs_vmask, 4;
+.PKDATA _cs_hmask, 4;                     // bit t: track t has hidden voices
 .PKDATA _cs_cfg, 384;
 .PKDATA _cs_scratch, 128;
 .PKDATA _cs_last, 512;
 .PKDATA _cs_faults, 4;
 .PKDATA _cs_rec, 45312;
+.PKDATA _hv_state, 2048;                  // 16 tracks x 4 (the owner, hidden voices 1 .. 3) x 8 words (_hv_state_addr)
 .PKDATA _dv_sv_l4, 4;
 .PKDATA _dv_sv_m13, 4;                     // the registers the stubs pinned (dk_stub.inc)
 .PKDATA _dv_sv_m13u, 4;

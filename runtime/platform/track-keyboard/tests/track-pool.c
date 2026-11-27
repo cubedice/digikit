@@ -195,16 +195,19 @@ static uint32_t chord_word_written(void)
 
 static void check_chord_words(void)
 {
-    /* The stock-chord shape words before the map (finding 375): a changed one at once and twice more, then every track in turn. */
-    for (unsigned i = 0; i < 4 * TK_TRACKS; ++i)
+    /* The stock-chord shape words before the map (finding 375): a changed one at once and twice more, then every track in turn (with the
+     * hidden-voice words that were ever set: 80 words at most). */
+    for (unsigned i = 0; i < 4 * 80; ++i)
         (void)chord_word_written(); /* what earlier checks left to send */
     const uint32_t shape = 2u << 18 | 4u << 12 | 7u << 6;
     tk_pool_link_chord(5, shape);
     for (unsigned i = 0; i < 3; ++i)
         assert(chord_word_written() == (TK_CHORD_MAGIC | 5u << 20 | shape));
     uint16_t seen = 0;
-    for (unsigned i = 0; i < TK_TRACKS; ++i) {
+    for (unsigned i = 0; i < 80; ++i) {
         uint32_t word = chord_word_written();
+        if ((word & 0xff000000u) == TK_HIDDEN_MAGIC)
+            continue;
         assert((word & 0xff000000u) == TK_CHORD_MAGIC);
         uint8_t track = (uint8_t)(word >> 20 & 15u);
         seen |= (uint16_t)(1u << track);
