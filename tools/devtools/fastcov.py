@@ -155,7 +155,7 @@ def parse_config(spec: str) -> tuple[str, dict[str, str]]:
         # Region entries chosen at load from the program database: function
         # entries, or every basic-block start. No run-time selection or drop.
         # A long list goes in a file (@FILE): Linux refuses an environment string
-        # over 128 KiB, and the DN2 instruction list is about 570 KB.
+        # over 128 KiB, and a program's instruction list can be several times that.
         return spec, {
             "SHARC_AOT": "0",
             "SHARC_BLOCKTRANS": "",
