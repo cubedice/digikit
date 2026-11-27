@@ -2,8 +2,8 @@
 /// The name of the image table (`[[info]]` of core/track-keyboard).
 pub const INFO: &str = "tk_image";
 pub const MAGIC: u32 = 0x544b5331;
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 /// Words of the table: magic, version, count, then one per name.
-pub const WORDS: usize = 66;
+pub const WORDS: usize = 67;
 /// The words that must not be 0 (functions and data of the adapter itself).
-pub const REQUIRED: [usize; 52] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 64, 65];
+pub const REQUIRED: [usize; 53] = [3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 65, 66];

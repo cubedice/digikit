@@ -282,10 +282,16 @@ static void poll(void)
         }
         if (type == TK_NATIVE_CANOPY)
             tk_canopy_sync(track, true);
-        else if ((type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) && (registered & mask))
-            tk_service_set_voice_capacity(track, tk_pool_fw_limit(track));
-        if (registered & mask)
-            tk_service_set_copies(track, type == TK_NATIVE_AUDIO ? tk_native_copies(track) : 0);
+        /* A stock sample track's chord copies and hidden voices (finding 375) */
+        uint8_t extra =
+            (registered & mask) && type == TK_NATIVE_AUDIO ? tk_native_copies(track) : 0;
+        if (type != TK_NATIVE_CANOPY && (type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) &&
+            (registered & mask))
+            tk_service_set_voice_capacity(track, (uint8_t)(tk_pool_fw_limit(track) + extra));
+        if (registered & mask) {
+            tk_service_set_copies(track, extra);
+            tk_native_set_hidden(track, extra);
+        }
         tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);
         tk_sequence_set_relay(track, (registered & mask) && type == TK_NATIVE_RELAY);
     }

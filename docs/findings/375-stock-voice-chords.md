@@ -82,6 +82,35 @@ copies. The NaN made the guard count two faults and end both copies; no sample o
 and the next note took the copies again. An earlier run with the configuration written through `dsp.patch` (no track keyboard) gave the same
 triad, the same level with the path on and no copies, and the copies' steps `0x50a28c00` and `0x5fe44380` against the owner's `0x40000000`.
 
+## Hidden voices: further keys on the same voice [D]
+
+The same three records per voice also serve as hidden voices: further keys of a track that plays no copies, each with its own note-on, pitch and
+note-off.
+
+- DSP (`_hv_prepare`, `_hv_audible`, `_hv_owner_env`): a hidden-voice word (`0xc6` in bits 24-31, the track in 20-23, the voice h in 18-19, the
+  gate in 17, a serial in 14-16, the pitch in 7-13 as a MIDI note, the velocity in 0-6) arrives through the same frame word as the shapes and
+  sets the track's bit of `_cs_hmask`. A new serial while the gate is open starts the voice: the owner's record is copied, its buffers and filter
+  state (words 1-96) cleared and its phase seeded as the firmware's arm does (start, or end minus one sample when reversed). Every block its step
+  is the owner's times 2^((pitch - the track's note) / 12), the track's note read from the frame copy (halfword 1 + t). Each voice has an
+  envelope of its own, moved by the even voice of the pair: up by 1/3 per block (2 ms) while its gate is open, 0.97 per block once it closed,
+  ending below 0.0005. Voice 0 is the owner's own note: 1 while its gate is open, the same release when the track keyboard closes it. The
+  envelopes ramp over the block; the hidden voices are summed into the owner's block, so the track's filter, amp envelope and sends still run
+  on the sum, and the guard covers them as it covers the copies.
+- Track keyboard (`track-native.c`): a track with hidden voices (`tk_native_set_hidden`, the same stock machines as the copies) can take up to
+  three more notes. A note no track of its group can take (no free helper, or an AUTO helper not admitted yet) while the owner's own note sounds
+  without copies plays on a free hidden voice: no stock note, only its word. Its key up closes its gate. The owner's key up while hidden voices
+  sound closes the owner's gate (its sample fades) and holds its stock note-off (`NOTE_HELD`) until the last hidden voice is released; the
+  owner's next note opens its gate again. A saved group's helpers still come first; AUTO now takes the hidden voices before it borrows a track.
+- The frame word carries 80 words in turn (16 shapes, 4 hidden-voice words per track once set), changed ones first.
+
+The behaviour is paraphonic: the track's stock amp envelope opens with the first key and releases after the last, and each note's own
+envelope only fades it in and out within that. Velocity is not applied to hidden voices (they sound at the owner's level).
+
+`stock-chord.device.test.ts`, CHRD PLAY, TRIG 9 (220 Hz) held, then TRIG 13 (330 Hz): both sounded at 0.00903 and 0.00902 with only track 1
+active (no helper) and hidden voice 1's gate open; TRIG 9 up: 220 Hz fell to 0.000003 within 150 ms while 330 Hz stayed at 0.00902; both up:
+silence. A run with the words written through `dsp.patch` (no track keyboard) gave the same: a fifth and a third added to a held note at the
+note's level, the note's own gate closed to 0.000012 while the two played on, then the fifth's gate closed alone.
+
 Two assembler facts found on the way: an immediate such as `3 * 0x1d8` assembles as its first term (`3`); use literals (a sum such as
 `DL_TAIL_WORDS - 158` assembles as written). Data symbols of an image object are exported without `.GLOBAL` (with it, patchkit refuses
 "exported twice").
@@ -89,8 +118,10 @@ Two assembler facts found on the way: an immediate such as `3 * 0x1d8` assembles
 ## Open [O]
 
 - The device has not run it, and the cost is measured in the interpreter only (about 7,200 instructions per extra note of a stereo pair).
-- The notes share the track's amp envelope and filter; a release of one note of a held chord is not possible. Per-note envelopes would need
-  the inline set-up of `FUN_1c642a` reproduced, or an envelope of DigiKit's own before the sum.
+- The notes of a chord share the track's amp envelope and filter; a release of one note of a held chord is not possible. Hidden voices have
+  their own fade in and out but the track's envelope and filter still shape them all (paraphonic). A per-voice stock envelope and filter would
+  need the inline set-up of `FUN_1c642a` reproduced on private state.
+- Velocity is not applied to hidden voices.
 - STRETCH (`0x1c5576`) is not hooked and keeps a voice per note. WERP, REPITCH, GRID and SLICE use the same renderer as ONESHOT and are not
   tested.
 - The stock renderer reads 16-bit PCM, so a copy cannot produce a bad sample from the sample alone; the guard covers corrupt state.

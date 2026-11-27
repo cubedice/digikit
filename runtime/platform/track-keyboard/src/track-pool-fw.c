@@ -43,38 +43,57 @@ void tk_pool_publish_frame(const TkPool *pool)
     published = next;
 }
 
-/* The stock-chord shape words (TK_CHORD_MAGIC, the track, the shape), the sends a changed one still has, and the track whose turn it is. */
-enum { CHORD_SENDS = 3 };
-static volatile uint32_t chord_word[TK_TRACKS];
-static volatile uint8_t chord_sends[TK_TRACKS];
-static uint8_t chord_turn;
+/* The words of the frame word before the map: the stock-chord shapes (TK_CHORD_MAGIC, the track, the shape) of the 16 tracks, then four
+ * hidden-voice words per track (TK_HIDDEN_MAGIC; 0 until one is set). The sends a changed one still has, and the word whose turn it is. */
+enum { LINK_SENDS = 3, LINK_COUNT = TK_TRACKS + 4 * TK_TRACKS };
+static volatile uint32_t link_word[LINK_COUNT];
+static volatile uint8_t link_sends[LINK_COUNT];
+static uint8_t link_turn;
+
+static void link_publish(unsigned index, uint32_t word)
+{
+    if (link_word[index] == word)
+        return;
+    link_word[index] = word;
+    link_sends[index] = LINK_SENDS;
+}
 
 void tk_pool_link_chord(uint8_t track, uint32_t shape)
 {
-    if (track >= TK_TRACKS)
-        return;
-    uint32_t word = TK_CHORD_MAGIC | (uint32_t)track << 20 | (shape & 0xfffffu);
-    if (chord_word[track] == word)
-        return;
-    chord_word[track] = word;
-    chord_sends[track] = CHORD_SENDS;
+    if (track < TK_TRACKS)
+        link_publish(track, TK_CHORD_MAGIC | (uint32_t)track << 20 | (shape & 0xfffffu));
 }
 
-/* Frame interrupt: the word of this block. A track that never had a chord sends its empty one. */
+void tk_pool_link_hidden(uint8_t track, uint8_t voice, uint32_t bits)
+{
+    if (track < TK_TRACKS && voice < 4)
+        link_publish(TK_TRACKS + 4u * track + voice, TK_HIDDEN_MAGIC | (uint32_t)track << 20 |
+                                                         (uint32_t)voice << 18 | (bits & 0x3ffffu));
+}
+
+/* A track that never had a chord sends its empty shape; a hidden voice never set sends nothing. */
+static uint32_t link_at(unsigned index)
+{
+    uint32_t word = link_word[index];
+    return word || index >= TK_TRACKS ? word : TK_CHORD_MAGIC | (uint32_t)index << 20;
+}
+
+/* Frame interrupt: the word of this block. A changed one goes at once and twice more, the others in turn. */
 static uint32_t chord_next(void)
 {
-    uint8_t track = TK_TRACKS;
-    for (uint8_t t = 0; t < TK_TRACKS && track == TK_TRACKS; ++t)
-        if (chord_sends[t])
-            track = t;
-    if (track < TK_TRACKS) {
-        chord_sends[track] = (uint8_t)(chord_sends[track] - 1u);
-    } else {
-        track = chord_turn;
-        chord_turn = (uint8_t)((chord_turn + 1u) % TK_TRACKS);
+    for (unsigned i = 0; i < LINK_COUNT; ++i)
+        if (link_sends[i]) {
+            link_sends[i] = (uint8_t)(link_sends[i] - 1u);
+            return link_at(i);
+        }
+    for (unsigned k = 0; k < LINK_COUNT; ++k) {
+        unsigned i = link_turn;
+        link_turn = (uint8_t)((link_turn + 1u) % LINK_COUNT);
+        uint32_t word = link_at(i);
+        if (word)
+            return word;
     }
-    uint32_t word = chord_word[track];
-    return word ? word : TK_CHORD_MAGIC | (uint32_t)track << 20;
+    return 0;
 }
 
 void tk_pool_link_write(uintptr_t tx, unsigned entry)

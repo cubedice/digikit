@@ -7,7 +7,7 @@
 # `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (the stock handler, with the caller's arguments). Without the service the
 # firmware runs stock: no ARP or KEYS page, no track keyboard, the stock step edits, MIDI routes and sequencer records.
 # Changing the order or the count changes the layout: bump `version`.
-version = 5
+version = 6
 
 [output]
 service_file = "services/track-keyboard.dks"
@@ -82,7 +82,7 @@ functions = [
     "tk_pattern_attach_batch", "tk_pattern_has_track", "tk_pattern_step_attachment",
     "tk_pattern_fw_changed", "tk_pattern_fw_existing", "tk_pattern_fw_get", "tk_pattern_fw_note_step", "tk_pattern_fw_peek",
     "tk_pattern_fw_revision", "tk_pattern_fw_selected", "tk_pattern_fw_track_base", "tk_pattern_fw_work_write",
-    "tk_pool_can_start", "tk_pool_capacity", "tk_pool_link_chord", "tk_pool_link_init", "tk_pool_link_quiet", "tk_pool_link_ready",
+    "tk_pool_can_start", "tk_pool_capacity", "tk_pool_link_chord", "tk_pool_link_hidden", "tk_pool_link_init", "tk_pool_link_quiet", "tk_pool_link_ready",
     "tk_pool_publish_frame", "tk_pool_update",
     "tk_stock_step_copy", "tk_stock_step_paste", "tk_stock_step_clear", "tk_stock_step_toggle", "tk_stock_step_clip_get",
     "dk_ui_core_handle", "dk_ui_core_list_title", "dk_ui_core_menu_front",
