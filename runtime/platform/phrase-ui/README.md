@@ -6,23 +6,26 @@ owner's and holds every value.
 
 ## The page
 
-The 128 × 64 view has a ten-pixel header, a MIX meter at the lower left, and eight cells in two rows. Each cell has a graphic
-above its label. RATE shows its value directly. Hold FUNC + FX to see formatted values for the other controls and actual
-playback time while synced. Release FX to return to the labels. Tap FUNC + FX to advance to the next effect. The header
-carries rate mode, input and loop status. FLIP, HOLD and ARMD are above the MIX meter.
+The page is laid out as the stock send effects' pages. The stock FX view draws the header (pattern, kit and tempo, with
+the title bubble `PRISM (4/5)` for a moment on arrival), the effect's tab (`PRS`) and the page indicator; the page paints
+x 16 to 123 below the header and the level strip under the tab: VOL, the effect's MIX (the stock strip there would show
+the effect row's own MIX, which stays at unity). Eight cells in two rows at the stock centres (x 33, 59, 85, 111) have a
+graphic above their caption. As on the stock pages a turned cell's caption shows its value while the view's own focus
+countdown runs (`fxv_focus_touch`, `fxv_focus_active`), and holding FUNC + FX shows every value (`fxv_values_shown`);
+release FX to return to the captions. Tap FUNC + FX to advance to the next effect.
 
-| | Turn | Press | Cell with FUNC + FX held |
-| --- | --- | --- | --- |
-| LEVEL | MIX | | the column and its number |
-| A | ZONE, four ticks a zone | FLIP | the zone's name below the eight zone marks, `FLIP` inverted |
-| B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `FREE` or `SYNC` |
-| C | RPTS, dashes to ∞ | HOLD | the number, or `INF` with `HOLD` inverted |
-| D | COLR | | Signed distance from the uncoloured point (96, three quarters of the way up). Negative darkens and positive thins and brightens |
-| E | HALO | | the number |
-| F | SKEW | Cycle SKEW, PONG, SWAP | `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
-| G | INPT, a two-position switch: four ticks to the right LOOP, four to the left LIVE, at any time (also without a loop). A tick back toward where it is clears the count, so the tick a knob can make as it is let go of switches nothing | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`, `LIVE` or `LOOP`, and under it the tracks the effect hears (`5 TRK`, `NO TRK`), or `SILENT` at LOOP while there is no loop; while G is held the tracks and `TRIGS` inverted |
-| H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | The applied crossfader above `LIVE`, a number, or `LOOP`. Before a loop exists, `NO LOOP` or `ARMD` with `16 ST`, `CUT`, or `WAIT` |
-| FUNC + NO | | drop the loop | |
+| | Turn | Press | Caption | Value (after a turn, FUNC + FX held) |
+| --- | --- | --- | --- | --- |
+| LEVEL | MIX | | `VOL` under the strip | its number |
+| A | ZONE, four ticks a zone | FLIP | `ZONE`, `FLIP` inverted while FLIP is on | the zone's name |
+| B | RATE: a coarse step a tick, a fine step with FUNC held; with SYNC a ratio of the zone's 1/1, four ticks each, `/2` to `X2` | SYNC | `RATE`; the graphic is the time (`387 MS`, `1.25 S`) or the ratio (`1/1`, `X1.5`, `/1.33`), `NO LINK` without a status | the time SYNC gives, or `FREE` |
+| C | RPTS, dashes to ∞ | HOLD | `RPTS`, `HOLD` inverted while HOLD is on | the number, or `INF` |
+| D | COLR | | `COLR` | signed distance from the uncoloured point (96, three quarters of the way up); negative darkens, positive thins and brightens |
+| E | HALO | | `HALO` | the number |
+| F | SKEW | Cycle SKEW, PONG, SWAP | `SKEW`, or `PONG` / `SWAP` | `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
+| G | INPT, a two-position switch: four ticks to the right LOOP, four to the left LIVE, at any time (also without a loop). A tick back toward where it is clears the count, so the tick a knob can make as it is let go of switches nothing | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`; `NO TRK` while no track is chosen, `SILENT` at LOOP while there is no loop; while G is held `TRIGS`, inverted | `LIVE` or `LOOP`; while G is held the tracks the effect hears (`5 TRK`) |
+| H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | `XFAD`, `ARMD` inverted while armed; the slider is the applied crossfader, without a knob before a loop exists | `LIVE`, a number, or `LOOP`; before a loop exists `--`, or while armed `16 ST`, `CUT` or `WAIT` |
+| FUNC + NO | | drop the loop | | |
 
 ### The tracks
 
@@ -41,14 +44,14 @@ INPT is `core/phrase-control`'s value (not saved); XFAD, ARM and the drop are Ov
 loop and H shows `--`; G still turns INPT, and at LOOP PRISM hears silence. `phrase_ui_tick`, once a UI pass also when the
 page is not shown, puts INPT at LOOP when the loop count in Overloop's status moves (a new loop), and at LIVE when the
 loop goes away (a status with a loop, then one without: a drop, or a loop lost with its lease) or when Overloop, having
-reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). While INPT is LOOP
-and there is a loop the header says `LOOP 16 ST 2.00 S` in place of the
-zone and the time while FUNC + FX is held. The presses of D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX
-view: the page is one entry among the FX pages.
+reported, stops reporting (no status for 60 more passes; once, so that G may put INPT at LOOP again). The loop's own line
+(`LOOP 16 ST 2.00 S`) is Overloop's page's; the page keeps it in `phrase_ui_page` for the device tests only. The presses of
+D to F are taken and do nothing. UP, DOWN, FX and every other key go to the stock FX view: the page is one entry among the
+FX pages.
 
-The time in RATE when free, or in the header when synced with FUNC + FX held, is the engine's (`PH_S_TIME_L`,
+The time in RATE's graphic when free, or in its caption when synced and shown, is the engine's (`PH_S_TIME_L`,
 `PH_S_TIME_R`). It is the geometric mean of the two sides, since SKEW makes one shorter and one longer by the same
-ratio. Without a status the header says `NO LINK`.
+ratio. Without a status RATE's graphic says `NO LINK`.
 
 ## How it is bound
 

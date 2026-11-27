@@ -7,6 +7,7 @@
 #include "../../instrument-play/src/cf/sound-persist.h"
 #include "dk_fw_view.h"
 #include "dk_fw_input.h"
+#include "dk_fw_text.h"
 #include "files.h"
 #include "../../instrument-play/src/cf/src-pages.h"
 #include "../../../../sdk/dsp/contract/dk_relay_track.inc"
@@ -618,22 +619,27 @@ static int wave_height(unsigned level, unsigned gain)
 static void draw_waveform(u8 *b, const struct RelayOverview *overview, unsigned live,
                           unsigned writing, unsigned span, unsigned write, unsigned read)
 {
-    enum { LEFT = 17 };
-    int top = page ? 22 : 35, bottom = page ? 54 : 41;
-    int middle = (top + bottom) / 2;
+    /* The waveform page has the stock waveform's place and style: its end markers at x 25 and 121 (the stock's), no frame,
+     * a centre line on row 39 between them, rows 26 to 54. The first page keeps its compact strip between the rows. */
+    const int left = page ? 26 : 17, cols = page ? 95 : WAVE_COLUMNS;
+    int top = page ? 26 : 35, bottom = page ? 54 : 41;
+    int middle = page ? 39 : (top + bottom) / 2;
     if (page) {
-        fxv_box(b, LEFT - 1, top + 1, 1, bottom - top - 1, 1);
-        fxv_box(b, LEFT + WAVE_COLUMNS, top + 1, 1, bottom - top - 1, 1);
-        fxv_box(b, LEFT, top, WAVE_COLUMNS, 1, 1);
-        fxv_box(b, LEFT, bottom, WAVE_COLUMNS, 1, 1);
+        fxv_box(b, left - 1, middle, cols + 2, 1, 1);
+        for (int y = top; y <= bottom; y += 2) {
+            fxv_box(b, left - 1, y, 1, 1, 1);
+            fxv_box(b, left + cols, y, 1, 1, 1);
+        }
+        fxv_box(b, left - 1, top + 1, 2, 1, 1);
+        fxv_box(b, left + cols - 1, top + 1, 2, 1, 1);
     }
     uint16_t columns[WAVE_COLUMNS];
     /* Enlarge quiet tape by up to 32x, then scale to the strongest visible peak. */
     unsigned reference = 4;
-    for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
-        unsigned bin = col * RELAY_WAVE_BINS / WAVE_COLUMNS;
+    for (unsigned col = 0; col < (unsigned)cols; ++col) {
+        unsigned bin = col * RELAY_WAVE_BINS / cols;
         uint16_t wave = RELAY_WAVE_EMPTY;
-        for (; bin < (col + 1) * RELAY_WAVE_BINS / WAVE_COLUMNS; ++bin) {
+        for (; bin < (col + 1) * RELAY_WAVE_BINS / cols; ++bin) {
             uint16_t peak = live ? live_peaks[bin] : RELAY_WAVE_EMPTY;
             if (peak == RELAY_WAVE_EMPTY && overview)
                 peak = overview->peaks[bin];
@@ -648,23 +654,23 @@ static void draw_waveform(u8 *b, const struct RelayOverview *overview, unsigned 
             reference = (unsigned)peak;
     }
     unsigned gain = (((middle - top - 1) << 8) + reference / 2) / reference;
-    for (unsigned col = 0; col < WAVE_COLUMNS; ++col) {
+    for (unsigned col = 0; col < (unsigned)cols; ++col) {
         int high = wave_height(columns[col] >> 8, gain);
         int low = wave_height(columns[col] & 255, gain);
         if (low >= bottom - middle)
             low = bottom - middle - 1;
-        fxv_box(b, LEFT + col, middle + high, 1, low - high + 1, 1);
+        fxv_box(b, left + col, middle + high, 1, low - high + 1, 1);
     }
     if (!span)
         return;
     unsigned total = status[5];
     if (span < total) {
-        unsigned end = LEFT + span * WAVE_COLUMNS / total;
+        unsigned end = left + span * cols / total;
         for (int y = top; y <= bottom; y += 2)
             fxv_box(b, end, y, 1, 1, -1);
     }
-    unsigned head = LEFT + write * WAVE_COLUMNS / total;
-    unsigned playback = LEFT + read * WAVE_COLUMNS / total;
+    unsigned head = left + write * cols / total;
+    unsigned playback = left + read * cols / total;
     if (writing)
         fxv_box(b, head - 1, top, 3, 2, -1);
     fxv_box(b, playback - 1, bottom - 1, 3, 2, -1);
@@ -679,9 +685,52 @@ static void time_text(char *text, unsigned frames)
     *text++ = '0' + tenths % 10;
     *text = 0;
 }
+/* With SRC held the stock help bubble names the machine and the sample in the header ("ONE: 1-sine220"); a RELAY track's
+ * says "RLY:" and has no sample: the tape stands where the sample's name would. The bubble (HelpBubbleView) clears its bar,
+ * writes its text in its own font (+0x9c) at y 0x42 minus its height (+0xa4: it slides in, 10 when it is all in) and
+ * inverts the bar; the tape's text is written the same way beside it. */
+/* "RLY: " ends at x 40: the stock leaves six pixels from the colon to the name, as in "ONE: 1-sine220" */
+enum { HEADER_NAME_X = 41, HELP_FONT = 0x9c, HELP_HEIGHT = 0xa4 };
+static char header_text[16];
+static unsigned header_frame;
+static void header_tape(u8 *help, u8 *b, const char *text)
+{
+    int height = *(int32_t *)(help + HELP_HEIGHT);
+    if (height <= 0)
+        return;
+    if (height > 10)
+        height = 10;
+    fxv_box(b, HEADER_NAME_X, 0, 128 - HEADER_NAME_X, height, 0);
+    dk_fw_text_draw(b, *(u8 **)(help + HELP_FONT), HEADER_NAME_X, 0x42 - height,
+                    128 - HEADER_NAME_X, text);
+    fxv_box(b, HEADER_NAME_X, 0, 128 - HEADER_NAME_X, height, -1);
+}
+/* A value in a cell's graphic, as the stock pages stack a two-word one ("PRE" over "FLTR"): split at its space. */
+static void stacked(u8 *b, int x, const char *s)
+{
+    char first[8], *o = first;
+    const char *rest = s;
+    while (*rest && *rest != ' ' && o < first + 7)
+        *o++ = *rest++;
+    *o = 0;
+    if (*rest == ' ') {
+        fxv_text(b, x, 15, first, 1);
+        fxv_text(b, x, 22, rest + 1, 1);
+    } else
+        fxv_text(b, x, 18, s, 1);
+}
+/* The stock waveform page's small widget frame: 21 by 9 with rounded corners, rows 13 to 21, centred at X. */
+static void compact_box(u8 *b, int x)
+{
+    fxv_box(b, x - 9, 13, 19, 1, 1);
+    fxv_box(b, x - 9, 21, 19, 1, 1);
+    fxv_box(b, x - 10, 14, 1, 7, 1);
+    fxv_box(b, x + 10, 14, 1, 7, 1);
+}
 static void transport_mark(u8 *b, unsigned writing)
 {
-    int x = 82, y = page ? 12 : 17; /* Encoder C's top cell. */
+    int x = 82,
+        y = page ? 14 : 17; /* Encoder C's top cell (the waveform page: its small widget row). */
     if (writing) {
         fxv_box(b, x + 2, y, 3, 7, 1);
         fxv_box(b, x + 1, y + 1, 5, 5, 1);
@@ -741,16 +790,32 @@ static void draw(u8 *view, u8 *b, unsigned values)
             if (i != 2)
                 ip_src_draw_rotary(view, b, i, knobs[i]);
         if (!edit_gain && !(values & 1))
-            fxv_text(b, 33, 21, input, 1);
+            stacked(b, 33, input);
+        /* C's caption: what the transport does */
+        fxv_text(b, 85, 30, writing ? "REC" : (status[7] & 1) ? "PLAY" : "STOP", 1);
+    } else {
+        /* The waveform page's top row: small graphics without captions, as the stock waveform page has them. A: the input
+         * (or GAIN's value) in a small frame; B: RATE, a rail with its centre and the knob where it stands; D: FDBK, a small
+         * frame filled to it. C is the transport's mark. */
+        const char *in = edit_gain ? gain : input;
+        if (in[0] == 'E' && in[1] == 'X' && in[2] == 'T' && in[3] == ' ')
+            in += 4;
+        compact_box(b, 33);
+        fxv_text(b, 33, 15, in, 1);
+        fxv_box(b, 49, 17, 21, 1, 1);
+        fxv_box(b, 59, 15, 1, 5, 1);
+        fxv_box(b, 49 + (s->rate + 200) * 18 / 400, 14, 3, 7, 1);
+        compact_box(b, 111);
+        fxv_box(b, 103, 16, (int)(s->feedback * 15 / 100), 3, 1);
     }
     for (unsigned i = 0; i < 8; ++i) {
-        if (i == 2)
+        if (i == 2 || (page && i < 4))
             continue;
         int x = 33 + (i % 4) * 26;
         const char *label = labels[i];
         if (!i)
-            label = edit_gain ? "GAIN" : page ? input : label;
-        fxv_text(b, x, i >= 4 ? 58 : page ? 13 : 30, values & (1u << i) ? shown[i] : label, 1);
+            label = edit_gain ? "GAIN" : label;
+        fxv_text(b, x, i >= 4 ? 58 : 30, values & (1u << i) ? shown[i] : label, 1);
     }
     const struct RelayOverview *o = current_wave();
     unsigned live =
@@ -766,6 +831,33 @@ static void draw(u8 *view, u8 *b, unsigned values)
         static const char *const choices[] = {"CANCEL? YES", "SAVE? YES", "DISCARD? YES"};
         fxv_text(b, 70, page ? 33 : 35, choices[confirm - 3], 0);
     }
+    /* SRC held: the tape in the header where a sample's name would stand, its track and length ("T13 4.2 S"). The help view
+     * draws the header after this page: it is painted there (rtm_help_draw), in the same frame. */
+    header_frame = values == 255;
+    if (header_frame) {
+        char *tape = header_text, *o = tape;
+        *o++ = 'T';
+        *o++ = (char)('0' + (track + 1) / 10);
+        *o++ = (char)('0' + (track + 1) % 10);
+        *o++ = ' ';
+        if (span) {
+            time_text(o, span);
+            while (*o)
+                ++o;
+            *o++ = ' ';
+            *o++ = 'S';
+        } else
+            for (const char *e = "EMPTY"; *e;)
+                *o++ = *e++;
+        *o = 0;
+    }
+}
+/* core/fxview, after the stock help view HELP has drawn: the tape's text of the frame the SRC page drew with SRC held, once. */
+void rtm_help_draw(u8 *help, u8 *bitmap)
+{
+    if (header_frame && track < 16)
+        header_tape(help, bitmap, header_text);
+    header_frame = 0;
 }
 static void initialize_settings(void)
 {

@@ -17,8 +17,14 @@ uint32_t loop_ui_debug[8];
 uint32_t loop_ui_values[LP_COUNT];
 uint32_t loop_ui_snapshot[LS_WORDS];
 LoopPage loop_ui_page;
-static uint32_t drawn_seq, drawn_revision;
-static int drawn_fresh;
+static uint32_t drawn_seq, drawn_revision, drawn_focus;
+static int drawn_fresh, drawn_values;
+/* The cells (E, H) whose stock focus countdown runs: each shows its value in place of its caption. */
+static uint32_t focus_mask(uint8_t *view)
+{
+    return (fxv_focus_active(view, LD_E) ? 1u << LD_E : 0) |
+           (fxv_focus_active(view, LD_H) ? 1u << LD_H : 0);
+}
 
 static uint32_t word(const uint8_t *p, uint32_t off)
 {
@@ -40,22 +46,24 @@ static int context(uint8_t *view)
     loop_ui_debug[7] = page;
     return ui.active != 0;
 }
+/* After the stock draw; with HEADER_ONLY after the help view has drawn: the header and its title bubble stay the stock
+ * view's, so the page paints nothing then. */
 int loop_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
 {
-    if (!context(view))
+    if (header_only || !context(view))
         return 0;
     int fresh = (int)dkrt_loop_status(loop_ui_snapshot);
     ld_observe(&ui, loop_ui_snapshot, (uint32_t)fresh);
     LoopCanvas c = {bitmap, fxv_box, fxv_text};
     ld_page(loop_ui_snapshot, (uint32_t)fresh, dkrt_loop_get(LP_XFAD), &loop_ui_page);
-    if (header_only) {
-        ld_render_header(&loop_ui_page, &c);
-        return 1;
-    }
-    ld_render(&loop_ui_page, &c);
+    int values = fxv_values_shown(view);
+    uint32_t focus = focus_mask(view);
+    ld_render(&loop_ui_page, &c, values, focus);
     drawn_seq = loop_ui_snapshot[LS_HEARTBEAT];
     drawn_fresh = fresh;
     drawn_revision = ui.revision;
+    drawn_values = values;
+    drawn_focus = focus;
     ++loop_ui_debug[0];
     return 1;
 }
@@ -76,6 +84,12 @@ int loop_fxv_turn(uint8_t *view, uint8_t *event)
     if (encoder < 1 || encoder > 9 ||
         ld_turn(&ui, encoder - 1, (int32_t)word(event, 16)) == LD_PASS)
         return 0;
+    /* the stock handler does not see the turn: start the focus of the cell it moved, as the stock pages do (LEVEL moves
+     * XFAD, H's cell) */
+    if (encoder - 1 == LD_E)
+        fxv_focus_touch(view, LD_E);
+    else if (encoder - 1 == LD_H || encoder - 1 == LD_LEVEL)
+        fxv_focus_touch(view, LD_H);
     ++loop_ui_debug[4];
     dk_fw_view_invalidate(view);
     return 1;
@@ -100,6 +114,7 @@ void loop_view_update(uint8_t *view)
             /* Audio runs at 1500 blocks a second: 48 blocks is a 31 Hz ceiling on animation requests. An edit and
              * a link that came or went repaint at once. */
             if (fresh != drawn_fresh || ui.revision != drawn_revision ||
+                fxv_values_shown(view) != drawn_values || focus_mask(view) != drawn_focus ||
                 (fresh && (uint32_t)(now[LS_HEARTBEAT] - drawn_seq) >= 48))
                 dk_fw_view_invalidate(view);
             return;

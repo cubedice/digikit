@@ -19,7 +19,7 @@ ports = ["dt2-1.17"]
 [[object]]
 path = "build/fxview-cf.dko.json"
 sources = ["src/native.c", "src/walk.s"]
-optional = ["phrase_fxv_draw", "phrase_fxv_key", "phrase_fxv_turn", "loop_fxv_draw", "loop_fxv_key", "loop_fxv_turn", "phrase_dispatch_trig", "relay_trig", "rtm_stop_key", "tk_picker_key", "tk_picker_led", "phrase_led_claim"]
+optional = ["phrase_fxv_draw", "phrase_fxv_key", "phrase_fxv_turn", "loop_fxv_draw", "loop_fxv_key", "loop_fxv_turn", "phrase_dispatch_trig", "relay_trig", "rtm_stop_key", "rtm_help_draw", "tk_picker_key", "tk_picker_led", "phrase_led_claim"]
 place = "cf.expansion"
 devices = ["dt2"]
 
@@ -29,6 +29,8 @@ fxv_stock_led = "hook.cf.page.site.phrase_led_set.tail"
 fxv_stock_draw = "cf.page.site.phrase_fx_draw"
 fxv_stock_help_draw = "cf.page.site.phrase_help_draw"
 fxv_stock_key = "cf.page.site.phrase_fx_key"
+fxv_stock_focus_touch = "cf.page.site.instrument_focus_touch"
+fxv_stock_focus_active = "cf.page.site.instrument_focus_active"
 fxv_stock_turn = "cf.page.site.phrase_fx_turn"
 fxv_label_font = "cf.page.site.instrument_label_font"
 

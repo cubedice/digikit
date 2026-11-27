@@ -7,7 +7,7 @@
 # `zero` (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (an image function, with the caller's arguments). Without the service the
 # device has no RELAY: no machine type answers to it, its frame words stay idle and the SRC page, the MOD routes, the TRIG picker and
 # the Sound save take their paths without RELAY. Changing the order or the count changes the layout: bump `version`.
-version = 1
+version = 2
 
 [output]
 service_file = "services/relay.dks"
@@ -40,9 +40,11 @@ entries = [
     ["rtm_mod_carrier", "zero"],
     ["rtm_src", "zero"],
     ["rtm_can_save", "minus1"],
-    # core/fxview: the TRIG page's stop key and picker
+    # core/fxview: the TRIG page's stop key and picker, and the help view's draw (the header of a RELAY track's SRC page while
+    # SRC is held: the tape where a sample's name would stand)
     ["rtm_stop_key", "rts"],
     ["relay_trig", "zero"],
+    ["rtm_help_draw", "rts"],
 ]
 
 # The image table `relay_image` of core/relay-track (its [[info]]): what the service takes from the image. The service copies it

@@ -17,6 +17,7 @@ relay_vec_table:
     .long rtm_can_save
     .long rtm_stop_key
     .long relay_trig
+    .long rtm_help_draw
     .text
     .even
     .globl dkrt_image_file_abort

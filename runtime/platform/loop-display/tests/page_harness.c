@@ -306,12 +306,13 @@ static int where(const Drawn *d, const char *s, int *y)
         }
     return -1000;
 }
+/* The stock FX view keeps the header (rows 0 to 9), the effect's tab (x 0 to 15 above row 38) and the page indicator
+ * (x 124 to 127): the page draws its body and clears the level strip's place under the tab, nothing else. */
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
     Drawn *d = ctx;
-    assert(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 128 && y + h <= 64);
-    /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
-    assert(y + h <= 10 || x + w <= 124);
+    assert(x >= 0 && y >= 10 && w > 0 && h > 0 && x + w <= 124 && y + h <= 64);
+    assert(x >= 16 || y >= 38);
     assert(ink == 0 || ink == 1);
     for (int j = y; j < y + h; ++j)
         memset(&d->dots[j][x], ink, w);
@@ -322,8 +323,7 @@ static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
     Drawn *d = ctx;
     /* The label font is at most 5 pixels a character with its gap, and 5 high. */
     int half = ((int)strlen(s) * 5 + 1) / 2;
-    /* below the header, x 124 to 127 are the FX view's page indicator */
-    if (!(*s && x - half >= 0 && x + half <= (y < 10 ? 128 : 124) && y >= 0 && y + 5 <= 64)) {
+    if (!(*s && x - half >= 16 && x + half <= 124 && y >= 10 && y + 5 <= 64)) {
         fprintf(stderr, "text \"%s\" at %d,%d leaves the screen\n", s, x, y);
         assert(0);
     }
@@ -358,54 +358,82 @@ static void rendering(void)
             memset(&d, 0, sizeof(d));
             ld_page(w, 1, end ? LP_MAX : 0, &p);
             assert(strlen(p.line1) <= 24 && strlen(p.line2) <= 24);
-            ld_render(&p, &c);
+            ld_render(&p, &c, 0, 0);
+            /* the line under the timeline and the two captions; ARMD inverted while ARM is on */
             assert(d.inverted == ((states[i] & LS_ARMED) ? 1u : 0u));
-            assert(d.texts >= 6);
+            assert(d.texts == 3);
         }
-    /* Each label above its encoder, its value under it: ARM over E, XFAD over H (the cells of PRISM's page). */
+    /* The cells at the stock centres, captions on the bottom row: ARM in E, XFAD in H. */
+    assert(LD_CELL_E == 33 + 26 * (LD_E - 4) && LD_CELL_H == 33 + 26 * (LD_H - 4));
     status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
     ld_page(w, 1, 64, &p);
     memset(&d, 0, sizeof(d));
+    /* The engine's columns 10 to 13 land in the plot's columns 7 to 10 (x 33 to 36). */
     wave_override[10] = 0xffff;
     wave_override[11] = 0xff00;
     wave_override[12] = 0x00ff;
     wave_override[13] = 0xa0d0;
-    ld_render(&p, &c);
-    /* Adjacent pixels carry different peaks. Silence leaves just one centre pixel. */
-    for (int y = 12; y <= 41; ++y) {
-        assert(d.dots[y][12]);
-        assert(d.dots[y][13] == (y <= 27));
-        assert(d.dots[y][14] == (y >= 27));
-        assert(d.dots[y][15] == (y >= 17 && y <= 39));
-        assert(d.dots[y][16] == (y == 27));
+    ld_render(&p, &c, 0, 0);
+    /* Adjacent pixels carry different peaks, at most 9 above and 9 below the centre line (row 22). Silence leaves the
+     * centre line only. */
+    for (int y = LD_WAVE_TOP; y <= LD_WAVE_BOTTOM; ++y) {
+        assert(d.dots[y][33] == (y >= 13 && y <= 31));
+        assert(d.dots[y][34] == (y >= 13 && y <= 22));
+        assert(d.dots[y][35] == (y >= 22 && y <= 31));
+        assert(d.dots[y][36] == (y >= 16 && y <= 30));
+        assert(d.dots[y][37] == (y == 22));
     }
     memset(wave_override, 0, sizeof(wave_override));
     wave_override[10] = 0x2000;
     wave_override[11] = 0x1000;
     wave_override[12] = 0x0101;
     memset(&d, 0, sizeof(d));
-    ld_render(&p, &c);
-    for (int y = 12; y <= 41; ++y) {
-        assert(d.dots[y][12] == (y <= 27));
-        assert(d.dots[y][13] == (y >= 19 && y <= 27));
-        assert(d.dots[y][14] == (y >= 26 && y <= 28));
+    ld_render(&p, &c, 0, 0);
+    for (int y = LD_WAVE_TOP; y <= LD_WAVE_BOTTOM; ++y) {
+        assert(d.dots[y][33] == (y >= 13 && y <= 22));
+        assert(d.dots[y][34] == (y >= 17 && y <= 22));
+        assert(d.dots[y][35] == (y >= 21 && y <= 23));
     }
     wave_override[10] = wave_override[11] = 0;
     memset(&d, 0, sizeof(d));
-    ld_render(&p, &c);
+    ld_render(&p, &c, 0, 0);
     /* The display gain cap keeps a single quiet LSB from filling the plot. */
-    assert(!d.dots[25][14] && d.dots[26][14] && d.dots[28][14] && !d.dots[29][14]);
-    int y_label = 0, y_value = 0;
-    assert(where(&d, "ARM", &y_label) == LD_CELL_E && where(&d, "ON", &y_value) == LD_CELL_E &&
-           y_value > y_label);
-    assert(where(&d, "XFAD", &y_label) == LD_CELL_H && where(&d, "64", &y_value) == LD_CELL_H &&
-           y_value > y_label);
-    assert(LD_CELL_E == 32 + 26 * (LD_E - 4) && LD_CELL_H == 32 + 26 * (LD_H - 4));
+    assert(!d.dots[20][35] && d.dots[21][35] && d.dots[23][35] && !d.dots[24][35]);
+    /* The stock waveform's end markers: dotted, a flag on the second row pointing in; no frame. */
+    assert(d.dots[12][25] && d.dots[13][25] && d.dots[13][26] && d.dots[14][25] && !d.dots[15][25]);
+    assert(d.dots[12][121] && d.dots[13][121] && d.dots[13][120] && !d.dots[15][121]);
+    assert(!d.dots[11][60] && !d.dots[33][60]);
+    /* The stock placeholder in F and G: a dotted square, 17 pixels a side. */
+    for (int x = LD_CELL_F - 8; x <= LD_CELL_G + 8; ++x) {
+        int cx = x < 72 ? LD_CELL_F : LD_CELL_G, dx = x - cx;
+        assert(d.dots[40][x] == (dx >= -7 && dx <= 7 && (dx & 1)));
+        assert(d.dots[41][x] == (dx == -8 || dx == 8));
+        assert(!d.dots[42][x]);
+    }
+    /* ARM is on: its ring is filled and its caption ARMD inverted; XFAD's caption, its rail and knob. */
+    assert(d.dots[47][LD_CELL_E] && d.dots[42][LD_CELL_E] && !d.dots[44][LD_CELL_E - 3]);
+    int y_caption = 0;
+    assert(where(&d, "ARMD", &y_caption) == LD_CELL_E && y_caption == 59 && d.inverted == 1);
+    assert(where(&d, "XFAD", &y_caption) == LD_CELL_H && y_caption == 59);
+    assert(where(&d, "ON", &y_caption) == -1000 && where(&d, "64", &y_caption) == -1000);
+    /* FUNC + FX held: both captions are their values. */
     memset(&d, 0, sizeof(d));
-    ld_render_header(&p, &c);
-    assert(d.texts == 2);
+    ld_render(&p, &c, 1, 0);
+    assert(where(&d, "ON", &y_caption) == LD_CELL_E && y_caption == 59 && d.inverted == 0);
+    assert(where(&d, "64", &y_caption) == LD_CELL_H && y_caption == 59);
+    /* A turn: that cell's caption is its value for a moment, the other keeps its caption. */
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c, 0, 1u << LD_H);
+    assert(where(&d, "64", &y_caption) == LD_CELL_H && where(&d, "ARMD", &y_caption) == LD_CELL_E);
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c, 0, 1u << LD_E);
+    assert(where(&d, "ON", &y_caption) == LD_CELL_E && where(&d, "XFAD", &y_caption) == LD_CELL_H);
+    /* No status: the line says NO LINK. */
     ld_page(w, 0, 0, &p);
-    ld_render(&p, &c);
+    memset(&d, 0, sizeof(d));
+    ld_render(&p, &c, 0, 0);
+    assert(where(&d, "NO LINK", &y_caption) == (LD_WAVE_LEFT + LD_WAVE_RIGHT) / 2 &&
+           y_caption == LD_LINE_Y);
 }
 
 static void waveform_cursor(void)
@@ -419,29 +447,33 @@ static void waveform_cursor(void)
     wave_override[10] = 0x2010;
     status(w, LS_TRACK | LS_ARMED, 0, 0, 96000, 16, 4, 0, 0.0f);
     ld_page(w, 1, 64, &p);
-    ld_render(&p, &clean);
+    ld_render(&p, &clean, 0, 0);
     for (uint32_t i = 0; i < sizeof(columns) / sizeof(*columns); ++i) {
         write_column = columns[i];
         memset(&with, 0, sizeof(with));
-        ld_render(&p, &cursor);
+        ld_render(&p, &cursor, 0, 0);
+        /* the engine's column in the plot's: x 26 to 120 */
+        int at = LD_WAVE_LEFT + 1 + (int)(write_column * LD_WAVE_PLOT / LS_WAVE_COLUMNS);
+        assert(at >= LD_WAVE_LEFT + 1 && at <= LD_WAVE_RIGHT - 1);
         for (int y = 0; y < 64; ++y)
             for (int x = 0; x < 128; ++x) {
-                int dash = x == 2 + (int)write_column && y >= 12 && y <= 41 && (y - 12) % 4 < 2;
+                int dash = x == at && y >= LD_WAVE_TOP && y < LD_WAVE_BOTTOM - 2 &&
+                           (y - LD_WAVE_TOP) % 4 < 2;
                 assert(with.dots[y][x] == (without.dots[y][x] || dash));
             }
     }
 
-    /* Even a supplied write column does not replace the retained loop's phase ticks. */
+    /* Even a supplied write column does not replace the retained loop's phase ticks (half way: x 73). */
     status(w, LS_LOOP, 96000, 16, 0, 0, 0, 48000, 0.5f);
     ld_page(w, 1, 64, &p);
     write_column = LS_WAVE_COLUMNS;
     memset(&without, 0, sizeof(without));
-    ld_render(&p, &clean);
-    assert(without.dots[12][60] && without.dots[12][62] && without.dots[14][61]);
-    assert(!without.dots[20][61] && without.dots[40][61]);
+    ld_render(&p, &clean, 0, 0);
+    assert(without.dots[12][72] && without.dots[12][74] && without.dots[14][73]);
+    assert(!without.dots[20][73] && without.dots[31][73] && without.dots[32][73]);
     write_column = columns[1];
     memset(&with, 0, sizeof(with));
-    ld_render(&p, &cursor);
+    ld_render(&p, &cursor, 0, 0);
     assert(!memcmp(with.dots, without.dots, sizeof(with.dots)));
     write_column = LS_WAVE_COLUMNS;
 }

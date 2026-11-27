@@ -6,7 +6,7 @@
 #define DK_RELAY_SEAM_H
 #include <stdint.h>
 #define RT_SEAM_MAGIC 0x524c5331u
-#define RT_SEAM_VERSION 1u
+#define RT_SEAM_VERSION 2u
 #define RT_SEAM_WORDS 37u
 #define RTX_dkrt_image_file_abort 3u
 #define RTX_dkrt_image_file_close 4u

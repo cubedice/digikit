@@ -22,15 +22,17 @@ FUNC + FX opens the FX pages; Overloop's is one of them.
 | H: press | ARM as well, as on PRISM's page |
 | FUNC + NO | Drop the loop |
 
-The page shows the state (`IDLE`, `ARMED`, `LOOP`, `LOOP+ARM`) above one framed waveform. The highest positive peak
-and deepest negative peak from either stereo channel share the same centre line. Each pixel column covers its own
-time interval. The display scales to the strongest peak in view, up to about eightfold visual gain for quiet phrases.
-During recording, a dashed cursor writes peaks into fixed columns from left to right over the expected cycle
-(two seconds until its length is known). The cursor wraps and replaces the previous pass one column at a time. An
-armed change freezes the captured cycle's picture with its audio. The mark on the frame follows the loop playhead.
-STOP keeps the frozen picture and DROP returns to the live view. The line below
-shows the cycle length or capture limit. On the bottom row, E is `ARM` and H is `XFAD`; the bar between them shows the
-crossfade as heard.
+The page is laid out as the stock FX pages: the stock header (with the `Overloop (5/5)` title for a moment on arrival),
+the `OVL` tab at the top left and the page indicator on the right. Across the top is the waveform in the stock waveform
+style (no frame, dotted end markers). The highest positive peak and deepest negative peak from either stereo channel share
+the same centre line. The display scales to the strongest peak in view, up to about eightfold visual gain for quiet
+phrases. During recording, a dashed cursor writes peaks from left to right over the expected cycle (two seconds until its
+length is known). The cursor wraps and replaces the previous pass. An armed change freezes the captured cycle's picture
+with its audio. The ticks at the edges follow the loop playhead. STOP keeps the frozen picture and DROP returns to the
+live view. The line below shows what the loop does (`NO LOOP`, the cycle length or the capture limit, `NO LINK` when the
+engine does not report). On the bottom row, E is ARM (a ring, filled while armed, its caption `ARMD` inverted) and H is
+XFAD (its slider shows the crossfade as heard); F and G are the stock empty cells. As on the stock pages, a turned cell's
+caption shows its value for a moment, and FUNC + FX held shows both values.
 
 What happens, case by case:
 
