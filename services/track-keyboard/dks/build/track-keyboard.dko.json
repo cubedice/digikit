@@ -9041,7 +9041,7 @@
   },
   {
    "addend": 0,
-   "offset": 46,
+   "offset": 48,
    "section": ".text.take_hidden",
    "symbol": ".sec..bss.hidden_capacity",
    "type": "cf.32"
@@ -9055,7 +9055,14 @@
   },
   {
    "addend": 0,
-   "offset": 126,
+   "offset": 140,
+   "section": ".text.take_hidden",
+   "symbol": ".sec..bss.hidden_last",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 146,
    "section": ".text.take_hidden",
    "symbol": ".sec..bss.hidden_used",
    "type": "cf.32"
@@ -9468,378 +9475,392 @@
   },
   {
    "addend": 0,
-   "offset": 334,
+   "offset": 340,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_link_hidden",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 364,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.hidden_serial",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 376,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_link_hidden",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 390,
+   "offset": 402,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.hidden_used",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 418,
+   "offset": 430,
    "section": ".text.tk_native_drain",
    "symbol": "memset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 428,
+   "offset": 440,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 436,
+   "offset": 448,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 454,
+   "offset": 464,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.notes",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 500,
+   "offset": 510,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.releases",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 522,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.hidden_used",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 544,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_link_hidden",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 554,
+   "offset": 516,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.owner_faded",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 568,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.releases",
-   "type": "cf.32"
-  },
-  {
-   "addend": 174,
-   "offset": 604,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.send",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 630,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.active_helpers",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 642,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.tk_native_audio_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 650,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.active_helpers",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 656,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_note_edge",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 672,
-   "section": ".text.tk_native_drain",
-   "symbol": "memset",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 710,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_native_kind",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 732,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_relay_ready",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 750,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_automatic",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 786,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.budget_at",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 802,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_reserved",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 816,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_helpers",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 832,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.tk_native_audio_active",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 884,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_start_ready",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 982,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_native_channel",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 990,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_native_midi_ports",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1014,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.usb_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1036,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.din_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1066,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.finish_start.isra.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1080,
-   "section": ".text.tk_native_drain",
-   "symbol": "memset",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1118,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_start_ready",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1158,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.take_hidden",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1168,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_fw_quiet",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1242,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.finish_start.isra.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1256,
-   "section": ".text.tk_native_drain",
-   "symbol": "memset",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1272,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_runtime_midi_busy",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1290,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.notes",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1390,
+   "offset": 582,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.hidden_used",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1428,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.hidden_serial",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1476,
+   "offset": 600,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_link_hidden",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1494,
+   "offset": 614,
    "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.finish_start.isra.0",
+   "symbol": ".sec..bss.owner_faded",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1524,
+   "offset": 628,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.releases",
+   "type": "cf.32"
+  },
+  {
+   "addend": 174,
+   "offset": 644,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.send",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 690,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_link_chord",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1538,
+   "offset": 710,
    "section": ".text.tk_native_drain",
-   "symbol": ".sec..bss.owner_faded",
+   "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1564,
-   "section": ".text.tk_native_drain",
-   "symbol": "tk_pool_link_hidden",
-   "type": "cf.32"
-  },
-  {
-   "addend": 174,
-   "offset": 1598,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.send",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1636,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.usb_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1654,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..data.din_budget",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1676,
-   "section": ".text.tk_native_drain",
-   "symbol": ".sec..text.finish_start.isra.0",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1704,
+   "offset": 722,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.tk_native_audio_active",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1714,
+   "offset": 730,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1722,
+   "offset": 736,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_note_edge",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 752,
+   "section": ".text.tk_native_drain",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 794,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_native_kind",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 816,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_relay_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 834,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_automatic",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 870,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.budget_at",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 886,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_reserved",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 900,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_helpers",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 916,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.tk_native_audio_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 968,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_start_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1066,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_native_channel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1074,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_native_midi_ports",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1098,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.usb_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1120,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.din_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1150,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1164,
+   "section": ".text.tk_native_drain",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1202,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_start_ready",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1242,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.take_hidden",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1252,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_fw_quiet",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1326,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1340,
+   "section": ".text.tk_native_drain",
+   "symbol": "memset",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1356,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_runtime_midi_busy",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1374,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.notes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1474,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.hidden_used",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1512,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.hidden_serial",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1560,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_link_hidden",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1578,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1608,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_link_chord",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1622,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.owner_faded",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1648,
+   "section": ".text.tk_native_drain",
+   "symbol": "tk_pool_link_hidden",
+   "type": "cf.32"
+  },
+  {
+   "addend": 174,
+   "offset": 1682,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.send",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1720,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.usb_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1738,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..data.din_budget",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1760,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..text.finish_start.isra.0",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1788,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.tk_native_audio_active",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1798,
    "section": ".text.tk_native_drain",
    "symbol": ".sec..bss.active_helpers",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1730,
+   "offset": 1806,
+   "section": ".text.tk_native_drain",
+   "symbol": ".sec..bss.active_helpers",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1814,
    "section": ".text.tk_native_drain",
    "symbol": "tk_pool_fw_note_edge",
    "type": "cf.32"
@@ -18591,10 +18612,10 @@
   },
   {
    "align": 2,
-   "hex": "4feffff448d7001c226f00144a290012670c42004cd7001c4fef000c4e75721220290008e2a866ea75af001341f9000000001230280067da3002c0fc01bad0b90000000020400680000001c2508877a800067802b883670659834a83661677a80008b483660e4a28000b660878122610e8ab669e41e8001ab08866d241f90000000077b0280074017381718201036610136f001300101342001370016000ff762002528014007180b08163de6000ff64",
+   "hex": "4fefffe048d70cfc246f00284a2a0012670e420310034cd70cfc4fef00204e757212202a0008e2a866e871af002741f9000000001430080067d832004203227900000000c2fc01bad3c141e9000843e901c273a800067802b881670659814a81661873a80008b08166104a28000b660a7e122210eea9669a760141e8001ab1c966d04a03678e7382740147f90000000041f90000000079b308007bb008007d82204641f048ff2e084c417006204652883e087f870f0566143208156f0027001017810800154100136000ff4a2042528834087d82bc8163c66000ff38",
    "kind": "text",
    "name": ".text.take_hidden",
-   "size": 176
+   "size": 220
   },
   {
    "align": 2,
@@ -18675,10 +18696,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffc448d77cfc4a79000000006770420342827b8342042f054eb900000000588f223900000000d282227900000000204171c041e8000e0681000001c87d9055864a8666147da80002ba86670c0d00660810bc00037801528941e8001ab1c166dc4a04670623c90000000020035280160071800682000001ba7210b28066944eb900000000220092b90000000023c00000000020010c81000005dc6306203c000005dc3200c0fc0a8cd0b900000000c2fc2ee023c000000000d2b90000000023c1000000000c810005dc00630c283c0005dc0023c4000000000c8000011940630c2a3c0001194023c5000000004246428245ef003b47f9000000003f460032203900000000220082b9000000006700013a42071f47003b4a806700018a42a72f0a487800034e934fef000c28404a8067000174102c001379af003b4a00670000ba22045282e58971802041d1fc0000000077b00800720ee3ab73ac000cef8902830001c000028100003f8086812f032f002f0478014eb90000000071ac001377af004741f900000000e1ac103038004684c880118438004878001a42a72f0c4eb9000000004fef0018203900000000538023c0000000004a0466000086c6fc01ba4201d6b90000000020430683000001c841e8000e799059844a84660810bc00037201528041e8001ab1c366e84a01675023c00000000060484a2c0014665471ac0010b880664c41f9000000004a30080067407c017e0442a742a72f004eb90000000071af004741f9000000001947000e1186080053b90000000052824fef000c7e04be826600feb84cd77cfc4fef003c4e7542a72f0c2f044eb9000000004fef000c4a0067e24a2c0014662873ac00107001363900000000e3a82f014680c1b900000000c08333c0000000004eb900000000588f4878001a42a72f0c4eb90000000060903f2f003242672f0a487800014e934fef000c2c404a80678c71af003b2f004eb900000000588f2a004a8067147003b085660000d84eb9000000004a00670000ce71af003b2f004eb900000000588f7780700173ae0012ba81660001cc4a00670000c01c2f003b302e0018223900000000798692802f4100342f044eb900000000588f4a0066522f044eb900000000588f7201e9a980812e00ceb9000000004a83677073ef003620417277b28864644a47660001284a2e0012661e1d46001071ef00367c77bc8065582f042f044eb900000000508f4a00664871ae0012ba80660001464a836700014079ef00367a77ba846500013473af003b70013c2f0032e3a88c803f4600326000fd52420042836000ff424a47660000841d4600104a83669e4a2e00146700019471af003b2f004eb90000000026004eb900000000588f4a0067340800000167102e3c00002edfbeb900000000640000fa080000006710223c00002327b2b900000000640000e4780fb883640000ee71ae00142f0071af003f2f004eb9000000004878001a42a72f0e4eb900000000600000ae4687ce804a836734428171c703006724200171802f002f042f4100344eb900000000508f222f002c4a0066087001e3a84680ce8052817010b08166ce4a47660e2f0e2f044eb9000000006000feec4eb900000000c0874a4067023e0071c72200e8a978012e01c2840807000067121d4600106000ff1252817810b8816700fec0030067f21d4100106000fefc71ae00142f0071af003f2f004eb9000000004878001a42a72f0e4eb90000000052824fef00146000fd4e41f9000000004a886700ff1c4e906000ff16227900000000220979830681000001c643e91d66204141e8fe467ba8000255854a85661a4a28000867147ba80003ba84660c7d907bae000cba866700fed841e8001ab1c166d40681000001bab28966c41d43000f1d400011122e0013677c77af003b738141f90000000070017e077a7f18303800e3a87c0e8084182e000d118038002003e588c8852040d1fc00000000103018005280c0877e0211801800eda8888071ae000cef88028000003f80888008c400112f042f012f034eb90000000071ae00142f0071af004b2f004eb9000000001d47000e6000ff0c4a2e001266462f2e000871ae00102f004eb900000000508f4a2e0012662e49f90000000071ae00104a340800671e2f3c0002000042a72f004eb9000000004fef000c420171ae00101981080071ae000d2f002f0e71af00432f004eb9000000004fef000c4a006700fc004a2e00146748102e001108000001670c283cffffd120d9b90000000008000000670c2a3cffffdcd8dbb900000000528271ae00147c022f0071af003f2f004eb9000000001d46000e508f6000fbaa73ae0010700177af003be3a881b900000000b681670e363900000000808333c0000000002f014eb900000000588f60b0",
+   "hex": "4fefffc448d77cfc4a79000000006770420342827b8342042f054eb900000000588f223900000000d282227900000000204171c041e8000e0681000001c87d9055864a8666147da80002ba86670c0d00660810bc00037801528941e8001ab1c166dc4a04670623c90000000020035280160071800682000001ba7210b28066944eb900000000220092b90000000023c00000000020010c81000005dc6306203c000005dc3200c0fc0a8cd0b900000000c2fc2ee023c000000000d2b90000000023c1000000000c810005dc00630c263c0005dc0023c3000000000c8000011940630c283c0001194023c4000000004245428245ef003b47f9000000003f450032203900000000220082b9000000006700011c42061f46003b4a80670001dc42a72f0a487800034e934fef000c28404a80670001c6182c001377af003b4a04670000f671ac000c122c000d7e7f7a0e7984ef884df9000000005282c287028000003f8080812203e5892041d1fc0000000073b04800eba902810001c00080812f002f042f0376014e9671ac001379af004741f900000000e1ab103048004683c680118348004878001a42a72f0c4eb9000000004fef0018223900000000538123c1000000004a03665c3004c0fc01bad0b90000000022400680000001c843e9000e7b9159854a85660812bc00037601528143e9001ab3c066e84a03670623c10000000049f9000000004a344800671642072f3c0002000042a72f044e96198748004fef000c7c04bc826600fed64cd77cfc4fef003c4e754a2c0014664071ac0010b680663841f9000000004a300800672c42a742a72f004eb9000000007201760471af004741f900000000118108001943000e53b900000000528260a442a72f0c2f034eb9000000004fef000c4a00679c4a2c001266227812202c00082200e8a967160280fff3ffff2f0071ac00102f004eb900000000508f4a2c00146628700173ac0010363900000000e3a82f014680c1b900000000c08333c0000000004eb900000000588f4878001a42a72f0c4eb9000000006000ff7c3f2f003242672f0a487800014e934fef000c2c404a806700ff1c71af003b2f004eb900000000588f2a004a8067147c03bc80660000d84eb9000000004a00670000ce71af003b2f004eb900000000588f7780700173ae0012ba81660001cc4a00670000c01c2f003b302e00182e390000000079869e802f4700342f044eb900000000588f4a0066522f044eb900000000588f7201e9a980812e00ceb9000000004a83677073ef003620417277b28864644a47660001284a2e0012661e1d46001071ef00367c77bc8065582f042f044eb900000000508f4a00664871ae0012ba80660001464a836700014079ef00367a77ba846500013473af003b70013c2f0032e3a88c803f4600326000fcfe420042836000ff424a47660000841d4600104a83669e4a2e00146700019471af003b2f004eb90000000026004eb900000000588f4a0067340800000167102e3c00002edfbeb900000000640000fa080000006710223c00002327b2b900000000640000e4780fb883640000ee71ae00142f0071af003f2f004eb9000000004878001a42a72f0e4eb900000000600000ae4687ce804a836734428171c703006724200171802f002f042f4100344eb900000000508f222f002c4a0066087001e3a84680ce8052817010b08166ce4a47660e2f0e2f044eb9000000006000feec4eb900000000c0874a4067023e0071c72200e8a978012e01c2840807000067121d4600106000ff1252817810b8816700fec0030067f21d4100106000fefc71ae00142f0071af003f2f004eb9000000004878001a42a72f0e4eb90000000052824fef00146000fcdc41f9000000004a886700ff1c4e906000ff16227900000000220979830681000001c643e91d66204141e8fe467ba8000255854a85661a4a28000867147ba80003ba84660c7d907bae000cba866700fed841e8001ab1c166d40681000001bab28966c41d43000f1d400011122e0013677c77af003b738141f90000000070017e077a7f18303800e3a87c0e8084182e000d118038002003e588c8852040d1fc00000000103018005280c0877e0211801800eda8888071ae000cef88028000003f80888008c400112f042f012f034eb90000000071ae00142f0071af004b2f004eb9000000001d47000e6000ff0c4a2e001266462f2e000871ae00102f004eb900000000508f4a2e0012662e49f90000000071ae00104a340800671e2f3c0002000042a72f004eb9000000004fef000c420171ae00101981080071ae000d2f002f0e71af00432f004eb9000000004fef000c4a006700fb8e4a2e00146748102e001108000001670c263cffffd120d7b90000000008000000670c283cffffdcd8d9b900000000528271ae00147a022f0071af003f2f004eb9000000001d45000e508f6000fb3873ae0010700177af003be3a881b900000000b681670e363900000000808333c0000000002f014eb900000000588f60b0",
    "kind": "text",
    "name": ".text.tk_native_drain",
-   "size": 1738
+   "size": 1822
   },
   {
    "align": 2,
@@ -18728,6 +18749,13 @@
    "kind": "bss",
    "name": ".bss.tk_native_audio_active",
    "size": 4
+  },
+  {
+   "align": 1,
+   "hex": "",
+   "kind": "bss",
+   "name": ".bss.hidden_last",
+   "size": 16
   },
   {
    "align": 1,
@@ -20585,7 +20613,7 @@
    "size": 24
   }
  ],
- "source_sha256": "1b6af4a7a129ae2a5ea6fd54456b88c3155baae2cae7e80ae4847076ad0828dd",
+ "source_sha256": "ed7252dea03fa102da79f1baec3e1bacf881b89b09e0c52f536a41e220273e94",
  "symbols": [
   {
    "global": false,
@@ -20801,6 +20829,12 @@
    "global": false,
    "name": ".sec..bss.hidden_capacity",
    "section": ".bss.hidden_capacity",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..bss.hidden_last",
+   "section": ".bss.hidden_last",
    "value": 0
   },
   {
@@ -23573,6 +23607,12 @@
    "global": false,
    "name": "hidden_capacity",
    "section": ".bss.hidden_capacity",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": "hidden_last",
+   "section": ".bss.hidden_last",
    "value": 0
   },
   {
@@ -26539,8 +26579,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "DK_SVC_OWNER dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "19325",
-  "isa_check": "864f2f9fb653ca5e5d13cabbc1cfa145b14fb4018e0fc2303b38fb6648a5fefd",
+  "instructions_redecoded": "19368",
+  "isa_check": "24e5fd49d58d1d80165cb67a7ccbd205c4912eb2e69615aa13df69106d8d5a2b",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

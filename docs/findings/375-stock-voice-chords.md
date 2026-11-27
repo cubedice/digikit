@@ -42,11 +42,15 @@ values on the stack that are not identified.
   run on the sum, so the notes share them.
 - Per track, `_cs_cfg` holds 6 words: the number of copies (0 to 3), a gain applied to the sum (float; 0 leaves it), the three pitch ratios
   (float) and the shape word they came from. The copies are `_cs_rec`: three per voice, 45,312 bytes for the 32 voices.
-- Note-on: the owner is active and its sample pointer or phase is not what its last render left (`_cs_last`), so the firmware's arm seeded
-  them; the copies of the last note are then stale. While the owner sounds, every copy the note does not have yet is taken from the owner's
-  record: all of them after a note-on, or the ones a shape that arrived after the note-on added. Nothing is written to the owner's record.
-- Every block a copy's step (`+0x1a8`, a signed Q31 int64) is set to the owner's step times its ratio, so the owner's pitch changes carry
-  over. The copies play to their own sample end; a retrigger of the owner copies again.
+- Note-on: the owner's sample pointer or phase is not what its last render left (`_cs_last`), so the firmware's arm seeded them, whatever
+  started the note (a key, a trig of the sequencer); the copies of the last note are then done. While the owner sounds, every copy the note
+  does not have yet is taken from the owner's record, with its ratio: all of them after a note-on, or the ones a shape that arrived after the
+  note-on added. Nothing is written to the owner's record.
+- Every block a copy's step (`+0x1a8`, a signed Q31 int64) is set to the owner's step times the ratio it was taken with, so the owner's pitch
+  changes carry over and a later shape does not move it. The copies play to their own sample end; a retrigger of the owner copies again.
+- The chord's note-off clears the copies of the track's row (the track keyboard sends its shape with no copies, the intervals kept): the
+  track's next note-on, from any source, is one note, while the copies of the released note play their release. Once none of them sounds,
+  the pair's odd voice takes the track off the path (its `_cs_vmask` bits).
 - The guard: after its render, a copy's block must hold samples whose bits without the sign are at most those of 8.0 (finite, magnitude at
   most 8.0). Otherwise the copy ends (its ACTIVE byte clears, so the renderer zero-fills it), `_cs_faults` counts it and its block is not
   added, so the track's filter and envelope never see it.
@@ -59,8 +63,9 @@ values on the stack that are not identified.
   of more than four notes, a note with a velocity of its own or an interval outside -32 to 31 keeps a voice per note. Another shape on a held
   key starts the voice again with it.
 - Copies are offered to TK_NATIVE_AUDIO tracks except STRETCH (`tk_native_copies`, set on every poll with the voice capacity).
-- The native layer (`track-native.c`) records the shape of the note's destination track (`tk_pool_link_chord`, an image function: seam
-  version 5) before it sends the note; a note without copies records an empty shape.
+- The native layer (`track-native.c`) records the shape of the note's destination track (`tk_pool_link_chord`, an image function; seam
+  version 6 with the hidden voices' `tk_pool_link_hidden`) before it sends the note; a note without copies records an empty shape, and the
+  chord's note-off its shape with no copies. The word can reach the DSP after the note-on; the DSP then takes the copies late.
 - The frame: the track keyboard's region of the frame tail grows from 4 words to 5 (`DL_TRACK_POOL_WORDS`; the DSP limit
   `DL_TAIL_WORDS - 158`), so the chunk area of core/dsp-link loses one word per block. The first word, at frame byte `0x850` before the pool map
   at `0x854`, is one track's shape word: `0xc5` in bits 24-31, the track in 20-23, the copies in 18-19 and the intervals (6 bits, signed) in
@@ -93,14 +98,17 @@ note-off.
   state (words 1-96) cleared and its phase seeded as the firmware's arm does (start, or end minus one sample when reversed). Every block its step
   is the owner's times 2^((pitch - the track's note) / 12), the track's note read from the frame copy (halfword 1 + t). Each voice has an
   envelope of its own, moved by the even voice of the pair: up by 1/3 per block (2 ms) while its gate is open, 0.97 per block once it closed,
-  ending below 0.0005. Voice 0 is the owner's own note: 1 while its gate is open, the same release when the track keyboard closes it. The
-  envelopes ramp over the block; the hidden voices are summed into the owner's block, so the track's filter, amp envelope and sends still run
-  on the sum, and the guard covers them as it covers the copies.
+  ending below 0.0005. Voice 0 is the owner's own note: 1 from its note-on (from any source), the same release once the track keyboard closes
+  its gate, until the owner's next note-on. The envelopes ramp over the block; the hidden voices are summed into the owner's block, so the
+  track's filter, amp envelope and sends still run on the sum, and the guard covers them as it covers the copies. A hidden voice's open gate
+  and the owner's closed one put the track on the path; the words the track keyboard sends again in turn do not otherwise.
 - Track keyboard (`track-native.c`): a track with hidden voices (`tk_native_set_hidden`, the same stock machines as the copies) can take up to
   three more notes. A note no track of its group can take (no free helper, or an AUTO helper not admitted yet) while the owner's own note sounds
-  without copies plays on a free hidden voice: no stock note, only its word. Its key up closes its gate. The owner's key up while hidden voices
-  sound closes the owner's gate (its sample fades) and holds its stock note-off (`NOTE_HELD`) until the last hidden voice is released; the
-  owner's next note opens its gate again. A saved group's helpers still come first; AUTO now takes the hidden voices before it borrows a track.
+  (or is held) without copies plays on a free hidden voice: no stock note, only its word. The voices are taken in turn, so a key reuses the
+  voice released longest ago. Its key up closes its gate, at its own velocity. The owner's key up while hidden voices sound closes the owner's
+  gate (its sample fades) and holds its stock note-off (`NOTE_HELD`) until the last hidden voice is released; then the stock note-off goes and
+  the owner's gate opens again for its next note-on. A saved group's helpers still come first. With AUTO, a key that comes while the owner sounds
+  and no helper is free or admitted yet plays on a hidden voice instead of waiting; keys that arrive together still wait for AUTO's helpers.
 - The frame word carries 80 words in turn (16 shapes, 4 hidden-voice words per track once set), changed ones first.
 
 The behaviour is paraphonic: the track's stock amp envelope opens with the first key and releases after the last, and each note's own
@@ -162,9 +170,11 @@ From the device figures above, `_cs_voice` now keeps the extra voices within a b
 - A copy that stopped (ACTIVE clear) gets no step and no render, guard or sum. A track leaves the hidden path (its bit of `_cs_hmask`, and its
   `_cs_vmask` bits when it has no copies) when, at the pair's odd voice, no hidden voice sounded or waited to start and its own note is not
   faded while its sample still plays; a word with an open gate (or the owner's closed one) puts it back.
-- The budget: once per block, at the first chord voice, the extra voices may take `_cs_limit` (560,000 cycles, 84 % of an assumed 1 GHz
+- The budget: once per block, at the first chord voice (a voice counter R14 not below the last chord voice's: `_dv_diag` counts blocks at voice
+  0 only, which a STRETCH track 1 never brings to the hook), the extra voices may take `_cs_limit` (560,000 cycles, 84 % of an assumed 1 GHz
   block) minus what the last block cost without them: the block handler's own EMUCLK count from word 0 of the reply record the last block built
-  (`_dv_rec[0]`, rotated by 16 bits, finding 125), less the extra voices' own cycles of that block. Each extra render is measured with EMUCLK and
+  (`_dv_rec[0]`, rotated by 16 bits, finding 125), less the extra voices' own cycles of that block when it was the one before (its first chord
+  voice at most 1,000,000 cycles earlier). Each extra render is measured with EMUCLK and
   paid from it. One that does not fit (its cycles so far plus 6,000), or past 24 extra records in the block, ends (ACTIVE clear) and `_cs_skips`
   counts it: a copy comes back at the owner's next note-on, a hidden voice at its next note. It does not stutter.
 
@@ -225,6 +235,14 @@ would leave less.
 - Records in L1 save about 6 % of an extra note (above): too little for a `dsp.l1` region in patchkit, and dropped (2026-11-27). Tighter
   guard and sum (or ramp) loops would save about as much (500 to 700 cycles per extra note) without it: the guard must clear a block before it
   is added, so the two stay two passes. Velocity was not checked on the device (the remote's keys have one velocity).
+- A looped sample keeps its record ACTIVE after its envelope is silent (as the stock voice does): the copies of a looped chord play their release
+  and a faded looped owner keeps the track on the hidden path until the track's next note-on, paying for silence and using the budget.
+- A copy or hidden voice that the budget drops or the guard ends stops at once, without a fade.
+- A trig of the sequencer on a track whose hidden voices the track keyboard still holds, after the owner's key went up, starts at full level but
+  fades again with the owner's closed gate the next time the track keyboard sends it.
+- Copies are offered by the owner's machine; a chord note that goes to a helper track whose machine is STRETCH plays only its root.
+- core/track-keyboard offers copies and hidden voices without knowing that core/dsp-voice (`_cs_receive`) is in the image; every DT2 profile
+  with the track keyboard has it today (through core/dyndsp).
 - A hidden voice's velocity factor is at most 8.0. On a steep curve a soft first key and a hard second key need more (curve 4: 8.96 for 100
   over 40), and the second key then sounds below its level. Raising the owner's latched factor to the loudest note's and scaling the owner's
   own block down instead would keep every factor at most 1, but writes stock state (the latch, finding 135).

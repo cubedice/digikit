@@ -194,14 +194,25 @@ describeOn('dt2', 'stock chords on one track', () => {
     } finally {
       await edge('TRIG 9', false);
     }
-    await waitEmulated(session, 300);
+    // The hidden key up: its gate closes at its own velocity, so its fade keeps its level (factor 1 for two keys of one velocity).
+    await waitEmulated(session, 20);
+    const released = await dspWords(session, dsp('_hv_state') + 32, 8);
+    await waitEmulated(session, 280);
     const tail = await capture('tail');
     const at = (pcm: Float32Array) => ({ f0: tone(pcm, f0, 0), f1: tone(pcm, f1, 0), finite: pcm.every(Number.isFinite) });
-    const hiddenReport = { f1, both, pair: at(pair!), after9: at(after9!), tail: at(tail), faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]! };
+    const releasedWord = released[0]!;
+    const hiddenReport = {
+      f1, both, pair: at(pair!), after9: at(after9!), tail: at(tail), faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]!,
+      released: { gate: (releasedWord >>> 17) & 1, velocity: releasedWord & 127, factor: asFloat(released[7]!) },
+    };
     console.info('HIDDEN VOICES', JSON.stringify(hiddenReport));
     await waitEmulated(session, 1300); // the first key's own sample (one second) ends: nothing of the track sounds
     const hmaskIdle = (await dspWords(session, dsp('_cs_hmask'), 1))[0]!;
     const vmaskIdle = (await dspWords(session, dsp('_cs_vmask'), 1))[0]!;
+    // POLY off: the firmware plays the key itself (a stock note-on the track keyboard does not see). After the hidden voices it plays at its level.
+    await turn(1, -12);
+    const stockAfterHidden = levels(await render('stock-after-hidden'));
+    await turn(1, 12);
 
     // The budget: with a limit no block can meet, a chord's copies are not rendered: they end and are counted, the owner plays. With the limit back,
     // the next chord is whole.
@@ -222,7 +233,11 @@ describeOn('dt2', 'stock chords on one track', () => {
     const skips = (await dspWords(session, dsp('_cs_skips'), 1))[0]! - skipsBefore;
     await pokeWord(dsp('_cs_limit'), limit);
     const restored = levels(await render('restored'));
-    console.info('BUDGET', JSON.stringify({ limit, hmaskIdle, vmaskIdle, skips, starved, restored }));
+    // After the chord's note-off a stock note-on on the track is one note: the chord's shape went with it.
+    await turn(1, -12);
+    const stockAfterChord = levels(await render('stock-after-chord'));
+    await turn(1, 12);
+    console.info('BUDGET', JSON.stringify({ limit, hmaskIdle, vmaskIdle, skips, starved, restored, stockAfterHidden, stockAfterChord }));
 
     // Velocity: MIDI notes on track 1 (USB, Auto Channel 1), CHRD PLAY. The second key plays on hidden voice 1 at the level the stock voice gives its
     // velocity: its factor (`_hv_state` word 7) is the track's velocity curve at its velocity over the curve at the owner's (word 4 holds both
@@ -249,7 +264,13 @@ describeOn('dt2', 'stock chords on one track', () => {
       await waitEmulated(session, 40);
       await midi([0x90, 67, second]);
       await waitEmulated(session, 60);
-      const state = await dspWords(session, dsp('_hv_state') + 32, 8);
+      const states = await dspWords(session, dsp('_hv_state'), 32); // track 1: the owner and hidden voices 1 .. 3, 8 words each
+      const taken = [1, 2, 3].find((h) => {
+        const word = states[8 * h]!;
+        return word >>> 24 === 0xc6 && ((word >>> 17) & 1) === 1 && ((word >>> 7) & 127) === 67;
+      });
+      expect(taken, 'the second key plays on a hidden voice').toBeDefined();
+      const state = states.slice(8 * taken!, 8 * taken! + 8);
       const pcm = await capture(`velocity-${label}`);
       await midi([0x80, 67, 0, 0x80, 60, 0]);
       const key = state[4]!;
@@ -299,11 +320,18 @@ describeOn('dt2', 'stock chords on one track', () => {
     expect(hiddenReport.tail.f1, 'both keys up: the track releases').toBeLessThan(0.1 * root);
     expect(hiddenReport.pair.finite && hiddenReport.after9.finite && hiddenReport.tail.finite).toBe(true);
     expect(hiddenReport.faults, 'only the two copies the test broke').toBe(guard.faults);
+    expect(hiddenReport.released.gate, 'the hidden key up closes its gate').toBe(0);
+    expect(hiddenReport.released.velocity, 'at its own velocity').toBe(100);
+    expect(Math.abs(hiddenReport.released.factor - 1), 'so its fade keeps its level').toBeLessThan(1e-3);
     expect(hmaskIdle & 1, 'track 1 left the hidden path once its notes ended').toBe(0);
     expect(vmaskIdle & 3, 'and the chord path (no copies)').toBe(0);
     expect(limit, 'the default limit').toBe(560000);
     expect(skips, 'the starved block ended the copies of both voices').toBeGreaterThanOrEqual(4);
     for (const channel of [0, 1] as const) {
+      expect(stockAfterHidden.root[channel], 'a stock note after the hidden voices plays').toBeGreaterThan(0.5 * root);
+      expect(stockAfterChord.root[channel], 'a stock note after the chord plays').toBeGreaterThan(0.5 * root);
+      expect(stockAfterChord.third[channel], 'as one note').toBeLessThan(0.1 * root);
+      expect(stockAfterChord.fifth[channel]).toBeLessThan(0.1 * root);
       expect(starved.root[channel], 'the owner plays without a budget').toBeGreaterThan(0.5 * root);
       expect(starved.third[channel], 'no copy without a budget').toBeLessThan(0.1 * root);
       expect(starved.fifth[channel]).toBeLessThan(0.1 * root);

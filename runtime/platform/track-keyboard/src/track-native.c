@@ -49,6 +49,9 @@ static uint8_t audio_pending[TK_TRACKS];
 static uint8_t hidden_capacity[TK_TRACKS], hidden_used[TK_TRACKS];
 static uint8_t hidden_serial[TK_TRACKS][TK_COPIES + 1];
 static bool owner_faded[TK_TRACKS];
+/* The hidden voice each track took last: the next one starts after it, so a key reuses the voice released longest ago and seldom cuts a
+ * release still fading in the DSP. */
+static uint8_t hidden_last[TK_TRACKS];
 /* Generated audio bypasses the stock audition counter. Report dispatch
  * ownership independently so it can be compared with the stock route.
  */
@@ -301,27 +304,39 @@ static void retire_unassigned(void)
 }
 
 /* A hidden voice of the owner (finding 375) for a pitch no track of its group can take: while the owner's own voice sounds a note without
- * copies, a note without copies plays on a free hidden voice instead of a helper track. */
+ * copies, a note without copies plays on a free hidden voice instead of a helper track. The hidden voice copies the owner's voice record and
+ * plays under its amp envelope, so without the owner's own note it would be silent. */
 static bool take_hidden(uint8_t owner, NativeNote *note)
 {
     if (note->kind != TK_NATIVE_AUDIO || (note->shape >> 18) || !hidden_capacity[owner])
         return false;
+    bool sounds = false;
     for (unsigned i = 0; i <= TK_NOTES; ++i) {
         const NativeNote *own = &notes[owner][i];
         if ((own->state == NOTE_SOUNDING || own->state == NOTE_HELD) && own->destination == owner &&
-            !own->hidden && (own->shape >> 18))
-            return false; /* its records play the owner's chord */
+            !own->hidden) {
+            if (own->shape >> 18)
+                return false; /* its records play the owner's chord */
+            sounds = true;
+        }
     }
-    for (uint8_t h = 1; h <= hidden_capacity[owner]; ++h)
+    if (!sounds)
+        return false;
+    uint8_t capacity = hidden_capacity[owner];
+    for (uint8_t k = 1; k <= capacity; ++k) {
+        uint8_t h = (uint8_t)((hidden_last[owner] + k - 1u) % capacity + 1u);
         if (!(hidden_used[owner] & (1u << h))) {
+            hidden_last[owner] = h;
             note->destination = owner;
             note->hidden = h;
             return true;
         }
+    }
     return false;
 }
 
-/* With no hidden voice left the owner's held note gets its stock note-off. */
+/* With no hidden voice left the owner's held note gets its stock note-off, and the owner's gate opens again: the DSP keeps fading the
+ * released note and plays the owner's next note-on from any source (a key, a trig of the sequencer) at full level. */
 static void release_held(uint8_t owner)
 {
     if (hidden_used[owner])
@@ -331,6 +346,10 @@ static void release_held(uint8_t owner)
             notes[owner][i].state = NOTE_RELEASE;
             ++releases;
         }
+    if (owner_faded[owner]) {
+        tk_pool_link_hidden(owner, 0, hidden_bits(true, 0, 0, 0));
+        owner_faded[owner] = false;
+    }
 }
 
 static bool choose_audio_destination(uint8_t owner, NativeNote *note, bool automatic, bool expired)
@@ -383,10 +402,10 @@ void tk_native_drain(void)
         uint8_t track = 0;
         NativeNote *entry = releases ? oldest(NOTE_RELEASE, &track, 0) : NULL;
         if (entry && entry->hidden) {
-            /* A hidden voice's key is up: its gate closes (the DSP fades it). */
-            tk_pool_link_hidden(
-                track, entry->hidden,
-                hidden_bits(false, hidden_serial[track][entry->hidden], entry->pitch, 0));
+            /* A hidden voice's key is up: its gate closes (the DSP fades it at the note's own velocity). */
+            tk_pool_link_hidden(track, entry->hidden,
+                                hidden_bits(false, hidden_serial[track][entry->hidden],
+                                            entry->pitch, entry->velocity));
             hidden_used[track] &= (uint8_t)~(1u << entry->hidden);
             *entry = (NativeNote){0};
             --releases;
@@ -406,6 +425,10 @@ void tk_native_drain(void)
         if (entry) {
             if (!send(track, entry, 0))
                 return;
+            if (entry->kind == TK_NATIVE_AUDIO && (entry->shape >> 18))
+                /* No copies at the destination's next note-on (a trig of its own plays one note); the copies of this one play their
+                 * release at the same intervals. */
+                tk_pool_link_chord(entry->destination, entry->shape & ~(UINT32_C(3) << 18));
             if (!entry->midi) {
                 tk_native_audio_active &= ~(1u << entry->destination);
                 active_helpers &= (uint16_t)~(1u << entry->destination);
@@ -465,7 +488,8 @@ void tk_native_drain(void)
             ++n;
             continue;
         }
-        /* The destination's chord goes ahead of the note: its voice plays the copies from this note-on (a note without them clears it). */
+        /* The destination's chord is queued ahead of the note (a note without copies clears it). The frame word may reach the DSP after
+         * the note-on; the DSP then takes the copies late. */
         if (entry->kind == TK_NATIVE_AUDIO)
             tk_pool_link_chord(entry->destination, entry->shape);
         if (entry->kind == TK_NATIVE_AUDIO && owner_faded[entry->destination]) {

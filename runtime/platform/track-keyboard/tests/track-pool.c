@@ -214,7 +214,13 @@ static void check_chord_words(void)
         assert((word & 0xfffffu) == (track == 5 ? shape : 0u));
     }
     assert(seen == 0xffffu);
-    tk_pool_link_chord(5, shape); /* unchanged: nothing extra to send */
+    tk_pool_link_chord(
+        5,
+        shape); /* unchanged: nothing extra to send (a changed word would go three times in a row) */
+    unsigned again = 0;
+    for (unsigned i = 0; i < 3; ++i)
+        again += chord_word_written() == (TK_CHORD_MAGIC | 5u << 20 | shape);
+    assert(again <= 1);
     tk_pool_link_chord(5, (uint32_t)(-3 & 63) << 12 | 1u << 18);
     assert(chord_word_written() == (TK_CHORD_MAGIC | 5u << 20 | 1u << 18 | 61u << 12));
     tk_pool_link_chord(5, 0);

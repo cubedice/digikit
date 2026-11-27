@@ -366,19 +366,60 @@ static void hidden_checks(const TkTrackBackend *audio)
     tk_native_drain();
     assert(count == first + 1 && !tk_native_idle(0));
     assert(link_sent(TK_HIDDEN_MAGIC));
-    /* the hidden key up: its gate closes, and the owner's stock note-off goes */
+    /* the hidden key up: its gate closes at its own velocity (the DSP fades it), and the owner's stock note-off goes with its gate open
+     * again for the next note-on */
     assert(post(audio, 0, 41, 64, 0));
     tk_native_drain();
-    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 18 | 1u << 14 | 64u << 7));
+    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 18 | 1u << 14 | 64u << 7 | 90u));
     assert(count == first + 2 && sent[first + 1].track == 0 && !sent[first + 1].velocity);
     assert(tk_native_idle(0));
-    /* the owner's next note opens its gate again */
+    assert(link_sent(TK_HIDDEN_MAGIC | 1u << 17));
+    assert(!link_sent(TK_HIDDEN_MAGIC));
     assert(post(audio, 0, 42, 62, 100));
     tk_native_drain();
     assert(link_sent(TK_HIDDEN_MAGIC | 1u << 17));
     assert(post(audio, 0, 42, 62, 0));
     tk_native_drain();
     assert(tk_native_idle(0));
+
+    /* A chord's note sends its shape before the note; its note-off clears the copies for the next note-on, intervals kept. */
+    const TkNoteEvent chord = {
+        .token = 43, .pitch = 60, .velocity = 100, .on = true, .copies = 2, .intervals = {4, 7}};
+    assert(audio->output(audio->context, 0, &chord));
+    tk_native_drain();
+    assert(link_sent(TK_CHORD_MAGIC | 2u << 18 | 4u << 12 | 7u << 6));
+    const TkNoteEvent chord_up = {.token = 43, .pitch = 60};
+    assert(audio->output(audio->context, 0, &chord_up));
+    tk_native_drain();
+    assert(tk_native_idle(0));
+    assert(link_sent(TK_CHORD_MAGIC | 4u << 12 | 7u << 6));
+    assert(!link_sent(TK_CHORD_MAGIC | 2u << 18 | 4u << 12 | 7u << 6));
+
+    /* AUTO: no hidden voice while the owner's own note is not sounding (it would copy an idle voice): the key waits for its helper. */
+    automatic = true;
+    helper_mask = 1u << 9;
+    route_ready = UINT16_MAX;
+    unsigned before = count;
+    assert(post(audio, 0, 44, 60, 100));
+    assert(post(audio, 0, 45, 64, 100));
+    tk_native_drain();
+    assert(count == before + 2 && sent[before].track == 0 && sent[before + 1].track == 9);
+    assert(post(audio, 0, 44, 60, 0));
+    tk_native_drain();
+    assert(count == before + 3 && sent[before + 2].track == 0 && !sent[before + 2].velocity);
+    route_ready = (uint16_t)~1u; /* the owner is not ready for AUTO, its helper sounds */
+    assert(post(audio, 0, 46, 67, 100));
+    tk_native_drain();
+    assert(count == before + 3 &&
+           !tk_native_sounding(0, 46)); /* no hidden voice on the idle owner */
+    assert(post(audio, 0, 46, 67, 0));
+    assert(post(audio, 0, 45, 64, 0));
+    route_ready = UINT16_MAX;
+    tk_native_drain();
+    assert(count == before + 4 && sent[before + 3].track == 9 && !sent[before + 3].velocity);
+    assert(tk_native_idle(0));
+    automatic = false;
+    helper_mask = 0;
     tk_native_set_hidden(0, 0);
 }
 
