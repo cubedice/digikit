@@ -92,6 +92,12 @@ export const CHORD_DATA: Record<string, number> = {
   _cs_last: CHORD + 0x300,
   _cs_faults: CHORD + 0x580,
   _cs_hmask: CHORD + 0x590,
+  _cs_limit: CHORD + 0x5a0,
+  _cs_block: CHORD + 0x5a4,
+  _cs_allow: CHORD + 0x5a8,
+  _cs_t_spent: CHORD + 0x5ac,
+  _cs_n_rec: CHORD + 0x5b0,
+  _cs_skips: CHORD + 0x5b4,
   _cs_rec: CHORD + 0x600, // 45,312 bytes
   _hv_state: CHORD + 0xb800, // 2,048 bytes
 };

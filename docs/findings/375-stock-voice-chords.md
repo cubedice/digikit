@@ -1,7 +1,7 @@
 # 375. Chords from one track's stock sample voice
 
 Can a stock sample machine play a chord on its own track, without borrowing other tracks' voices (the voice groups of finding 369)?
-DT2 OS 1.17. Marks as in `docs/FINDINGS.md`. Emulator only: the device has not run it.
+DT2 OS 1.17. Marks as in `docs/FINDINGS.md`. Emulator, and one measurement on the owner's device.
 
 ## The stock voice is fixed at two records per track [D]
 
@@ -111,13 +111,52 @@ active (no helper) and hidden voice 1's gate open; TRIG 9 up: 220 Hz fell to 0.0
 silence. A run with the words written through `dsp.patch` (no track keyboard) gave the same: a fifth and a third added to a held note at the
 note's level, the note's own gate closed to 0.000012 while the two played on, then the fifth's gate closed alone.
 
+## On the device [D]
+
+Image `51c24268b85b5eeb` (proto/stock-chord a1e0049a7) on the owner's Digitakt II with CANOPY, Overloop, PRISM, RELAY, the remote and
+`digikit/debug`, the owner's project loaded and the transport stopped. The DSP's block time from core/health's one-second windows (`health_hs`,
+the DSP's own EMUCLK count of its block handler, read over PEEK); percentages of an assumed 1 GHz block (666,667 cycles). Keys through
+`digikit/remote` on track 10 (ONESHOT) of pattern A02, retriggered every 400 ms; averages of the whole windows:
+
+| | cycles per block | of a block |
+| --- | --- | --- |
+| idle | 437,700 | 65.7 % |
+| one stock note (POLY off) | 445,900 | 66.9 % |
+| CHRD MAJ6, POLY on: the note and three copies | 477,900 | 71.7 % |
+| POLY on, CHRD PLAY: one key | 445,500 | 66.8 % |
+| four keys: the note and three hidden voices | 479,100 | 71.9 % |
+
+- A sounding stock note (its two voice records) costs about 8,200 cycles per block, 1.13 times the interpreter's instruction count of the
+  renderer. A copy costs about 10,700 (three copies 32,000 over the single note) and a hidden voice about 11,200 (three 33,500), per note of the
+  pair: 1.6 to 1.7 % of a block each.
+- Leftover cost: a track that keeps a chord shape stays on the chord path after its notes end, and calls the renderer, the guard and the sum
+  for its three copies every block: about 6,000 cycles (443,700 idle afterwards). A track that has used hidden voices stays on their path:
+  about 4,800 cycles. Both should go when the records are inactive.
+
+## Load limits [D]
+
+From the device figures above, `_cs_voice` now keeps the extra voices within a budget and drops what they no longer need:
+
+- A copy that stopped (ACTIVE clear) gets no step and no render, guard or sum. A track leaves the hidden path (its bit of `_cs_hmask`, and its
+  `_cs_vmask` bits when it has no copies) when, at the pair's odd voice, no hidden voice sounded or waited to start and its own note is not
+  faded while its sample still plays; a word with an open gate (or the owner's closed one) puts it back.
+- The budget: once per block, at the first chord voice, the extra voices may take `_cs_limit` (560,000 cycles, 84 % of an assumed 1 GHz
+  block) minus what the last block cost without them: the block handler's own EMUCLK count from word 0 of the reply record the last block built
+  (`_dv_rec[0]`, rotated by 16 bits, finding 125), less the extra voices' own cycles of that block. Each extra render is measured with EMUCLK and
+  paid from it. One that does not fit (its cycles so far plus 6,000), or past 24 extra records in the block, ends (ACTIVE clear) and `_cs_skips`
+  counts it: a copy comes back at the owner's next note-on, a hidden voice at its next note. It does not stutter.
+
+Emulator (where EMUCLK counts instructions): with `_cs_limit` 1 a MAJ chord played only its root (both copies of both voices dropped: 4) and
+with 560,000 the next one was whole; after the two keys, once the first key's sample ended, track 1 was off both paths.
+
 Two assembler facts found on the way: an immediate such as `3 * 0x1d8` assembles as its first term (`3`); use literals (a sum such as
 `DL_TAIL_WORDS - 158` assembles as written). Data symbols of an image object are exported without `.GLOBAL` (with it, patchkit refuses
 "exported twice").
 
 ## Open [O]
 
-- The device has not run it, and the cost is measured in the interpreter only (about 7,200 instructions per extra note of a stereo pair).
+- The budget assumes a 1 GHz block (666,667 cycles): with a slower clock 560,000 cycles would leave less margin. The new build has not run on
+  the device: its idle cost of a track with a chord set, and the budget, are measured in the emulator only.
 - The notes of a chord share the track's amp envelope and filter; a release of one note of a held chord is not possible. Hidden voices have
   their own fade in and out but the track's envelope and filter still shape them all (paraphonic). A per-voice stock envelope and filter would
   need the inline set-up of `FUN_1c642a` reproduced on private state.
