@@ -3098,9 +3098,23 @@
   },
   {
    "addend": 0,
-   "offset": 40,
+   "offset": 44,
    "section": ".text.tk_trig_pitch_display",
    "symbol": ".sec..bss.tracks",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 94,
+   "section": ".text.tk_trig_pitch_display",
+   "symbol": ".sec..text.sounding_classes",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 122,
+   "section": ".text.tk_trig_pitch_display",
+   "symbol": ".sec..text.sounding_classes",
    "type": "cf.32"
   },
   {
@@ -7074,427 +7088,420 @@
   },
   {
    "addend": 0,
-   "offset": 382,
+   "offset": 354,
+   "section": ".text.poll",
+   "symbol": "tk_native_voices",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 394,
    "section": ".text.poll",
    "symbol": "tk_native_relay_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 402,
+   "offset": 414,
    "section": ".text.poll",
    "symbol": "tk_native_backend",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 442,
+   "offset": 454,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 460,
+   "offset": 472,
    "section": ".text.poll",
    "symbol": "tk_service_set_copies",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 470,
+   "offset": 482,
    "section": ".text.poll",
    "symbol": "tk_native_set_hidden",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 490,
+   "offset": 502,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_midi",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 496,
+   "offset": 508,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 528,
+   "offset": 540,
    "section": ".text.poll",
    "symbol": "tk_sequence_set_relay",
    "type": "cf.32"
   },
   {
    "addend": 260,
-   "offset": 546,
+   "offset": 558,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 556,
+   "offset": 568,
    "section": ".text.poll",
    "symbol": ".sec..bss.boundary",
    "type": "cf.32"
   },
   {
    "addend": 260,
-   "offset": 564,
+   "offset": 576,
    "section": ".text.poll",
    "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 260,
-   "offset": 582,
-   "section": ".text.poll",
-   "symbol": "tk_img",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
    "offset": 594,
    "section": ".text.poll",
-   "symbol": "tk_service_boundary",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 600,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.boundary",
+   "symbol": "tk_img",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 606,
    "section": ".text.poll",
+   "symbol": "tk_service_boundary",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 612,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.boundary",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 618,
+   "section": ".text.poll",
    "symbol": "dkrt_blocks",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 614,
+   "offset": 626,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 620,
+   "offset": 632,
    "section": ".text.poll",
    "symbol": ".sec..bss.block",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 634,
-   "section": ".text.poll",
-   "symbol": ".sec..text.clear_retrigs",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 640,
-   "section": ".text.poll",
-   "symbol": ".sec..text.tk_panel_cancel",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 646,
    "section": ".text.poll",
+   "symbol": ".sec..text.clear_retrigs",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 652,
+   "section": ".text.poll",
+   "symbol": ".sec..text.tk_panel_cancel",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 658,
+   "section": ".text.poll",
    "symbol": "tk_midi_reset",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 666,
+   "offset": 678,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 680,
+   "offset": 692,
    "section": ".text.poll",
    "symbol": ".sec..bss.block_fraction",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 686,
-   "section": ".text.poll",
-   "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 698,
    "section": ".text.poll",
-   "symbol": "tk_service_tick",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 704,
-   "section": ".text.poll",
-   "symbol": "tk_midi_poll",
+   "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 710,
    "section": ".text.poll",
+   "symbol": "tk_service_tick",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 716,
+   "section": ".text.poll",
+   "symbol": "tk_midi_poll",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 722,
+   "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 718,
+   "offset": 730,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 728,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 740,
    "section": ".text.poll",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 752,
+   "section": ".text.poll",
    "symbol": "tk_sequence_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 748,
+   "offset": 760,
    "section": ".text.poll",
    "symbol": ".sec..bss.was_running",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 758,
+   "offset": 770,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 774,
+   "offset": 786,
    "section": ".text.poll",
    "symbol": "tk_sequence_native_targets",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 780,
+   "offset": 792,
    "section": ".text.poll",
    "symbol": "tk_fw_project",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 796,
+   "offset": 808,
    "section": ".text.poll",
    "symbol": "tk_fw_active_kit",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 818,
+   "offset": 830,
    "section": ".text.poll",
    "symbol": ".sec..bss.pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 850,
+   "offset": 862,
    "section": ".text.poll",
    "symbol": "tk_pattern_fw_existing",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 866,
+   "offset": 878,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 880,
+   "offset": 892,
    "section": ".text.poll",
    "symbol": ".sec..bss.registered",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 908,
+   "offset": 920,
    "section": ".text.poll",
    "symbol": "tk_service_active_config",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 926,
+   "offset": 938,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 960,
+   "offset": 972,
    "section": ".text.poll",
    "symbol": "tk_canopy_routed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1044,
+   "offset": 1056,
    "section": ".text.poll",
    "symbol": "tk_sequence_target_kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1052,
+   "offset": 1064,
    "section": ".text.poll",
    "symbol": ".sec..bss.kind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1134,
+   "offset": 1146,
    "section": ".text.poll",
    "symbol": "tk_sequence_prepare",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1142,
+   "offset": 1154,
    "section": ".text.poll",
    "symbol": "pp_selected_tempo",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1152,
+   "offset": 1164,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1158,
+   "offset": 1170,
    "section": ".text.poll",
    "symbol": "tk_capture_poll",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1164,
+   "offset": 1176,
    "section": ".text.poll",
    "symbol": ".sec..text.update_pool",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1170,
+   "offset": 1182,
    "section": ".text.poll",
    "symbol": "tk_capture_dropped",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1178,
+   "offset": 1190,
    "section": ".text.poll",
    "symbol": ".sec..bss.capture_drops.6",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1186,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.capture_notice.5",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1192,
-   "section": ".text.poll",
-   "symbol": "tk_capture_dropped",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1198,
    "section": ".text.poll",
-   "symbol": ".sec..bss.capture_drops.6",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1224,
-   "section": ".text.poll",
    "symbol": ".sec..bss.capture_notice.5",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1230,
+   "offset": 1204,
    "section": ".text.poll",
-   "symbol": "dk_ui_core_handle",
+   "symbol": "tk_capture_dropped",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1210,
+   "section": ".text.poll",
+   "symbol": ".sec..bss.capture_drops.6",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1236,
    "section": ".text.poll",
+   "symbol": ".sec..bss.capture_notice.5",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1242,
+   "section": ".text.poll",
+   "symbol": "dk_ui_core_handle",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1248,
+   "section": ".text.poll",
    "symbol": ".sec..rodata.note_insert.str1.1",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1244,
+   "offset": 1256,
    "section": ".text.poll",
    "symbol": "dk_ui_toast",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1252,
+   "offset": 1264,
    "section": ".text.poll",
    "symbol": "tk_native_drain",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1260,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.work_looked",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1276,
-   "section": ".text.poll",
-   "symbol": ".sec..bss.work_pattern",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 1282,
+   "offset": 1272,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_looked",
    "type": "cf.32"
@@ -7503,180 +7510,194 @@
    "addend": 0,
    "offset": 1288,
    "section": ".text.poll",
-   "symbol": ".sec..text.settings_print",
+   "symbol": ".sec..bss.work_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1294,
    "section": ".text.poll",
-   "symbol": ".sec..bss.editing_pattern",
+   "symbol": ".sec..bss.work_looked",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1300,
+   "section": ".text.poll",
+   "symbol": ".sec..text.settings_print",
    "type": "cf.32"
   },
   {
    "addend": 0,
    "offset": 1306,
    "section": ".text.poll",
+   "symbol": ".sec..bss.editing_pattern",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 1318,
+   "section": ".text.poll",
    "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1320,
+   "offset": 1332,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_print",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1328,
+   "offset": 1340,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1334,
+   "offset": 1346,
    "section": ".text.poll",
    "symbol": "tk_pattern_fw_work_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1342,
+   "offset": 1354,
    "section": ".text.poll",
    "symbol": ".sec..bss.editing_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1348,
+   "offset": 1360,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1360,
+   "offset": 1372,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_print",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1366,
+   "offset": 1378,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1382,
+   "offset": 1394,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_print",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1390,
+   "offset": 1402,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_print",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1396,
+   "offset": 1408,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1404,
+   "offset": 1416,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_changed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1412,
+   "offset": 1424,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
   },
   {
    "addend": 44,
-   "offset": 1418,
+   "offset": 1430,
    "section": ".text.poll",
    "symbol": ".sec..bss.draft",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1430,
+   "offset": 1442,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1440,
+   "offset": 1452,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_menu",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1446,
+   "offset": 1458,
    "section": ".text.poll",
    "symbol": "dk_ui_core_menu_front",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1458,
+   "offset": 1470,
    "section": ".text.poll",
    "symbol": ".sec..bss.notes_title_at",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1472,
+   "offset": 1484,
    "section": ".text.poll",
    "symbol": ".sec..text.notes_update_title",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1478,
+   "offset": 1490,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1488,
+   "offset": 1500,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_changed",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1504,
+   "offset": 1516,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_pattern",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1510,
+   "offset": 1522,
    "section": ".text.poll",
    "symbol": "tk_pattern_fw_work_write",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 1516,
+   "offset": 1528,
    "section": ".text.poll",
    "symbol": ".sec..bss.work_behind",
    "type": "cf.32"
@@ -8166,14 +8187,7 @@
   },
   {
    "addend": 0,
-   "offset": 20,
-   "section": ".text.tk_panel_trig_on",
-   "symbol": ".sec..bss.kind",
-   "type": "cf.32"
-  },
-  {
-   "addend": 0,
-   "offset": 52,
+   "offset": 28,
    "section": ".text.tk_panel_trig_on",
    "symbol": ".sec..text.panel_press",
    "type": "cf.32"
@@ -9282,6 +9296,13 @@
    "offset": 30,
    "section": ".text.tk_native_set_hidden",
    "symbol": ".sec..bss.hidden_capacity",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 18,
+   "section": ".text.tk_native_voices",
+   "symbol": ".sec..bss.owner_faded",
    "type": "cf.32"
   },
   {
@@ -17324,6 +17345,13 @@
   },
   {
    "align": 2,
+   "hex": "4fefffe8721348d7047c206f001c71a8000475a800092240c0fcaaabe2a82209c1fc000c928073817001e3a84281b28264067803b881660a4cd7047c4fef00184e757930180a7c0c528145f14878280a4c4640057801ebac808460d2",
+   "kind": "text",
+   "name": ".text.sounding_classes",
+   "size": 92
+  },
+  {
+   "align": 2,
    "hex": "2f02206f00084a2f000f67324a1066324a28000156c0710044807201c28075a80b81b282672011410b8141e805b02f41000c2f480008241f4ef900000000428060d8700160d4241f4e75",
    "kind": "text",
    "name": ".text.live_priority",
@@ -17583,10 +17611,10 @@
   },
   {
    "align": 2,
-   "hex": "4fefffe848d70c3c246f002075af001f42522f024eb900000000588f4a00670000b4c4fc0b8420790000000093c9d1c277a804aa2408068200000038b3c365684a280b81660441e805b0424043e802bc45e8043c4a290012671a739178133401c4fcaaabe8aac5fc000c928273817401e3aa808243e90018b5c966d84a28044e671c73a8043c7a133401c4fcaaabeaaac5fc000c928273817401e3aa80824cd70c3c4fef00184e7526427a137193528906820000000a3200c2fcaaabeaa9c3fc000c908171807201e1a93012808134806000ff6a424060c6",
+   "hex": "4fefffe848d71c1c266f002075af001f42532f024eb900000000588f4a0067000094c4fc0b8491c82442d5f90000000075aa04aa43ea0038b1c265524a2a0b81660445ea05b04242260a06830000044e47ea02ce4a13670e486bffea4eb900000000588f848047eb0018b68b66e64a2a044e670e486a04384eb900000000588f848030024cd71c1c4fef00184e7571917813528843e9000a3200c2fcaaabe8a9c3fc000c908171807201e1a93013808136806084424260ca",
    "kind": "text",
    "name": ".text.tk_trig_pitch_display",
-   "size": 216
+   "size": 184
   },
   {
    "align": 2,
@@ -18066,10 +18094,10 @@
   },
   {
    "align": 2,
-   "hex": "4e56ff9448d73cfc4eb9000000004a00670005f02e0e428349f9000000000687ffffffe27b8378011403e7ac2f054eb900000000588f4a006600012e2f054eb900000000588f2d40ffc03039000000007201b2aeffc057c67582c0844a40675641f90000000071b03800b0aeffc06700009e2f024eb90000000042a72f024eb9000000004fef000c43f90000000071b1380055804a80660c42a72f024eb900000000508f20044680323900000000c08133c00000000070ffb0aeffc0670000f82f024eb900000000588f4a0067407202b2aeffc06600009c2f074eb900000000588f2f072f024eb900000000508f4a00671c30390000000041f90000000043eeffc311913800808433c0000000007002b0aeffc0660e487800012f024eb900000000508f303900000000c0844a40676c4aaeffc0660004be2f024eb900000000588f1a00303900000000c0844a4067682f024eb900000000d08571802f002f024e944fef000c605072ff2d41ffc06000feda7003b0aeffc0660c2f074eb9000000006000ff5c2006448071802f072f004eb900000000508f6000ff487202b2aeffc067124aaeffc0670002287003b0aeffc06700021e4205303900000000c0844a40671a7b852f052f024eb9000000002f052f024eb9000000004fef0010448652837d862f062f024eb900000000303900000000c0847803b8aeffc057c14a4056c044814480c08171802f002f024eb9000000004fef00107010b0836600fe062079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000260090b90000000023c3000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032400d4b9000000004c4120004c41200223c0000000004eb9000000003f0042672f024eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001824ab9000000006700017845eeffca2f0a4eb9000000004eb900000000588f24004a80670c2f004eb900000000588f2400428499cc2c124a866700012cbcb90000000067000122420041eeffe24281b881660000924a006600010e2f064eb900000000588f2a404a80670000fc3a390000000047ed00324287468571f9000000000f00670000c07387206a00042f012d48ffc02d41ffc44eb900000000588f222effc420404a80672e43f90000000071b178002d40ffbc7002b0aeffbc66384a826714b4aeffc0660e2f014eb900000000588f4a00666e7001efa88a80606642056000fd6ebc9057c5528141e8000a448580856000ff5a7003b0aeffbc66164a8267d4b4aeffc066ce4a68003266c84a53673260c22f012f2effc02d48ffc44eb900000000508f43f90000000073b17800206effc4b280669e53804a8066cab4aeffc06692528747eb00387010b0876600ff2a700a4c04080052843d8508ea2d8608e22d8d08e6528c508a7203b28c6600fec42f04486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000283900000000508fb8b900000000674220390000000041f90000000023d0000000004a80670c220392800c81000005db63207001808323c0000000004eb9000000004879000000002f004eb900000000508f4eb900000000200390b9000000000c80000001766300009020390000000023c30000000045f900000000b0b900000000674a4a8067244a3900000000660e2f004e92588fb0b900000000670e2f39000000004eb900000000588f20390000000023c0000000002f004e92420123c00000000013c100000000588f602a2f004e92588fb0b900000000675823c0000000004ab90000000056c023c300000000448013c0000000004a390000000067722003727790b900000000b28064642f39000000004eb900000000588f4a80675223c3000000004cee3cfcff944e5e4ef9000000004a390000000067bc200390b9000000000c8000000bb763ac42042f39000000004eb90000000013c4000000006000ff687002b0aeffc06600fbb06000fbb64cee3cfcff944e5e4e75",
+   "hex": "4e56ff9448d73cfc4eb9000000004a00670005fc2e0e42834bf9000000000687ffffffe27b8378011403e7ac2f054eb900000000588f4a006600013a2f054eb900000000588f2d40ffc03039000000007201b2aeffc057c67582c0844a40675641f90000000071b03800b0aeffc06700009e2f024eb90000000042a72f024eb9000000004fef000c43f90000000071b1380055804a80660c42a72f024eb900000000508f20044680323900000000c08133c00000000070ffb0aeffc0670001042f024eb900000000588f4a0067407202b2aeffc0660000a82f074eb900000000588f2f072f024eb900000000508f4a00671c30390000000041f90000000043eeffc311913800808433c0000000007002b0aeffc0660e487800012f024eb900000000508f303900000000c0844a4067784aaeffc0660004ca2f024eb900000000588f1a00303900000000c0844a4067742f024eb900000000d08571802f002f024eb90000000071802f002f024e954fef0014605072ff2d41ffc06000fece7003b0aeffc0660c2f074eb9000000006000ff502006448071802f072f004eb900000000508f6000ff3c7202b2aeffc067124aaeffc0670002287003b0aeffc06700021e4205303900000000c0844a40671a7b852f052f024eb9000000002f052f024eb9000000004fef0010448652837d862f062f024eb900000000303900000000c0847803b8aeffc057c14a4056c044814480c08171802f002f024eb9000000004fef00107010b0836600fdfa2079000000002428000cb4b900000000672a20790000000041e8001408280000000367182079000000004aa8001c660c4eb90000000023c2000000004eb900000000260090b90000000023c3000000000c80000005dc63184eb9000000004eb9000000004eb900000000203c000005dcc0fc07d072032400d4b9000000004c4120004c41200223c0000000004eb9000000003f0042672f024eb9000000004eb900000000123900000000508f2039000000004a80660620390000000073812f012f004eb900000000508f4a3900000000670001824ab9000000006700017845eeffca2f0a4eb9000000004eb900000000588f24004a80670c2f004eb900000000588f2400428499cc2c124a866700012cbcb90000000067000122420041eeffe24281b881660000924a006600010e2f064eb900000000588f2a404a80670000fc3a390000000047ed00324287468571f9000000000f00670000c07387206a00042f012d48ffc02d41ffc44eb900000000588f222effc420404a80672e43f90000000071b178002d40ffbc7002b0aeffbc66384a826714b4aeffc0660e2f014eb900000000588f4a00666e7001efa88a80606642056000fd62bc9057c5528141e8000a448580856000ff5a7003b0aeffbc66164a8267d4b4aeffc066ce4a68003266c84a53673260c22f012f2effc02d48ffc44eb900000000508f43f90000000073b17800206effc4b280669e53804a8066cab4aeffc06692528747eb00387010b0876600ff2a700a4c04080052843d8508ea2d8608e22d8d08e6528c508a7203b28c6600fec42f04486effe24eb900000000508f4eb9000000003f0042672f39000000004eb9000000004eb900000000283900000000508fb8b900000000674220390000000041f90000000023d0000000004a80670c220392800c81000005db63207001808323c0000000004eb9000000004879000000002f004eb900000000508f4eb900000000200390b9000000000c80000001766300009020390000000023c30000000045f900000000b0b900000000674a4a8067244a3900000000660e2f004e92588fb0b900000000670e2f39000000004eb900000000588f20390000000023c0000000002f004e92420123c00000000013c100000000588f602a2f004e92588fb0b900000000675823c0000000004ab90000000056c023c300000000448013c0000000004a390000000067722003727790b900000000b28064642f39000000004eb900000000588f4a80675223c3000000004cee3cfcff944e5e4ef9000000004a390000000067bc200390b9000000000c8000000bb763ac42042f39000000004eb90000000013c4000000006000ff687002b0aeffc06600fbb06000fbb64cee3cfcff944e5e4e75",
    "kind": "text",
    "name": ".text.poll",
-   "size": 1548
+   "size": 1560
   },
   {
    "align": 2,
@@ -18122,10 +18150,10 @@
   },
   {
    "align": 2,
-   "hex": "2f02720f202f000cb28064064280241f4e7541f90000000073b0080055814a8166ea42a72f2f00182f2f00182f002f2f00184eb9000000004fef001460d0",
+   "hex": "202f0008720fb280651c42a72f2f00142f2f00142f002f2f00144eb9000000004fef00144e75428060fa",
    "kind": "text",
    "name": ".text.tk_panel_trig_on",
-   "size": 62
+   "size": 42
   },
   {
    "align": 2,
@@ -18665,6 +18693,13 @@
    "kind": "text",
    "name": ".text.tk_native_set_hidden",
    "size": 42
+  },
+  {
+   "align": 2,
+   "hex": "2f02740f73af000b102f000fb481651441f9000000004a30180067087380e28967025380241f4e75",
+   "kind": "text",
+   "name": ".text.tk_native_voices",
+   "size": 40
   },
   {
    "align": 2,
@@ -20613,7 +20648,7 @@
    "size": 24
   }
  ],
- "source_sha256": "fe6469e3b603eda042871887599a762c03c5067dec989cf1f3c4281b476c18e5",
+ "source_sha256": "f8e79959f54b139a010a84f72ce19903640d94ac48f211600623fc177b1b717f",
  "symbols": [
   {
    "global": false,
@@ -22521,6 +22556,12 @@
    "global": false,
    "name": ".sec..text.settings_print",
    "section": ".text.settings_print",
+   "value": 0
+  },
+  {
+   "global": false,
+   "name": ".sec..text.sounding_classes",
+   "section": ".text.sounding_classes",
    "value": 0
   },
   {
@@ -24655,6 +24696,12 @@
   },
   {
    "global": false,
+   "name": "sounding_classes",
+   "section": ".text.sounding_classes",
+   "value": 0
+  },
+  {
+   "global": false,
    "name": "staged",
    "section": ".bss.staged",
    "value": 0
@@ -25251,6 +25298,12 @@
    "global": true,
    "name": "tk_native_try_send",
    "section": ".text.tk_native_try_send",
+   "value": 0
+  },
+  {
+   "global": true,
+   "name": "tk_native_voices",
+   "section": ".text.tk_native_voices",
    "value": 0
   },
   {
@@ -26579,8 +26632,8 @@
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror -DDK_SERVICE=1",
   "exports": "DK_SVC_OWNER dk_module dk_svc_abi",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "19368",
-  "isa_check": "24e5fd49d58d1d80165cb67a7ccbd205c4912eb2e69615aa13df69106d8d5a2b",
+  "instructions_redecoded": "19400",
+  "isa_check": "19d48e0bb2493eeaf115566718e47b81b368f25018378ac130579d0c6b7ed3ab",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726",
   "libgccjit_gcc": "37ea7cd851f04ee6a313c5067c9fde9328f876aa",
   "rustc": "rustc 1.101.0-nightly (6f5da406b 2026-10-10)",

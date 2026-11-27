@@ -423,6 +423,75 @@ static void hidden_checks(const TkTrackBackend *audio)
     tk_native_set_hidden(0, 0);
 }
 
+static bool to_track0(void *context, const TkNoteEvent *event)
+{
+    const TkTrackBackend *backend = context;
+    return backend->output(backend->context, 0, event);
+}
+
+/* The engine's voice count of track 0, as the runtime's poll sets it before a key and on every pass. */
+static void sync_voices(TkState *s, uint8_t limit)
+{
+    tk_set_backend(s, tk_native_voices(0, limit), false);
+}
+
+static bool sounds(const TkState *s, uint8_t pitch)
+{
+    for (unsigned i = 0; i < TK_NOTES; ++i)
+        if (s->voices[i].sent && s->voices[i].note.pitch == pitch)
+            return tk_native_sounding(0, s->voices[i].note.token);
+    return false;
+}
+
+static void hidden_legato_checks(const TkTrackBackend *audio)
+{
+    /* CHRD PLAY on a stock track with no helper: its own voice and three hidden ones. The owner's key up while hidden voices sound holds its
+     * note faded for them (its stock note-off waits): that slot plays no key, so the engine has one voice fewer and steals its oldest note
+     * for a new key, rather than send one the track cannot take, which would show as held and never sound. */
+    kind[0] = TK_NATIVE_AUDIO;
+    helper_mask = 0;
+    automatic = false;
+    tk_native_set_hidden(0, TK_COPIES);
+    const uint8_t limit = (uint8_t)(tk_pool_fw_limit(0) + TK_COPIES);
+    TkState s;
+    tk_init(&s, to_track0, (void *)audio);
+    TkParams p = tk_defaults();
+    TkRecipe none = {0};
+    p.poly = true;
+    assert(p.chord == TK_CHORD_PLAY && p.voices == limit);
+    assert(tk_configure(&s, &p, &none));
+    static const uint8_t pitch[] = {60, 64, 67, 69, 71}; /* C, E, G, A, B */
+    for (uint32_t key = 1; key <= 3; ++key) {
+        sync_voices(&s, limit);
+        assert(tk_press(&s, TK_PANEL, 0, key, pitch[key - 1], 100));
+        tk_native_drain();
+    }
+    assert(sounds(&s, 60) && sounds(&s, 64) && sounds(&s, 67));
+    /* C up: its note fades and waits for E and G; the slot it holds plays no key */
+    tk_release(&s, TK_PANEL, 0, 1);
+    tk_native_drain();
+    assert(tk_native_voices(0, limit) == limit - 1);
+    sync_voices(&s, limit);
+    assert(sounds(&s, 64) && sounds(&s, 67));
+    sync_voices(&s, limit);
+    assert(tk_press(&s, TK_PANEL, 0, 4, 69, 100));
+    tk_native_drain();
+    assert(sounds(&s, 64) && sounds(&s, 67) && sounds(&s, 69));
+    /* B: every hidden voice is taken and the faded slot sounds nothing, so the oldest key (E) gives B its voice */
+    sync_voices(&s, limit);
+    assert(tk_press(&s, TK_PANEL, 0, 5, 71, 100));
+    tk_native_drain();
+    tk_native_drain();
+    assert(sounds(&s, 71));
+    assert(!sounds(&s, 64) && sounds(&s, 67) && sounds(&s, 69));
+    for (uint32_t key = 2; key <= 5; ++key)
+        tk_release(&s, TK_PANEL, 0, key);
+    for (unsigned i = 0; i < 4; ++i)
+        tk_native_drain();
+    assert(tk_native_idle(0) && tk_native_voices(0, limit) == limit);
+    tk_native_set_hidden(0, 0);
+}
+
 void track_native_checks(void)
 {
     relay_checks();
@@ -477,4 +546,5 @@ void track_native_checks(void)
     midi_wire_budget(&midi);
     automatic_checks(&midi, &audio);
     hidden_checks(&audio);
+    hidden_legato_checks(&audio);
 }

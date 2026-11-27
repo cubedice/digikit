@@ -326,6 +326,39 @@ static void service_ownership(void)
     assert(tk_service_set_backend(0, NULL));
 }
 
+static void chord_display(void)
+{
+    /* The KEYS page's keyboard shows every note of a chord the backend plays as copies of one voice (finding 375), not only the note
+     * that carries the copies. */
+    static TkPattern pattern;
+    Events e = {0};
+    tk_pattern_init(&pattern);
+    tk_service_edit_pattern(&pattern);
+    tk_service_play_pattern(&pattern);
+    TkTrackBackend backend = {.output = track_sink, .context = &e, .voices = 4};
+    assert(tk_service_set_backend(0, &backend));
+    tk_service_set_copies(0, TK_COPIES);
+    assert(tk_trig_write(0, TK_CTL_POLY, 1));
+    assert(tk_trig_write(0, TK_CTL_CHORD, TK_CHORD_MAJ));
+    assert(tk_service_press(0, TK_PANEL, 0, 1, 62, 100)); /* D major: D, F sharp, A */
+    assert(e.count == 1 && e.events[0].copies == 2);
+    uint16_t held;
+    assert(tk_trig_pitch_display(0, &held) == ((1u << 2) | (1u << 6) | (1u << 9)));
+    assert(held == 1u << 2);
+    tk_service_release(0, TK_PANEL, 0, 1);
+    assert(tk_trig_pitch_display(0, &held) == 0 && held == 0);
+    /* Without copies every note has a voice of its own: the same three classes. */
+    tk_service_set_copies(0, 0);
+    e.count = 0;
+    assert(tk_service_press(0, TK_PANEL, 0, 1, 62, 100));
+    assert(e.count == 3 && e.events[0].copies == 0);
+    assert(tk_trig_pitch_display(0, &held) == ((1u << 2) | (1u << 6) | (1u << 9)));
+    tk_service_release(0, TK_PANEL, 0, 1);
+    tk_service_stop();
+    tk_service_edit_pattern(NULL);
+    assert(tk_service_set_backend(0, NULL));
+}
+
 static bool per_track_sink(void *context, uint8_t track, const TkNoteEvent *e)
 {
     return sink((Events *)context + track, e);
@@ -741,6 +774,7 @@ int main(void)
     sequence_and_learned_shape();
     pattern_controls();
     service_ownership();
+    chord_display();
     manual_retrig_owns_arp_output();
     active_traversal_edits();
     traversal_edits_keep_active_locks();
