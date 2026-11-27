@@ -9,8 +9,8 @@ installer calls
   flush blk1+0 200
   flush blk1+0 200
   flush blk1+4 196
-  flush blk4+0 88780
-  flush blk4+0 88780
+  flush blk4+0 87764
+  flush blk4+0 87764
   mask
   write 0x40016eac 8
   write 0x400da3ac 8
@@ -39,8 +39,8 @@ installer calls
   flush 0x40052a20 16
   flush 0x40052b40 16
   restore
-  flush blk7+0 54120
-  flush blk7+0 54120
+  flush blk7+0 51548
+  flush blk7+0 51548
   mask
   write 0x400dafd8 6
   write 0x40074ff8 6
@@ -61,38 +61,26 @@ installer calls
   flush 0x400daf80 16
   flush 0x40074dc0 16
   restore
-  flush blk10+0 23138
-  flush blk10+0 23138
+  flush blk10+0 20314
+  flush blk10+0 20314
   mask
-  write 0x4013954a 6
-  write 0x40139804 6
   write 0x4010c83c 6
-  write 0x4013986c 6
-  write 0x4013944e 6
-  write 0x4013977e 6
-  write 0x401394dc 6
   write 0x400e1b68 6
-  flush 0x40139540 16
-  flush 0x40139800 16
   flush 0x4010c830 32
-  flush 0x40139860 32
-  flush 0x40139440 32
-  flush 0x40139770 32
-  flush 0x401394d0 32
   flush 0x400e1b60 16
   restore
   flush blk13+0 5184
   flush blk13+0 5184
-  flush blk16+0 122
-  flush blk16+0 122
-  flush blk18+0 136
-  flush blk18+0 136
-  flush blk20+0 112
-  flush blk20+0 112
+  flush blk16+0 118
+  flush blk16+0 118
+  flush blk18+0 134
+  flush blk18+0 134
+  flush blk20+0 110
+  flush blk20+0 110
   flush blk22+0 60
   flush blk22+0 60
-  flush blk24+0 1772
-  flush blk24+0 1772
+  flush blk24+0 1760
+  flush blk24+0 1760
 card writes
   sector 5094 512 bytes
   sector 5095 512 bytes
@@ -109,7 +97,7 @@ init and fini calls
   init 4
 events
   kind 2 flags 0x0004 args [2, ffffffff, 0, 0, 100000]
-  kind 1 flags 0x0004 args [d02, 1, 0, 1, 0]
+  kind 1 flags 0x0004 args [d03, 1, 0, 1, 0]
   kind 4 flags 0x0004 args [1, 0, 0, 5, 0]
   kind 44 flags 0x0004 args [fffffffe, 0, 0, 0, 7be412a6]
   kind 44 flags 0x0004 args [fffffffe, 0, 0, 0, 55408fa7]
@@ -131,7 +119,7 @@ events
   kind 5 flags 0x0004 args [2, 0, 6c666f2d, 73686170, 65000000]
   kind 5 flags 0x0004 args [3, 0, 6c6f6361, 6c2d7069, 6e672d75]
   kind 5 flags 0x0004 args [4, 0, 656e7472, 792d6465, 6d6f0000]
-installed sites 25
+installed sites 19
 service rows
   machines kinds [(1, 80), (2, 108), (3, 96), (5, 16), (6, 144), (7, 152)]
   fx kinds [(4, 420)]
@@ -139,27 +127,27 @@ service rows
   local-ping kinds []
 arena blocks
   0x00100000 208 bytes
-  0x00200000 3760 bytes
-  0x00400000 88784 bytes
-  0x00500000 480 bytes
-  0x00700000 54128 bytes
+  0x00200000 2240 bytes
+  0x00400000 87776 bytes
+  0x00500000 464 bytes
+  0x00700000 51552 bytes
   0x00800000 272 bytes
-  0x00a00000 23152 bytes
-  0x00b00000 224 bytes
+  0x00a00000 20320 bytes
+  0x00b00000 128 bytes
   0x00d00000 5184 bytes
   0x00e00000 96 bytes
   0x01000000 128 bytes
   0x01200000 144 bytes
   0x01400000 112 bytes
   0x01600000 64 bytes
-  0x01800000 1776 bytes
+  0x01800000 1760 bytes
 contexts and ticks
   0 magic 0x444b4358 rec 0 tick 0
   1 magic 0x444b4358 rec 1 tick 0
   2 magic 0x444b4358 rec 2 tick 0
   3 magic 0x444b4358 rec 3 tick 0
   4 magic 0x444b4358 rec 4 tick blk24+266
-  8 magic 0x444b4358 rec 8 tick blk4+25434
+  8 magic 0x444b4358 rec 8 tick blk4+24278
   9 magic 0x444b4358 rec 9 tick 0
   10 magic 0x444b4358 rec 10 tick 0
   11 magic 0x444b4358 rec 11 tick 0
@@ -172,14 +160,14 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 3 local-ping-user.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 4 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 122 fini 0x00000000
-  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 136 fini 0x00000000
-  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01400000 size 112 fini 0x00000000
+  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 118 fini 0x00000000
+  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 134 fini 0x00000000
+  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01400000 size 110 fini 0x00000000
   3 test/local-ping-user modules/local-ping-user.dkm version 0x101 base 0x01600000 size 60 fini 0x00000000
-  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1772 fini 0x0180020a
-  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 88780 fini 0x00408956
-  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 54120 fini 0x007046ea
-  10 core/services/lfo services/lfo.dks version 0x802 base 0x00a00000 size 23138 fini 0x00a00f2a
+  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1760 fini 0x0180020a
+  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 87764 fini 0x004081fc
+  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 51548 fini 0x007043b0
+  10 core/services/lfo services/lfo.dks version 0x900 base 0x00a00000 size 20314 fini 0x00a00c54
   11 test/local-ping services/local-ping.dks version 0x10200 base 0x00d00000 size 5184 fini 0x00d0009e
   12 port ports/dt2-1.17.dkport version 0x100 base 0x00100000 size 200 fini 0x00000000
 card sectors
@@ -188,8 +176,8 @@ card sectors
 == reload
 result 0
 installer calls
-  flush blk26+0 112
-  flush blk26+0 112
+  flush blk26+0 110
+  flush blk26+0 110
 card writes
 card state 1 claims 0 writes 2 refused 0
 init and fini calls
@@ -197,7 +185,7 @@ init and fini calls
 events
   kind 44 flags 0x0004 args [2, 0, 0, 0, 9a6d4b68]
   kind 5 flags 0x0004 args [2, 0, 6c666f2d, 73686170, 65000000]
-installed sites 25
+installed sites 19
 service rows
   machines kinds [(1, 80), (2, 108), (3, 96), (5, 16), (6, 144), (7, 152)]
   fx kinds [(4, 420)]
@@ -205,19 +193,19 @@ service rows
   local-ping kinds []
 arena blocks
   0x00100000 208 bytes
-  0x00200000 3760 bytes
-  0x00400000 88784 bytes
-  0x00500000 480 bytes
-  0x00700000 54128 bytes
+  0x00200000 2240 bytes
+  0x00400000 87776 bytes
+  0x00500000 464 bytes
+  0x00700000 51552 bytes
   0x00800000 272 bytes
-  0x00a00000 23152 bytes
-  0x00b00000 224 bytes
+  0x00a00000 20320 bytes
+  0x00b00000 128 bytes
   0x00d00000 5184 bytes
   0x00e00000 96 bytes
   0x01000000 128 bytes
   0x01200000 144 bytes
   0x01600000 64 bytes
-  0x01800000 1776 bytes
+  0x01800000 1760 bytes
   0x01a00000 112 bytes
 contexts and ticks
   0 magic 0x444b4358 rec 0 tick 0
@@ -225,7 +213,7 @@ contexts and ticks
   2 magic 0x444b4358 rec 2 tick 0
   3 magic 0x444b4358 rec 3 tick 0
   4 magic 0x444b4358 rec 4 tick blk24+266
-  8 magic 0x444b4358 rec 8 tick blk4+25434
+  8 magic 0x444b4358 rec 8 tick blk4+24278
   9 magic 0x444b4358 rec 9 tick 0
   10 magic 0x444b4358 rec 10 tick 0
   11 magic 0x444b4358 rec 11 tick 0
@@ -238,14 +226,14 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 3 local-ping-user.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 4 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 122 fini 0x00000000
-  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 136 fini 0x00000000
-  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01a00000 size 112 fini 0x00000000
+  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 118 fini 0x00000000
+  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 134 fini 0x00000000
+  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01a00000 size 110 fini 0x00000000
   3 test/local-ping-user modules/local-ping-user.dkm version 0x101 base 0x01600000 size 60 fini 0x00000000
-  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1772 fini 0x0180020a
-  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 88780 fini 0x00408956
-  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 54120 fini 0x007046ea
-  10 core/services/lfo services/lfo.dks version 0x802 base 0x00a00000 size 23138 fini 0x00a00f2a
+  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1760 fini 0x0180020a
+  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 87764 fini 0x004081fc
+  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 51548 fini 0x007043b0
+  10 core/services/lfo services/lfo.dks version 0x900 base 0x00a00000 size 20314 fini 0x00a00c54
   11 test/local-ping services/local-ping.dks version 0x10200 base 0x00d00000 size 5184 fini 0x00d0009e
   12 port ports/dt2-1.17.dkport version 0x100 base 0x00100000 size 200 fini 0x00000000
 card sectors
@@ -258,7 +246,7 @@ card writes
 card state 1 claims 0 writes 2 refused 0
 init and fini calls
 events
-installed sites 25
+installed sites 19
 service rows
   machines kinds [(1, 80), (2, 108), (3, 96), (5, 16), (6, 144), (7, 152)]
   fx kinds [(4, 420)]
@@ -266,25 +254,25 @@ service rows
   local-ping kinds []
 arena blocks
   0x00100000 208 bytes
-  0x00200000 3760 bytes
-  0x00400000 88784 bytes
-  0x00500000 480 bytes
-  0x00700000 54128 bytes
+  0x00200000 2240 bytes
+  0x00400000 87776 bytes
+  0x00500000 464 bytes
+  0x00700000 51552 bytes
   0x00800000 272 bytes
-  0x00a00000 23152 bytes
-  0x00b00000 224 bytes
+  0x00a00000 20320 bytes
+  0x00b00000 128 bytes
   0x00d00000 5184 bytes
   0x00e00000 96 bytes
   0x01000000 128 bytes
   0x01200000 144 bytes
   0x01600000 64 bytes
-  0x01800000 1776 bytes
+  0x01800000 1760 bytes
 contexts and ticks
   0 magic 0x444b4358 rec 0 tick 0
   1 magic 0x444b4358 rec 1 tick 0
   3 magic 0x444b4358 rec 3 tick 0
   4 magic 0x444b4358 rec 4 tick blk24+266
-  8 magic 0x444b4358 rec 8 tick blk4+25434
+  8 magic 0x444b4358 rec 8 tick blk4+24278
   9 magic 0x444b4358 rec 9 tick 0
   10 magic 0x444b4358 rec 10 tick 0
   11 magic 0x444b4358 rec 11 tick 0
@@ -297,13 +285,13 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 3 local-ping-user.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 4 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 122 fini 0x00000000
-  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 136 fini 0x00000000
+  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 118 fini 0x00000000
+  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 134 fini 0x00000000
   3 test/local-ping-user modules/local-ping-user.dkm version 0x101 base 0x01600000 size 60 fini 0x00000000
-  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1772 fini 0x0180020a
-  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 88780 fini 0x00408956
-  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 54120 fini 0x007046ea
-  10 core/services/lfo services/lfo.dks version 0x802 base 0x00a00000 size 23138 fini 0x00a00f2a
+  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1760 fini 0x0180020a
+  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 87764 fini 0x004081fc
+  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 51548 fini 0x007043b0
+  10 core/services/lfo services/lfo.dks version 0x900 base 0x00a00000 size 20314 fini 0x00a00c54
   11 test/local-ping services/local-ping.dks version 0x10200 base 0x00d00000 size 5184 fini 0x00d0009e
   12 port ports/dt2-1.17.dkport version 0x100 base 0x00100000 size 200 fini 0x00000000
 card sectors
@@ -312,8 +300,8 @@ card sectors
 == live load
 result 0
 installer calls
-  flush blk28+0 112
-  flush blk28+0 112
+  flush blk28+0 110
+  flush blk28+0 110
 card writes
 card state 1 claims 0 writes 2 refused 0
 init and fini calls
@@ -321,7 +309,7 @@ init and fini calls
 events
   kind 44 flags 0x0004 args [2, 0, 0, 0, 9a6d4b68]
   kind 5 flags 0x0004 args [2, 0, 6c666f2d, 73686170, 65000000]
-installed sites 25
+installed sites 19
 service rows
   machines kinds [(1, 80), (2, 108), (3, 96), (5, 16), (6, 144), (7, 152)]
   fx kinds [(4, 420)]
@@ -329,19 +317,19 @@ service rows
   local-ping kinds []
 arena blocks
   0x00100000 208 bytes
-  0x00200000 3760 bytes
-  0x00400000 88784 bytes
-  0x00500000 480 bytes
-  0x00700000 54128 bytes
+  0x00200000 2240 bytes
+  0x00400000 87776 bytes
+  0x00500000 464 bytes
+  0x00700000 51552 bytes
   0x00800000 272 bytes
-  0x00a00000 23152 bytes
-  0x00b00000 224 bytes
+  0x00a00000 20320 bytes
+  0x00b00000 128 bytes
   0x00d00000 5184 bytes
   0x00e00000 96 bytes
   0x01000000 128 bytes
   0x01200000 144 bytes
   0x01600000 64 bytes
-  0x01800000 1776 bytes
+  0x01800000 1760 bytes
   0x01c00000 112 bytes
 contexts and ticks
   0 magic 0x444b4358 rec 0 tick 0
@@ -349,7 +337,7 @@ contexts and ticks
   2 magic 0x444b4358 rec 2 tick 0
   3 magic 0x444b4358 rec 3 tick 0
   4 magic 0x444b4358 rec 4 tick blk24+266
-  8 magic 0x444b4358 rec 8 tick blk4+25434
+  8 magic 0x444b4358 rec 8 tick blk4+24278
   9 magic 0x444b4358 rec 9 tick 0
   10 magic 0x444b4358 rec 10 tick 0
   11 magic 0x444b4358 rec 11 tick 0
@@ -362,14 +350,14 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 3 local-ping-user.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 4 entry-demo.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 122 fini 0x00000000
-  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 136 fini 0x00000000
-  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01c00000 size 112 fini 0x00000000
+  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 118 fini 0x00000000
+  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 134 fini 0x00000000
+  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01c00000 size 110 fini 0x00000000
   3 test/local-ping-user modules/local-ping-user.dkm version 0x101 base 0x01600000 size 60 fini 0x00000000
-  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1772 fini 0x0180020a
-  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 88780 fini 0x00408956
-  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 54120 fini 0x007046ea
-  10 core/services/lfo services/lfo.dks version 0x802 base 0x00a00000 size 23138 fini 0x00a00f2a
+  4 test/entry-demo modules/entry-demo.dkm version 0x100 base 0x01800000 size 1760 fini 0x0180020a
+  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 87764 fini 0x004081fc
+  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 51548 fini 0x007043b0
+  10 core/services/lfo services/lfo.dks version 0x900 base 0x00a00000 size 20314 fini 0x00a00c54
   11 test/local-ping services/local-ping.dks version 0x10200 base 0x00d00000 size 5184 fini 0x00d0009e
   12 port ports/dt2-1.17.dkport version 0x100 base 0x00100000 size 200 fini 0x00000000
 card sectors
@@ -383,7 +371,7 @@ card state 1 claims 0 writes 2 refused 0
 init and fini calls
   fini 4
 events
-installed sites 25
+installed sites 19
 service rows
   machines kinds [(1, 80), (2, 108), (3, 96), (5, 16), (6, 144), (7, 152)]
   fx kinds [(4, 420)]
@@ -391,13 +379,13 @@ service rows
   local-ping kinds []
 arena blocks
   0x00100000 208 bytes
-  0x00200000 3760 bytes
-  0x00400000 88784 bytes
-  0x00500000 480 bytes
-  0x00700000 54128 bytes
+  0x00200000 2240 bytes
+  0x00400000 87776 bytes
+  0x00500000 464 bytes
+  0x00700000 51552 bytes
   0x00800000 272 bytes
-  0x00a00000 23152 bytes
-  0x00b00000 224 bytes
+  0x00a00000 20320 bytes
+  0x00b00000 128 bytes
   0x00d00000 5184 bytes
   0x00e00000 96 bytes
   0x01000000 128 bytes
@@ -409,7 +397,7 @@ contexts and ticks
   1 magic 0x444b4358 rec 1 tick 0
   2 magic 0x444b4358 rec 2 tick 0
   3 magic 0x444b4358 rec 3 tick 0
-  8 magic 0x444b4358 rec 8 tick blk4+25434
+  8 magic 0x444b4358 rec 8 tick blk4+24278
   9 magic 0x444b4358 rec 9 tick 0
   10 magic 0x444b4358 rec 10 tick 0
   11 magic 0x444b4358 rec 11 tick 0
@@ -422,13 +410,13 @@ boot info magic 0x444b4254 version 1 safe 0 reason 0 counter 0 seq 1 copy 0 coun
   module 3 local-ping-user.dkm result 0 state 5 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   module 4 entry-demo.dkm result 0 state 8 detail [0, 0] needs [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
 records
-  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 122 fini 0x00000000
-  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 136 fini 0x00000000
-  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01c00000 size 112 fini 0x00000000
+  0 test/sine modules/sine.dkm version 0x100 base 0x01000000 size 118 fini 0x00000000
+  1 test/dyn-fx-gain modules/dyn-fx-gain.dkm version 0x100 base 0x01200000 size 134 fini 0x00000000
+  2 test/lfo-shape modules/lfo-shape.dkm version 0x100 base 0x01c00000 size 110 fini 0x00000000
   3 test/local-ping-user modules/local-ping-user.dkm version 0x101 base 0x01600000 size 60 fini 0x00000000
-  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 88780 fini 0x00408956
-  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 54120 fini 0x007046ea
-  10 core/services/lfo services/lfo.dks version 0x802 base 0x00a00000 size 23138 fini 0x00a00f2a
+  8 core/services/machines services/machines.dks version 0x802 base 0x00400000 size 87764 fini 0x004081fc
+  9 core/services/fx services/fx.dks version 0x900 base 0x00700000 size 51548 fini 0x007043b0
+  10 core/services/lfo services/lfo.dks version 0x900 base 0x00a00000 size 20314 fini 0x00a00c54
   11 test/local-ping services/local-ping.dks version 0x10200 base 0x00d00000 size 5184 fini 0x00d0009e
   12 port ports/dt2-1.17.dkport version 0x100 base 0x00100000 size 200 fini 0x00000000
 card sectors

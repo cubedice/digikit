@@ -71,6 +71,30 @@ pub mod input {
 
 pub mod lfo {
     unsafe extern "C" {
+        /// the edge-value table of mode 3, negative direction (7 longs, 28 bytes): DT2 0x402227b8, DN2 0x4020b7dc. core/lfo-table copies it with the added waves appended.
+        #[link_name = "cf.lfo.data.edge_mode3_neg"]
+        pub static EDGE_MODE3_NEG: u8;
+    }
+
+    unsafe extern "C" {
+        /// the edge-value table of mode 3, positive direction (7 longs, 28 bytes): DT2 0x4022279c, DN2 0x4020b7c0. core/lfo-table copies it with the added waves appended.
+        #[link_name = "cf.lfo.data.edge_mode3_pos"]
+        pub static EDGE_MODE3_POS: u8;
+    }
+
+    unsafe extern "C" {
+        /// the edge-value table of mode 4 (7 longs, 28 bytes): DT2 0x40222780, DN2 0x4020b7a4. core/lfo-table copies it with the added waves appended.
+        #[link_name = "cf.lfo.data.edge_mode4"]
+        pub static EDGE_MODE4: u8;
+    }
+
+    unsafe extern "C" {
+        /// the wave function table (7 longs, 28 bytes): DT2 0x402227d4, DN2 0x4020b7f8; slot 6 (RAND) is 0, the first word of the slew table that follows it. core/lfo-table copies it with the added waves appended.
+        #[link_name = "cf.lfo.data.wave_fn_table"]
+        pub static WAVE_FN_TABLE: u8;
+    }
+
+    unsafe extern "C" {
         /// The descriptor row (60 bytes) of the WAVE parameter of LFO 1 (code 79): mirror index 5, range 0..0x600, default 0x100, slot 0xae.
         #[link_name = "cf.lfo.data.wave_row.1"]
         pub static WAVE_ROW_1: u8;
@@ -425,6 +449,18 @@ pub mod menu {
     }
 
     unsafe extern "C" {
+        /// The destructor of the SETTINGS menu (DigisharcSettingsMenu, Syntakt DiddySettingsMenu; vtable slot 0, called by the deleting destructor in slot 1 and by the shared_ptr control block): `menu` = this. The firmware builds the menu once in the main screen's constructor and never destroys it in a normal session, but the owner of the pointer is not a field a module can read (the constructor keeps it in a shared_ptr that it moves into the view), so core/ui drops its kept pointer from a hook here. Decoded on dt2-1.17 0x401bb40e, dn2-1.12 0x401ab074, st-1.42 0x401859a6 (the DN2 1.11 image has the same bytes). Optional for core/ui (`optional_anchors`), like the rebuild and vtable anchors: without it the vtable check in the rows pass is the only guard against a stale menu pointer.
+        #[link_name = "cf.menu.fn.settings_dtor"]
+        pub fn settings_dtor(menu: *mut u8);
+    }
+
+    unsafe extern "C" {
+        /// The SETTINGS item list rebuild (DigisharcSettingsMenu, cdecl, one stack argument `menu`): saves the selection, clears the items, adds every item again (ending in `cf.menu.hook.settings_list.tail`), restores the selection. The stock callers are the menu constructor and the Project observer; call it from the UI task only. Optional for core/ui (`optional_anchors`): a port without it keeps the rows of the first build and core/ui logs `DK_LOG_MENU` action 1 once when a later change asks for a rebuild.
+        #[link_name = "cf.menu.fn.settings_list_rebuild"]
+        pub fn settings_list_rebuild(menu: *mut u8);
+    }
+
+    unsafe extern "C" {
         /// Menu vtable slot 26: calls `check` through slot 21 when `is_checked` (slot 25) says no, else `uncheck` through slot 22. A subclass that overrides those slots changes this.
         #[link_name = "cf.menu.fn.toggle_check"]
         pub fn toggle_check(menu: *mut u8, index: i32);
@@ -455,6 +491,12 @@ pub mod menu {
     }
 
     unsafe extern "C" {
+        /// The SETTINGS menu vtable (DigisharcSettingsMenu, Syntakt DiddySettingsMenu): slot 0 at the address the constructor stores at offset 0 of the object (the `move.l #vtable,(A2)` after the base constructors; DT2 0x40203bd8, DN2 0x401ec7c8, Syntakt 0x401d0d14), first 40 slots hashed. A menu pointer whose first word is not this address is not the SETTINGS list. Optional for core/ui (`optional_anchors`), like `cf.menu.fn.settings_list_rebuild`: without it no rebuild runs.
+        #[link_name = "cf.menu.data.settings_vtable"]
+        pub static SETTINGS_VTABLE: u8;
+    }
+
+    unsafe extern "C" {
         /// The `pea (icon).l` instruction of the SYSTEM item (6 bytes of code); its operand is the address of a stock icon object built at run time.
         #[link_name = "cf.menu.site.settings_list.system_icon_ref"]
         pub static SETTINGS_LIST_SYSTEM_ICON_REF: u8;
@@ -465,6 +507,9 @@ pub mod menu {
         #[link_name = "cf.menu.site.vertical_menu_view_ctor.font_ref"]
         pub static VERTICAL_MENU_VIEW_CTOR_FONT_REF: u8;
     }
+
+    /// Entry of the SETTINGS menu destructor (menu at 4(sp)); core/ui forgets the menu pointer it kept for the list rebuild.
+    pub type SettingsDtorHook = unsafe extern "C" fn(menu: *mut u8);
 
     /// Last step of the SETTINGS item list rebuild, before the selection is restored (a2 = the settings menu); the hook point for adding an item.
     pub type SettingsListTailHook = unsafe extern "C" fn(menu: *mut u8);
@@ -1348,7 +1393,7 @@ pub mod window {
         assert!(core::mem::offset_of!(ConfirmWindow, flag) == 0x6c);
     };
 
-    /// MultiChoiceWindow (OverlayWindow base, Observer sub-object at +0x58), 0xd8 bytes; the make_shared block is 0xe8. items is a vector of COW strings (4 bytes each), title the title lines, cb `std::function<void(int)>`, selected the index passed to cb.
+    /// MultiChoiceWindow (OverlayWindow base, Observer sub-object at +0x58), 0xd8 bytes; the make_shared block is 0xe8. items is a vector of COW strings (4 bytes each), title the title lines, cb `std::function<void(int)>`, selected the index passed to cb. The constructor clears `selected` (DT2 0x40116c52, DN2 0x401185c6: `clr.l (0x9c,A6)`); the key handler, the paint and the callback read only that field, so a store after the constructor sets the start item (`dk_ui_choice_at`).
     #[repr(C)]
     pub struct MultiChoiceWindow {
         pub _pad0: [u8; 116],

@@ -63,6 +63,17 @@
           "runtime/core/tests/lfo/goldens.json"
         ],
         "plusdrive": true
+      },
+      {
+        "files": [
+          "lfo-reload.device.test.ts"
+        ],
+        "modules": [
+          "test/lfo-shape",
+          "core/services/lfo"
+        ],
+        "plusdrive": true,
+        "firmwareOnly": "the shape table is republished under the interrupt mask and the vector 191 tick plays it again after the reload of the lfo service; the order of the steps and the refusals are host tests"
       }
     ]
   }

@@ -246,7 +246,7 @@ A module that emits records of a generic kind (a kind a service owns that has no
  fini(ctx)      failure paths and restart only
 ```
 
-All checks run on the staged file before any write. The module set is fixed after the boot hook; a later load returns `E_BOOT_ONLY`. The firmware builds its machine view after the boot hook, so rows written at commit are in place before the firmware reads them.
+All checks run on the staged file before any write. The module set is fixed after the boot hook; a later load returns `E_BOOT_ONLY` (a service that must start at boot also gets it from a live load: restart the device). The firmware builds its machine view after the boot hook, so rows written at commit are in place before the firmware reads them.
 
 Why the DSP check and reserve stay before `init`: they need only the static DSP section and the keys table. They keep pointers into the staged file only until `reserve`. The cheap refusals come first.
 
@@ -323,7 +323,7 @@ mise run transfer -- [--port SUB | --emu [--run-dir DIR]] restart
 mise run transfer -- [--port SUB | --emu [--run-dir DIR]] delete PATH...
 ```
 
-`install` resolves the services each module needs (transitively), uploads the port file of the device's firmware (the one whose FW item equals the device's `fw_id`) and the services as built, in dependency order, and then the modules, and skips files whose hash is on the card. The stock firmware is `--stock`, by default the one the tests use for the device (`stockImage` in `packages/test-support/src/inputs.ts`: DT2 1.17, DN2 1.12 in `$DIGI_FIRMWARE_DIR` or `firmware/`). A module whose service or port file cannot be found is named and skipped; the others install. `--restart` then selects exactly the installed modules, restarts the device, waits for the boot and exits 1 when MODULES does not list one of them (the last event is `{"event":"loaded","loaded":[...],"missing":[...]}`). `delete` takes the services that no remaining module needs along with the deleted modules, and keeps the others. Output: one JSON event per line, or the pane's text with `--format text`.
+`install` resolves the services each module needs (transitively), uploads the port file of the device's firmware (the one whose FW item equals the device's `fw_id`) and the services as built, in dependency order, and then the modules, and skips files whose hash is on the card. The stock firmware is `--stock`, by default the one the tests use for the device (`stockImage` in `packages/test-support/src/firmware-inputs.ts`: DT2 1.17, DN2 1.12 in `$DIGI_FIRMWARE_DIR` or `firmware/`). A module whose service or port file cannot be found is named and skipped; the others install. `--restart` then selects exactly the installed modules, restarts the device, waits for the boot and exits 1 when MODULES does not list one of them (the last event is `{"event":"loaded","loaded":[...],"missing":[...]}`). `delete` takes the services that no remaining module needs along with the deleted modules, and keeps the others. Output: one JSON event per line, or the pane's text with `--format text`.
 
 Output of `mise run transfer -- --emu --run-dir RUN --library dist/modules install test/sine digikit/debug` on DN2 1.12 (progress events left out):
 

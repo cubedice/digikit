@@ -2,7 +2,6 @@
 //! into `DKRT_MF_EXT`; the state is made where it lives, over whatever the slot held), and what a new owner holds (nothing collected, the gate closed, no action armed,
 //! nothing parked).
 use core::mem::MaybeUninit;
-use dkneeds::keys::name_hash;
 use dkrt_abi::provider::Provider;
 use dkrt_sdk::{E_FORMAT, E_NO_REGISTRY};
 use dkrt_svc_machines::ext_info::{self, DKRT_MF_EXT};

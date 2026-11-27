@@ -37,12 +37,23 @@ pub trait ProviderHost {
     /// Whether `package` may go down now (the service's `can_stop`).
     fn can_stop(&mut self, package: PackageId) -> Result<(), Status>;
 
+    /// A reload of `package` is about to stop it: its entries are restored and nothing enters the service any more, so its state is final. The host takes the
+    /// service's state aside for the new copy (`ProviderHost::import_state`). Called only for a reload, once for each package of the reload's take-down (also after
+    /// a busy restore was retried), never for an unload or the take-down of a failed bring-up. The default does nothing.
+    fn export_state(&mut self, _package: PackageId) {}
+
+    /// `package` has started and its declarations match, before its entries are installed: the host hands it the state `export_state` took aside, or none (a new
+    /// start, or bytes it cannot take). An error fails the start like a failed `start`: the closure goes down and nothing is public, and the copy is stopped and freed. `E_BUSY` is not retried: a copy that has just started has no work in flight, so a busy answer is a failure like any other. The default does nothing.
+    fn import_state(&mut self, _package: PackageId) -> Result<(), Status> {
+        Ok(())
+    }
+
     /// Last call before the entries are restored and the package is freed.
     fn stop(&mut self, package: PackageId);
 
     /// A boot has tried every service and is about to bring up the first module (or has no module to bring up): `live` holds the services that are up. The host
-    /// plans what the services keep for each module that can still come up, which is one whose services are all in `live`. Called once per boot, never for a
-    /// load.
+    /// plans what the services keep for each module that can still come up, which is one whose services are all in `live`. Called once per boot and once per reload (the
+    /// services that came back have fresh state; a reload numbers again before its first consumer starts), never for a load.
     fn services_up(&mut self, _graph: &PackageGraph, _live: &LiveSet) {}
 
     /// `package` is `Active`: start its DSP part, if it has one. The DSP part comes up over later UI passes, so this call returns at once: `true` when a DSP part is

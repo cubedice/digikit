@@ -97,6 +97,8 @@ int32_t ui_rows_add(ui_settings_rows *s, uintptr_t owner, const char *name, int 
     r->owner = owner;
     r->key = key;
     s->n++;
+    if (s->menu)
+        s->dirty = 1;
     return DK_OK;
 }
 
@@ -114,6 +116,8 @@ uint32_t ui_rows_remove_owner(ui_settings_rows *s, uintptr_t owner)
     for (uint32_t i = to; i < s->n; i++)
         s->row[i].open = 0;
     s->n = to;
+    if (from && s->menu)
+        s->dirty = 1;
     return from;
 }
 
@@ -125,4 +129,47 @@ int ui_rows_run(const ui_settings_rows *s, const ui_row_key *key)
             return 1;
         }
     return 0;
+}
+
+void ui_rows_built(ui_settings_rows *s, uint8_t *menu)
+{
+    s->menu = menu;
+    s->dirty = 0;
+}
+
+int ui_rows_dirty(const ui_settings_rows *s)
+{
+    return s->menu && s->dirty;
+}
+
+void ui_rows_gone(ui_settings_rows *s, const uint8_t *menu)
+{
+    if (s->menu == menu) {
+        s->menu = 0;
+        s->dirty = 0;
+    }
+}
+
+int ui_rows_pass(ui_settings_rows *s, ui_rows_rebuild_fn *rebuild, uint32_t vtable)
+{
+    /* read once: the destructor hook may clear it from another task */
+    uint8_t *volatile menu = s->menu;
+    if (!menu || !s->dirty)
+        return 0;
+    /* clear first: a rebuild that fails to clear it must not run every pass */
+    s->dirty = 0;
+    if (!rebuild || !vtable) {
+        /* no rebuild or no vtable fact on this firmware: do not call, forget the pointer */
+        int first = !s->absent_seen;
+        s->absent_seen = 1;
+        s->menu = 0;
+        return first ? -1 : 0;
+    }
+    /* the kept pointer is no SETTINGS list: do not call, forget it */
+    if (*(const uint32_t *)menu != vtable) {
+        s->menu = 0;
+        return 0;
+    }
+    rebuild(menu);
+    return 1;
 }

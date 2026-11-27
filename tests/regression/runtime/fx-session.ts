@@ -14,14 +14,16 @@ import {
   type RuntimeBaseline,
   type Session,
 } from '@digi/test-support';
-import { aggregate, withReusablePatchedSession, type PatchedSession } from '../support.ts';
+import { aggregate } from '../aggregate-error.ts';
+import { withReusablePatchedSession } from '../reusable-session.ts';
+import { type PatchedSession } from '../test-runtime.ts';
 import { record } from './artifacts.ts';
 import { cachedCard, cardKey, fileSha } from './card-cache.ts';
 import { plusdriveBinary } from './card-store.ts';
 import { installSystemPackage } from './system-package.ts';
 import { FIRMWARE, claimRunDir } from './devices.ts';
 import { sampleWav } from './fixtures.ts';
-import { moduleArtifact } from './install.ts';
+import { moduleArtifact } from './module-artifact.ts';
 import { neededServices, portFile } from './service-files.ts';
 import { bindServiceSymbols } from './service-symbols.ts';
 import { expectRuntimeUi } from './ready.ts';

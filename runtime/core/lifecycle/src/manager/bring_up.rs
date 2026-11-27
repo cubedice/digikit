@@ -21,7 +21,7 @@ pub(super) struct Request<'a> {
     pub(super) roots: &'a [PackageId],
     pub(super) pin: bool,
     pub(super) stop_on_failure: bool,
-    /// A boot: the host plans what the services keep once every service has been tried ([`ProviderHost::services_up`]).
+    /// A boot or a reload: the host plans what the services keep once every service has been tried ([`ProviderHost::services_up`]).
     pub(super) numbering: bool,
 }
 
@@ -246,7 +246,7 @@ where
         match self.enter(p, at) {
             Ok(()) => Ok(()),
             Err(e) => {
-                let _ = self.take_down_package(p);
+                let _ = self.take_down_package(p, false);
                 Err(e)
             }
         }
@@ -267,6 +267,10 @@ where
         if !self.declaration_matches(p, &declared) {
             return Err(LifecycleError::Declaration { package: p });
         }
+        // the new copy takes the state of the old one (or none) before anything is installed or public
+        self.host
+            .import_state(p)
+            .map_err(|s| failed(p, State::Started, s))?;
         // the pools exist before any consumer claims, the package's own claims come after its pools
         self.declare_resources(p)?;
         self.claim_wants(p)?;
