@@ -83,6 +83,16 @@ export const ADAPTER: Record<string, number> = {
 export const V2_SCAN = DIAG + 0x740;
 /** `_dv_v2_rows`: the address of the V2 table as the stub hands it to the dispatch code (voice 0 writes it each block) */
 export const V2_ROWS = DIAG + 0x744;
+/** the stock-chord data (`_cs_*` of dsp-voice.s, finding 375): `_cs_vmask` zero, so no voice takes the chord path on the rig */
+export const CHORD = 0x200b0000;
+export const CHORD_DATA: Record<string, number> = {
+  _cs_vmask: CHORD,
+  _cs_cfg: CHORD + 0x10,
+  _cs_scratch: CHORD + 0x200,
+  _cs_last: CHORD + 0x300,
+  _cs_faults: CHORD + 0x580,
+  _cs_rec: CHORD + 0x600, // 45,312 bytes
+};
 export const VOICE_ROW = 24; // words of a registry row
 export const RING_A = 0x200a0000; // stand-ins for the two reply records (the breadcrumbs are written into both)
 export const RING_B = 0x200a2000;
@@ -114,6 +124,7 @@ export function coreExterns(): Record<string, number> {
     _dv_v2_scan: V2_SCAN,
     _dv_v2_rows: V2_ROWS,
     ...ADAPTER,
+    ...CHORD_DATA,
   };
 }
 
@@ -278,6 +289,7 @@ export class VoiceRig {
     zero(GUARD, 32);
     zero(ADAPTER._dv_st!, 16); // no track has written R (machine contract 1.2)
     zero(V2_SCAN, 1);
+    zero(CHORD, 1); // `_cs_vmask`: no chord voice
     // voice 0's stub writes this word each block; a call of another voice alone finds what voice 0 left
     this.dm.set(nw(V2_ROWS), this.v2Rows);
     [1, 2, 4, 5, 255, 255, 255, 255].forEach((w, k) => this.dm.set(nw(ADAPTER._dv_slots!) + k, w)); // the DT2 knob positions

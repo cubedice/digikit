@@ -67,9 +67,14 @@ typedef struct {
     TkSeedNote notes[TK_NOTES];
 } TkSeed;
 
+#define TK_COPIES 3 /* the most chord notes a backend plays as copies of one voice (finding 375) */
+
 typedef struct {
     uint32_t token;
     uint8_t pitch, velocity, lane, on, lanes;
+    /* A chord the backend plays from this one note: the other notes, in semitones from it. */
+    uint8_t copies;
+    int8_t intervals[TK_COPIES];
 } TkNoteEvent;
 
 /* Return false to decline an onset. Accept every release for any accepted onset.
@@ -107,6 +112,9 @@ typedef struct {
     uint16_t bpm;
     uint8_t key_count, direct_count, candidate_count, cursor, last_pitch, strum_index;
     uint8_t voice_limit;
+    /* Chord notes the backend can play as copies of one voice (0: one voice per note), and the shape of the direct chord. */
+    uint8_t copies, direct_copies;
+    int8_t direct_intervals[TK_COPIES];
     bool playing, swung, have_last, have_cycle, blend, muted;
     TkSeed seed;
     uint16_t seed_started;
@@ -120,6 +128,8 @@ bool tk_valid_recipe(const TkRecipe *recipe);
 bool tk_rate_division(uint8_t rate, uint8_t *numerator, uint8_t *denominator);
 void tk_init(TkState *state, TkOutput output, void *context);
 void tk_set_backend(TkState *state, uint8_t max_voices, bool mix_direct_and_arp);
+/* A chord without strum then sounds as its first note, with the other notes (up to `copies`) as copies of that note's voice. */
+void tk_set_copies(TkState *state, uint8_t copies);
 bool tk_configure(TkState *state, const TkParams *params, const TkRecipe *user);
 /* Update RATE, ORDR and OCTS for upcoming onsets, leaving an in-flight gate intact. */
 void tk_arp_traversal(TkState *state, const TkParams *params);

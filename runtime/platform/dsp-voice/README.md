@@ -22,6 +22,11 @@ example). On its own it changes nothing: a patched image with no registered mach
 - Build options `DV_C3_FINE`, `DV_C3_DB`, `DV_C3_NOIRQ`, `DV_C3_NOSYS` (not part of any shipped image): the rung C3 variants of finding 49 section 9 (fine breadcrumbs 8 to 10 on the registered path,
   delayed `CALL`/`RTS`, interrupts masked across the registered path, no MODE1 write). docs/PATCHING.md "Rung C3".
 - Limits: at most 16 registered types; the Digitakt II's Stretch machine (type 2) is not hooked; type 0 cannot be registered.
+- Stock chords (emulator only so far): a voice marked in `_cs_vmask` on a stock machine also renders up to three copies of its voice
+  record at other pitches with the stock sample renderer and sums them into its block, so a stock sample track plays a chord by itself; the
+  notes share the track's filter and amp envelope. The track keyboard sends each track's chord shape through the frame (`_cs_receive`). A
+  copy whose block is not finite or exceeds 8.0 ends and is not added (`_cs_faults`). Unmarked voices pay three instructions
+  (docs/findings/375-stock-voice-chords.md).
 
 ## The runtime guard (Digitakt II, runtime 5)
 

@@ -152,9 +152,9 @@ bool tk_native_try_helper_send(uint8_t owner, uint8_t track, uint8_t pitch, uint
 
 static void poll(const TkTrackConfig config[TK_TRACKS])
 {
-    uint16_t packet[4 * TK_POOL_WORDS] = {0};
+    uint16_t packet[4 * TK_POOL_LINK_WORDS] = {0};
     tk_pool_link_write((uintptr_t)packet, 0);
-    uint8_t tag = (uint8_t)(packet[3] ^ 0x544bu);
+    uint8_t tag = (uint8_t)(packet[2 * TK_POOL_CHORD_ENTRIES + 3] ^ 0x544bu);
     uint16_t sequence = (uint16_t)++block;
     uint16_t reply[0x60 / 2 + 4] = {0};
     reply[0x60 / 2] = (uint16_t)(0x4b51u ^ tag);

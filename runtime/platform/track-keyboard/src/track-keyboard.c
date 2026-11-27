@@ -58,6 +58,10 @@ static void start(TkState *s, TkVoice *voice, TkPitch pitch, uint8_t lane)
                          .lane = lane,
                          .on = 1,
                          .lanes = s->params.poly | s->params.arp << 1};
+    if (lane == TK_DIRECT && s->direct_copies) {
+        event.copies = s->direct_copies;
+        memcpy(event.intervals, s->direct_intervals, sizeof event.intervals);
+    }
     if (s->muted || s->output(s->context, &event))
         *voice = (TkVoice){.note = event, .order = ++s->voice_order, .sent = !s->muted};
 }
@@ -240,6 +244,25 @@ static void rebuild(TkState *s, bool restart)
     n = 0;
     if (s->params.poly && (!s->params.arp || s->blend))
         n = input(s, live, true, notes);
+    uint8_t copies = 0;
+    int8_t intervals[TK_COPIES] = {0};
+    if (n > 1 && s->copies && s->params.chord != TK_CHORD_PLAY && !s->params.strum_ms) {
+        /* A chord without strum on a backend that copies a voice: its first note, the others as copies of that note's voice (one voice, no
+         * helper). VOIC still limits the notes. A chord with more notes, a velocity of its own or an interval past -32 .. 31 keeps a voice per note. */
+        uint8_t keep = n < s->params.voices ? n : s->params.voices;
+        bool fits = keep > 1 && keep <= 1u + s->copies;
+        for (uint8_t i = 1; fits && i < keep; ++i) {
+            int interval = notes[i].pitch - notes[0].pitch;
+            fits = interval >= -32 && interval <= 31 && notes[i].velocity == notes[0].velocity;
+            intervals[i - 1] = (int8_t)interval;
+        }
+        if (fits) {
+            copies = (uint8_t)(keep - 1u);
+            n = 1;
+        } else {
+            memset(intervals, 0, sizeof intervals);
+        }
+    }
     uint8_t limit = s->params.voices < s->voice_limit ? s->params.voices : s->voice_limit;
     if (n > limit && s->params.chord == TK_CHORD_PLAY) {
         while (n > limit) {
@@ -266,6 +289,16 @@ static void rebuild(TkState *s, bool restart)
     for (uint8_t i = 0; i < TK_NOTES; ++i)
         if (s->voices[i].note.token && find_pitch(notes, n, s->voices[i].note.pitch) == n)
             stop(s, &s->voices[i]);
+    if (copies != s->direct_copies ||
+        !tk_bytes_equal(intervals, s->direct_intervals, sizeof intervals)) {
+        /* Another shape for the same first note: its voice starts again with the new copies. */
+        for (uint8_t i = 0; i < TK_NOTES; ++i)
+            if (s->voices[i].note.token)
+                stop(s, &s->voices[i]);
+        s->direct_copies = copies;
+        memcpy(s->direct_intervals, intervals, sizeof intervals);
+        s->direct_count = 0;
+    }
     if (n != s->direct_count || !tk_bytes_equal(notes, s->direct, n * sizeof notes[0])) {
         memcpy(s->direct, notes, n * sizeof notes[0]);
         s->direct_count = n;
@@ -279,6 +312,15 @@ void tk_set_backend(TkState *s, uint8_t max_voices, bool blend)
 {
     s->voice_limit = max_voices <= TK_NOTES ? max_voices : TK_NOTES;
     s->blend = blend;
+    rebuild(s, false);
+}
+
+void tk_set_copies(TkState *s, uint8_t copies)
+{
+    copies = copies <= TK_COPIES ? copies : TK_COPIES;
+    if (s->copies == copies)
+        return;
+    s->copies = copies;
     rebuild(s, false);
 }
 

@@ -43,8 +43,46 @@ void tk_pool_publish_frame(const TkPool *pool)
     published = next;
 }
 
+/* The stock-chord shape words (TK_CHORD_MAGIC, the track, the shape), the sends a changed one still has, and the track whose turn it is. */
+enum { CHORD_SENDS = 3 };
+static volatile uint32_t chord_word[TK_TRACKS];
+static volatile uint8_t chord_sends[TK_TRACKS];
+static uint8_t chord_turn;
+
+void tk_pool_link_chord(uint8_t track, uint32_t shape)
+{
+    if (track >= TK_TRACKS)
+        return;
+    uint32_t word = TK_CHORD_MAGIC | (uint32_t)track << 20 | (shape & 0xfffffu);
+    if (chord_word[track] == word)
+        return;
+    chord_word[track] = word;
+    chord_sends[track] = CHORD_SENDS;
+}
+
+/* Frame interrupt: the word of this block. A track that never had a chord sends its empty one. */
+static uint32_t chord_next(void)
+{
+    uint8_t track = TK_TRACKS;
+    for (uint8_t t = 0; t < TK_TRACKS && track == TK_TRACKS; ++t)
+        if (chord_sends[t])
+            track = t;
+    if (track < TK_TRACKS) {
+        chord_sends[track] = (uint8_t)(chord_sends[track] - 1u);
+    } else {
+        track = chord_turn;
+        chord_turn = (uint8_t)((chord_turn + 1u) % TK_TRACKS);
+    }
+    uint32_t word = chord_word[track];
+    return word ? word : TK_CHORD_MAGIC | (uint32_t)track << 20;
+}
+
 void tk_pool_link_write(uintptr_t tx, unsigned entry)
 {
+    uint32_t chord = chord_next();
+    *(volatile uint16_t *)(tx + 4u * entry + 2u) = (uint16_t)chord;
+    *(volatile uint16_t *)(tx + 4u * entry + 6u) = (uint16_t)(chord >> 16);
+    entry += TK_POOL_CHORD_ENTRIES;
     const volatile TkPoolFrame *packet = &maps[published];
     /* Stamp the header and its checksum together. The native frame copy
      * still uses the untagged map for projecting owner controls. */

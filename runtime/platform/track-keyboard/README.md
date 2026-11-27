@@ -26,6 +26,14 @@ eligible empty audio tracks for the extra pitches, with transport running
 or stopped. Each borrowed track returns to the pool after its release
 tail finishes.
 
+A chord of up to four notes without strum plays on the track's own voice
+on ONESHOT, WERP, REPITCH, GRID and SLICE: the track keyboard sends its
+first note, and the DSP plays the other notes as copies of that voice, so
+the chord borrows no track. The notes share the track's filter and amp
+envelope. STRETCH, strummed chords, chords of more notes and user chords
+with their own velocities still take a voice per note
+(docs/findings/375-stock-voice-chords.md).
+
 H POOL shows the automatic voice count and borrowed tracks. A saved
 manual group still uses its chosen helpers. To pin a group, stop transport,
 tap the numbered TRIGs in POOL, then press YES. Blue is the owner, white

@@ -284,6 +284,8 @@ static void poll(void)
             tk_canopy_sync(track, true);
         else if ((type == TK_NATIVE_AUDIO || type == TK_NATIVE_RELAY) && (registered & mask))
             tk_service_set_voice_capacity(track, tk_pool_fw_limit(track));
+        if (registered & mask)
+            tk_service_set_copies(track, type == TK_NATIVE_AUDIO ? tk_native_copies(track) : 0);
         tk_sequence_set_midi(track, type == TK_NATIVE_MIDI);
         tk_sequence_set_relay(track, (registered & mask) && type == TK_NATIVE_RELAY);
     }

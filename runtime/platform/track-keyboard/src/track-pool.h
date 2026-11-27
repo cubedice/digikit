@@ -56,8 +56,17 @@ enum { TK_POOL_NATIVE_HALFWORDS = 0x802 / 2 };
 bool tk_pool_project_frame(uint16_t frame[TK_POOL_NATIVE_HALFWORDS],
                            const uint32_t map[TK_POOL_WORDS]);
 
+/* The frame region of the track keyboard (core/dsp-link DL_TRACK_POOL_WORDS): one stock-chord shape word, then the pool map. An entry
+ * is one wire halfword. */
+enum { TK_POOL_CHORD_ENTRIES = 2, TK_POOL_LINK_WORDS = 1 + TK_POOL_WORDS };
+#define TK_CHORD_MAGIC 0xc5000000u
+
 /* UI publication and interrupt-side consumers of the same snapshot. */
 void tk_pool_publish_frame(const TkPool *pool);
+/* The chord a track's voice plays as copies (finding 375): the 20 low bits of its shape word (copies in 18-19, three 6-bit signed intervals
+ * in 12-17, 6-11 and 0-5), 0 for none. UI task. The frame sends one track's word per block: a changed one at once and twice more, the
+ * others in turn. */
+void tk_pool_link_chord(uint8_t track, uint32_t shape);
 void tk_pool_link_write(uintptr_t tx, unsigned entry);
 const uint16_t *tk_pool_link_project(const uint16_t *src);
 void tk_pool_link_reply(const volatile uint16_t *reply);

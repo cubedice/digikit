@@ -9,6 +9,7 @@ enum { UNITS_PER_BYTE = 1500, AUTO_WAIT_BLOCKS = 120 };
 
 typedef struct {
     uint32_t token, order;
+    uint32_t shape; /* the chord the destination's voice plays as copies (tk_pool_link_chord) */
     uint8_t pitch, velocity, state, channel, destination, ports, kind;
     bool midi, native_seed, seed_direct;
     uint16_t queued_at;
@@ -87,6 +88,16 @@ uint8_t tk_native_audio_pending(uint8_t owner)
     return owner < TK_TRACKS ? audio_pending[owner] : 0;
 }
 
+/* The 20 low bits of a shape word: the copies in bits 18-19, the intervals (6 bits, signed) in 12-17, 6-11 and 0-5. */
+static uint32_t shape_of(const TkNoteEvent *event)
+{
+    uint8_t copies = event->copies <= TK_COPIES ? event->copies : TK_COPIES;
+    uint32_t shape = (uint32_t)copies << 18;
+    for (uint8_t i = 0; i < copies; ++i)
+        shape |= ((uint32_t)event->intervals[i] & 63u) << (12u - 6u * i);
+    return shape;
+}
+
 static void finish_start(uint8_t owner, const NativeNote *note)
 {
     if (!note->midi && --audio_pending[owner] == 0)
@@ -134,6 +145,7 @@ bool tk_native_event(void *context, uint8_t track, const TkNoteEvent *event)
     bool native_seed = !midi && (event->token & 0x80000000u) && tk_sequence_audio(track);
     *empty = (NativeNote){.token = event->token,
                           .order = ++serial,
+                          .shape = kind == TK_NATIVE_AUDIO ? shape_of(event) : 0,
                           .pitch = event->pitch,
                           .velocity = event->velocity,
                           .state = NOTE_PENDING,
@@ -364,6 +376,9 @@ void tk_native_drain(void)
             entry->channel = (uint8_t)channel;
             entry->ports = ports;
         }
+        /* The destination's chord goes ahead of the note: its voice plays the copies from this note-on (a note without them clears it). */
+        if (entry->kind == TK_NATIVE_AUDIO)
+            tk_pool_link_chord(entry->destination, entry->shape);
         if (!send(track, entry, entry->velocity))
             return;
         if (entry->midi) {

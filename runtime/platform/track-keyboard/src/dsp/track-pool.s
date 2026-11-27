@@ -2,6 +2,8 @@
 // Called from the position receiver with PEYEN off and I3 at the RX ring.
 // R0-R5, I0 and flags belong to that receiver. Bad packets keep the old
 // route so a helper's tail cannot jump to its own sends or master channel.
+// The word before the map is one track's stock-chord shape (finding 375): core/dsp-voice's _cs_receive takes it (0 without that module).
+#define TK_CHORD_SUFFIX 0x850
 #define TK_POOL_SUFFIX 0x854
 #define TK_POOL_MAGIC 0x54
 #define TK_POOL_SALT 0x22dca71b
@@ -10,7 +12,18 @@
 
 .SECTION/PM seg_pmco;
 .GLOBAL _tk_pool_receive;
+.EXTERN _cs_receive;
 _tk_pool_receive:
+    R0 = _cs_receive;
+    R0 = PASS R0;
+    IF EQ JUMP _tk_pool_map;
+    R0 = I3;
+    R1 = TK_CHORD_SUFFIX;
+    R0 = R0 + R1;
+    I0 = R0;
+    R1 = DM(0,I0);
+    CALL _cs_receive;
+_tk_pool_map:
     R0 = I3;
     R1 = TK_POOL_SUFFIX;
     R0 = R0 + R1;

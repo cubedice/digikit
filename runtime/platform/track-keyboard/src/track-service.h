@@ -97,6 +97,8 @@ bool tk_service_init(void);
 void tk_service_edit_pattern(TkPattern *pattern);
 void tk_service_play_pattern(const TkPattern *pattern);
 void tk_service_set_voice_capacity(uint8_t track, uint8_t voices);
+/* How many chord notes the track's backend plays as copies of one voice (tk_set_copies; 0 for every backend but a stock sample machine's). */
+void tk_service_set_copies(uint8_t track, uint8_t copies);
 uint16_t tk_service_helpers(uint8_t track);
 bool tk_service_assign_helpers(uint8_t track, uint16_t request, uint16_t selectable);
 bool tk_service_set_backend(uint8_t track, const TkTrackBackend *backend);

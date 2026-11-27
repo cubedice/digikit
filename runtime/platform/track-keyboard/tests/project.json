@@ -30,7 +30,8 @@
           "storage.device.test.ts",
           "track-clipboard.device.test.ts",
           "trig-clipboard.device.test.ts",
-          "working-copy.device.test.ts"
+          "working-copy.device.test.ts",
+          "stock-chord.device.test.ts"
         ],
         "devices": [
           "dt2"

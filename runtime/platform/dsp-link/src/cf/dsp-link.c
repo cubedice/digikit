@@ -74,7 +74,8 @@ typedef unsigned char u8;
 #define DL_LOCK_WORDS 18u       /* optional note-locked sideband before instrument packet */
 #define DL_PHRASE_WORDS 64u     /* fixed suffix before all three existing providers */
 #define DL_RELAY_WORDS 20u
-#define DL_TRACK_POOL_WORDS 4u
+/* the track keyboard's stock-chord shape word, then its pool map (4) */
+#define DL_TRACK_POOL_WORDS 5u
 
 #define DL_IDLE 0u
 #define DL_BUSY 1u

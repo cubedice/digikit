@@ -40,17 +40,18 @@ static void pool_ack(uint16_t *packet, uint8_t epoch, uint16_t quiet, uint16_t s
 static void check_publication(const TkPool *pool, const uint32_t expected[TK_POOL_WORDS])
 {
     uint16_t original[TK_POOL_NATIVE_HALFWORDS] = {0};
-    uint16_t queue[2 * (7 + 2 * TK_POOL_WORDS)] = {0};
+    uint16_t queue[2 * (7 + 2 * TK_POOL_LINK_WORDS)] = {0};
     original[0x74 / 2] = 0x7400;
     original[0x74 / 2 + 9] = 0x6000;
     original[0x34 / 2 + 9] = 0x7f00;
     assert(tk_pool_link_project(original) == original);
     tk_pool_publish_frame(pool);
     tk_pool_link_write((uintptr_t)queue, 7);
-    uint8_t epoch = (uint8_t)(queue[7 * 2 + 3] ^ 0x544bu);
+    const unsigned map = 2 * (7 + TK_POOL_CHORD_ENTRIES); /* the map follows the chord word */
+    uint8_t epoch = (uint8_t)(queue[map + 3] ^ 0x544bu);
     assert(epoch != 0);
     for (unsigned word = 0; word < TK_POOL_WORDS; ++word) {
-        unsigned half = 7 * 2 + 4 * word;
+        unsigned half = map + 4 * word;
         assert(queue[half] == 0 && queue[half + 2] == 0);
         assert(queue[half + 1] == (uint16_t)expected[word]);
         uint16_t tag = word == 0 || word == 3 ? epoch : 0;
@@ -87,9 +88,9 @@ static void check_quiet_witness(void)
 {
     uint16_t reply[0x60 / 2 + 4] = {0};
     uint16_t *packet = reply + 0x60 / 2;
-    uint16_t queue[4 * TK_POOL_WORDS] = {0};
+    uint16_t queue[4 * TK_POOL_LINK_WORDS] = {0};
     tk_pool_link_write((uintptr_t)queue, 0);
-    uint8_t epoch = (uint8_t)(queue[3] ^ 0x544bu);
+    uint8_t epoch = (uint8_t)(queue[2 * TK_POOL_CHORD_ENTRIES + 3] ^ 0x544bu);
     pool_ack(packet, epoch, 0x01ff, 7);
     tk_pool_link_reply(reply);
     uint32_t observed, now;
@@ -185,8 +186,40 @@ static void check_automatic_ownership(void)
     assert(tk_pool_decode_frame(frame, route) && route[H1] == OWNER);
 }
 
+static uint32_t chord_word_written(void)
+{
+    uint16_t queue[4 * TK_POOL_LINK_WORDS] = {0};
+    tk_pool_link_write((uintptr_t)queue, 0);
+    return queue[1] | (uint32_t)queue[3] << 16;
+}
+
+static void check_chord_words(void)
+{
+    /* The stock-chord shape words before the map (finding 375): a changed one at once and twice more, then every track in turn. */
+    for (unsigned i = 0; i < 4 * TK_TRACKS; ++i)
+        (void)chord_word_written(); /* what earlier checks left to send */
+    const uint32_t shape = 2u << 18 | 4u << 12 | 7u << 6;
+    tk_pool_link_chord(5, shape);
+    for (unsigned i = 0; i < 3; ++i)
+        assert(chord_word_written() == (TK_CHORD_MAGIC | 5u << 20 | shape));
+    uint16_t seen = 0;
+    for (unsigned i = 0; i < TK_TRACKS; ++i) {
+        uint32_t word = chord_word_written();
+        assert((word & 0xff000000u) == TK_CHORD_MAGIC);
+        uint8_t track = (uint8_t)(word >> 20 & 15u);
+        seen |= (uint16_t)(1u << track);
+        assert((word & 0xfffffu) == (track == 5 ? shape : 0u));
+    }
+    assert(seen == 0xffffu);
+    tk_pool_link_chord(5, shape); /* unchanged: nothing extra to send */
+    tk_pool_link_chord(5, (uint32_t)(-3 & 63) << 12 | 1u << 18);
+    assert(chord_word_written() == (TK_CHORD_MAGIC | 5u << 20 | 1u << 18 | 61u << 12));
+    tk_pool_link_chord(5, 0);
+}
+
 void track_pool_checks(void)
 {
+    check_chord_words();
     enum { OWNER = 0, COMPETITOR = 1, H1 = 8, H2 = 9, H3 = 10 };
     const uint16_t group = 1u << H1 | 1u << H2 | 1u << H3;
     const uint16_t eligible = group | (1u << COMPETITOR);
