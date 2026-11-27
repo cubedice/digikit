@@ -83,6 +83,8 @@ typedef struct {
     uint32_t seen, heartbeat, block, invalid;
     uint32_t expected, sequence, started, ready;
     uint32_t history[8][MT_REPLY_WORDS], history_count, history_next;
+    /* The heartbeat of the first session reply (the bind ACK), set with ready. */
+    uint32_t bound;
 } MtReplyGuard;
 /* Arm exactly once before sending BIND_SESSION. 0 accepted, -1 bad arguments,
  * -2 already armed or invalid. No reset/retry; readiness requires the exact bind
@@ -91,7 +93,11 @@ int mt_reply_guard_expect(MtReplyGuard *guard, uint32_t token, uint32_t sequence
 /* Discard exact copies or unseen replies up to eight DSP blocks late that
  * have a strictly older accepted reply retained for the same bound session.
  * Treat it as missing everywhere: no ACK, no cached registry reply, no deadline
- * refresh. Conflicting copies, unbracketed regressions and session changes still fault. */
+ * refresh. Conflicting copies, unbracketed regressions and session changes still fault.
+ * Also discard a pre-session reply up to eight DSP blocks older than the bind ACK:
+ * the DSP writes them only before it binds and the two reply rows alternate, so a
+ * row read after the bind ACK can still hold one. A pre-session reply at or after
+ * the bind ACK's heartbeat still faults (a downgrade). */
 int mt_reply_reordered(const MtReplyGuard *guard, const uint32_t *reply);
 void mt_reply_guard_tick(MtReplyGuard *guard, const uint32_t *reply, uint32_t block);
 /* Call after guard_tick on the same snapshot/block. An armed session must bind

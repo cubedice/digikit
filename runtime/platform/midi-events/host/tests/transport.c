@@ -478,8 +478,38 @@ uint32_t mi_test_session_guard(void)
         session_reply(r, 1);
         mt_reply_guard_tick(&downgrade, r, 1);
         reply_words(r, 0, 0, 2);
+        CHECK(!mt_reply_reordered(&downgrade, r));
         mt_reply_guard_tick(&downgrade, r, 2);
         CHECK(downgrade.invalid);
+    }
+    {
+        /* The two reply rows alternate, so a row read just after the bind ACK can still hold a pre-session frame from before the bind
+         * (the device's record: heartbeat 0x436a read after 0x436c). It is dropped as late and the session stays bound. A pre-session
+         * frame at or after the bind ACK's heartbeat, or older than the lag, is no such frame. */
+        MtReplyGuard late = {0};
+        CHECK(mt_reply_guard_expect(&late, 0xdeadbeefu, 17, 0) == 0);
+        reply_words(r, 0, 0, 0x4369);
+        mt_reply_guard_tick(&late, r, 0);
+        session_reply(r, 0x436b);
+        mt_reply_guard_tick(&late, r, 1);
+        CHECK(late.ready && late.bound == 0x436b);
+        session_reply(r, 0x436c);
+        mt_reply_guard_tick(&late, r, 2);
+        CHECK(late.ready && !late.invalid && late.heartbeat == 0x436c && late.bound == 0x436b);
+        reply_words(r, 0, 0, 0x436a);
+        CHECK(mt_reply_reordered(&late, r));
+        mt_reply_guard_tick(&late, 0, 3);
+        CHECK(late.ready && !late.invalid && late.heartbeat == 0x436c);
+        reply_words(r, 0, 0, 0x436b - MT_REPLY_REORDER_LAG);
+        CHECK(mt_reply_reordered(&late, r));
+        reply_words(r, 0, 0, 0x436b - MT_REPLY_REORDER_LAG - 1);
+        CHECK(!mt_reply_reordered(&late, r));
+        reply_words(r, 0, 0, 0x436b);
+        CHECK(!mt_reply_reordered(&late, r));
+        reply_words(r, 0, 0, 0x436d);
+        CHECK(!mt_reply_reordered(&late, r));
+        mt_reply_guard_tick(&late, r, 4);
+        CHECK(late.invalid);
     }
     {
         MtReplyGuard timeout = {0};
