@@ -198,6 +198,30 @@ describeOn('dt2', 'stock chords on one track', () => {
     const at = (pcm: Float32Array) => ({ f0: tone(pcm, f0, 0), f1: tone(pcm, f1, 0), finite: pcm.every(Number.isFinite) });
     const hiddenReport = { f1, both, pair: at(pair!), after9: at(after9!), tail: at(tail), faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]! };
     console.info('HIDDEN VOICES', JSON.stringify(hiddenReport));
+    await waitEmulated(session, 1300); // the first key's own sample (one second) ends: nothing of the track sounds
+    const hmaskIdle = (await dspWords(session, dsp('_cs_hmask'), 1))[0]!;
+    const vmaskIdle = (await dspWords(session, dsp('_cs_vmask'), 1))[0]!;
+
+    // The budget: with a limit no block can meet, a chord's copies are not rendered: they end and are counted, the owner plays. With the limit back,
+    // the next chord is whole.
+    const pokeWord = async (address: number, value: number) => {
+      await session.client.call('run.mode', { mode: 'paused' });
+      try {
+        const old = (await dspWords(session, address, 1))[0]!;
+        await rpc(session, 'dsp.patch', { text: `BASE ${'0'.repeat(64)}\nDM ${address.toString(16)} ${hex8(value)} was ${hex8(old)}\n` });
+      } finally {
+        await session.client.call('run.mode', { mode: 'free' });
+      }
+    };
+    const limit = (await dspWords(session, dsp('_cs_limit'), 1))[0]!;
+    const skipsBefore = (await dspWords(session, dsp('_cs_skips'), 1))[0]!;
+    await turn(2, 4); // KEYS CHRD MAJ
+    await pokeWord(dsp('_cs_limit'), 1);
+    const starved = levels(await render('starved'));
+    const skips = (await dspWords(session, dsp('_cs_skips'), 1))[0]! - skipsBefore;
+    await pokeWord(dsp('_cs_limit'), limit);
+    const restored = levels(await render('restored'));
+    console.info('BUDGET', JSON.stringify({ limit, hmaskIdle, vmaskIdle, skips, starved, restored }));
     console.info('STOCK CHORD', JSON.stringify({ f0, reference, triad, held, guard, guarded: guardedLevels, again }));
 
     const root = reference.root[0];
@@ -231,6 +255,17 @@ describeOn('dt2', 'stock chords on one track', () => {
     expect(hiddenReport.tail.f1, 'both keys up: the track releases').toBeLessThan(0.1 * root);
     expect(hiddenReport.pair.finite && hiddenReport.after9.finite && hiddenReport.tail.finite).toBe(true);
     expect(hiddenReport.faults, 'only the two copies the test broke').toBe(guard.faults);
+    expect(hmaskIdle & 1, 'track 1 left the hidden path once its notes ended').toBe(0);
+    expect(vmaskIdle & 3, 'and the chord path (no copies)').toBe(0);
+    expect(limit, 'the default limit').toBe(560000);
+    expect(skips, 'the starved block ended the copies of both voices').toBeGreaterThanOrEqual(4);
+    for (const channel of [0, 1] as const) {
+      expect(starved.root[channel], 'the owner plays without a budget').toBeGreaterThan(0.5 * root);
+      expect(starved.third[channel], 'no copy without a budget').toBeLessThan(0.1 * root);
+      expect(starved.fifth[channel]).toBeLessThan(0.1 * root);
+      for (const note of ['root', 'third', 'fifth'] as const)
+        expect(restored[note][channel], `the chord's ${note} with the limit back`).toBeGreaterThan(0.5 * root);
+    }
     await session.expectNoFault('stock chords');
   });
 });
