@@ -1382,7 +1382,7 @@ static void preset_fill(dk_ui_menu *m, void *ctx)
     dk_ui_menu_add_action(m, "LOAD SAVED SOUND", preset_load, 0, 0);
 }
 static const dk_ui_menu_desc preset_desc = {
-    .name = "canopy-presets", .title = "CANOPY PRESETS", .fill = preset_fill};
+    .name = "canopy-presets", .title = "Canopy PRESETS", .fill = preset_fill};
 static const char *const scan_clocks[] = {"FREE HZ", "TEMPO SYNC"};
 static void scan_clock_apply(int value)
 {
@@ -1561,7 +1561,7 @@ static void tone_fill(dk_ui_menu *m, void *ctx)
                          (void *)(uintptr_t)2);
 }
 static const dk_ui_menu_desc tone_desc = {
-    .name = "canopy-tone", .title = "CANOPY MODULATION", .fill = tone_fill};
+    .name = "canopy-tone", .title = "Canopy MODULATION", .fill = tone_fill};
 static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -1583,7 +1583,7 @@ static void fill(dk_ui_menu *m, void *ctx)
     dk_ui_menu_add_text(m, "MIDI: TRACK CHANNEL");
 }
 static const dk_ui_menu_desc desc = {
-    .name = "instrument-keyboard", .title = "CANOPY SETUP", .fill = fill};
+    .name = "instrument-keyboard", .title = "Canopy SETUP", .fill = fill};
 /* CANOPY is the only admitted instrument policy today. The menu asks with a
  * loaded module's validated id; a null parent is a capability query. */
 int dk_app_instrument_module_settings(const uint8_t *name, dk_ui_menu *parent)
@@ -1614,11 +1614,11 @@ void dk_app_instrument_settings_rows(dk_ui_menu *parent)
     if (!menu)
         menu = dk_ui_menu_new(ui(), &desc);
     if (menu)
-        dk_ui_menu_add_submenu(parent, "CANOPY", menu);
+        dk_ui_menu_add_submenu(parent, "Canopy", menu);
     if (!status_menu)
         status_menu = dk_ui_menu_new(ui(), &status_desc);
     if (status_menu)
-        dk_ui_menu_add_submenu(parent, "CANOPY STATUS", status_menu);
+        dk_ui_menu_add_submenu(parent, "Canopy STATUS", status_menu);
 }
 /* Enable this instance's panel route. CANOPY has no USB or DIN route of its own: the track keyboard plays it from the firmware's
  * MIDI config (its routes, the records canopy/routes/v1 and canopy/channels/v1, stay on the card unread). */

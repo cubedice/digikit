@@ -53,7 +53,7 @@ static void init(PhraseUi *s)
     raw[PH_P_MIX] = 100;
     writes = 0;
     pu_context(s, 1, 1);
-    s->title = "PRISM";
+    s->title = "Prism";
     status(s, 18000, 18000);
 }
 static void encoders(void)
@@ -305,7 +305,7 @@ static void page_cells(void)
     PhrasePage p;
     init(&s);
     pu_page(&s, &p);
-    same(p.title, "PRISM");
+    same(p.title, "Prism");
     same(p.zone, "ECHO");
     same(p.time, "375 MS");
     assert(p.mix == 100 && p.zone_index == 4);
@@ -479,7 +479,7 @@ static void rendering(void)
     /* The level strip is the stock send effects' VOL: the level of PRISM's wet return. */
     assert(saw_at(&d, 7, 59, "VOL") && !saw(&d, "100"));
     assert(saw_at(&values, 7, 59, "100") && !saw(&values, "VOL"));
-    assert(!saw(&d, "PRISM") && !saw(&d, "ECHO") && !saw(&d, "NO LOOP"));
+    assert(!saw(&d, "Prism") && !saw(&d, "ECHO") && !saw(&d, "NO LOOP"));
     assert(saw_at(&d, cell_x(1), 19, "375 MS") && saw_at(&values, cell_x(1), 19, "375 MS"));
     assert(!d.inverted && !values.inverted);
     tap(&s, PU_PUSH + 5);

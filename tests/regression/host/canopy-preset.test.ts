@@ -143,7 +143,7 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
       'menuset 0 2 -30\nmenuset 0 3 60\nmenuset 0 4 -20\n' +
       'config',
   );
-  expect(layout!.entry).toBe('CANOPY');
+  expect(layout!.entry).toBe('Canopy');
   expect(layout!.home).toEqual([
     'MODULATION',
     'PRESETS',

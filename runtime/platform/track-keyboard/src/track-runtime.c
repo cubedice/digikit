@@ -965,7 +965,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         return;
     }
     if (kind[pool_owner] == TK_NATIVE_CANOPY) {
-        dk_ui_menu_add_text(m, "CANOPY");
+        dk_ui_menu_add_text(m, "Canopy");
         dk_ui_menu_add_text(m, "4 PAD VOICES");
         dk_ui_menu_add_text(m, "1 ARP VOICE");
         dk_ui_menu_add_text(m, "2 RELEASE TAILS");
@@ -996,7 +996,7 @@ static void pool_fill(dk_ui_menu *m, void *unused)
         /* A track that cannot lend its voice says why when its machine is the reason: a MIDI track has no audio voice, CANOPY
          * and RELAY play their own. Any other audio track has trigs or locks in the pattern, or another claim. */
         const char *unavailable = kind[track] == TK_NATIVE_MIDI     ? "MIDI"
-                                  : kind[track] == TK_NATIVE_CANOPY ? "CANOPY"
+                                  : kind[track] == TK_NATIVE_CANOPY ? "Canopy"
                                   : kind[track] == TK_NATIVE_RELAY  ? "RELAY"
                                                                     : "IN USE";
         const char *state = pool_request & bit    ? owner == pool_owner ? "RESERVED" : "SELECTED"
