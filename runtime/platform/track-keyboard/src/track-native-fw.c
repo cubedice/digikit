@@ -56,6 +56,16 @@ int tk_native_kind(uint8_t track)
     return type >= 0 && type <= 6 && type != 5 ? TK_NATIVE_AUDIO : TK_NATIVE_UNSUPPORTED;
 }
 
+uint8_t tk_native_copies(uint8_t track)
+{
+    enum { STRETCH = 2 };
+    if (track >= TK_TRACKS)
+        return 0;
+    uintptr_t project = tk_fw_project();
+    uintptr_t kit = project ? tk_fw_active_kit(project) : 0;
+    return kit && tk_fw_track_type(kit, track) != STRETCH ? TK_COPIES : 0;
+}
+
 bool tk_native_relay_sound(uintptr_t sound)
 {
     /* A pool Sound is only halfword-aligned. The type is one byte. */

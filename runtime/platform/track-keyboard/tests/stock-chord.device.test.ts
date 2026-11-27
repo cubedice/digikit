@@ -1,0 +1,182 @@
+import path from 'node:path';
+import { describeOn } from '@digi/regression/runtime/devices.ts';
+import { dspWords } from '@digi/regression/runtime/dsp-state.ts';
+import { rpc } from '@digi/regression/runtime/guest-access.ts';
+import { liveOptions } from '@digi/regression/runtime/live-options.ts';
+import { acknowledgedPanel } from '@digi/regression/runtime/panel-ack.ts';
+import { readFloatWav } from '@digi/regression/runtime/pcm-files.ts';
+import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
+import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
+import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
+import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
+import { withSession } from '@digi/regression/support.ts';
+import { expect, test } from 'vitest';
+import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
+
+// Stock chords (core/dsp-voice `_cs_voice`, docs/findings/375-stock-voice-chords.md): with KEYS POLY and a chord, track 1's stock ONESHOT voice plays
+// the whole chord by itself. The track keyboard sends the chord's first note and the chord's shape; the DSP renders the other notes as copies of the
+// voice. The guard ends a copy whose block is not finite.
+
+const AUDIO_RATE = 48_000;
+const WINDOW = 4096;
+const NAN = 0x7fc00000;
+
+/** The level of one frequency in a settled window of one channel. */
+function tone(pcm: Float32Array, frequency: number, channel: 0 | 1): number {
+  expect(pcm.length).toBeGreaterThanOrEqual(2 * WINDOW);
+  const offset = Math.floor((pcm.length / 2 - WINDOW) / 2);
+  let real = 0;
+  let imaginary = 0;
+  for (let i = 0; i < WINDOW; i++) {
+    const window = (1 - Math.cos((2 * Math.PI * i) / (WINDOW - 1))) / 2;
+    const value = pcm[2 * (i + offset) + channel]! * window;
+    const phase = (2 * Math.PI * frequency * i) / AUDIO_RATE;
+    real += value * Math.cos(phase);
+    imaginary += value * Math.sin(phase);
+  }
+  return Math.hypot(real, imaginary) / WINDOW;
+}
+
+function fundamental(pcm: Float32Array): number {
+  // Track 1 of the stock test card is a one-second 220 Hz sine.
+  let frequency = 0;
+  let maximum = 0;
+  for (let probe = 100; probe <= 550; probe += 1) {
+    const level = tone(pcm, probe, 0);
+    if (level > maximum) {
+      maximum = level;
+      frequency = probe;
+    }
+  }
+  expect(maximum, 'the stock sample is audible').toBeGreaterThan(0.001);
+  return frequency;
+}
+
+const hex8 = (value: number) => (value >>> 0).toString(16).padStart(8, '0');
+
+describeOn('dt2', 'stock chords on one track', () => {
+  const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
+  test("KEYS POLY with a chord plays it on the track's own stock voice", { timeout: 300_000 }, async () => {
+    const { session } = handle;
+    const image = await prepareRuntimePlanModulesOffline(
+      session.options, session.runDir, session.runDir,
+      ['DKRT_BOOT'],
+      { modules: ['core/track-keyboard', 'core/health', 'core/dsp-voice'] },
+    );
+    const dsp = (name: string) => planSymbol(image.plan, name);
+    await session.client.firmwareLoad({
+      syx: image.syx, base_sha256: image.plan.base.syx_sha256, start: 'auto',
+      force: true, auto_no: true, card: session.cardPath,
+    });
+    await session.client.call('run.mode', { mode: 'free' });
+    await expectRuntimeUi(session, image.plan, session.runDir);
+    const sym = await trackKeyboardSymbols(session, image.plan);
+    const word = async (name: string) => ((await session.client.memPeek(sym(name))) ?? 0) >>> 0;
+    const { edge, tap, turn } = acknowledgedPanel(session);
+    await tap('NO'); // the stock FILE SYSTEM OK acknowledgement
+    await edge('TRK', true);
+    try {
+      await tap('TRIG 1');
+    } finally {
+      await edge('TRK', false);
+    }
+    await tap('SRC');
+    for (let page = 0; page < 4; page++) await tap('PAGE TRIG');
+    await turn(1, 12); // KEYS POLY on
+    await tap('KEYBOARD');
+
+    const render = async (label: string, during?: () => Promise<void>) => {
+      await waitEmulated(session, 1300); // the sample lasts one second at its own pitch
+      const file = path.join(session.runDir, `chord-${label}.wav`);
+      await edge('TRIG 9', true);
+      try {
+        await waitEmulated(session, 50);
+        await during?.();
+        await session.client.call('pcm.tap', { action: 'capture', path: file });
+        try {
+          await waitEmulated(session, 200);
+        } finally {
+          await session.client.call('pcm.tap', { action: 'capture_stop' });
+        }
+      } finally {
+        await edge('TRIG 9', false);
+      }
+      return readFloatWav(file);
+    };
+    const THIRD = 2 ** (4 / 12);
+    const FIFTH = 2 ** (7 / 12);
+    const SECOND = 2 ** (2 / 12); // not in the chord
+    const single = await render('single');
+    const f0 = fundamental(single);
+    const levels = (pcm: Float32Array) =>
+      Object.fromEntries(
+        ([['root', 1], ['second', SECOND], ['third', THIRD], ['fifth', FIFTH]] as const).map(([name, ratio]) => [
+          name,
+          [tone(pcm, f0 * ratio, 0), tone(pcm, f0 * ratio, 1)],
+        ]),
+      ) as Record<'root' | 'second' | 'third' | 'fifth', [number, number]>;
+    const reference = levels(single);
+
+    await turn(2, 4); // KEYS CHRD MAJ
+    let held = { active: 0, vmask: 0, copies: 0, shape: 0, faults: 0 };
+    const triad = levels(
+      await render('triad', async () => {
+        const row = await dspWords(session, dsp('_cs_cfg'), 6);
+        held = {
+          active: await word('tk_native_audio_active'),
+          vmask: (await dspWords(session, dsp('_cs_vmask'), 1))[0]!,
+          copies: row[0]!,
+          shape: row[5]!,
+          faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]!,
+        };
+      }),
+    );
+
+    // The guard: NaN in the decimator state of the first copy (the third) of both voices of the pair while the chord is held. The copies of
+    // voice v are 0x588 bytes apart.
+    let guard = { faults: 0, active: 0 };
+    const guarded = await render('guard', async () => {
+      const copies = [dsp('_cs_rec'), dsp('_cs_rec') + 0x588];
+      await session.client.call('run.mode', { mode: 'paused' });
+      try {
+        const lines: string[] = [];
+        for (const copy of copies) {
+          const old = await dspWords(session, copy + 0x104, 8);
+          old.forEach((w, i) => lines.push(`DM ${(copy + 0x104 + 4 * i).toString(16)} ${hex8(NAN)} was ${hex8(w)}`));
+        }
+        await rpc(session, 'dsp.patch', { text: `BASE ${'0'.repeat(64)}\n${lines.join('\n')}\n` });
+      } finally {
+        await session.client.call('run.mode', { mode: 'free' });
+      }
+      await waitEmulated(session, 60);
+      let active = 0;
+      for (const copy of copies) active |= (await dspWords(session, copy + 0x1b8, 1))[0]! & 0xff;
+      guard = { faults: (await dspWords(session, dsp('_cs_faults'), 1))[0]!, active };
+    });
+    const guardedLevels = levels(guarded);
+    const again = levels(await render('again'));
+    console.info('STOCK CHORD', JSON.stringify({ f0, reference, triad, held, guard, guarded: guardedLevels, again }));
+
+    const root = reference.root[0];
+    expect(held.active, 'the chord plays on track 1 alone: no helper').toBe(1);
+    expect(held.vmask & 3, 'voices 0 and 1 take the chord path').toBe(3);
+    expect(held.copies, 'two copies: the third and the fifth').toBe(2);
+    expect(held.shape >>> 24, 'the shape word came from the frame').toBe(0xc5);
+    expect(held.faults).toBe(0);
+    expect(guard.faults, 'the guard counted both copies').toBeGreaterThanOrEqual(2);
+    expect(guard.active, 'both copies ended').toBe(0);
+    expect(guarded.every(Number.isFinite), 'no sample of the track went bad').toBe(true);
+    for (const channel of [0, 1] as const) {
+      expect(reference.third[channel], 'no third from a single note').toBeLessThan(0.1 * root);
+      for (const note of ['root', 'third', 'fifth'] as const) {
+        expect(triad[note][channel], `the triad's ${note}`).toBeGreaterThan(0.5 * root);
+        expect(again[note][channel], `the next triad's ${note}`).toBeGreaterThan(0.5 * root);
+      }
+      expect(triad.second[channel], 'nothing between the notes').toBeLessThan(0.2 * root);
+      expect(guardedLevels.third[channel], 'the ended copy is silent').toBeLessThan(0.1 * root);
+      expect(guardedLevels.root[channel], 'the owner plays on').toBeGreaterThan(0.5 * root);
+      expect(guardedLevels.fifth[channel], 'the other copy plays on').toBeGreaterThan(0.5 * root);
+    }
+    await session.expectNoFault('stock chords');
+  });
+});

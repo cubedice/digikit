@@ -67,7 +67,8 @@ ${ampDone}`,
         base: 0xb9a000,
       },
     ],
-    externs: { _rtm_tracks: tracks, _rtm_tapes: tapes, _mi_envelope_records: ampPointer },
+    // _cs_receive: core/dsp-voice's stock-chord receiver, optional in track-pool.s (0 without that module)
+    externs: { _rtm_tracks: tracks, _rtm_tapes: tapes, _mi_envelope_records: ampPointer, _cs_receive: 0 },
     returnSw: ret,
   });
   const owner = 3;

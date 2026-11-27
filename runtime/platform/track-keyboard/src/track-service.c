@@ -302,6 +302,14 @@ void tk_service_set_voice_capacity(uint8_t track, uint8_t voices)
     tk_set_backend(&t->sequence, voices, t->backend.blend);
 }
 
+void tk_service_set_copies(uint8_t track, uint8_t copies)
+{
+    if (track >= TK_TRACKS || !tracks[track].backend.output)
+        return;
+    tk_set_copies(&tracks[track].live, copies);
+    tk_set_copies(&tracks[track].sequence, copies);
+}
+
 uint16_t tk_service_helpers(uint8_t track)
 {
     return tk_trig_ready(track) ? editing->tracks[track].helpers : 0;

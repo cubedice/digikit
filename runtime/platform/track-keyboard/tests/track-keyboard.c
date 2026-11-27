@@ -668,6 +668,69 @@ static void native_record_roundtrip(void)
 extern void track_native_checks(void);
 extern void track_pool_checks(void);
 
+static void chord_copies(void)
+{
+    /* A backend that copies a voice: a chord without strum is its first note, the others its copies (finding 375). */
+    Events e = {0};
+    TkState s;
+    tk_init(&s, sink, &e);
+    tk_set_backend(&s, 1, false); /* one voice: no helper */
+    tk_set_copies(&s, TK_COPIES);
+    TkParams p = tk_defaults();
+    TkRecipe no_recipe = {0};
+    p.poly = true;
+    p.chord = TK_CHORD_MAJ;
+    assert(tk_configure(&s, &p, &no_recipe));
+    assert(tk_press(&s, TK_PANEL, 0, 1, 60, 100));
+    assert(e.count == 1);
+    expect(&e, 0, true, 60, TK_DIRECT);
+    assert(e.events[0].copies == 2 && e.events[0].intervals[0] == 4 &&
+           e.events[0].intervals[1] == 7);
+    /* another shape on the held key: the voice starts again with it */
+    p.chord = TK_CHORD_MAJ6;
+    assert(tk_configure(&s, &p, &no_recipe));
+    expect(&e, 1, false, 60, TK_DIRECT);
+    expect(&e, 2, true, 60, TK_DIRECT);
+    assert(e.events[2].copies == 3 && e.events[2].intervals[2] == 9);
+    /* VOIC still limits the notes */
+    p.voices = 2;
+    assert(tk_configure(&s, &p, &no_recipe));
+    expect(&e, 3, false, 60, TK_DIRECT);
+    expect(&e, 4, true, 60, TK_DIRECT);
+    assert(e.events[4].copies == 1 && e.events[4].intervals[0] == 4);
+    tk_release(&s, TK_PANEL, 0, 1);
+    expect(&e, 5, false, 60, TK_DIRECT);
+    assert(e.count == 6);
+    /* an inversion: the intervals are from its first note */
+    p.voices = 4;
+    p.chord = TK_CHORD_MAJ;
+    p.voicing = TK_VOICE_INV1;
+    assert(tk_configure(&s, &p, &no_recipe));
+    e.count = 0;
+    assert(tk_press(&s, TK_PANEL, 0, 1, 60, 100));
+    assert(e.count == 1 && e.events[0].pitch == 64 && e.events[0].copies == 2);
+    assert(e.events[0].intervals[0] == 3 && e.events[0].intervals[1] == 8);
+    tk_panic(&s);
+    /* strum keeps a voice per note */
+    p.voicing = TK_VOICE_CLOSE;
+    p.strum_ms = 20;
+    assert(tk_configure(&s, &p, &no_recipe));
+    e.count = 0;
+    assert(tk_press(&s, TK_PANEL, 0, 1, 60, 100));
+    assert(e.count == 1 && e.events[0].copies == 0);
+    tk_panic(&s);
+    /* a backend without copies: a voice per note */
+    p.strum_ms = 0;
+    tk_set_copies(&s, 0);
+    tk_set_backend(&s, 3, false);
+    assert(tk_configure(&s, &p, &no_recipe));
+    e.count = 0;
+    assert(tk_press(&s, TK_PANEL, 0, 1, 60, 100));
+    assert(e.count == 3 && e.events[0].copies == 0 && e.events[1].pitch == 64 &&
+           e.events[2].pitch == 67);
+    tk_panic(&s);
+}
+
 int main(void)
 {
     direct_notes();
@@ -689,4 +752,5 @@ int main(void)
     native_record_roundtrip();
     track_native_checks();
     track_pool_checks();
+    chord_copies();
 }

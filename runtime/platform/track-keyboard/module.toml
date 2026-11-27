@@ -99,6 +99,8 @@ tk_seq_capture_live_resume = "cf.track_sequence.site.capture_live_resume"
 
 [[object]]
 path = "build/track-pool-dsp.dko.json"
+# core/dsp-voice's stock-chord receiver (finding 375): 0 without that module
+optional = ["_cs_receive"]
 sources = ["src/dsp/track-pool.s"]
 place = "dsp.l2"
 devices = ["dt2"]

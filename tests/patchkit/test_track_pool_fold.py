@@ -51,7 +51,8 @@ _test_quiet:
 """
     obj = pk_sharc.assemble(source)
     symbols = {name: DATA + offset for name, (_, offset, _) in obj.data_symbols.items()}
-    return pk_sharc.link(obj, 0xB90000, symbols), symbols
+    # core/dsp-voice's stock-chord receiver is optional (module.toml): 0, as patchkit links it without that module
+    return pk_sharc.link(obj, 0xB90000, {**symbols, "_cs_receive": 0}), symbols
 
 
 def run(fold, first, second):

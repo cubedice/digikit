@@ -91,8 +91,8 @@ describe('core/dsp-voice on the rig', () => {
     savedIntact(out);
     expect(out.regs.R4).toBe(out.in.R4);
     expect(out.regs.R8).toBe(out.in.R8);
-    // a slot whose type no row registers does not walk the table
-    expect(out.instructions).toBeLessThan(60);
+    // a slot whose type no row registers does not walk the table (61 with the stock-chord check of the stub, finding 375: three instructions)
+    expect(out.instructions).toBeLessThan(64);
   });
 
   it('a zero slot takes the stock path at the render hook and keeps the heartbeat', async () => {

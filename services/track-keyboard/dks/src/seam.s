@@ -149,139 +149,143 @@ tk_pool_can_start:
 tk_pool_capacity:
     movea.l tk_img+116,%a1
     jmp (%a1)
+    .globl tk_pool_link_chord
+tk_pool_link_chord:
+    movea.l tk_img+120,%a1
+    jmp (%a1)
     .globl tk_pool_link_init
 tk_pool_link_init:
-    movea.l tk_img+120,%a1
+    movea.l tk_img+124,%a1
     jmp (%a1)
     .globl tk_pool_link_quiet
 tk_pool_link_quiet:
-    movea.l tk_img+124,%a1
+    movea.l tk_img+128,%a1
     jmp (%a1)
     .globl tk_pool_link_ready
 tk_pool_link_ready:
-    movea.l tk_img+128,%a1
+    movea.l tk_img+132,%a1
     jmp (%a1)
     .globl tk_pool_publish_frame
 tk_pool_publish_frame:
-    movea.l tk_img+132,%a1
+    movea.l tk_img+136,%a1
     jmp (%a1)
     .globl tk_pool_update
 tk_pool_update:
-    movea.l tk_img+136,%a1
+    movea.l tk_img+140,%a1
     jmp (%a1)
     .globl tk_stock_step_copy
 tk_stock_step_copy:
-    movea.l tk_img+140,%a1
+    movea.l tk_img+144,%a1
     jmp (%a1)
     .globl tk_stock_step_paste
 tk_stock_step_paste:
-    movea.l tk_img+144,%a1
+    movea.l tk_img+148,%a1
     jmp (%a1)
     .globl tk_stock_step_clear
 tk_stock_step_clear:
-    movea.l tk_img+148,%a1
+    movea.l tk_img+152,%a1
     jmp (%a1)
     .globl tk_stock_step_toggle
 tk_stock_step_toggle:
-    movea.l tk_img+152,%a1
+    movea.l tk_img+156,%a1
     jmp (%a1)
     .globl tk_stock_step_clip_get
 tk_stock_step_clip_get:
-    movea.l tk_img+156,%a1
+    movea.l tk_img+160,%a1
     jmp (%a1)
     .globl dk_ui_core_handle
 dk_ui_core_handle:
-    movea.l tk_img+160,%a1
+    movea.l tk_img+164,%a1
     jmp (%a1)
     .globl dk_ui_core_list_title
 dk_ui_core_list_title:
-    movea.l tk_img+164,%a1
+    movea.l tk_img+168,%a1
     jmp (%a1)
     .globl dk_ui_core_menu_front
 dk_ui_core_menu_front:
-    movea.l tk_img+168,%a1
+    movea.l tk_img+172,%a1
     jmp (%a1)
     .globl dkrt_blocks
 dkrt_blocks:
-    movea.l tk_img+172,%a1
+    movea.l tk_img+176,%a1
     jmp (%a1)
     .globl dkrt_instrument_type
 dkrt_instrument_type:
-    movea.l tk_img+176,%a1
+    movea.l tk_img+180,%a1
     jmp (%a1)
     .globl dkrt_irq_mask
 dkrt_irq_mask:
-    movea.l tk_img+180,%a1
+    movea.l tk_img+184,%a1
     jmp (%a1)
     .globl dkrt_irq_restore
 dkrt_irq_restore:
-    movea.l tk_img+184,%a1
+    movea.l tk_img+188,%a1
     jmp (%a1)
     .globl dkrt_module
 dkrt_module:
-    movea.l tk_img+188,%a1
+    movea.l tk_img+192,%a1
     jmp (%a1)
     .globl dkrt_poll_add
 dkrt_poll_add:
-    movea.l tk_img+192,%a1
+    movea.l tk_img+196,%a1
     jmp (%a1)
     .globl pp_current_pattern
 pp_current_pattern:
-    movea.l tk_img+196,%a1
+    movea.l tk_img+200,%a1
     jmp (%a1)
     .globl pp_selected_tempo
 pp_selected_tempo:
-    movea.l tk_img+200,%a1
+    movea.l tk_img+204,%a1
     jmp (%a1)
     .globl pp_transport_running
 pp_transport_running:
-    movea.l tk_img+204,%a1
+    movea.l tk_img+208,%a1
     jmp (%a1)
     .globl cp_valid
 cp_valid:
-    movea.l tk_img+208,%a1
+    movea.l tk_img+212,%a1
     jmp (%a1)
     .globl ilp_event_pair
 ilp_event_pair:
-    movea.l tk_img+212,%a1
+    movea.l tk_img+216,%a1
     jmp (%a1)
     .globl instrument_lock_source
 instrument_lock_source:
-    movea.l tk_img+216,%a1
+    movea.l tk_img+220,%a1
     jmp (%a1)
     .globl instrument_locked_sound
 instrument_locked_sound:
-    movea.l tk_img+220,%a1
+    movea.l tk_img+224,%a1
     jmp (%a1)
     .globl instrument_src_track_keyboard
 instrument_src_track_keyboard:
-    movea.l tk_img+224,%a1
+    movea.l tk_img+228,%a1
     jmp (%a1)
     .globl instrument_track_keyboard_lanes
 instrument_track_keyboard_lanes:
-    movea.l tk_img+228,%a1
+    movea.l tk_img+232,%a1
     jmp (%a1)
     .globl instrument_track_keyboard_legacy
 instrument_track_keyboard_legacy:
-    movea.l tk_img+232,%a1
+    movea.l tk_img+236,%a1
     jmp (%a1)
     .globl instrument_track_keyboard_locked_note
 instrument_track_keyboard_locked_note:
-    movea.l tk_img+236,%a1
+    movea.l tk_img+240,%a1
     jmp (%a1)
     .globl instrument_track_keyboard_controller
 instrument_track_keyboard_controller:
-    movea.l tk_img+240,%a1
+    movea.l tk_img+244,%a1
     jmp (%a1)
     .globl instrument_track_owned
 instrument_track_owned:
-    movea.l tk_img+244,%a1
+    movea.l tk_img+248,%a1
     jmp (%a1)
     .globl rtm_is_type
 rtm_is_type:
-    movea.l tk_img+248,%a1
+    movea.l tk_img+252,%a1
     jmp (%a1)
     .bss
     .balign 4
     .globl tk_img
-tk_img: .space 260
+tk_img: .space 264
