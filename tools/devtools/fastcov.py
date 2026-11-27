@@ -96,7 +96,11 @@ def write_entries(what: str, image: str) -> str:
         return text
     path = OUT_DIR / f"entries-{image}-{what}.txt"
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(text)
+    # Written aside and renamed: runs that start together (the FX tiers) read the
+    # same file, and none of them may see it half written.
+    part = path.with_name(f"{path.name}.{os.getpid()}.part")
+    part.write_text(text)
+    part.replace(path)
     return f"@{path}"
 
 
@@ -150,12 +154,13 @@ def parse_config(spec: str) -> tuple[str, dict[str, str]]:
     if kind in ("static-funcs", "static-blocks", "static-insns"):
         # Region entries chosen at load from the program database: function
         # entries, or every basic-block start. No run-time selection or drop.
+        # A long list goes in a file (@FILE): Linux refuses an environment string
+        # over 128 KiB, and the DN2 instruction list is about 570 KB.
         return spec, {
             "SHARC_AOT": "0",
             "SHARC_BLOCKTRANS": "",
-            "SHARC_FAST_REGIONS": ",".join(
-                f"{pc:#x}"
-                for pc in static_entries(kind.split("-")[1], arg or STATIC_IMAGE)
+            "SHARC_FAST_REGIONS": write_entries(
+                kind.split("-")[1], arg or STATIC_IMAGE
             ),
         }
     if kind == "fast-auto+verified":
