@@ -195,6 +195,15 @@ users = ["core/dsp-voice"]
 doc = "The voices' release bytes: byte v is 1 for about one block after voice v's note-off (FUN_1c6056 stores it, the trigger path stores 0), 0x40 bytes past the trigger latch whose literal the rule reads."
 
 [[value]]
+name = "dsp.voice.value.velocity_curves"
+cpu = "sharc"
+devices = ["dt2"]
+rule = { kind = "sharc_literal", reloc_hash = "d2c02a587786f9ee328897985095c271ff1c5b65f289224e435968ea4b5d3f00", offset = 0x82 }
+mark = "D"
+users = ["core/dsp-voice"]
+doc = "The stock velocity curves: five tables of 128 floats (512 bytes each, curve 0 to 4, indexed by velocity), the literal `I5 = I4 + 0x8045a9b8` of the per-track unpack, which multiplies the entry by 127/128 into the voice's velocity factor (finding 135)."
+
+[[value]]
 name = "dsp.voice.value.type_cache"
 was = ["dsp.voice.type_cache"]
 cpu = "sharc"

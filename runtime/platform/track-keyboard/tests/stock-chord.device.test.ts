@@ -15,7 +15,7 @@ import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 
 // Stock chords (core/dsp-voice `_cs_voice`, docs/findings/375-stock-voice-chords.md): with KEYS POLY and a chord, track 1's stock ONESHOT voice plays
 // the whole chord by itself. The track keyboard sends the chord's first note and the chord's shape; the DSP renders the other notes as copies of the
-// voice. The guard ends a copy whose block is not finite.
+// voice. The guard ends a copy whose block is not finite. Further keys of CHRD PLAY play on hidden voices, at their own velocity.
 
 const AUDIO_RATE = 48_000;
 const WINDOW = 4096;
@@ -37,11 +37,11 @@ function tone(pcm: Float32Array, frequency: number, channel: 0 | 1): number {
   return Math.hypot(real, imaginary) / WINDOW;
 }
 
-function fundamental(pcm: Float32Array): number {
+function fundamental(pcm: Float32Array, highest = 550): number {
   // Track 1 of the stock test card is a one-second 220 Hz sine.
   let frequency = 0;
   let maximum = 0;
-  for (let probe = 100; probe <= 550; probe += 1) {
+  for (let probe = 100; probe <= highest; probe += 1) {
     const level = tone(pcm, probe, 0);
     if (level > maximum) {
       maximum = level;
@@ -53,6 +53,7 @@ function fundamental(pcm: Float32Array): number {
 }
 
 const hex8 = (value: number) => (value >>> 0).toString(16).padStart(8, '0');
+const asFloat = (word: number) => new Float32Array(new Uint32Array([word]).buffer)[0]!;
 
 describeOn('dt2', 'stock chords on one track', () => {
   const handle = withSession({ ...trackKeyboardCard(liveOptions('dt2', { fresh: true })), dsp: 'sharc', restart: false });
@@ -222,6 +223,49 @@ describeOn('dt2', 'stock chords on one track', () => {
     await pokeWord(dsp('_cs_limit'), limit);
     const restored = levels(await render('restored'));
     console.info('BUDGET', JSON.stringify({ limit, hmaskIdle, vmaskIdle, skips, starved, restored }));
+
+    // Velocity: MIDI notes on track 1 (USB, Auto Channel 1), CHRD PLAY. The second key plays on hidden voice 1 at the level the stock voice gives its
+    // velocity: its factor (`_hv_state` word 7) is the track's velocity curve at its velocity over the curve at the owner's (word 4 holds both
+    // velocities and the curve), and its level follows the factor.
+    await turn(2, -4); // KEYS CHRD PLAY
+    const setWord = (addr: number, value: number) => {
+      const data = Buffer.alloc(4);
+      data.writeUInt32BE(value);
+      return session.client.call('mem.cf.write', { addr, hex: data.toString('hex') });
+    };
+    await setWord(0x429368ca, 3); // the stock USB/DIN receive setup of the MIDI ingress test
+    await setWord(0x42936872, 0); // Auto Channel 1
+    await setWord(0x429368ee, 1); // Receive Notes
+    const midi = (bytes: number[]) => session.client.call('midi.usb.in', { bytes });
+    await waitEmulated(session, 1300);
+    await midi([0x90, 67, 100]);
+    await waitEmulated(session, 50);
+    const alone67 = await capture('velocity-67');
+    await midi([0x80, 67, 0]);
+    const f67 = fundamental(alone67, 1200);
+    const velocityPair = async (label: string, owner: number, second: number) => {
+      await waitEmulated(session, 1300);
+      await midi([0x90, 60, owner]);
+      await waitEmulated(session, 40);
+      await midi([0x90, 67, second]);
+      await waitEmulated(session, 60);
+      const state = await dspWords(session, dsp('_hv_state') + 32, 8);
+      const pcm = await capture(`velocity-${label}`);
+      await midi([0x80, 67, 0, 0x80, 60, 0]);
+      const key = state[4]!;
+      return {
+        owner: key & 0x7f,
+        curve: (key >>> 7) & 7,
+        velocity: (key >>> 18) & 0x7f,
+        factor: asFloat(state[7]!),
+        level: tone(pcm, f67, 0),
+        finite: pcm.every(Number.isFinite),
+      };
+    };
+    const even = await velocityPair('even', 100, 100);
+    const soft = await velocityPair('soft', 100, 40);
+    const loud = await velocityPair('loud', 60, 100); // (curve 4 needs a factor of 4.3: below the cap of 8)
+    console.info('VELOCITY', JSON.stringify({ f67, even, soft, loud }));
     console.info('STOCK CHORD', JSON.stringify({ f0, reference, triad, held, guard, guarded: guardedLevels, again }));
 
     const root = reference.root[0];
@@ -266,6 +310,17 @@ describeOn('dt2', 'stock chords on one track', () => {
       for (const note of ['root', 'third', 'fifth'] as const)
         expect(restored[note][channel], `the chord's ${note} with the limit back`).toBeGreaterThan(0.5 * root);
     }
+    expect(even.owner, "the owner's velocity, from the frame").toBe(100);
+    expect(even.velocity, "the note's velocity, from its word").toBe(100);
+    expect(soft.velocity).toBe(40);
+    expect(loud.owner).toBe(60);
+    expect(loud.factor, 'a softer owner: the louder key is scaled up').toBeGreaterThan(1);
+    expect(Math.abs(even.factor - 1), 'equal velocities: factor 1').toBeLessThan(1e-3);
+    expect(even.level, 'the hidden voice sounds').toBeGreaterThan(0.25 * root);
+    expect(Math.abs(soft.level / even.level / soft.factor - 1), 'a softer key is softer by its factor').toBeLessThan(0.15);
+    expect(Math.abs(loud.level / even.level - 1), "a key sounds at its own velocity whatever the owner's").toBeLessThan(0.1);
+    if (soft.curve !== 0) expect(soft.factor, 'the curve gives velocity 40 less than 100').toBeLessThan(0.9);
+    expect(even.finite && soft.finite && loud.finite).toBe(true);
     await session.expectNoFault('stock chords');
   });
 });

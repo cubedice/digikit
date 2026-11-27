@@ -33639,6 +33639,36 @@
       "was": [
         "dsp.voice.type_cache"
       ]
+    },
+    {
+      "at": {
+        "dt2-1.17": [
+          {
+            "addr": "0x8045a9b8",
+            "len": 6
+          }
+        ]
+      },
+      "cpu": "sharc",
+      "devices": [
+        "dt2"
+      ],
+      "doc": "The stock velocity curves: five tables of 128 floats (512 bytes each, curve 0 to 4, indexed by velocity), the literal `I5 = I4 + 0x8045a9b8` of the per-track unpack, which multiplies the entry by 127/128 into the voice's velocity factor (finding 135).",
+      "file": "devices/fw/dsp/voice.toml",
+      "kind": "value",
+      "mark": "D",
+      "name": "dsp.voice.value.velocity_curves",
+      "rule": {
+        "dt2": {
+          "kind": "sharc_literal",
+          "offset": 130
+        }
+      },
+      "subsystem": "voice",
+      "users": [
+        "core/dsp-voice"
+      ],
+      "was": []
     }
   ],
   "generated_by": "patchkit gen from devices/fw and devices/ports. Do not edit.",
@@ -33911,7 +33941,7 @@
       "name": "pattern"
     },
     {
-      "count": 99,
+      "count": 100,
       "cpu": "sharc",
       "file": "devices/fw/dsp/voice.toml",
       "meaning": "voice rendering",

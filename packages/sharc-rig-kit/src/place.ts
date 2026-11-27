@@ -5,7 +5,7 @@
  */
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { SLOTS, STOCK_BP, TABLE, TYPE_CACHE, FRAME, PARAM_REC, RELEASE, UNPACK_BP } from './context.ts';
+import { SLOTS, STOCK_BP, TABLE, TYPE_CACHE, FRAME, PARAM_REC, RELEASE, UNPACK_BP, VEL_CURVES } from './context.ts';
 import { ROOT } from './rig.ts';
 import { ConformError, type MachineSpec } from './spec.ts';
 import { assembleSource, link, sharcIncludeDirs, stripSpans, type Linked, type SharcObject } from './toolchain.ts';
@@ -168,6 +168,7 @@ function externsFixed(device: string): Record<string, number> {
     _fw_param_rec: PARAM_REC,
     _fw_release_latch: RELEASE,
     _fw_unpack: UNPACK_BP,
+    _fw_vel_curves: VEL_CURVES,
     _dv_table: TABLE,
     // optional in core/dsp-voice's module.toml: patchkit links it as 0 without core/instrument-play, and 0 keeps the legacy voice table alone
     _instrument_voice_rows: 0,

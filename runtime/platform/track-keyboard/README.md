@@ -40,8 +40,9 @@ note sounds plays on a hidden voice, so the track plays up to four keys
 by itself before AUTO borrows another track; a saved group's helpers
 still come first. Each hidden note fades in and out with its own key,
 but the track's filter and amp envelope shape them all: the envelope
-opens with the first key and releases after the last. Hidden voices
-play at the track's level, whatever their velocity.
+opens with the first key and releases after the last. Each hidden
+note plays at the level its velocity gives a stock note on the track's
+velocity curve (up to 8 times the first key's level).
 
 H POOL shows the automatic voice count and borrowed tracks. A saved
 manual group still uses its chosen helpers. To pin a group, stop transport,

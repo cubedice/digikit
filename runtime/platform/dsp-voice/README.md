@@ -26,7 +26,7 @@ example). On its own it changes nothing: a patched image with no registered mach
   record at other pitches with the stock sample renderer and sums them into its block, so a stock sample track plays a chord by itself; the
   notes share the track's filter and amp envelope. The track keyboard sends each track's chord shape through the frame (`_cs_receive`). A
   copy whose block is not finite or exceeds 8.0 ends and is not added (`_cs_faults`). The same records also serve as hidden voices (`_cs_hmask`):
-  further keys of the track with their own note-on, pitch and fade, under the track's filter and amp envelope. The extra voices are paid from a
+  further keys of the track with their own note-on, pitch, velocity and fade, under the track's filter and amp envelope. The extra voices are paid from a
   per-block budget (`_cs_limit` cycles, from the block handler's own count); one that does not fit ends (`_cs_skips`). Unmarked voices pay
   three instructions (docs/findings/375-stock-voice-chords.md).
 

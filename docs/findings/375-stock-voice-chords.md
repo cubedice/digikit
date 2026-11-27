@@ -104,12 +104,34 @@ note-off.
 - The frame word carries 80 words in turn (16 shapes, 4 hidden-voice words per track once set), changed ones first.
 
 The behaviour is paraphonic: the track's stock amp envelope opens with the first key and releases after the last, and each note's own
-envelope only fades it in and out within that. Velocity is not applied to hidden voices (they sound at the owner's level).
+envelope only fades it in and out within that. Each hidden voice sounds at the level its own velocity gives a stock note (below).
 
 `stock-chord.device.test.ts`, CHRD PLAY, TRIG 9 (220 Hz) held, then TRIG 13 (330 Hz): both sounded at 0.00903 and 0.00902 with only track 1
 active (no helper) and hidden voice 1's gate open; TRIG 9 up: 220 Hz fell to 0.000003 within 150 ms while 330 Hz stayed at 0.00902; both up:
 silence. A run with the words written through `dsp.patch` (no track keyboard) gave the same: a fifth and a third added to a held note at the
 note's level, the note's own gate closed to 0.000012 while the two played on, then the fifth's gate closed alone.
+
+## Velocity of hidden voices [D]
+
+The stock voice's level follows its velocity through a factor latched at its note-on (finding 135): the per-track unpack (`0x1c24e9`,
+`dsp.voice.fn.track_unpack`) reads the frame's velocity word (halfword 26 + t, velocity << 8) and the track's velocity curve (halfword 42 + t,
+clamped to 0 .. 4), looks the velocity up in one of five tables of 128 floats (`0x8045a9b8` + 512 bytes per curve, the literal at `0x1c256b`;
+port value `dsp.voice.value.velocity_curves`) and keeps 127/128 of the entry. The voice latches it at its note-on, and the gain builder
+multiplies the amp by it. A hidden voice is summed before the amp, so without a factor of its own it sounds at the owner's velocity.
+
+- `_hv_velocity`: the factor of hidden voice h is the curve's entry for its velocity (bits 0-6 of its word) over the curve's entry for the owner's
+  velocity (the frame's), at most 8.0, and 1.0 when the owner's entry is not a finite number of at least 2^-20. `_hv_run` takes it again, with
+  the pitch ratio, only when the owner's velocity, the curve, the track's note or the note's pitch or velocity changed (state word 4); the
+  envelope ramp the hidden voice is added with is multiplied by it (state word 7).
+- Curve 0 has the same entry for every velocity (finding 135): factor 1, so hidden voices ignore velocity as the stock voice does.
+- The ratio assumes the gain builder's clamp (`2 * clamp(a * a * b, 0, 1) * c`) does not saturate for the owner. A factor above 1 means the
+  hidden voice reaches the track's bit reduction, filter and overdrive louder than a stock note could.
+
+`stock-chord.device.test.ts`, MIDI note-ons over USB on track 1 (Auto Channel 1, CHRD PLAY), note 60 and then note 67 (the hidden voice, at
+330 Hz); the test card's track 1 has curve 4. Both at velocity 100: factor 1.0000, the second note at 0.00902. The second at
+40: factor 0.1116, level 0.00100 (0.111 of the first). The owner at 60 and the second at 100: factor
+4.314, level 0.00902 (1.000): the second note keeps its own level whatever the owner's velocity. An earlier run with the owner
+at 40 reached the cap: curve 4 needs 8.96 for 100 over 40, so the note sounded at 0.89 of its level.
 
 ## On the device [D]
 
@@ -160,7 +182,9 @@ Two assembler facts found on the way: an immediate such as `3 * 0x1d8` assembles
 - The notes of a chord share the track's amp envelope and filter; a release of one note of a held chord is not possible. Hidden voices have
   their own fade in and out but the track's envelope and filter still shape them all (paraphonic). A per-voice stock envelope and filter would
   need the inline set-up of `FUN_1c642a` reproduced on private state.
-- Velocity is not applied to hidden voices.
+- A hidden voice's velocity factor is at most 8.0. On a steep curve a soft first key and a hard second key need more (curve 4: 8.96 for 100
+  over 40), and the second key then sounds below its level. Raising the owner's latched factor to the loudest note's and scaling the owner's
+  own block down instead would keep every factor at most 1, but writes stock state (the latch, finding 135).
 - STRETCH (`0x1c5576`) is not hooked and keeps a voice per note. WERP, REPITCH, GRID and SLICE use the same renderer as ONESHOT and are not
   tested.
 - The stock renderer reads 16-bit PCM, so a copy cannot produce a bad sample from the sample alone; the guard covers corrupt state.
