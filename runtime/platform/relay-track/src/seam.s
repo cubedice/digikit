@@ -110,3 +110,12 @@ relay_trig:
 1:
     moveq #0,%d0
     rts
+    .globl rtm_help_draw
+rtm_help_draw:
+    move.l slot.relay_vec,%d0
+    beq.s 1f
+    movea.l %d0,%a1
+    movea.l 44(%a1),%a1
+    jmp (%a1)
+1:
+    rts

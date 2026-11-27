@@ -379,7 +379,9 @@ static void page_cells(void)
     same(p.time, "NO LINK");
     same(p.cells[1].value, "--");
 }
-/* A canvas that checks what the page draws: inside the screen, every text inside its place. */
+/* A canvas that checks what the page draws: inside the screen, every text inside its place. The stock FX view keeps the
+ * header (rows 0 to 9), the effect's tab (x 0 to 15 above row 38) and the page indicator (x 124 to 127): the page draws
+ * the body and the level strip under the tab, nothing else. */
 typedef struct {
     uint32_t boxes, texts, inverted;
     char seen[64][24];
@@ -389,9 +391,8 @@ typedef struct {
 static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 {
     Drawn *d = ctx;
-    assert(x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 128 && y + h <= 64);
-    /* below the header, x 124 to 127 are the FX view's page indicator: nothing is drawn or cleared there */
-    assert(y + h <= 10 || x + w <= 124);
+    assert(x >= 0 && y >= 10 && w > 0 && h > 0 && x + w <= 124 && y + h <= 64);
+    assert(x >= 16 || y >= 38);
     assert(ink == 0 || ink == 1);
     for (int row = y; row < y + h; ++row)
         memset(&d->pixels[row][x], ink, (size_t)w);
@@ -400,15 +401,13 @@ static void drawn_box(void *ctx, int x, int y, int w, int h, int ink)
 static void drawn_text(void *ctx, int x, int y, const char *s, int ink)
 {
     Drawn *d = ctx;
-    /* The label font is at most 4 pixels a character and 5 high. A cell's text has at most 7 characters; the header's loop
-     * line (at the top) more. */
-    int half = (int)strlen(s) * 4 / 2;
-    assert(*s && (strlen(s) <= 7 || (y == 2 && strlen(s) < 24)) && x - half >= 0 &&
-           x + half <= 128 && y >= 0 && y + 5 <= 64);
-    /* below the header, x 124 to 127 are the FX view's page indicator */
-    assert(y < 10 || x + half <= 124);
+    /* The label font is at most 4 pixels a character and 5 high; a cell's text has at most 7 characters. An inverted text's
+     * box is one pixel larger on every side. */
+    int half = (int)strlen(s) * 4 / 2 + !ink;
+    assert(*s && strlen(s) <= 7 && y >= 10 && y + 5 <= 64);
+    assert(x + half <= 124 && (x - half >= 16 || (y >= 38 && x - half >= 0)));
     /* The RATE readout is the only text inside an icon band. */
-    assert(y < 10 || x + half + !ink <= 19 || y == 32 || y == 59 || (x == 58 && y == 19));
+    assert(y == 32 || y == 59 || (x == PU_CELL_X + PU_CELL_W && y == 19));
     assert(d->texts < 64);
     d->centres[d->texts] = x;
     d->tops[d->texts] = y;
@@ -429,54 +428,71 @@ static int saw_at(const Drawn *d, int x, int y, const char *s)
             return 1;
     return 0;
 }
-static void draw_page(const PhrasePage *p, Drawn *d, int show_values)
+static void draw_focused(const PhrasePage *p, Drawn *d, int show_values, uint32_t focus)
 {
     memset(d, 0, sizeof(*d));
     PhraseCanvas c = {d, drawn_box, drawn_text};
-    pu_render(p, &c, show_values);
+    pu_render(p, &c, show_values, focus);
+}
+static void draw_page(const PhrasePage *p, Drawn *d, int show_values)
+{
+    draw_focused(p, d, show_values, 0);
+}
+/* The centre of cell I (0 to 7: A to H) and the top of its caption. */
+static int cell_x(int i)
+{
+    return PU_CELL_X + PU_CELL_W * (i % 4);
+}
+static int cell_y(int i)
+{
+    return i < 4 ? 32 : 59;
 }
 static void rendering(void)
 {
     PhraseUi s;
     PhrasePage p;
     init(&s);
-    Drawn d, values;
-    PhraseCanvas c = {&d, drawn_box, drawn_text};
+    Drawn d, values, focused;
     pu_page(&s, &p);
     draw_page(&p, &d, 0);
     draw_page(&p, &values, 1);
-    static const char *const labels[] = {"ZONE", "RATE", "RPTS", "COLR",
-                                         "HALO", "SKEW", "INPT", "XFAD"};
-    static const char *const formatted[] = {"ECHO", "RATE", "48", "0", "0", "0", "LIVE", "--"};
+    /* INPT's caption says that PRISM hears no track (nothing is chosen yet); with FUNC + FX held RATE's caption says it
+     * is free (its graphic is the time). */
+    static const char *const labels[] = {"ZONE", "RATE", "RPTS",   "COLR",
+                                         "HALO", "SKEW", "NO TRK", "XFAD"};
+    static const char *const formatted[] = {"ECHO", "FREE", "48", "0", "0", "0", "LIVE", "--"};
     for (int i = 0; i < 8; ++i) {
-        int x = 32 + 26 * (i % 4), y = i < 4 ? 32 : 59;
-        assert(saw_at(&d, x, y, labels[i]) && saw_at(&values, x, y, formatted[i]));
-        if (i != 1)
-            assert(!saw_at(&d, x, y, formatted[i]) && !saw_at(&values, x, y, labels[i]));
+        assert(saw_at(&d, cell_x(i), cell_y(i), labels[i]) &&
+               saw_at(&values, cell_x(i), cell_y(i), formatted[i]));
+        assert(!saw_at(&d, cell_x(i), cell_y(i), formatted[i]) &&
+               !saw_at(&values, cell_x(i), cell_y(i), labels[i]));
+        /* a turn shows that cell's value for a moment (the view's focus), and only that cell's */
+        draw_focused(&p, &focused, 0, 1u << i);
+        for (int j = 0; j < 8; ++j)
+            assert(saw_at(&focused, cell_x(j), cell_y(j), j == i ? formatted[j] : labels[j]));
     }
-    /* Holding FUNC swaps the captions while the underlying icon pixels stay the same. */
+    /* Holding FUNC + FX swaps the captions while the underlying icon pixels stay the same. */
     for (int row = 14; row <= 28; ++row) {
         assert(!memcmp(d.pixels[row], values.pixels[row], sizeof(d.pixels[row])));
         assert(!memcmp(d.pixels[row + 27], values.pixels[row + 27], sizeof(d.pixels[row])));
     }
-    assert(saw_at(&d, 7, 59, "MIX") && !saw(&d, "100"));
-    assert(saw_at(&values, 7, 59, "100") && !saw(&values, "MIX"));
-    assert(saw_at(&d, 15, 2, "PRISM") && !saw(&d, "ECHO"));
-    assert(saw_at(&d, 42, 2, "FREE") && saw_at(&values, 42, 2, "FREE"));
-    assert(saw_at(&d, 76, 2, "NO TRK") && saw_at(&values, 76, 2, "NO TRK"));
-    assert(saw_at(&d, 58, 19, "375 MS") && saw_at(&values, 58, 19, "375 MS"));
-    assert(saw_at(&d, 111, 2, "NO LOOP") && saw_at(&values, 111, 2, "NO LOOP"));
+    /* The level strip is the stock send effects' VOL: the level of PRISM's wet return. */
+    assert(saw_at(&d, 7, 59, "VOL") && !saw(&d, "100"));
+    assert(saw_at(&values, 7, 59, "100") && !saw(&values, "VOL"));
+    assert(!saw(&d, "PRISM") && !saw(&d, "ECHO") && !saw(&d, "NO LOOP"));
+    assert(saw_at(&d, cell_x(1), 19, "375 MS") && saw_at(&values, cell_x(1), 19, "375 MS"));
     assert(!d.inverted && !values.inverted);
     tap(&s, PU_PUSH + 5);
     pu_page(&s, &p);
     draw_page(&p, &d, 0);
-    assert(p.cells[5].lit && saw_at(&d, 58, 59, "PONG"));
+    assert(p.cells[5].lit && saw_at(&d, cell_x(5), 59, "PONG"));
     tap(&s, PU_PUSH + 5);
     pu_turn(&s, 5, 12, 0);
     pu_page(&s, &p);
     draw_page(&p, &d, 0);
     draw_page(&p, &values, 1);
-    assert(p.cells[5].lit && saw_at(&d, 58, 59, "SWAP") && saw_at(&values, 58, 59, "R 12"));
+    assert(p.cells[5].lit && saw_at(&d, cell_x(5), 59, "SWAP") &&
+           saw_at(&values, cell_x(5), 59, "R 12"));
     /* Every value at both ends of its range, with every switch on, stays on the screen. */
     for (uint32_t pass = 0; pass < 2; ++pass) {
         for (uint32_t i = 0; i < PH_PARAM_COUNT; ++i)
@@ -488,29 +504,24 @@ static void rendering(void)
         pu_page(&s, &p);
         for (int mode = 0; mode <= 1; ++mode) {
             draw_page(&p, &d, mode);
-            /* FLIP and HOLD are drawn inverted when they are on. */
-            assert(d.inverted == (pass ? 2u : 0u));
-            assert(saw_at(&d, 9, 14, "FLIP") == (int)pass);
-            assert(saw_at(&d, 9, 22, "HOLD") == (int)pass);
+            /* FLIP and HOLD stand inverted in their cells' captions while they are on; with the values shown the
+             * captions are the values. */
+            int on = pass && !mode;
+            assert(d.inverted == (on ? 2u : 0u));
+            assert(saw_at(&d, cell_x(0), 32, "FLIP") == on);
+            assert(saw_at(&d, cell_x(2), 32, "HOLD") == on);
+            /* SYNC's time takes RATE's caption only while the values show */
+            assert(saw_at(&d, cell_x(1), 32, p.time) == (pass && mode));
         }
     }
-    /* The header alone stays consistent with the page in both modes. */
-    memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c, 0);
-    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
-    assert(saw_at(&d, 76, 2, "SILENT") && saw_at(&d, 111, 2, "NO LOOP"));
-    memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c, 1);
-    assert(d.texts == 4 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "SYNC"));
-    assert(saw_at(&d, 76, 2, p.time) && saw_at(&d, 111, 2, "NO LOOP"));
     s.fresh = 0;
     pu_page(&s, &p);
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 76, 2, "NO LINK"));
+    assert(saw_at(&d, cell_x(1), 19, "NO LINK"));
     raw[PH_P_COLR] = 0;
     pu_page(&s, &p);
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 110, 32, "-96"));
+    assert(saw_at(&d, cell_x(3), 32, "-96"));
 }
 static void rate_readout(void)
 {
@@ -532,8 +543,10 @@ static void rate_readout(void)
         pu_page(&s, &p);
         for (int mode = 0; mode <= 1; ++mode) {
             draw_page(&p, &d, mode);
-            assert(saw_at(&d, 58, 32, "RATE") && saw_at(&d, 58, 19, cases[i].readout));
-            assert(saw_at(&d, 76, 2, mode && cases[i].sync ? p.time : "NO TRK"));
+            assert(saw_at(&d, cell_x(1), 19, cases[i].readout));
+            /* the caption: RATE, or with the values shown the time SYNC gives, or FREE */
+            const char *shown = !mode ? "RATE" : cases[i].sync ? p.time : "FREE";
+            assert(saw_at(&d, cell_x(1), 32, shown));
         }
     }
 }
@@ -646,10 +659,11 @@ static void loop_page(void)
     same(p.cells[7].state, "16 ST");
     assert(!p.cells[7].lit && !p.cells[7].fader && !p.line[0]);
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 110, 59, "XFAD") && saw_at(&d, 9, 30, "ARMD") && !saw(&d, "16 ST"));
+    /* armed: XFAD's caption is ARMD, inverted; with the values shown, what the change keeps */
+    assert(saw_at(&d, cell_x(7), 59, "ARMD") && !saw(&d, "XFAD") && !saw(&d, "16 ST"));
     assert(!saw(&d, "NO LOOP") && d.inverted == 1);
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 110, 59, "16 ST") && saw_at(&d, 9, 30, "ARMD") && d.inverted == 1);
+    assert(saw_at(&d, cell_x(7), 59, "16 ST") && !saw(&d, "ARMD") && d.inverted == 0);
     report(LS_ARMED, 0, 0, 0, 0, 0.0f);
     pu_loop(&s);
     pu_page(&s, &p);
@@ -730,7 +744,8 @@ static void loop_page(void)
     pu_page(&s, &p);
     same(p.cells[6].state, "SILENT");
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "SILENT"));
+    /* INPT at LOOP before a loop exists: its caption says PRISM hears silence */
+    assert(saw_at(&d, cell_x(6), 59, "SILENT") && !saw(&d, "INPT"));
     assert(pu_turn(&s, 6, -4, 0) == PU_OWN && raw[PH_P_INPT] == 0);
     /* A page that first sees a loop already taken does not switch INPT (it was not this change). */
     PhraseUi late;
@@ -771,21 +786,20 @@ static void loop_page(void)
     uint32_t arms = home_arms;
     tap(&late, PU_PUSH + 7);
     assert(home_arms == arms);
-    /* What the loop's page shows is drawn on the screen: the header line, the crossfader's line. */
+    /* PRISM hears the loop: INPT and XFAD keep their captions; with the values shown INPT says LOOP and XFAD its value.
+     * The loop's own line is Overloop's page's, not drawn here. */
     report(LS_LOOP | LS_TRACK, 4, 16, 16, 96000, 0.5f);
     raw[PH_P_INPT] = 1;
     home_xfad = 64;
     pu_loop_status(&s);
-    PhraseCanvas c = {&d, drawn_box, drawn_text};
     pu_page(&s, &p);
+    same(p.line, "LOOP 16 ST 2.00 S");
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 76, 2, "LOOP") && !saw(&d, "LOOP 16 ST 2.00 S") && !saw(&d, "64"));
+    assert(saw_at(&d, cell_x(6), 59, "INPT") && saw_at(&d, cell_x(7), 59, "XFAD"));
+    assert(!saw(&d, "LOOP 16 ST 2.00 S") && !saw(&d, "64"));
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S") && saw_at(&d, 110, 59, "64"));
-    memset(&d, 0, sizeof(d));
-    pu_render_header(&p, &c, 1);
-    assert(d.texts == 3 && saw_at(&d, 15, 2, "PRISM") && saw_at(&d, 42, 2, "FREE"));
-    assert(saw_at(&d, 90, 2, "LOOP 16 ST 2.00 S"));
+    assert(saw_at(&d, cell_x(6), 59, "LOOP") && saw_at(&d, cell_x(7), 59, "64"));
+    assert(!saw(&d, "LOOP 16 ST 2.00 S"));
 }
 static uint32_t trig(uint32_t track)
 {
@@ -868,9 +882,9 @@ static void tracks(void)
     same(p.cells[6].state, "2 TRK");
     assert(!p.cells[6].lit);
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "LIVE") && !saw(&d, "2 TRK"));
+    assert(saw_at(&d, cell_x(6), 59, "INPT") && !saw(&d, "2 TRK") && !saw(&d, "LIVE"));
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 84, 59, "LIVE") && saw_at(&d, 76, 2, "LIVE"));
+    assert(saw_at(&d, cell_x(6), 59, "LIVE"));
     /* A TRIG key still down when G is released: its release stays the page's, its next press is the firmware's. */
     hold_g(&s);
     assert(pu_key(&s, trig(5), PU_PRESS) == PU_OWN);
@@ -890,10 +904,11 @@ static void tracks(void)
             tap(&s, trig(t));
     assert(raw[PH_P_TRKS] == PH_TRACKS_ALL);
     pu_page(&s, &p);
+    /* while G is held INPT's caption says TRIGS, inverted: the TRIG keys choose the tracks */
     draw_page(&p, &d, 0);
-    assert(saw_at(&d, 84, 59, "INPT") && saw_at(&d, 76, 2, "TRIGS") && !saw(&d, "16 TRK"));
+    assert(saw_at(&d, cell_x(6), 59, "TRIGS") && d.inverted == 1 && !saw(&d, "16 TRK"));
     draw_page(&p, &d, 1);
-    assert(saw_at(&d, 84, 59, "16 TRK") && saw_at(&d, 76, 2, "TRIGS"));
+    assert(saw_at(&d, cell_x(6), 59, "16 TRK") && !saw(&d, "TRIGS"));
     /* The page loses the top while G is held: the selection ends, keys and LEDs are the firmware's, G's release is the
      * page's and switches nothing. */
     pu_context(&s, 0, 1);
@@ -953,7 +968,7 @@ static void tracks(void)
     same(p.cells[6].value, "LIVE");
     same(p.cells[6].state, "1 TRK");
     draw_page(&p, &d, 0);
-    assert(!p.loop_input && saw_at(&d, 76, 2, "LIVE") && d.pixels[51][95]);
+    assert(!p.loop_input && saw_at(&d, cell_x(6), 59, "INPT") && d.pixels[51][96]);
 }
 
 /* Compare only the icon rows. Labels, numeric values and state text cannot satisfy this test. */
@@ -968,7 +983,7 @@ static void icon_changes(const PhraseUi *s, Drawn *previous, int changed_cell)
     Drawn current;
     icon_frame(s, &current);
     for (int cell = 0; cell < 8; ++cell) {
-        int x = 19 + 26 * (cell % 4), y = cell < 4 ? 14 : 41;
+        int x = cell_x(cell) - 13, y = cell < 4 ? 14 : 41;
         int changed = 0;
         for (int row = y; row < y + 15; ++row)
             changed |= memcmp(&previous->pixels[row][x], &current.pixels[row][x], 26) != 0;
@@ -1047,8 +1062,8 @@ static void repeat_icon(void)
         raw[PH_P_RPTS] = levels[i];
         icon_frame(&s, &d);
         int first = -1, last = 0, dashes = 0, width = 0;
-        for (int x = 71; x <= 97; ++x) {
-            int ink = x < 97 && d.pixels[20][x];
+        for (int x = 72; x <= 98; ++x) {
+            int ink = x < 98 && d.pixels[20][x];
             if (ink) {
                 if (first < 0)
                     first = x;
@@ -1059,11 +1074,12 @@ static void repeat_icon(void)
                 width = 0;
                 ++dashes;
             }
-            if (x < 97)
+            if (x < 98)
                 for (int y = 14; y <= 28; ++y)
                     assert(d.pixels[y][x] == (ink && (y == 20 || y == 21)));
         }
-        assert(first + last == 168 && dashes == (i ? 5 : 1));
+        /* centred on RPTS's cell, 85 */
+        assert(first + last == 170 && dashes == (i ? 5 : 1));
     }
     static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
     static const uint32_t sustained[] = {PH_RPTS_UNITY, 127, 0};
@@ -1072,9 +1088,9 @@ static void repeat_icon(void)
         raw[PH_P_HOLD] = i == 2;
         icon_frame(&s, &d);
         for (int y = 14; y <= 28; ++y)
-            for (int x = 71; x <= 96; ++x) {
-                int on = x >= 79 && x <= 89 && y >= 18 && y <= 24 &&
-                         (infinity[y - 18] & (1u << (x - 79)));
+            for (int x = 72; x <= 97; ++x) {
+                int on = x >= 80 && x <= 90 && y >= 18 && y <= 24 &&
+                         (infinity[y - 18] & (1u << (x - 80)));
                 assert(d.pixels[y][x] == on);
             }
     }
@@ -1091,8 +1107,8 @@ static void colour_icon(void)
         icon_frame(&s, &d);
         int radius = radii[i];
         for (int y = 14; y <= 28; ++y)
-            for (int x = 97; x <= 122; ++x) {
-                int dx = x > 110 ? x - 110 : 110 - x, dy = y > 21 ? y - 21 : 21 - y;
+            for (int x = 98; x <= 123; ++x) {
+                int dx = x > 111 ? x - 111 : 111 - x, dy = y > 21 ? y - 21 : 21 - y;
                 int on = dx <= radius && dy <= radius &&
                          (levels[i] < PH_COLR_CLEAN || dx == radius || dy == radius);
                 assert(d.pixels[y][x] == on);
@@ -1118,10 +1134,10 @@ static void halo_icon(void)
         raw[PH_P_HALO] = positions[step].value;
         icon_frame(&s, &d);
         for (int y = 41; y <= 55; ++y)
-            for (int x = 19; x <= 44; ++x) {
+            for (int x = 20; x <= 45; ++x) {
                 int on = 0;
                 for (int i = 0; i < 5; ++i) {
-                    int dx = x - 29 - offsets[i][0], dy = y - 45 - offsets[i][1];
+                    int dx = x - 30 - offsets[i][0], dy = y - 45 - offsets[i][1];
                     if (dx >= 0 && dx < 7 && dy >= 0 && dy < 7)
                         on |= (ring[dy] >> dx) & 1;
                 }

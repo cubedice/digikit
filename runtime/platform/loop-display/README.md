@@ -8,32 +8,34 @@ holds no value of its own. The engine is `digikit/overloop`; the behaviour is de
 ## The page
 
 ```
- OVERLOOP                      ARMED      title, state: IDLE, ARMED, LOOP, LOOP+ARM, NO LINK
- ──────────────────────────────────
- ╭────────────────────────────────╮
- │  ▂█▆        ▅▂       ▃█▅       │        highest positive peak on either channel
- │──▀█▀────────█▀───────▀█▀───────│        zero line with negative peaks below
- ╰────────────────────────────────╯
-           16 ST 2.00 S                   length or capture limit
-    ARM                         XFAD      the bottom row as PRISM's cells: each label above its encoder (E, H)
-    ON        ▮─────            LIVE      ARM's state, effective crossfade and XFAD's value
+ A01 ▌KIT NAME ≡ 120.0  ▐                 the stock header (the title bubble `Overloop (5/5)` on arrival)
+ ╭───╮ ¦──────────────────────────────¦   the stock OVL tab; the waveform in the stock style: dotted end markers,
+ │OVL│ ¦  ▂█▆      ▅▂      ▃█▅          ¦   highest positive peak on either channel
+ ╰───╯ ¦──▀█▀──────█▀──────▀█▀──────────¦   centre line with negative peaks below
+              LOOP 16 ST 2.00 S           what the loop does: length, capture limit, NO LOOP, NO LINK
+         ◯      ⁘⁘⁘     ⁘⁘⁘    ▮─────┤    E: ARM's ring (filled while armed), F and G: the stock empty cells, H: XFAD
+        ARM                    XFAD       captions at the stock places; their values after a turn or with FUNC + FX
 ```
 
-| State | Waveform | Caption |
+| State | Waveform | Line under it |
 | --- | --- | --- |
 | IDLE | live peaks written at a moving cursor | `CYCLE 16 ST 2.00 S` once the cycle is known, otherwise `NO LOOP` |
 | ARMED | live peaks written at a moving cursor | expected cycle, `LAST 21.5 S ONLY` at capacity, or `NOTHING YET` |
 | LOOP | held audio and playhead | retained cycle or `CUT TO ITS LAST PART` |
 | LOOP+ARM | currently held audio and playhead | the cycle to be captured on the next change |
 
-The waveform spans 120 one-pixel columns. Each column extends from the lowest sample on either channel to the
-highest, with silence at the centre line. Display gain follows the strongest peak in the visible window down to
-about one eighth of full scale. A quieter phrase uses proportionally less height. This applies only to the
-display. Opposite-polarity stereo peaks stay visible. The marker on the frame follows the held loop's phase. The crossfader
-between the controls follows the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after
-a capture); the text above it is the value of the control. `ON` is drawn inverted. The cells are 26 pixels wide, E's
-centred at x 32 and H's at x 110, as on PRISM's page; x 124 to 127 below the header are left to the FX view's page
-indicator. Times have two places below ten seconds and one from there; below a second they are in milliseconds.
+The header, the effect's tab and the page indicator are the stock FX view's: the page paints x 16 to 123 below the header
+and leaves the level strip's place under the tab empty (LEVEL turns XFAD here). The waveform has the stock waveform's
+place: its end markers at x 25 and 121, the engine's 120 columns merged into the 95 between them (the largest peak of each
+side), rows 12 to 32 about the centre line on row 22. Each column extends from the lowest sample on either channel to the
+highest, with silence at the centre line. Display gain follows the strongest peak in the visible window down to about one
+eighth of full scale. A quieter phrase uses proportionally less height. This applies only to the display.
+Opposite-polarity stereo peaks stay visible. The ticks at the edges follow the held loop's phase. The crossfader follows
+the level the engine applies (it moves by at most 1/256 a frame, and stands at LOOP right after a capture). The cells are
+the stock ones, 26 pixels wide, centred at x 33, 59, 85 and 111; ARM's caption is `ARMD`, inverted, while ARM is on. A
+caption shows its value (`ON`/`OFF`, `LIVE`/`64`/`LOOP`) while the view's own focus countdown runs after a turn of E, H or
+LEVEL, and while FUNC + FX is held (`fxv_focus_active`, `fxv_values_shown`). Times have two places below ten seconds and one
+from there; below a second they are in milliseconds.
 
 | Control | Does |
 | --- | --- |

@@ -33,6 +33,30 @@ static int has_text(int x, int y, const char *text)
             return 1;
     return 0;
 }
+/* The firmware's text (the header's tape, with SRC held): the text, its place and the font are recorded. The help view is
+ * a stand-in that has a font and its height, as HelpBubbleView keeps them. */
+static char drawn_header[24];
+static int drawn_header_x, drawn_header_y;
+static uint8_t *drawn_font;
+int32_t dk_fw_text_draw(uint8_t *bitmap, uint8_t *font, int32_t x, int32_t y, int32_t maxw,
+                        const char *s)
+{
+    (void)bitmap;
+    assert(maxw == 128 - x && strlen(s) < sizeof(drawn_header));
+    strcpy(drawn_header, s);
+    drawn_header_x = x;
+    drawn_header_y = y;
+    drawn_font = font;
+    return 0;
+}
+static uint8_t help_font[4], help_view[0xb0];
+static uint8_t *help_bubble(int32_t height)
+{
+    uint8_t *font = help_font;
+    memcpy(help_view + HELP_FONT, &font, sizeof(font));
+    memcpy(help_view + HELP_HEIGHT, &height, sizeof(height));
+    return help_view;
+}
 void fxv_box(void *bitmap, int x, int y, int width, int height, int ink)
 {
     uint8_t (*pixels)[128] = bitmap;
@@ -286,26 +310,30 @@ int main(void)
     wave.peaks[0] = 0xff00;
     status[5] = 0;
     page = 1;
+    /* The waveform page: the stock waveform's place (columns from x 26 between the end markers at 25 and 121, rows 26 to
+     * 54, the centre line on row 39), its first column at full scale, 12 rows up and down. */
     draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
-    for (unsigned y = 23; y <= 53; ++y) {
-        assert(pixels[y][17]);
-        assert(pixels[y][18] == (y == 38));
+    for (unsigned y = 26; y <= 54; ++y) {
+        assert(pixels[y][26] == (y >= 27 && y <= 51));
+        assert(pixels[y][27] == (y == 39));
+        assert(pixels[y][25] == ((y & 1) == 0 || y == 27 || y == 39));
     }
     // Quiet transients expand while keeping their relative heights.
     memset(pixels, 0, sizeof(pixels));
     wave.peaks[0] = 0x837d;
     wave.peaks[1] = 0x827e;
     draw_waveform(pixels[0], &wave, 0, 0, 0, 0, 0);
-    for (unsigned y = 23; y <= 53; ++y) {
-        assert(pixels[y][17] == (y >= 27 && y <= 49));
-        assert(pixels[y][18] == (y >= 30 && y <= 46));
+    for (unsigned y = 26; y <= 54; ++y) {
+        assert(pixels[y][26] ==
+               ((y >= 30 && y <= 48) || y == 27)); /* and the start marker's flag */
+        assert(pixels[y][27] == (y >= 33 && y <= 45));
     }
     memset(pixels, 0, sizeof(pixels));
     status[5] = 1200;
     draw_waveform(pixels[0], &wave, 0, 1, 600, 120, 300);
-    assert(!pixels[22][27] && pixels[22][29]);                    // write head
-    assert(!pixels[54][43] && pixels[54][45]);                    // play head
-    assert(!pixels[22][70] && pixels[24][70] && !pixels[24][71]); // trim boundary
+    assert(!pixels[26][33] && pixels[26][35] && !pixels[26][37]);                   // write head
+    assert(!pixels[54][47] && pixels[54][49] && !pixels[54][51]);                   // play head
+    assert(pixels[26][73] && !pixels[27][73] && pixels[28][73] && !pixels[28][74]); // trim boundary
     page = 0;
     memset(pixels, 0, sizeof(pixels));
     wave.peaks[0] = 0xff00;
@@ -349,48 +377,80 @@ int main(void)
     memset(pixels, 0, sizeof(pixels));
     draw(0, pixels[0], 0);
     assert(rotary_cells == 0xfa && rotary_value[4] == 25 && rotary_value[5] == 63);
-    assert(has_text(33, 21, "MAIN") && has_text(33, 30, "INPT"));
+    /* A's value stands in its graphic (one word: one line; "EXT LR" is stacked), C's caption says what the transport does */
+    assert(has_text(33, 18, "MAIN") && has_text(33, 30, "INPT") && has_text(85, 30, "STOP"));
     assert(has_text(59, 30, "RATE") && has_text(111, 30, "FDBK"));
     assert(has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
-    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 8);
+    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 9);
     assert(pixels[38][64] && !pixels[35][64] && !pixels[18][64]);
     assert(pixels[20][83] && !pixels[20][85] && pixels[20][87]); // paused in C
-    assert(!pixels[14][16]);
+    rtm_help_draw(help_bubble(10), pixels[0]);
+    assert(!pixels[14][16] && !drawn_header[0]);
+    text_count = 0;
+    settings[track].input = 0; /* EXT LR */
+    draw(0, pixels[0], 0);
+    assert(has_text(33, 15, "EXT") && has_text(33, 22, "LR") && !has_text(33, 18, "EXT LR"));
+    settings[track].input = RT_INPUT_MAIN;
     text_count = 0;
     status[7] = 1;
     draw(0, pixels[0], 255);
     assert(has_text(33, 30, "MAIN") && has_text(59, 30, "-0.50") && has_text(111, 58, "37"));
-    assert(has_text(85, 58, "8") && text_count == 7);
+    assert(has_text(85, 58, "8") && has_text(85, 30, "PLAY") && text_count == 8);
     assert(pixels[20][83] && pixels[20][86] && !pixels[20][87]); // playing in C
+    /* SRC held: the tape in the header where the sample's name would stand, painted after the help view's draw, once */
+    assert(!drawn_header[0]);
+    /* while the bubble has not slid in yet, nothing */
+    rtm_help_draw(help_bubble(0), pixels[0]);
+    assert(!drawn_header[0]);
+    draw(0, pixels[0], 255);
+    rtm_help_draw(help_bubble(10), pixels[0]);
+    assert(!strncmp(drawn_header, "T01 ", 4) && drawn_header_x == HEADER_NAME_X);
+    /* in the bubble's own font, at the bubble's text height, black on its white bar */
+    assert(drawn_font == help_font && drawn_header_y == 0x42 - 10);
+    assert(pixels[0][HEADER_NAME_X] && pixels[9][127]);
+    drawn_header[0] = 0;
+    rtm_help_draw(help_bubble(10), pixels[0]);
+    assert(!drawn_header[0]);
 
     // The waveform page keeps the encoder assignments and leaves room for taller peaks.
     text_count = rotary_cells = 0;
     page = 1;
     status[2] = 2;
     draw(0, pixels[0], 0);
-    assert(!rotary_cells && has_text(33, 13, "MAIN") && has_text(59, 13, "RATE"));
-    assert(has_text(111, 13, "FDBK") && has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
-    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 7);
-    assert(pixels[22][17] && pixels[54][17]);
+    /* its top row: small graphics, no captions (A: the input in a small frame) */
+    assert(!rotary_cells && has_text(33, 15, "MAIN") && !has_text(59, 13, "RATE"));
+    assert(!has_text(111, 13, "FDBK") && has_text(33, 58, "WRITE") && has_text(59, 58, "PLAY"));
+    assert(has_text(85, 58, "LEN") && has_text(111, 58, "MIX") && text_count == 5);
+    assert(pixels[13][24] && pixels[21][42] && pixels[14][23] && pixels[20][43]); // A's frame
+    assert(pixels[17][49] && pixels[17][69] && pixels[15][59] && pixels[14][55]); // RATE at -0.50
+    assert(pixels[16][103] && pixels[18][108] && !pixels[16][109]);               // FDBK at 42
+    /* the stock waveform: no frame, a centre line between dotted end markers with their flags */
+    assert(!pixels[22][17] && !pixels[54][17] && pixels[39][25] && pixels[39][121]);
+    assert(pixels[26][25] && pixels[27][26] && !pixels[29][25] && pixels[54][25]);
+    assert(pixels[26][121] && pixels[27][120] && !pixels[29][121] && pixels[54][121]);
     assert(!pixels[11][57] && !pixels[55][31] && !pixels[55][57]); // no mini dials
     assert(pixels[15][83] && pixels[15][85] && pixels[15][87]);    // recording in C
-    assert(!pixels[12][16]);
+    rtm_help_draw(help_bubble(10), pixels[0]);
+    assert(!pixels[12][16] && !drawn_header[0]);
 
     // Held SRC reveals values without hiding the source or transport state.
     text_count = 0;
     status[2] |= 16;
     draw(0, pixels[0], 255);
-    assert(!rotary_cells && has_text(33, 13, "MAIN") && has_text(59, 13, "-0.50"));
-    assert(has_text(111, 13, "42") && has_text(33, 58, "0.0") && has_text(59, 58, "0.0"));
-    assert(has_text(85, 58, "8") && has_text(111, 58, "37") && text_count == 7);
-    assert(pixels[22][17] && pixels[54][17]);
-    assert(pixels[15][83] && !pixels[15][85] && pixels[15][87]); // armed in C
+    assert(!rotary_cells && has_text(33, 15, "MAIN") && !has_text(59, 13, "-0.50"));
+    assert(has_text(33, 58, "0.0") && has_text(59, 58, "0.0"));
+    assert(has_text(85, 58, "8") && has_text(111, 58, "37") && text_count == 5);
+    assert(pixels[39][25] && pixels[54][25] && !pixels[22][17]);
+    assert(pixels[17][83] && !pixels[17][85] && pixels[17][87]); // armed in C
+    rtm_help_draw(help_bubble(10), pixels[0]);
+    assert(!strncmp(drawn_header, "T01 ", 4));
+    /* A edits GAIN: its small frame has GAIN's value, also with SRC held */
     edit_gain = 1;
     text_count = 0;
     draw(0, pixels[0], 0);
-    assert(has_text(33, 13, "GAIN"));
+    assert(has_text(33, 15, "64"));
     text_count = 0;
     draw(0, pixels[0], 255);
-    assert(has_text(33, 13, "64"));
+    assert(has_text(33, 15, "64"));
     return 0;
 }

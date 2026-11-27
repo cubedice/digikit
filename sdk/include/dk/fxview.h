@@ -5,8 +5,9 @@
  * A page adapter defines the three functions of its prefix (core/phrase-ui: phrase_, core/loop-display: loop_); core/fxview
  * calls the ones the image has, after the stock draw and before the stock key and encoder handlers:
  *
- *   int <p>_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only);   1: it painted (header_only: only its header,
- *                                                                          after the firmware's help view has drawn)
+ *   int <p>_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only);   1: it painted (header_only: after the firmware's
+ *                                                                          help view has drawn; a page that keeps the stock
+ *                                                                          header and title bubble paints nothing then)
  *   int <p>_fxv_key(uint8_t *view, uint8_t *event);                       1: it took the key (the stock handler is not called)
  *   int <p>_fxv_turn(uint8_t *view, uint8_t *event);                      1: it took the turn
  *
@@ -33,4 +34,11 @@ uint32_t fxv_key_flags(uint32_t native_flags);
  * the shape of a canvas callback: the first argument is the bitmap. */
 void fxv_box(void *bitmap, int x, int y, int width, int height, int ink);
 void fxv_text(void *bitmap, int centre, int top, const char *text, int ink);
+/* The view's own encoder focus, the stock countdown that shows a turned control's value in place of its caption for a
+ * moment: a page that takes a turn of encoder INDEX (0 to 7: A to H) touches it, and while it is active the page shows that
+ * cell's value as the stock pages do. INDEX 8 (LEVEL) has no focus. */
+void fxv_focus_touch(uint8_t *view, uint32_t index);
+int fxv_focus_active(uint8_t *view, uint32_t index);
+/* FUNC + FX is held: the page shows every value in place of its captions (the stock FX key handler owns the gesture). */
+int fxv_values_shown(const uint8_t *view);
 #endif

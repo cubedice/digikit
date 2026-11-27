@@ -6,7 +6,7 @@
     .globl relay_image
 relay_image:
     .long 0x524c5331
-    .long 1
+    .long 2
     .long 37
     .long dkrt_image_file_abort
     .long dkrt_image_file_close

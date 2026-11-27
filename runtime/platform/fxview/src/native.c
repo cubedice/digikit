@@ -13,6 +13,8 @@ extern void fxv_stock_help_draw(uint8_t *, uint8_t *);
 extern uint32_t fxv_stock_key(uint8_t *, uint8_t *);
 extern uint32_t fxv_stock_turn(uint8_t *, uint8_t *);
 extern const uint32_t fxv_label_font;
+extern void fxv_stock_focus_touch(uint8_t *, uint32_t);
+extern uint8_t fxv_stock_focus_active(uint8_t *, uint32_t);
 #define OPTIONAL __attribute__((weak))
 extern int phrase_fxv_draw(uint8_t *, uint8_t *, int) OPTIONAL;
 extern int phrase_fxv_key(uint8_t *, uint8_t *) OPTIONAL;
@@ -28,6 +30,7 @@ extern int tk_picker_led(uint32_t) OPTIONAL;
 extern int phrase_led_claim(uint32_t) OPTIONAL;
 extern void fxv_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 extern void rtm_stop_key(uint32_t) OPTIONAL;
+extern void rtm_help_draw(uint8_t *, uint8_t *) OPTIONAL;
 
 /* TRIG keys reach the stock sequencer before they reach the FX view. Called by fxv_walk_hook (walk.s) for every key event the key walker
  * gets (cf.page.hook.phrase_key_walk): 1 consumes the event (the walker returns true at once), 0 lets the walker go on. */
@@ -109,6 +112,22 @@ uint32_t fxv_key_flags(uint32_t flags)
         return FXV_CHORD;
     return FXV_RELEASE;
 }
+/* FxPageView inherits ParameterPageView's encoder focus, as the SRC view does: +0x94 is its tracker (the stock countdown
+ * that shows a turned control's value in place of its caption for a moment) and +0x190 the momentary show-values flag that
+ * the stock FX key handler sets while FUNC + FX is held. Only A to H have a tracker entry. */
+void fxv_focus_touch(uint8_t *view, uint32_t index)
+{
+    if (index < 8)
+        fxv_stock_focus_touch(view + 0x94, index);
+}
+int fxv_focus_active(uint8_t *view, uint32_t index)
+{
+    return index < 8 && fxv_stock_focus_active(view + 0x94, index) != 0;
+}
+int fxv_values_shown(const uint8_t *view)
+{
+    return view[0x190] != 0;
+}
 void fxv_box(void *bitmap, int x, int y, int w, int h, int ink)
 {
     if (w <= 0 || h <= 0)
@@ -144,6 +163,10 @@ void fxv_view_draw(uint8_t *view, uint8_t *bitmap)
 void fxv_help_draw(uint8_t *help, uint8_t *bitmap)
 {
     fxv_stock_help_draw(help, bitmap);
+    /* The help view draws after every view, also after the SRC view of a RELAY track: what that page puts in the header
+     * while SRC is held goes beside the stock text here, in the bubble's own font. */
+    if (rtm_help_draw)
+        rtm_help_draw(help, bitmap);
     uint8_t *view = fxv_visible_view();
     if (!view)
         return;

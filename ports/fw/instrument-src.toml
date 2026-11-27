@@ -211,8 +211,8 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "0c251e8c677aa8c6f2b73eb1e07297986e802bb7a8a04ffb3a1c51db332034b9" }
 mark = "D"
-users = ["core/instrument-play", "core/services/track-keyboard", "core/services/instrument", "core/services/relay"]
-doc = "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write."
+users = ["core/instrument-play", "core/services/track-keyboard", "core/services/instrument", "core/services/relay", "core/fxview"]
+doc = "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write. The tracker is ParameterPageView's (+0x94), so the FX view has it too."
 
 [[site]]
 name = "cf.page.site.instrument_focus_active"
@@ -220,7 +220,7 @@ cpu = "cf"
 devices = ["dt2"]
 rule = { kind = "cf_window_hash", search_len = 24, offset = 0, len = 6, sha256 = "940d567a80eb1d3a878fb103c84e8117c89cceedc3aeffd4b96e39573d801faa" }
 mark = "D"
-users = ["core/instrument-play", "core/services/track-keyboard", "core/services/instrument", "core/services/relay"]
+users = ["core/instrument-play", "core/services/track-keyboard", "core/services/instrument", "core/services/relay", "core/fxview"]
 doc = "DT2 OS1.17: Native encoder focus query: u8(tracker, index)."
 
 [[site]]

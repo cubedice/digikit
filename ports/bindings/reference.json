@@ -11061,7 +11061,8 @@
         "core/instrument-play",
         "core/services/track-keyboard",
         "core/services/instrument",
-        "core/services/relay"
+        "core/services/relay",
+        "core/fxview"
       ],
       "was": []
     },
@@ -11078,7 +11079,7 @@
       "devices": [
         "dt2"
       ],
-      "doc": "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write.",
+      "doc": "DT2 OS1.17: Native encoder focus refresh: void(tracker, index); no parameter write. The tracker is ParameterPageView's (+0x94), so the FX view has it too.",
       "file": "devices/fw/instrument-src.toml",
       "kind": "site",
       "mark": "D",
@@ -11095,7 +11096,8 @@
         "core/instrument-play",
         "core/services/track-keyboard",
         "core/services/instrument",
-        "core/services/relay"
+        "core/services/relay",
+        "core/fxview"
       ],
       "was": []
     },
@@ -21493,7 +21495,8 @@
       "sig": "i32 (u8 *bitmap, u8 *font, i32 x, i32 y, i32 maxw, const char *s)",
       "subsystem": "text",
       "users": [
-        "core/ui"
+        "core/ui",
+        "core/services/relay"
       ],
       "was": []
     },

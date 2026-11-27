@@ -204,8 +204,8 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
             box(c, x - 11 + 3 * z, y + 15 - height, 1 + active, height, 1);
         }
         break;
-    case 1: /* Live delay time or the selected tempo ratio. */
-        text(c, x, y + 5, p->cells[1].value, 1);
+    case 1: /* Live delay time or the selected tempo ratio; NO LINK while the engine does not report. */
+        text(c, x, y + 5, p->link_error ? "NO LINK" : p->cells[1].value, 1);
         break;
     case 2: { /* Stepped echoes lead to the infinity glyph at nominal unity. */
         static const uint16_t infinity[] = {0x306, 0x489, 0x451, 0x421, 0x451, 0x489, 0x306};
@@ -278,43 +278,52 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
     }
 }
 
-void pu_render_header(const PhrasePage *p, const PhraseCanvas *c, int show_values)
+/* The caption of cell I in OUT: its label, a state that stands in for the label (*INK 0: a switch that is on, drawn
+ * inverted), or with VALUES its value. */
+static void caption(const PhrasePage *p, uint32_t i, int values, char out[16], int *ink)
 {
-    box(c, 0, 0, 128, 10, 0);
-    text(c, 15, 2, p->title, 1);
-    text(c, 42, 2, p->cells[1].state, 1);
-    const PhraseCell *input = &p->cells[6];
-    if (show_values && p->line[0] && !input->lit)
-        text(c, 90, 2, p->line, 1);
-    else {
-        const char *route = input->state;
-        if (!input->lit) {
-            if (p->link_error)
-                route = "NO LINK";
-            else if (show_values && p->sync)
-                route = p->time;
-            else if (p->loop_input ? p->loop_ready : p->tracks)
-                route = input->value;
-        }
-        text(c, 76, 2, route, !input->lit);
-        if (!p->loop_ready && !p->armed)
-            text(c, 111, 2, "NO LOOP", 1);
+    const PhraseCell *k = &p->cells[i];
+    const char *s = k->label;
+    *ink = 1;
+    if (values) {
+        s = k->value;
+        if (i == 1)
+            /* RATE's graphic is its value: the caption has the time SYNC gives, or that RATE is free */
+            s = p->sync ? p->time : "FREE";
+        else if (i == 3 && p->colour != PH_COLR_CLEAN) {
+            out[0] = p->colour < PH_COLR_CLEAN ? '-' : '+';
+            put(out + 1, k->value);
+            return;
+        } else if (i == 7 && p->armed && !p->loop_ready)
+            /* what the armed change keeps: its steps, CUT or WAIT */
+            s = k->state;
+    } else if ((i == 0 || i == 2) && k->lit) {
+        s = k->state; /* FLIP, HOLD */
+        *ink = 0;
+    } else if (i == 5 && k->lit)
+        s = k->state; /* PONG, SWAP */
+    else if (i == 6 && k->lit) {
+        s = k->state; /* TRIGS: the TRIG keys choose the tracks */
+        *ink = 0;
+    } else if (i == 6 && (p->loop_input ? !p->loop_ready : !p->tracks))
+        s = k->state; /* SILENT, NO TRK: PRISM hears nothing */
+    else if (i == 7 && p->armed) {
+        s = "ARMD";
+        *ink = 0;
     }
-    box(c, 0, 9, 128, 1, 1);
+    put(out, s);
 }
-/* Below the header the page leaves x 123 to 127 to the FX view, which draws its page indicator there (x 125 to 127). */
-void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
+/* The stock FX view draws the header (with its title bubble), the effect's tab at the top left and the page indicator at
+ * x 125 to 127; the page paints the body, x 16 to 123 below the header, and the level strip under the tab, where the stock
+ * strip would show the effect row's own MIX (PRISM's stays at unity). SHOW_VALUES: FUNC + FX is held, every caption is its
+ * value; FOCUS bit i: cell i was turned a moment ago (the view's stock countdown), its caption is its value. */
+void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values, uint32_t focus)
 {
     char mix[8];
-    box(c, 0, 0, 124, 64, 0);
-    pu_render_header(p, c, show_values);
-    if (p->cells[0].lit)
-        text(c, 9, 14, "FLIP", 0);
-    if (p->cells[2].lit)
-        text(c, 9, 22, "HOLD", 0);
-    if (p->armed)
-        text(c, 9, 30, "ARMD", 0);
-    /* The compact send FX level strip has its caption on the bottom row. */
+    box(c, 16, 10, 108, 54, 0);
+    box(c, 0, 38, 16, 26, 0);
+    /* The stock send FX level strip with its caption on the bottom row: PRISM's MIX, the level of its wet return, which the
+     * stock send effects call VOL. */
     box(c, 4, 40, 7, 1, 1);
     box(c, 4, 56, 7, 1, 1);
     box(c, 3, 41, 1, 15, 1);
@@ -328,25 +337,13 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values)
     box(c, 5, 55 - fill, 5, fill, 1);
     if (show_values)
         number(mix, p->mix);
-    text(c, 7, 59, show_values ? mix : "MIX", 1);
+    text(c, 7, 59, show_values ? mix : "VOL", 1);
+    /* The stock cell centres: 33 + 26 a cell, as the stock FX and SRC pages have them. */
     for (uint32_t i = 0; i < 8; ++i) {
-        const PhraseCell *k = &p->cells[i];
-        int x = 32 + 26 * (int)(i % 4), y = i < 4 ? 13 : 40;
+        int x = PU_CELL_X + PU_CELL_W * (int)(i % 4), y = i < 4 ? 13 : 40, ink;
+        char shown[16];
         icon(p, c, (int)i, x, y + 1);
-        const char *caption = k->label;
-        char tone[8];
-        if (show_values && i != 1) {
-            caption = k->value;
-            if (i == 3 && p->colour != PH_COLR_CLEAN) {
-                tone[0] = p->colour < PH_COLR_CLEAN ? '-' : '+';
-                copy(tone + 1, k->value);
-                caption = tone;
-            } else if (i == 7 && p->armed && !p->loop_ready) {
-                caption = k->state;
-            }
-        }
-        if (i == 5 && k->lit && !show_values)
-            caption = k->state;
-        text(c, x, y + 19, caption, 1);
+        caption(p, i, show_values || ((focus >> i) & 1), shown, &ink);
+        text(c, x, y + 19, shown, ink);
     }
 }

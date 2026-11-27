@@ -2,7 +2,7 @@
 /// The name of the image table (`[[info]]` of core/relay-track).
 pub const INFO: &str = "relay_image";
 pub const MAGIC: u32 = 0x524c5331;
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 /// Words of the table: magic, version, count, then one per name.
 pub const WORDS: usize = 37;
 /// The words that must not be 0 (functions and data of the adapter itself).

@@ -49,8 +49,17 @@ uint32_t phrase_ui_binding[8];
 uint32_t phrase_ui_values[PH_PARAM_COUNT];
 /* The page as it was last painted: the texts of its cells, for the same test. */
 PhrasePage phrase_ui_page;
-static uint32_t painted, paint_revision, last_owner, paint_fresh;
+static uint32_t painted, paint_revision, last_owner, paint_fresh, paint_focus;
 static int paint_values;
+/* The cells whose stock focus countdown runs: each shows its value in place of its caption. */
+static uint32_t focus_mask(uint8_t *view)
+{
+    uint32_t mask = 0;
+    for (uint32_t i = 0; i < 8; ++i)
+        if (fxv_focus_active(view, i))
+            mask |= 1u << i;
+    return mask;
+}
 static void reconcile(void)
 {
     uint32_t physical[2] = {0, 0};
@@ -62,11 +71,6 @@ static void reconcile(void)
 static uint32_t word(const uint8_t *p, uint32_t off)
 {
     return *(const uint32_t *)(p + off);
-}
-static int values_visible(const uint8_t *view)
-{
-    /* FxPageView inherits ParameterPageView's momentary values flag. The stock FX key handler owns tap and hold. */
-    return view[0x190] != 0;
 }
 static int context(uint8_t *view)
 {
@@ -100,23 +104,22 @@ static int context(uint8_t *view)
     phrase_ui_debug[7] = native_page;
     return ui.active != 0;
 }
-/* core/fxview calls this after the stock draw of every FX page, and with HEADER_ONLY after the help view has drawn. */
+/* core/fxview calls this after the stock draw of every FX page, and with HEADER_ONLY after the help view has drawn: the
+ * header and its title bubble stay the stock view's, so the page paints nothing then. */
 int phrase_fxv_draw(uint8_t *view, uint8_t *bitmap, int header_only)
 {
-    if (!context(view))
+    if (header_only || !context(view))
         return 0;
     PhraseCanvas c = {bitmap, fxv_box, fxv_text};
     pu_page(&ui, &phrase_ui_page);
-    int show_values = values_visible(view);
-    if (header_only) {
-        pu_render_header(&phrase_ui_page, &c, show_values);
-        return 1;
-    }
-    pu_render(&phrase_ui_page, &c, show_values);
+    int show_values = fxv_values_shown(view);
+    uint32_t focus = focus_mask(view);
+    pu_render(&phrase_ui_page, &c, show_values, focus);
     painted = ui.status[PH_S_HEARTBEAT / 4];
     paint_revision = ui.revision;
     paint_fresh = ui.fresh;
     paint_values = show_values;
+    paint_focus = focus;
     ++phrase_ui_debug[0];
     return 1;
 }
@@ -197,6 +200,8 @@ int phrase_fxv_turn(uint8_t *view, uint8_t *event)
         pu_turn(&ui, encoder - 1, (int32_t)word(event, 16), dk_fw_input_key_down(PU_FUNC)) ==
             PU_PASS)
         return 0;
+    /* the stock handler does not see the turn: start the cell's focus as it would (LEVEL has none) */
+    fxv_focus_touch(view, encoder - 1);
     ++phrase_ui_debug[4];
     dk_fw_view_invalidate(view);
     return 1;
@@ -212,7 +217,7 @@ void phrase_ui_tick(void)
         if (context(view)) {
             uint32_t seq = ui.status[PH_S_HEARTBEAT / 4];
             if (ui.revision != paint_revision || seq - painted >= 60 || ui.fresh != paint_fresh ||
-                paint_values != values_visible(view))
+                paint_values != fxv_values_shown(view) || paint_focus != focus_mask(view))
                 dk_fw_view_invalidate(view);
         }
         phrase_ui_debug[8] = pu_selecting(&ui);
