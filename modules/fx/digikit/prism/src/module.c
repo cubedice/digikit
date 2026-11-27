@@ -9,10 +9,10 @@
 
 static int32_t init(dk_module_ctx *ctx)
 {
-    dk_fx *fx = dk_module_ctx_add_fx(ctx, DK_FX_ID_PRISM, "PRISM", "PRS");
+    dk_fx *fx = dk_module_ctx_add_fx(ctx, DK_FX_ID_PRISM, "Prism", "PRS");
     dk_fx_routes(fx, DK_ROUTE_SEND, DK_ROUTE_SEND);
     dk_fx_mix(fx, 127);
-    dk_fx_add_page(fx, "PRISM", "PRS");
+    dk_fx_add_page(fx, "Prism", "PRS");
     return DK_OK;
 }
 

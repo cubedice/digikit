@@ -1,7 +1,7 @@
 [module]
 id = "digikit/prism"
 version = "0.1.0"
-name = "PRISM"
+name = "Prism"
 category = "fx"
 type = "fx"
 author = "digikit"

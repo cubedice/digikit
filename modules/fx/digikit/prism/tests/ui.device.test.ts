@@ -102,7 +102,7 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     await shot(session, artifacts, 'default');
     expect(firstStatus('PH_S_MAGIC'), 'the engine publishes its status').toBe(PH.PH_STATUS_MAGIC);
     expect(firstStatus('PH_S_ERROR')).toBe(PH.PH_ERROR_NONE);
-    expect(first.title).toBe('PRISM');
+    expect(first.title).toBe('Prism');
     expect(first.zone).toBe('ECHO');
     expect(first.time, 'the time the engine plays, in the header').toMatch(/^\d+ MS$/);
     expect(Math.abs(parseInt(first.time, 10) - firstStatus('PH_S_TIME_L') / 48)).toBeLessThanOrEqual(1);

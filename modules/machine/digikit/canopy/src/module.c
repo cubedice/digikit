@@ -7,7 +7,7 @@
 
 static int32_t init(dk_module_ctx *ctx)
 {
-    dk_module_ctx_add_machine(ctx, DK_MACHINE_ID_CANOPY, "CANOPY", "CANOPY");
+    dk_module_ctx_add_machine(ctx, DK_MACHINE_ID_CANOPY, "Canopy", "Canopy");
     return DK_OK;
 }
 

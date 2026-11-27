@@ -1,7 +1,7 @@
 [module]
 id = "digikit/canopy"
 version = "0.1.0"
-name = "CANOPY"
+name = "Canopy"
 category = "machines"
 type = "machine"
 author = "digikit"
