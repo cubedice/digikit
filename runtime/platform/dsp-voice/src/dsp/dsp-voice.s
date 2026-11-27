@@ -148,10 +148,13 @@ _cs_test:
 // A track with no copies whose bit is set in `_cs_hmask` plays hidden voices in the same records instead: voice h (1 .. 3) of its own note-on, pitch
 // and envelope, and the owner's own note gets an envelope too (h 0); see `_hv_prepare`. Callee-saved registers it uses are saved in its frame; the
 // context's L1 and L4 are put back before each call of firmware code. Frame slots: 2-12 the saved registers, 13-15 R4, R8, R12, 16 the hidden voices
-// are on, 17 the track's note, 18 EMUCLK at the start of an extra render, 19 a hidden voice sounds or waits.
+// are on, 17 the track's note, 18 EMUCLK at the start of an extra render, 19 a hidden voice or a copy sounds (or waits), 20 the owner's note-on in
+// this block.
+// A track whose row has no copies (n 0) and no hidden voices plays the copies of its current note to their end (their release) and then leaves
+// the path: the track keyboard clears n when the chord's note goes up, so the track's next note-on from any source plays one note.
 // Every extra render (a copy, a hidden voice) is paid from the block's budget (`_cs_budget`); one it cannot pay ends (`_cs_drop`).
 _cs_voice:
-    DK_ENTER(20);
+    DK_ENTER(21);
     DK_SAVE(2, R3);
     DK_SAVE(3, R5);
     DK_SAVE(4, R6);
@@ -193,16 +196,16 @@ _cs_voice:
     R6 = R0 + R1;                         // copy 0 of this voice
     R0 = 0;
     DK_SAVE(16, R0);
-    R10 = PASS R10;
-    IF EQ JUMP _hv_check;
-    // The owner's note-on: its sample pointer (+0) or phase (+0x1b0, Q31 int64) is not what its last render left (`_cs_last`, 4 words per voice): the
-    // firmware's arm seeded them, and the copies of the last note are stale (word 3, the copies taken for the note, goes to 0). The record's own
-    // note-on mark (+0x1b9) cannot serve: the stock renderer ends a voice whose mark is set.
-    R0 = LSHIFT R13 BY 4;
+    // The owner's note-on, in every mode: its sample pointer (+0) or phase (+0x1b0, Q31 int64) is not what its last render left (`_cs_last`, 8 words
+    // per voice: the pointer, the phase, the copies taken for the note, their ratios): the firmware's arm seeded them, whatever started the note.
+    // The copies of the last note are done (word 3 goes to 0) and slot 20 is set. The record's own note-on mark (+0x1b9) cannot serve: the stock
+    // renderer ends a voice whose mark is set.
+    R0 = LSHIFT R13 BY 5;
     R1 = _cs_last;
     R8 = R0 + R1;
     I1 = R8;
     I4 = R4;
+    R2 = 0;
     R0 = DM(0, I4);
     R1 = DM(0, I1);
     COMP(R0, R1);
@@ -214,10 +217,14 @@ _cs_voice:
     R0 = DM(109, I4);
     R1 = DM(2, I1);
     COMP(R0, R1);
-    IF EQ JUMP _cs_take;
+    IF EQ JUMP _cs_onn;
 _cs_on:
-    R0 = 0;
-    DM(3, I1) = R0;
+    DM(3, I1) = R2;
+    R2 = 1;
+_cs_onn:
+    DK_SAVE(20, R2);
+    R10 = PASS R10;
+    IF EQ JUMP _cs_n0;
 _cs_take:
     // The copies the note does not have yet, while the owner sounds: all of them after its note-on, or those of a shape that came after it.
     MODIFY(I4, ADM_RECORD_ACTIVE);
@@ -240,13 +247,20 @@ _cs_cpn:
     DM(0, I1) = R0;
     MODIFY(I4, 1) (NW);
 _cs_cpw: MODIFY(I1, 1) (NW);
+    R0 = LSHIFT R7 BY 2;                  // its ratio goes with it (`_cs_last` word 4 + e): a later shape does not move a sounding copy
+    R1 = R0 + R5;
+    I4 = R1;
+    R1 = DM(0, I4);
+    R0 = R0 + R8;
+    I4 = R0;
+    DM(4, I4) = R1;
     R7 = R7 + 1;
     JUMP _cs_cpn;
 _cs_tkn:
     I1 = R8;
     DM(3, I1) = R7;
 _cs_steps:
-    // Every block: the step of copy e is the owner's step times ratio e, so the owner's pitch changes carry over.
+    // Every block: the step of copy e is the owner's step times its ratio, so the owner's pitch changes carry over.
     R7 = 0;
 _cs_stl:
     COMP(R7, R10);
@@ -259,23 +273,31 @@ _cs_stl:
     R0 = FEXT R0 BY 0:8;                  // a stopped copy (ACTIVE clear) needs no step
     R0 = PASS R0;
     IF EQ JUMP _cs_stn;
-    R0 = LSHIFT R7 BY 2;
-    R0 = R0 + R5;
+    R0 = LSHIFT R13 BY 5;
+    R1 = _cs_last;
+    R0 = R0 + R1;
+    R1 = LSHIFT R7 BY 2;
+    R0 = R0 + R1;
     I4 = R0;
-    R12 = DM(0, I4);                      // ratio e
+    R12 = DM(4, I4);                      // the ratio of copy e
     I4 = R4;
     CALL _cs_scale;
 _cs_stn:
     R7 = R7 + 1;
     JUMP _cs_stl;
-_hv_check:
-    // No copies: the hidden voices, when the track has them (bit t of _cs_hmask)
+_cs_n0:
+    // No copies at the next note-on: the hidden voices when the track has them (bit t of _cs_hmask), else the copies of the current note play
+    // their release (word 3 of `_cs_last`; none after a note-on).
     R0 = DM(_cs_hmask);
     R1 = 0;
     R1 = R1 - R9;
     R0 = LSHIFT R0 BY R1;
     BTST R0 BY 0;
-    IF SZ JUMP _cs_render;
+    IF NOT SZ JUMP _hv_check;
+    I1 = R8;
+    R10 = DM(3, I1);
+    JUMP _cs_steps;
+_hv_check:
     R0 = 1;
     DK_SAVE(16, R0);
     R0 = 0;
@@ -321,7 +343,7 @@ _cs_render:
     DK_CALL(_dv_slot2, _cs_r0);           // the owner, as the caller would have rendered it
     L1 = 0;
     L4 = 0;
-    R0 = LSHIFT R13 BY 4;
+    R0 = LSHIFT R13 BY 5;
     R1 = _cs_last;
     R0 = R0 + R1;
     I1 = R0;
@@ -448,10 +470,12 @@ _hv_end:
     DM(_cs_vmask) = R0;
     JUMP _cs_gain;
 _cs_copies:
+    R0 = 0;
+    DK_SAVE(19, R0);
     R7 = 0;
 _cs_rl:
     COMP(R7, R10);
-    IF GE JUMP _cs_gain;
+    IF GE JUMP _cs_cend;
     R0 = CS_REC_BYTES;
     R0 = R7 * R0 (SSI);
     R4 = R0 + R6;
@@ -460,6 +484,8 @@ _cs_rl:
     R0 = FEXT R0 BY 0:8;                  // a stopped copy (ACTIVE clear) is not rendered
     R0 = PASS R0;
     IF EQ JUMP _cs_next;
+    R0 = 1;
+    DK_SAVE(19, R0);
     CALL _cs_afford;
     R0 = PASS R0;
     IF NE JUMP _cs_go;
@@ -510,6 +536,29 @@ _cs_paid:
 _cs_next:
     R7 = R7 + 1;
     JUMP _cs_rl;
+_cs_cend:
+    // The odd voice (the pair's last) takes the track off the chord path when its row has no copies for the next note-on and none of this
+    // note's copies sounds; a shape with copies (`_cs_receive`) puts it back.
+    BTST R13 BY 0;
+    IF SZ JUMP _cs_gain;
+    DK_RESTORE(R0, 19);
+    R0 = PASS R0;
+    IF NE JUMP _cs_gain;
+    R0 = 24;
+    R0 = R9 * R0 (SSI);
+    R1 = _cs_cfg;
+    R0 = R0 + R1;
+    I4 = R0;
+    R0 = DM(0, I4);
+    R0 = PASS R0;
+    IF NE JUMP _cs_gain;
+    R0 = LSHIFT R9 BY 1;
+    R1 = 3;
+    R1 = LSHIFT R1 BY R0;
+    R1 = NOT R1;
+    R0 = DM(_cs_vmask);
+    R0 = R0 AND R1;
+    DM(_cs_vmask) = R0;
 _cs_gain:
     R0 = 24;
     R0 = R9 * R0 (SSI);
@@ -548,18 +597,24 @@ _cs_out:
 // Once per block, at the first chord voice: the cycles the block's extra voices may take (`_cs_allow`): `_cs_limit` minus what the last block cost
 // without its extra voices. The block's cost is the block handler's own EMUCLK count, which it leaves rotated by 16 bits in word 0 of its reply
 // record (finding 125): the record the last block built is `_dv_rec[0]` (core/dsp-link; 0 before its first block, then the whole limit is allowed).
-// The extra voices' own cycles (`_cs_t_spent`) count only when that block is the one just before. Clobbers R0-R2, I4.
+// A new block is a voice counter (R14) not below the last chord voice's: it only falls within a block. (`_dv_diag` cannot serve: voice 0 counts it,
+// and a STRETCH voice 0 never reaches the hook.) The extra voices' own cycles (`_cs_t_spent`) count only when their block is the one before:
+// at most 1,000,000 cycles (1.5 assumed blocks) from its first chord voice (`_cs_block`, EMUCLK). Clobbers R0-R2, I4.
 _cs_budget:
-    R0 = DM(_dv_diag);                    // the blocks that reached the hook (voice 0 counts them)
+    R0 = DM(_cs_r14);
+    DM(_cs_r14) = R14;
+    COMP(R14, R0);
+    IF LT RTS;
+    R0 = EMUCLK;
     R1 = DM(_cs_block);
-    COMP(R0, R1);
-    IF EQ RTS;
     DM(_cs_block) = R0;
     R0 = R0 - R1;
     R1 = DM(_cs_t_spent);
-    R2 = 1;
+    R2 = 1000000;
     COMP(R0, R2);
-    IF NE R1 = R1 - R1;                   // not the block before: none of its cycles were extra
+    IF GE R1 = R1 - R1;                   // not the block before: none of its cycles were extra in the last one
+    R0 = PASS R0;
+    IF LT R1 = R1 - R1;
     R2 = 0;
     DM(_cs_t_spent) = R2;
     DM(_cs_n_rec) = R2;
@@ -638,18 +693,32 @@ _hv_state_addr:
     I1 = R0;
     RTS;
 
-// The owner's envelope (state 0, I1), moved by the even voice: 1 while its gate is open or it never had a word (the firmware's own attack runs),
-// 0.97 per block once the track keyboard closed it (its key went up while other notes of the track still sound), 0 below 0.0005. Clobbers R0-R2.
+// The owner's envelope (state 0, I1), moved by the even voice. At the owner's note-on (frame slot 20, whatever started the note) it is 1, and a
+// closed gate of the note before opens. It stays 1 while the owner never had a word or its gate is open, until the track keyboard closes the gate
+// (its key went up while other notes of the track still sound); from then on 0.97 per block, 0 below 0.0005, until the owner's next note-on, also
+// when the gate opens first (with the owner's stock note-off, once its hidden voices are released). Clobbers R0-R2.
 _hv_owner_env:
     BTST R13 BY 0;
     IF NOT SZ RTS;
     R2 = DM(0, I1);
     R0 = 0x3f800000;
+    R1 = DM(-20, I6);
+    R1 = PASS R1;
+    IF EQ JUMP _hv_onon;
     R2 = PASS R2;
     IF EQ JUMP _hv_oo;
-    BTST R2 BY 17;
-    IF NOT SZ JUMP _hv_oo;
+    R2 = BSET R2 BY 17;
+    DM(0, I1) = R2;
+    JUMP _hv_oo;
+_hv_onon:
+    R2 = PASS R2;
+    IF EQ JUMP _hv_oo;
     R1 = DM(1, I1);
+    BTST R2 BY 17;
+    IF SZ JUMP _hv_ofd;
+    COMP(R1, R0);
+    IF EQ JUMP _hv_oo;                    // open and not faded since the note-on
+_hv_ofd:
     DM(2, I1) = R1;
     R2 = 0x3f7851ec;
     F0 = F1 * F2;
@@ -707,6 +776,12 @@ _hv_prepare:
 _hv_start:
     I4 = R2;
     DM(0, I4) = R8;
+    R0 = LSHIFT R13 BY 5;                 // the records are a hidden voice's now: no copies of the owner's note to release in them
+    R1 = _cs_last;
+    R0 = R0 + R1;
+    I4 = R0;
+    R0 = 0;
+    DM(3, I4) = R0;
     I4 = R4;
     I1 = R12;
     LCNTR = CS_REC_WORDS, DO _hv_cpw UNTIL LCE;
@@ -723,9 +798,10 @@ _hv_zw: MODIFY(I1, 1) (NW);
     I1 = R12;
     R0 = DM(102, I1);                     // START (+0x198)
     R1 = DM(103, I1);
-    R2 = DM(110, I1);                     // +0x1b8 .. +0x1bb: ACTIVE, the mark, seed, REVERSE
-    BTST R2 BY 24;
-    IF SZ JUMP _hv_fwd;
+    R2 = DM(110, I1);                     // +0x1b8 .. +0x1bb: ACTIVE, the mark, seed, REVERSE (any nonzero byte)
+    R8 = FEXT R2 BY 24:8;
+    R8 = PASS R8;
+    IF EQ JUMP _hv_fwd;
     R0 = DM(104, I1);                     // END (+0x1a0) minus one sample (2^31 in Q31)
     R1 = DM(105, I1);
     BTST R0 BY 31;
@@ -789,6 +865,10 @@ _hv_run:
     R0 = FEXT R11 BY 7:7;                 // the note's pitch
     R1 = DM(-17, I6);                     // the track's note
     R0 = R0 - R1;
+    R2 = -64;                             // at most 64 semitones from the track's note, the stock range of a note and its tune
+    R0 = MAX(R0, R2);
+    R2 = 64;
+    R0 = MIN(R0, R2);
     F0 = FLOAT R0;
     R1 = 0x3daaaaab;                      // 1/12
     F0 = F0 * F1;
@@ -992,8 +1072,9 @@ _cs_ra: MODIFY(I1, 1) (NW);
 // The track keyboard's word of one track (R1; its frame word before the pool map, `_tk_pool_receive` calls this). A shape word (CS_MAGIC in bits
 // 24-31): the track in 20-23, the copies in 18-19 and three intervals in semitones (6 bits, signed) in 12-17, 6-11 and 0-5; the track's row, its
 // ratios and its two bits of `_cs_vmask` follow it (a track with hidden voices keeps its bits). A hidden-voice word (CS_HIDDEN_MAGIC, see
-// `_hv_prepare`): stored in the voice's state; the track's bit of `_cs_hmask` and its two of `_cs_vmask` are set. A word a row already holds
-// changes nothing. Uses R0-R5 and I0 (the receiver's).
+// `_hv_prepare`): stored in the voice's state; a hidden voice's open gate or the owner's closed one sets the track's bit of `_cs_hmask` and its two
+// of `_cs_vmask`. A shape with no copies leaves the mask bits: the voices clear them once the copies of the current note end. A word a row
+// already holds changes nothing. Uses R0-R5 and I0 (the receiver's).
 _cs_receive:
     R0 = LSHIFT R1 BY -24;
     R2 = CS_HIDDEN_MAGIC;
@@ -1020,13 +1101,7 @@ _cs_receive:
     R4 = DM(_cs_vmask);
     R5 = R4 OR R0;
     R3 = PASS R3;
-    IF NE JUMP _cs_rxv;
-    R5 = R4;
-    R3 = DM(_cs_hmask);
-    BTST R3 BY R2;
-    IF NOT SZ JUMP _cs_rxv;
-    R0 = NOT R0;
-    R5 = R4 AND R0;
+    IF EQ R5 = PASS R4;
 _cs_rxv:
     DM(_cs_vmask) = R5;
     R5 = R1;
@@ -1050,12 +1125,16 @@ _hv_receive:
     R0 = R0 + R4;
     I0 = R0;
     DM(0, I0) = R1;
-    // An open gate puts the track on the hidden path, and so does the owner's closed one (its note fades); a closed gate of a hidden voice that
-    // the track keyboard sends again does not.
-    BTST R1 BY 17;
-    IF NOT SZ JUMP _hv_rxon;
+    // A hidden voice's open gate puts the track on the hidden path, and so does the owner's closed one (its note fades); a hidden voice's closed
+    // gate or the owner's open one, which the track keyboard sends again in turn, does not.
     R3 = PASS R3;
-    IF NE RTS;
+    IF EQ JUMP _hv_rx0;
+    BTST R1 BY 17;
+    IF SZ RTS;
+    JUMP _hv_rxon;
+_hv_rx0:
+    BTST R1 BY 17;
+    IF NOT SZ RTS;
 _hv_rxon:
     R0 = 1;
     R0 = LSHIFT R0 BY R2;
@@ -1167,18 +1246,21 @@ _dv_frame_sw:
 #endif
 
 .SECTION/DM seg_dmda;
-// Stock chords: bit v marks a chord voice; 16 track rows of 6 words (n, gain, ratio 1 .. 3, the shape word); the scratch block; per voice the owner's
-// sample pointer and phase after its last render and the copies taken for its note; the guard's count; the copies (32 voices x CS_COPIES x CS_REC_BYTES).
+// Stock chords: bit v marks a chord voice; 16 track rows of 6 words (n, gain, ratio 1 .. 3, the shape word); the scratch block; per voice 8 words:
+// the owner's sample pointer and phase after its last render, the copies taken for its note and their ratios; the guard's count; the copies
+// (32 voices x CS_COPIES x CS_REC_BYTES).
 .PKDATA _cs_vmask, 4;
 .PKDATA _cs_hmask, 4;                     // bit t: track t has hidden voices
 .PKDATA _cs_cfg, 384;
 .PKDATA _cs_scratch, 128;
-.PKDATA _cs_last, 512;
+.PKDATA _cs_last, 1024;
 .PKDATA _cs_faults, 4;
-// The extra voices' budget: the limit in cycles a block may reach with them (84 % of an assumed 1 GHz block), the block it was taken for, what this
-// block allows them, the cycles and records they took so far, and the records it could not pay for.
+// The extra voices' budget: the limit in cycles a block may reach with them (84 % of an assumed 1 GHz block), EMUCLK at the first chord voice of the
+// block it was taken for and that voice's counter, what this block allows them, the cycles and records they took so far, and the records it could
+// not pay for.
 .VAR _cs_limit = 560000;
 .PKDATA _cs_block, 4;
+.PKDATA _cs_r14, 4;
 .PKDATA _cs_allow, 4;
 .PKDATA _cs_t_spent, 4;
 .PKDATA _cs_n_rec, 4;

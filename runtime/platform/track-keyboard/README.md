@@ -37,8 +37,8 @@ with their own velocities still take a voice per note
 On the same machines a track also has three hidden voices for further
 keys. A key that no track of the group can take while the track's own
 note sounds plays on a hidden voice, so the track plays up to four keys
-by itself before AUTO borrows another track; a saved group's helpers
-still come first. Each hidden note fades in and out with its own key,
+by itself; a saved group's helpers still come first, and keys that
+arrive together still let AUTO borrow tracks. Each hidden note fades in and out with its own key,
 but the track's filter and amp envelope shape them all: the envelope
 opens with the first key and releases after the last. Each hidden
 note plays at the level its velocity gives a stock note on the track's

@@ -90,7 +90,6 @@ export const CHORD_DATA: Record<string, number> = {
   _cs_vmask: CHORD,
   _cs_cfg: CHORD + 0x10,
   _cs_scratch: CHORD + 0x200,
-  _cs_last: CHORD + 0x300,
   _cs_faults: CHORD + 0x580,
   _cs_hmask: CHORD + 0x590,
   _cs_limit: CHORD + 0x5a0,
@@ -99,8 +98,10 @@ export const CHORD_DATA: Record<string, number> = {
   _cs_t_spent: CHORD + 0x5ac,
   _cs_n_rec: CHORD + 0x5b0,
   _cs_skips: CHORD + 0x5b4,
+  _cs_r14: CHORD + 0x5b8,
   _cs_rec: CHORD + 0x600, // 45,312 bytes
   _hv_state: CHORD + 0xb800, // 2,048 bytes
+  _cs_last: CHORD + 0xc000, // 1,024 bytes
 };
 export const VOICE_ROW = 24; // words of a registry row
 export const RING_A = 0x200a0000; // stand-ins for the two reply records (the breadcrumbs are written into both)
