@@ -9,7 +9,7 @@ import { waitEmulated } from '@digi/regression/runtime/port-compat.ts';
 import { expectRuntimeUi } from '@digi/regression/runtime/ready.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
-import { withSession } from '@digi/regression/support.ts';
+import { withSession } from '@digi/regression/session-handle.ts';
 import { expect, test } from 'vitest';
 import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 

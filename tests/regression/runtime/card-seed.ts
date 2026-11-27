@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { DkSession } from '@digi/dk-session';
 import type { Device } from '@digi/test-support';
-import { moduleArtifact } from './install.ts';
+import { moduleArtifact } from './module-artifact.ts';
 import { neededServices, portFile, servicePath, servicesSidecar, type CardService } from './service-files.ts';
 
 /**

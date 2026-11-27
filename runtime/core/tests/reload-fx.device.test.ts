@@ -1,9 +1,9 @@
 import path from 'node:path';
 import { LOG_KIND } from '@digi/dk-session/gen_proto';
-import { button, waitClock } from '@digi/test-support';
+import { button, pollUntil, waitClock } from '@digi/test-support';
 import { commitNameHash } from '@digi/test-support/commit-records';
 import { expect } from 'vitest';
-import type { TestRuntime } from '@digi/regression/support.ts';
+import type { TestRuntime } from '@digi/regression/test-runtime.ts';
 import { liveArtifacts, record } from '@digi/regression/runtime/artifacts.ts';
 import { REDRAW, SETTLE, pickSine, stableFrameHash } from '@digi/regression/runtime/panel-waits.ts';
 import { bounded, rpc, word } from '@digi/regression/runtime/guest-access.ts';
@@ -16,9 +16,10 @@ import { serviceSymbol } from '@digi/regression/runtime/service-symbols.ts';
 import { effectPage, mainPage, pageKit } from '@digi/regression/runtime/fx-pages-ui.ts';
 import { wordBase } from '@digi/regression/runtime/memory.ts';
 import { fxProfile } from '@digi/regression/runtime/device-data.ts';
-import { DEBUG_MODULE, moduleStorePath } from '@digi/regression/runtime/install.ts';
+import { DEBUG_MODULE } from '@digi/regression/runtime/debug-module.ts';
+import { moduleStorePath } from '@digi/regression/runtime/module-artifact.ts';
 import { sendCc, sendNote, sendNoteOff } from '@digi/regression/runtime/midi.ts';
-import { runtimeTests } from '@digi/regression/runtime/ready.ts';
+import { runtimeTests } from '@digi/regression/runtime/runtime-tests.ts';
 import { prepareRuntimePlan, type RuntimePlan } from '@digi/regression/runtime/runtime-plan.ts';
 import { cliInstall } from '@digi/regression/runtime/transfer-cli.ts';
 
@@ -92,8 +93,21 @@ async function job(rt: TestRuntime, _plan: RuntimePlan, op: Op, fxId: string, fi
   await events?.until('MODULE_COMMIT', (e) => Number(e.fields.name_hash) === commitNameHash(fxId), { withinMs: 5000 });
   expect(await epochOf(rt), `${why}: a boot happened`).toBe(epoch);
   expect((await rt.dk.readLog()).filter((e) => e.kind === LOG_KIND.TABLE_BAD), `${why}: a table check failed`).toEqual([]);
-  const cap = await rt.dk.capacity();
-  expect({ fx: cap['FX_SLOTS']?.used, send: cap['SEND_SLOTS']?.used }, `${why}: FX_SLOTS and SEND_SLOTS in use`).toEqual(op === 'unload' ? { fx: 0, send: 0 } : { fx: 1, send });
+  // MODULE_COMMIT is not the claim of the cells: wait on the firmware's capacity until it shows the expected slots (the log of the run goes to the test output on a miss)
+  const want = op === 'unload' ? { fx: 0, send: 0 } : { fx: 1, send };
+  const slots = async () => {
+    const cap = await rt.dk.capacity();
+    return { fx: cap['FX_SLOTS']?.used, send: cap['SEND_SLOTS']?.used };
+  };
+  let got = await slots();
+  try {
+    got = await pollUntil(rt.clock, slots, (v) => v.fx === want.fx && v.send === want.send, { withinMs: 5000, message: `${why}: FX_SLOTS and SEND_SLOTS reach ${JSON.stringify(want)}` });
+  } catch {
+    got = await slots();
+    const log = await rt.dk.readLog();
+    console.log(`reload-fx slots miss (${why}): ${JSON.stringify(got)}; runtime log:\n${log.map((e) => JSON.stringify(e, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).join('\n')}`);
+  }
+  expect(got, `${why}: FX_SLOTS and SEND_SLOTS in use`).toEqual(want);
 }
 
 async function prepare(rt: TestRuntime, name: string, fxId: string) {

@@ -429,6 +429,14 @@ A boot screen is a script `x.mjs` that exports `ticks` and `draw(ctx, t)` and dr
 
 On runtime 0.11.4 with the matching Boot screen module, **Animation** lets you save an uploaded file or restore **Stock**. The choice applies on the next restart. With a project settings overlay active, choose the animation in the device menu.
 
+Use [Retiring idle lane builds](TESTING.md#retiring-idle-lane-builds) to see
+which linked worktrees' Cargo output can be discarded without removing the worktrees.
+Use [Removing finished lanes](TESTING.md#removing-finished-lanes) (`tools/devtools/lane.sh --prune --dry-run`) to delete lanes that are merged, clean, idle and unused.
+
+## Glyphs
+
+A glyph is a 1-bit pixel icon or animated value glyph kept as a source file under `sdk/glyphs/<set>/`. `mise run glyphs -- check` validates a set, `-- sheet` writes a contact sheet PNG and `-- dev` opens a live preview that reloads when a glyph file changes. Details and the file kinds: [packages/dkglyph/README.md](../packages/dkglyph/README.md). The agent skill `.agents/skills/digikit-glyphs/SKILL.md` has the drawing rules and the loop.
+
 ## Fast iteration: runtime, UI and modules
 
 One edit and one look take seconds, not a boot. Iterate on the Digitone II (its boot is about half as long), check the Digitakt II at the end, and finish with the owner's check (`module:check` for a content module, the named Nx device target for a fixture).

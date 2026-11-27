@@ -27,7 +27,7 @@ vi.mock('@digi/control-client', async (original) => ({
   ...(await original<object>()),
   spawnDaemon: fake.spawn,
 }));
-vi.mock('../../../packages/test-support/src/inputs.ts', async (original) => ({
+vi.mock('../../../packages/test-support/src/firmware-inputs.ts', async (original) => ({
   ...(await original<object>()),
   validateRuntimeInputs: vi.fn(),
   coupledEnv: fake.coupledEnv,
@@ -39,7 +39,7 @@ vi.mock('../../../packages/test-support/src/boot-window-emulator.ts', async (ori
   settleEmulatorBootWindow: fake.settleBootWindow,
 }));
 import { PRE_SOCKET_HANG_MS, Session, type Device } from '@digi/test-support';
-import { startPatchedSession } from '../support.ts';
+import { startPatchedSession } from '../patched-session.ts';
 import { startNoProgressWatchdog } from '../watchdog.ts';
 
 const identity = {

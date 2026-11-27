@@ -31,6 +31,7 @@ shared = [
   "dkrt::host_dir",    # the host directory `DKRT_HOST_DIR` (tools find the package statics through it)
   "dkrt::package::resident", # the package's facade over it
   "dkrt::package::boot_idx",
+  "dkrt::stock_kit",   # the stock kit layout of the device
   "dkrt::hooks",       # the resident core's calls into the package, and the package's table of them
   "dkrt::package::hooks",
   "dkrt::menu_exports",
@@ -100,5 +101,5 @@ shared = [
   "dkrt::aux",
 ]
 "C:transport" = ["dkrt::transport", "dkrt::store_cmds", "dkrt::package::module_cmds", "dkrt::admin_cmds", "dkrt::package::live_cmds", "dkrt::package::commands"]
-"C:diagnostics" = ["dkrt::dlog", "dkrt::fault", "dkrt::report", "dkrt::watch", "dkrt::stock_kit", "dkrt::health", "dkrt::package::capacity"]
+"C:diagnostics" = ["dkrt::dlog", "dkrt::fault", "dkrt::report", "dkrt::watch", "dkrt::health", "dkrt::package::capacity"]
 "C:tick" = ["dkrt::tick"]

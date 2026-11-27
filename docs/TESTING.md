@@ -105,7 +105,7 @@ A `runtimeAcceptance` record of a device test of the runtime loading and lifecyc
 | Command | What runs |
 | --- | --- |
 | `mise run test:changed` | `nx affected` against `DIGI_GATE_BASE` (default `main`) over the targets `lint`, `fmt-check`, `typecheck`, `test-host`, `python-checks` and `objects-check` (about 25 s uncached; `patchkit` is affected by edits of its own files, of core module sources, manifests or toolchain inputs, so a stale committed `.dko.json` fails here). Does not run Rust, module builds or devices. |
-| `pnpm test:host` | The Vitest projects of `vitest.host.projects.json` except `web-wasm` (the Nx `test-host` set): control-client, test-support, dk-session, web-transfer, desktop-host, regression-host, module-tests, nx-host, dkbs. One worker by default; `-- --maxWorkers N` changes it. |
+| `pnpm test:host` | The Vitest projects of `vitest.host/*.json` except `web-wasm` (the Nx `test-host` set): control-client, test-support, dk-session, web-transfer, desktop-host, regression-host, module-tests, nx-host, dkbs. One worker by default; `-- --maxWorkers N` changes it. |
 | `pnpm verify:host` | oxlint, Prettier check, host Vitest, typecheck of control-client, dk-session, test-support, regression and desktop. Stops at the first failure. |
 | `pnpm --filter @digi/web test-wasm` | The Vitest project `web-wasm` (`tests/*.wasm.test.ts`, 120 s limit per test). Needs `public/*.wasm` (`@digi/web:test-wasm` builds it). Cases that need firmware skip when absent. |
 | `mise run lint:py` | `ruff check` and `ruff format --check` over the pyproject include list. |
@@ -288,7 +288,7 @@ through the select and restart as before), and `dk:dev` with `--store` (a previe
 The runtime refuses a reload, with the old module untouched, in this order: `E_SAFE_MODE`, the transport playing or paused or unreadable (`E_RELOAD_PLAYING`), an open upload (`E_STATE`), `E_CARD_BUSY`, a module
 that built menus of its own (`E_RELOAD_MENUS`), a module whose service refuses (`E_RELOAD_ROUTED`; no service refuses today: the fx service tears an effect down on any route),
 then the file itself (any load check; another module name is `E_FORMAT`; a dropped key is `E_RELOAD_KEYS`; a plan failure over the live set is the plan's code, `E_MISSING` for a service
-that is not loaded). While it runs the module's commands answer `E_BUSY`. A drain or teardown that does not end in about 4 s (or 1800 UI passes) gives the old module its tick and commands back (a teardown answers busy only before `fini`); a DSP loader that holds rows it could not clear is retained until the next boot, and every reload is then refused at once with `E_RELOAD_RETAINED`: restart the device. A DSP part that stalls (no image or row goes out for the budget) is cancelled and the job ends with `E_DSP_XFER`. A reload that fails after the old module was torn down leaves it not loaded, as a plain unload does. Every job that got past the checks, whatever its result, rebuilds the machine list, writes gap rows for the machines that did not come back and frees the placeholder rows. A silent window (the machine's voice row is a
+that is not loaded). While it runs the module's commands answer `E_BUSY`. A drain or teardown that does not end in about 4 s (or 1800 UI passes) gives the old module its tick and commands back (a teardown answers busy only before `fini`); a DSP loader that holds rows it could not clear is retained until the next boot, and every reload is then refused at once with `E_RELOAD_RETAINED`: restart the device. A DSP part that stalls (no image or row goes out for the budget) is cancelled and the job ends with `E_DSP_XFER`. A reload that fails after the old module was torn down leaves it not loaded, as a plain unload does. A service reload (`services/<name>.dks`) takes its consumers down with it: when it is torn (a busy restore that times out mid-closure, or a new file that fails after the take-down) the closure stays down until a restart, and the boot record says so (each consumer that was ACTIVE is FAILED with the reload's code, the service's code is in the log, `unloaded` is 1). Every job that got past the checks, whatever its result, rebuilds the machine list, writes gap rows for the machines that did not come back and frees the placeholder rows. A silent window (the machine's voice row is a
 placeholder, the machine row reads MISSING) lasts from the teardown to the new row.
 
 ### LOAD and UNLOAD of a content module
@@ -475,7 +475,7 @@ A module keeps its tests in its own `tests/` folder. Content modules use `module
 
 - `test_*.py`, also in subfolders: pytest files. The basename is unique across the repository (prefix it with the module name). A helper
   next to the test is imported by name. Use `Path(__file__).parents[1]` for the module folder.
-- `*.test.ts`: Vitest project `module-tests` of `vitest.host.projects.json` (`pnpm test:host`), found recursively under the module roots.
+- `*.test.ts`: Vitest project `module-tests` (`vitest.host/module-tests.json`) (`pnpm test:host`), found recursively under the module roots.
 - `*.device.test.ts`: device tests, registered in the owner's `project.json` (`metadata.runtimeAcceptance`, files relative to that
   project root) and run by Vitest's `runtime` project. Runtime acceptance is split by concern: `core/runtime-tests` (the package: reload, live, missing; `runtime/core/tests/project.json`),
   `core/runtime-boot-tests`, `core/runtime-transfer-tests`, `core/runtime-diag-tests`, `core/runtime-platform-tests`,
@@ -641,6 +641,70 @@ without running it.
   `tools/nx/*.mjs` or the `project.json` files.
 - The merge gate uses `nx affected` to select conformance and the other targets from changed declared inputs, including dependency outputs; device tests are selected by ownership ("Nx gate"). A selected task with an unchanged key replays its cached result. Use `nx show target inputs PROJECT:TARGET --check PATH` to inspect direct file inputs and `mise run test:plan` to see task selection. After a change to untracked firmware, snapshots or override binaries, or to what `tools/nx/device-inputs.mjs` or `coupled-inputs.mjs` hash, run named targets or the full tier.
 - Shared loader and public SDK edits select the common machine and effect load fixture through the patched image and retain the other affected device behavior checks. Changes to an individual machine's or effect's private pack inputs select that shipped artifact's own load, as described in “Nx gate.” Use the owner targets for iteration and inspect `mise run test:plan` before the merge gate.
+
+### Retiring idle lane builds
+
+Use `git worktree list` to choose a lane that is not in use. From that
+worktree, list its build output and find the concrete Cargo targets:
+
+```sh
+du -sh dist/native-target
+find dist/native-target -name CACHEDIR.TAG -print
+```
+
+Choose a target directory from that list. For example, if the Workbench
+ColdFire-profile build has a tag in `dist/native-target/nogen/cfprof`:
+
+```sh
+cargo clean --dry-run --target-dir dist/native-target/nogen/cfprof
+# Once the lane is idle and the preview matches what you want:
+cargo clean --target-dir dist/native-target/nogen/cfprof
+```
+
+Cargo requires the tag. The `dist/native-target` parent groups several Cargo
+targets and is not itself a target directory. Cleaning a selected target leaves
+the worktree, sources, plain `target/`, and the shared core, daemon and Nx stores
+in place. The next local build may be cold on a shared-artifact miss. APFS
+snapshots and clones can make the gain in free disk space smaller than the
+reported output size.
+
+### Removing finished lanes
+
+`tools/devtools/lane.sh --prune [--days N] [--dry-run] [--only NAME]...` removes
+lanes that are finished and lists every other lane with the reason it was kept.
+`--only NAME` (repeatable) limits the run to these lanes. A lane goes only when
+all five rules hold:
+
+1. It is a worktree directly under the lanes directory (next to the main tree);
+   the main worktree, `.claude/worktrees/*` and `/private/tmp/*` are never touched.
+2. It is clean: `git status --porcelain` is empty (no untracked files that are not ignored).
+3. It is merged: after `git fetch origin main`, its HEAD is an ancestor of `origin/main`.
+4. It is idle for at least N days (default 7): the newest mtime of the worktree
+   gitdir's `index`, `HEAD` and `logs/HEAD` and of the lane directory itself.
+5. It is not in use: no process has the lane in its command line or working
+   directory. An Nx daemon of the lane does not count; it is stopped first
+   (`node_modules/.bin/nx daemon --stop`) and the check runs again.
+
+A pruned lane loses its ignored files too (`dist/`, and `out/` run results and
+logs): copy anything you need out of `out/runs/` first. A warm lane reset to main
+and untouched for N days is pruned by design; it costs a cold build when the
+name is used again. Use a larger `--days` to keep warm lanes longer.
+
+Removal runs `git worktree remove` (never `--force`), `git branch -d` on the
+lane branch (kept with a note when git refuses) and `git worktree prune`. Remote
+branches stay. Run `--dry-run` first; it changes nothing:
+
+```text
+$ tools/devtools/lane.sh --prune --dry-run
+kept bootscreen-transfer: not merged into origin/main
+kept cap-fix: idle 1d, under 7d
+kept deps: uncommitted or untracked files
+...
+would remove 0, kept 40
+```
+
+A real run prints `removed NAME (branch B, idle Nd)` per lane. A pruned lane
+costs a cold build (about 25 minutes) when its name is used again.
 
 ### Remote cache
 
@@ -1267,10 +1331,36 @@ Digest tools are inputs through their result, not their source text: `tools/nx/d
 edit invalidates only the targets whose definition changes. `UPDATE_GOLDENS` is a cache input of module device
 targets and `gate-stock:stock`.
 
+The system package: `core/runtime:package` reads `build/package.dko.json` and the menu's `[package_part]` object `runtime/apps/digikit-menu/build/digikit-menu.dko.json` as `dependentTasksOutputFiles` of `core/runtime:build-objects` and `core/digikit-menu:build-objects` (a core module whose only object is a `[package_part]` has a `build-objects` target too, and that target declares the part as an output). Before, the menu object was a tracked input that nothing rebuilt: an edit of `menu.c` left the package and every device key unchanged until someone ran `patchkit build`. Proof: an edit of `menu.c` changes `system.dksp` on the first `core/runtime:package` run. Both objects are read through the producing target (which declares the object as an output and runs first), never as a tracked file: Nx hashes a tracked file before `build-objects` rewrites it, so a source edit would reach the package one run late. The hand-written input lists of `core/runtime` (`rust-tests`, `test-assembly`) name every crate of the `dkrt` closure (`Cargo.toml` of `runtime/core/src/rs`) as a `production` project, `dkrt-lifecycle` and `dkrt-svc-rt` included, plus the dev-only `services/*/dks` and `local-*` fixture crates as file globs; a new path dependency is added there. `patchkit` leaves dev-dependencies out of an object's source hash, so an edit of a dev-only crate (`dkrt-svc-rt`) reruns the tests and leaves the package cached.
+
 A package or a harness file that no test imports is not an input: an edit to `packages/dk-session/src/samples.ts`
 leaves a target that does not import it cached. Merge and narrow keys also leave out the driver packages (`DRIVER_ROOTS`), even when imported, except the files that hold device facts (protocol, log layout, emulator launch, key codes; `DRIVER_SUBJECT_FILES`). Files read by path are described in "What a device test's cache key contains". `digi-control:daemons` declares the daemon
 sources (`SOURCE_GLOBS` of `tools/devtools/emud_key.py`) as inputs. The binary is keyed by content, and these
 inputs make a source edit select every task that consumes `dist/daemons.json`.
+
+### JS tool inputs and the Vitest project list
+
+The named input `jsToolchain` (`nx.json`) holds the Node and pnpm versions, the environment switches, `pnpm-workspace.yaml`
+and `nx.json`, and `externalDependencies` for the packages that targets execute: vitest, typescript, vite, `@types/node`,
+smol-toml, `@napi-rs/canvas` and solid-js. It holds no lockfile and no root `package.json`. Nx hashes an external dependency from its
+lockfile entry and those of its dependencies, so a version change of one of these packages re-keys every target that uses
+the input, and a lockfile change that only adds or edits workspace importers (a new package, another project's dependency)
+re-keys none. Targets with `^production` also hash the npm packages of their project and its dependencies through the project
+graph (checked with `show target inputs @digi/web:test-wasm --json` and `@digi/web:check`: `@astrojs/check`, `astro`,
+`@astrojs/solid-js`, `solid-js` are in the `external` list); an app target without `^` lists the app's own packages itself (web
+`test-host` names `astro` and `@astrojs/solid-js`; desktop names them once as the project's named input `desktopPackages`).
+A cached target that runs no npm package (Cargo, patchkit, gate scripts) sets `{ "externalDependencies": [] }`: without any
+`externalDependencies` entry Nx hashes every external dependency, and any npm bump re-keys it. A wrapper script counts: a target that runs `tools/nx/rust-env.mjs` lists `smol-toml`, which that script imports. `jsLintTooling` (`package.json` for the
+`lint` and `fmt:check` scripts, oxlint, prettier and their plugins) is an input of the `lint` and `fmt-check` targets only. A
+package that a target executes and that is in none of these lists must be added to the target's inputs as
+`{ "externalDependencies": [...] }`; `pnpm nx:pilot show target inputs PROJECT:TARGET --json` lists the `external` packages that a target hashes.
+
+Each Vitest project is one file, `vitest.host/NAME.json`, which `vitest.host.config.ts` reads. A project's Nx target lists its own
+file as an input (`hostTests` does not hold them), so adding a project or editing an entry re-keys only that project's tests;
+`vitest.host.config.ts` is an input of all host tests. To add a project, add its file and name it in the target's inputs: no shared file changes.
+`node tools/nx/check-vitest-host.mjs` (the Nx target `workspace:vitest-host`, a dependency of `lint`) reads the resolved project graph,
+so targets that `tools/nx/*.mjs` generate count too, and fails when a target that runs `--project NAME` lacks
+`{workspaceRoot}/vitest.host/NAME.json`, lists another project's file, or when a file has no target.
 
 ### What a device test's cache key contains
 
@@ -1409,10 +1499,13 @@ used within the last hour; it renames an entry to `.tmp-evict-*` before it remov
 than an hour. `DIGI_SHARC_CORE_STORE` moves the store (tests only).
 
 Key and build come from one description, `core_store.build_plan` (the argv and environment of the cargo call). The key follows the
-daemon key's scheme (`emud_key.key_of`): the content of the repository files in `CORE_SOURCE_GLOBS` (the `sharc-core-lib`,
-`sharc-gen` and `sharc-rt` crates, `Cargo.toml`, `Cargo.lock`, `rust-toolchain*`, `.cargo`), every file of
-the gen dir, `rustc -vV`, the target triple, the argv without the target dir (profile, `-p sharc-core-lib`, features) and the rustc flag, `CARGO_PROFILE_*` and `CARGO_TARGET_*` variables of the build environment. The tooling scripts (`core_store.py`, `digi_env.py`, ...) are not in the key: what they decide is in the plan, so an edit that leaves the plan alone keeps every stored library. The key is known before the first build, so
-a lookup needs no build. After a build the dependency file of cargo is audited against the key: a file the build read that the key
+daemon key's scheme (`emud_key.key_of`): the content of the files in `CORE_SOURCE_GLOBS` (the three SHARC library
+crates, `Cargo.toml`, `rust-toolchain*`, and `.cargo`), every file in the gen dir, the toolchain and version, target,
+build flags and PGO profile. The pinned Cargo's `metadata --locked --offline` resolves the library manifest. If all
+reachable crates are already covered by the source key, only their checkout-independent resolution is hashed, not
+the workspace lockfile. If metadata is unavailable or the closure includes other crates, the full lockfile remains
+an input. An exact match of the old whole-lockfile key can seed the new entry without recompiling.
+After a build the Cargo dependency file is audited against the key: a file the build read that the key
 does not cover fails the build and stores nothing (add it to `CORE_SOURCE_GLOBS`).
 
 ```sh
@@ -1512,7 +1605,8 @@ node packages/sharc-rig-kit/src/pin-cli.ts write --wav CAPTURE.wav --pin PIN.jso
 
 `mise run wb:preview` simulates the Transfer content packs without a ColdFire compiler. Use `mise run wb:preview:real` to exercise actual compiled packs. Both serve the desktop pages
 (`apps/desktop/ui`) at http://127.0.0.1:5199/ over a fake device (state in the address:
-`?dev=ok|empty|noreply|error|slow&folder=files|empty|none&speed=MiB/s&mode=modules|samples`).
+`?dev=ok|empty|noreply|error|slow&folder=files|empty|none&speed=MiB/s&mode=modules|samples`;
+Modules mode also takes `card=orphan|incomplete` (an unused service file; a module whose service is missing) and `live=ok|refuse|fail` (the answer to Load, Unload and Reload; scenes `transfer-live*`).
 `node tools/devtools/ui_shots.mjs --out DIR [--prefix before] [scene ...]` writes one PNG per scene at
 1440x900 and at 700 px wide (`--list` lists scenes). Look at the pictures before and after a UI change.
 `?emudev=<id>` shows another device's toolbar on the Emulator page (default `dn2`).
@@ -1533,7 +1627,7 @@ Memory panel.
 
 - `rt.listen()` and `events.until(kind, match, { withinMs })` read the runtime log; the log commands exist only while `digikit/debug` is loaded (`installWithDebug`).
 - `ringWatch` (`tests/regression/runtime/runtime-menu.ts`) reads the runtime's small ring (32 events) straight from guest memory, so it works without the debug module, for
-  example in a card rig whose runtime has none (`CARD_SYMBOLS` of `card-rig.ts` carries the symbols). `next(kind, match, { withinMs })` waits in emulated time; poll every
+  example in a card rig whose runtime has none (`CARD_SYMBOLS` of `card-symbols.ts` carries the symbols). `next(kind, match, { withinMs })` waits in emulated time; poll every
   100 ms, as the ring is short. Events a test must see are logged with `DK_LOG_F_KEEP`, which the ring keeps.
   Use `rt.listen()` when the debug module is loaded anyway, `ringWatch` otherwise.
 - `viewStackFacts(device)` and `readViewStack(read, facts)` (`packages/test-support`, `boot-window.ts`) give the firmware's view stack from guest memory, the top view first (object, class

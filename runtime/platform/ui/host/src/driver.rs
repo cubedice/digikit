@@ -2,6 +2,7 @@
 //! A call that does not fit the screen (no such row, no dialog) panics with a message,
 //! so a wrong test fails loudly.
 use crate::*;
+use std::ffi::c_int;
 
 fn top() -> usize {
     with(|s| s.stack.last().copied()).expect("no view is open")
@@ -96,6 +97,14 @@ pub fn labels() -> Vec<String> {
     with(|s| s.menus[id].rows.iter().map(|r| r.text.clone()).collect())
 }
 
+/// A toggle or value changed: core/ui writes the labels of a list or wide page again before it calls `changed` (`value_changed` of ui.c), so a fill
+/// that reads module state sees the new value.
+fn value_changed(id: usize) {
+    if desc_of(id).is_some_and(|d| d.flags & (DK_UI_LIST | DK_UI_WIDE) != 0) {
+        refill(id);
+    }
+}
+
 fn activate(id: usize, row: usize) {
     match row_kind(id, row) {
         Kind::Action { f, ctx, arg } => {
@@ -112,6 +121,7 @@ fn activate(id: usize, row: usize) {
             if !value.is_null() {
                 unsafe { *value = new };
             }
+            value_changed(id);
             if let Some(f) = f {
                 f(ctx, new)
             }
@@ -154,6 +164,7 @@ pub fn turn(row: usize, delta: i32) {
     let new = old.saturating_add(delta).clamp(min, max);
     unsafe { *value = new };
     if new != old {
+        value_changed(id);
         if let Some(f) = f {
             f(ctx, new)
         }
@@ -225,6 +236,16 @@ pub fn dialog() -> Option<(DialogKind, String, String, Vec<String>)> {
         s.dialog
             .as_ref()
             .map(|d| (d.kind, d.title.clone(), d.text.clone(), d.items.clone()))
+    })
+}
+
+/// The item the open choice popup is on, or None when no choice is open.
+pub fn choice_selected() -> Option<usize> {
+    with(|s| {
+        s.dialog
+            .as_ref()
+            .filter(|d| d.kind == DialogKind::Choice)
+            .map(|d| d.selected)
     })
 }
 

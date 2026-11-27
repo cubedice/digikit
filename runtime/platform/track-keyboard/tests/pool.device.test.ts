@@ -11,7 +11,7 @@ import { captureRemoteOled } from '@digi/regression/runtime/remote.ts';
 import { planSymbol } from '@digi/regression/runtime/runtime-plan.ts';
 import { prepareRuntimePlanModulesOffline } from '@digi/regression/runtime/runtime-plan-modules.ts';
 import { pollEmulated } from '@digi/regression/runtime/waits.ts';
-import { withSession } from '@digi/regression/support.ts';
+import { withSession } from '@digi/regression/session-handle.ts';
 import { expect, test } from 'vitest';
 import { trackKeyboardCard, trackKeyboardSymbols } from './track-card.ts';
 

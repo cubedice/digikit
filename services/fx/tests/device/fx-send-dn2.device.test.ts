@@ -1,11 +1,12 @@
 import path from 'node:path';
 import { button } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { withWaitApi, type PatchedSession } from '@digi/regression/support.ts';
+import { withWaitApi } from '@digi/regression/wait-api.ts';
+import { type PatchedSession } from '@digi/regression/test-runtime.ts';
 import { addedFactorOf, pcmStats } from '@digi/regression/runtime/pcm-files.ts';
 import { bounded, rpc } from '@digi/regression/runtime/guest-access.ts';
-import { captureNote } from '@digi/regression/runtime/note-capture.ts';
-import { dspBytes, dspWords, frames, runFrames, runToFrame, FREE_PC, rows } from '@digi/regression/runtime/dsp-state.ts';
+import { captureNote, pausedTrigger } from '@digi/regression/runtime/note-capture.ts';
+import { dspBytes, dspWords, runFrames, runToFrame, FREE_PC, rows } from '@digi/regression/runtime/dsp-state.ts';
 import { inspect } from '@digi/regression/runtime/fx-evidence.ts';
 import { pickSine } from '@digi/regression/runtime/panel-waits.ts';
 import { withGainFxSession } from '@digi/regression/runtime/fx-live.ts';
@@ -34,8 +35,8 @@ async function captureSend(
   await rpc(session, 'run.mode', { mode: 'paused' });
   await rpc(session, 'pcm.tap', { action: 'start' });
   await pickSine(withWaitApi(runtime), sineHint);
-  const current = await frames(session);
-  const trig = fixedTrigger ?? current + 300;
+  const { current, trigger: next } = await pausedTrigger(session);
+  const trig = fixedTrigger ?? next;
   record(artifacts, `${tag}-trigger-frame`, { current, triggerFrame: trig });
   // Chord: the key goes down at the trigger, up at +60, down at +120; the voice slots are read at +220.
   const during = async () => {

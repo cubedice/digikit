@@ -1,3 +1,4 @@
+use super::reload_state::ReloadState;
 use super::{RtHost, RtInstallers, RtLinker, RtManifest, RtPlacer, Session};
 use super::codes::code_of;
 use crate::package::dsp;
@@ -8,22 +9,56 @@ use dkrt_abi::package::PackageId;
 use dkrt_abi::plan::{Reason, Verdict};
 use dkrt_abi::package_platform::PackagePlatform;
 use dkrt_abi::MAX_MODULES;
-use dkrt_lifecycle::{LifecycleError, PackageManager, Refusal, Report};
+use super::RtTrace;
+use dkrt_lifecycle::{LifecycleError, PackageManager, Refusal, Report, Traced};
 use dkrt_sdk::sel::Record;
 use core::mem::MaybeUninit;
 use core::ptr::addr_of_mut;
 use dkrt_sdk::*;
 
 /// The package manager of the runtime over its seams.
-pub type Manager<P, M, R> = PackageManager<RtManifest<P, M, R>, RtPlacer<P, M, R>, RtLinker<P, M, R>, RtInstallers<P, M, R>, RtHost<P, M, R>>;
+pub type Manager<P, M, R> = PackageManager<
+    RtManifest<P, M, R>,
+    Traced<RtPlacer<P, M, R>, RtTrace<P, M, R>>,
+    Traced<RtLinker<P, M, R>, RtTrace<P, M, R>>,
+    Traced<RtInstallers<P, M, R>, RtTrace<P, M, R>>,
+    Traced<RtHost<P, M, R>, RtTrace<P, M, R>>,
+>;
 
 /// The runtime's package lifecycle: the session the seams share and the manager over them. It lives for the whole run: the boot brings the selection up through it, the live job loads,
 /// unloads and reloads modules through it, and the DSP loader reports a failed DSP part to it. It must not move once `init` has run (the seams point into the session).
 pub struct Rt<P: PackagePlatform, M: Images, R: Registry> {
-    session: Session<P, M, R>,
+    pub(super) session: Session<P, M, R>,
     /// Written in place by `init`; valid while `up`.
     manager: MaybeUninit<Manager<P, M, R>>,
     up: bool,
+    /// The take-down of a DSP part whose restore answered busy (a task below the UI task is not parked): the DSP load stays pending and a later UI pass finishes it.
+    dsp_down: DspDown,
+    /// Where the reload of a service stands (`Rt::reload_closure`): whether the live job must ask again (`dsp_step` then leaves the manager's pending take-down to it) and whether a
+    /// member went down.
+    pub(super) reload: ReloadState,
+}
+
+/// A DSP part's take-down that waits for a busy restore (`Rt::take_down_dsp`): the record, its boot index, the failure code, the passes spent, and whether the load in flight
+/// (`in_flight`) or a queued one (`!in_flight`) is the one taken down. `live` is false when nothing waits.
+#[derive(Clone, Copy)]
+struct DspDown {
+    live: bool,
+    in_flight: bool,
+    rec: usize,
+    idx: u32,
+    code: i32,
+    tries: u32,
+}
+
+impl DspDown {
+    const NONE: Self = Self { live: false, in_flight: false, rec: 0, idx: 0, code: 0, tries: 0 };
+}
+
+/// How a take-down of a DSP part ended: `Done` with whether every record's memory is back, or `Busy` (the manager keeps the rest pending; `Rt::dsp_step` finishes it).
+enum Down {
+    Done(bool),
+    Busy,
 }
 
 impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
@@ -35,6 +70,8 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
     pub unsafe fn init_at(out: *mut Self, loader: *mut Loader<P, M, R>) {
         Session::init(addr_of_mut!((*out).session), loader);
         addr_of_mut!((*out).up).write(false);
+        addr_of_mut!((*out).dsp_down).write(DspDown::NONE);
+        addr_of_mut!((*out).reload).write(ReloadState::Idle);
     }
 
     /// The lifecycle over `loader`, by value (host tests; nothing is started yet, so it may move until `boot`).
@@ -57,7 +94,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
             self.session.modules[k] = p.unwrap_or(core::ptr::null());
         }
         let manifest = RtManifest::of(&mut self.session, modules);
-        let (placer, linker, installers, host) = self.session.seams();
+        let (placer, linker, installers, host) = super::traced_seams(&mut self.session);
         self.up = false;
         PackageManager::init(self.manager.as_mut_ptr(), manifest, placer, linker, installers, host)?;
         self.up = true;
@@ -65,7 +102,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
     }
 
     /// The manager, as a reference that is not tied to a borrow of `self` (like `loader`): one call at a time on one task.
-    unsafe fn mgr<'a>(&self) -> Option<&'a mut Manager<P, M, R>> {
+    pub(super) unsafe fn mgr<'a>(&self) -> Option<&'a mut Manager<P, M, R>> {
         if self.up {
             Some(&mut *(self.manager.as_ptr() as *mut Manager<P, M, R>))
         } else {
@@ -82,7 +119,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
     }
 
     /// The loader. Not tied to a borrow of `self`: the manager and the session reach it through their own pointers, one call at a time on one task.
-    unsafe fn loader<'a>(&self) -> &'a mut Loader<P, M, R> {
+    pub(super) unsafe fn loader<'a>(&self) -> &'a mut Loader<P, M, R> {
         &mut *self.session.loader
     }
 
@@ -111,6 +148,8 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
         for k in 0..count.min(MAX_MODULES) {
             paths[k] = Some(rec.paths[k].as_ptr());
         }
+        let op = self.next_op();
+        self.enter_op(op);
         let init = self.init(&paths, count);
         self.session.begin_boot(caps, count);
         for k in 0..count {
@@ -160,6 +199,22 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
         }
         self.report_boot(rec, report);
         crate::package::boot_idx::set(u32::MAX);
+        self.leave_op();
+    }
+
+    /// Number a new operation (a boot or a live job): its events carry the number once it is entered.
+    pub unsafe fn next_op(&mut self) -> u32 {
+        self.loader().next_op()
+    }
+
+    /// Operation `op` runs now: the events of the manager's seams and of the installer's gate carry its number until `leave_op`.
+    pub unsafe fn enter_op(&mut self, op: u32) {
+        self.loader().enter_op(op);
+    }
+
+    /// The running operation ended.
+    pub unsafe fn leave_op(&mut self) {
+        self.loader().leave_op();
     }
 
     /// The name hash of the service package `service` provides (0 when it provides none).
@@ -272,8 +327,12 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
             if !self.session.loader.as_mut().is_some_and(|l| l.package_retire_ready(id)) {
                 return E_BUSY;
             }
-            if let Err(e) = m.take_down_closure(id) {
-                return code_of(&e);
+            match m.take_down_closure(id) {
+                // the consumers that went with the module are no longer active in the boot record (the job marks the module itself)
+                Ok(report) => {
+                    self.settle_down(id, &report);
+                }
+                Err(e) => return code_of(&e),
             }
         } else if self.session.retained(id) {
             self.session.retry_free(id);
@@ -358,11 +417,12 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
     }
 
     /// The DSP part of record `rec` failed or was given up: its closure goes down through the manager (the queued DSP loads of its consumers are removed first), the modules that
-    /// went with it are marked taken down (`E_MISSING`). Whether every record's memory is back (else the DSP state stays retained).
-    unsafe fn take_down_dsp(&mut self, rec: usize) -> bool {
+    /// went with it are marked taken down (`E_MISSING`). `Done` says whether every record's memory is back (else the DSP state stays retained); `Busy` when the restore waits for
+    /// a task to park: the manager keeps the take-down pending and the caller retries it on a later pass.
+    unsafe fn take_down_dsp(&mut self, rec: usize) -> Down {
         let id = PackageId(rec as u8);
         let Some(m) = self.mgr() else {
-            return false;
+            return Down::Done(false);
         };
         let order = m.graph().reload_order(id, m.live());
         for &d in order.as_slice() {
@@ -371,53 +431,101 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
             }
         }
         match m.take_down_closure(id) {
-            Ok(report) => {
-                let mut reclaimed = true;
-                for &d in report.taken_down().as_slice() {
-                    reclaimed &= !self.session.retained(d);
-                    if d != id && (d.0 as usize) < MAX_MODULES {
-                        let k = self.session.loader.as_ref().map_or(u8::MAX, |l| l.sel_index(d.0 as usize));
-                        if k != u8::MAX {
-                            crate::package::resident::boot::report_taken_down(k as u32, E_MISSING);
-                        }
-                    }
+            Ok(report) => Down::Done(self.settle_down(id, &report)),
+            Err(LifecycleError::NotLive { .. }) => Down::Done(!self.session.retained(id)),
+            // `RestorePending`: an earlier take-down (a queued load given up) still waits for a task to park: this one waits with it
+            Err(LifecycleError::Busy { .. } | LifecycleError::RestorePending { .. }) => Down::Busy,
+            Err(_) => Down::Done(false),
+        }
+    }
+
+    /// The modules `report` took down are marked taken down (`E_MISSING`) in the boot record; whether every one's memory is back.
+    unsafe fn settle_down(&mut self, id: PackageId, report: &Report) -> bool {
+        let mut reclaimed = true;
+        for &d in report.taken_down().as_slice() {
+            reclaimed &= !self.session.retained(d);
+            if d != id && (d.0 as usize) < MAX_MODULES {
+                let k = self.session.loader.as_ref().map_or(u8::MAX, |l| l.sel_index(d.0 as usize));
+                if k != u8::MAX {
+                    crate::package::resident::boot::report_taken_down(k as u32, E_MISSING);
                 }
-                reclaimed
             }
-            Err(LifecycleError::NotLive { .. }) => !self.session.retained(id),
-            Err(_) => false,
+        }
+        reclaimed
+    }
+
+    /// The take-down of a DSP part waits for a busy restore: remember it, the DSP load stays pending.
+    fn wait_down(&mut self, rec: usize, idx: u32, code: i32, in_flight: bool) {
+        self.dsp_down = DspDown { live: true, in_flight, rec, idx, code, tries: 0 };
+    }
+
+    /// The end of a DSP part's take-down: the boot record gets the code and the DSP loader goes on (or stays retained when memory is not back).
+    unsafe fn end_down(&mut self, d: DspDown, reclaimed: bool) {
+        crate::package::resident::boot::report_dsp(d.idx, d.code);
+        if d.in_flight {
+            dsp::fail_done(reclaimed, d.code);
+        } else if !reclaimed {
+            dsp::ds().phase = dsp::PH_RETAINED;
         }
     }
 
     /// Give up the DSP part of module record `rec`: the transfer in flight is taken down and the queue goes on, or the queued load is removed, exactly as when the DSP loader itself
-    /// fails. `false` when `rec` has neither a load in flight nor one queued (its DSP part has ended: the caller reads the result).
+    /// fails. A restore that waits for a task to park keeps the load pending: a later pass finishes it. `false` when `rec` has neither a load in flight nor one queued (its DSP part
+    /// has ended: the caller reads the result).
     pub unsafe fn cancel_dsp(&mut self, rec: usize, code: i32) -> bool {
         let d = dsp::ds();
         if d.phase != dsp::PH_IDLE && d.pending.rec as usize == rec {
             let idx = d.pending.boot_idx;
-            let reclaimed = self.take_down_dsp(rec);
-            crate::package::resident::boot::report_dsp(idx, code);
-            dsp::fail_done(reclaimed, code);
+            match self.take_down_dsp(rec) {
+                Down::Done(reclaimed) => {
+                    crate::package::resident::boot::report_dsp(idx, code);
+                    dsp::fail_done(reclaimed, code);
+                }
+                Down::Busy => self.wait_down(rec, idx, code, true),
+            }
             true
         } else if dsp::dequeue(rec) {
             let idx = self.session.loader.as_ref().map_or(u8::MAX, |l| l.sel_index(rec)) as u32;
-            if !self.take_down_dsp(rec) {
-                dsp::ds().phase = dsp::PH_RETAINED;
+            match self.take_down_dsp(rec) {
+                Down::Done(reclaimed) => self.end_down(DspDown { live: true, in_flight: false, rec, idx, code, tries: 0 }, reclaimed),
+                Down::Busy => self.wait_down(rec, idx, code, false),
             }
-            crate::package::resident::boot::report_dsp(idx, code);
             true
         } else {
             false
         }
     }
 
-    /// One UI-loop pass of the DSP loader. A take-down that waits for a busy restore goes on first. A DSP part that failed takes its package's closure down through the
-    /// manager (`take_down_dsp`) before the loader tells the boot record and starts the next load.
+    /// One UI-loop pass of the DSP loader. A take-down that waits for a busy restore goes on first (`retry_pending`): when it ends the DSP part's failure is settled, and while a
+    /// failed load in flight waits for it the loader does not step. After `GUARD_TICKS` passes the failure is final and the DSP state stays retained. A DSP part that failed takes its
+    /// package's closure down through the manager (`take_down_dsp`) before the loader tells the boot record and starts the next load. After a permanent failure or the `GUARD_TICKS`
+    /// timeout `dsp_down` is cleared while the manager keeps its pending take-down and retries it silently (acceptable: the retained state ends the session).
     pub unsafe fn dsp_step(&mut self, l: ServiceTable) {
         if let Some(m) = self.mgr() {
-            if m.restore_pending().is_some() {
-                let _ = m.retry_pending();
+            if m.restore_pending().is_some() && !self.reload.is_waiting() {
+                let r = m.retry_pending();
+                if self.dsp_down.live {
+                    let mut w = self.dsp_down;
+                    match r {
+                        Ok(report) => {
+                            self.dsp_down = DspDown::NONE;
+                            let reclaimed = self.settle_down(PackageId(w.rec as u8), &report);
+                            self.end_down(w, reclaimed);
+                        }
+                        Err(LifecycleError::Busy { .. }) if w.tries < dsp::GUARD_TICKS => {
+                            w.tries += 1;
+                            self.dsp_down = w;
+                        }
+                        Err(_) => {
+                            self.dsp_down = DspDown::NONE;
+                            self.end_down(w, false);
+                        }
+                    }
+                }
             }
+        }
+        if self.dsp_down.live && self.dsp_down.in_flight {
+            return;
         }
         match self.loader().dsp_advance(l) {
             dsp::Advance::Pending => {}
@@ -426,9 +534,13 @@ impl<P: PackagePlatform, M: Images, R: Registry> Rt<P, M, R> {
                     let p = &dsp::ds().pending;
                     (p.rec as usize, p.boot_idx)
                 };
-                let reclaimed = self.take_down_dsp(rec);
-                crate::package::resident::boot::report_dsp(idx, code);
-                dsp::fail_done(reclaimed, code);
+                match self.take_down_dsp(rec) {
+                    Down::Done(reclaimed) => {
+                        crate::package::resident::boot::report_dsp(idx, code);
+                        dsp::fail_done(reclaimed, code);
+                    }
+                    Down::Busy => self.wait_down(rec, idx, code, true),
+                }
             }
             dsp::Advance::Loaded => self.loader().dsp_loaded(l),
         }

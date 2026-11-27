@@ -17,7 +17,7 @@ macro_rules! hook_device {
 
 /// The glue of a service file: `service!(Shortcuts, "shortcuts", &KINDS_SHORTCUTS, parts = [Records, Tick], hooks = [...], fills = [...], exports = ..., tick = f)` for an owner object
 /// `Shortcuts: Provider<ImportCore>` that also implements the traits of the parts it names. `parts` lists the optional parts the object adopts (`Records`, `Dsp`, `Tick`, `Query`,
-/// `Describe`; the lifecycle part is always there; `Reentry` has no table: it gives the owner an event queue, see `Reentry`). `kinds` (`&'static [(u32, u32)]`, as `dkrt_sdk::records::KINDS_*`)
+/// `Describe`, `State`; the lifecycle part is always there; `Reentry` has no table: it gives the owner an event queue, see `Reentry`). `kinds` (`&'static [(u32, u32)]`, as `dkrt_sdk::records::KINDS_*`)
 /// need the `Records` part. The macro emits the part tables, the row, the cell `DK_SVC_OWNER` (`Owner<Shortcuts>`: `init` makes the instance with `Provider::start_in` before the declarations,
 /// `fini` stops it), the module record `dk_module`, the data word `dk_svc_abi` and (on the ColdFire) the panic handler; `Query` also declares the resident query entry and points it at the part.
 ///
@@ -127,7 +127,7 @@ macro_rules! service {
                 DK_SVC_KINDS,
                 &DK_SVC_ROW,
                 DK_SVC_OWNER.instance() as *mut u8,
-                dk_svc_init as usize as *const u8,
+                dk_svc_init as *const () as *const u8,
                 device,
                 &$crate::service!(@hooks $(($site, $entry $(, $dev)?)),*),
                 &$crate::service!(@hooks $(($slot, $fill $(, $fdev)?)),*),
@@ -253,6 +253,10 @@ macro_rules! service {
         static DK_SVC_DESCRIBE: $crate::dkrt_abi::provider::DescribeV1 =
             $crate::dkrt_abi::provider::DescribeV1::of_in::<$svc, $crate::ImportCore, DkSvcEnter>();
     };
+    (@part_table State, $svc:ty, $kinds:expr) => {
+        static DK_SVC_STATE: $crate::dkrt_abi::provider::StateV1 =
+            $crate::dkrt_abi::provider::StateV1::of_in::<$svc, $crate::ImportCore, DkSvcEnter>();
+    };
     (@part_ref Records) => {
         $crate::dkrt_abi::provider::PartRef::new(
             $crate::dkrt_abi::provider::PART_RECORDS,
@@ -288,6 +292,13 @@ macro_rules! service {
             &DK_SVC_DESCRIBE as *const _ as *const (),
         )
     };
+    (@part_ref State) => {
+        $crate::dkrt_abi::provider::PartRef::new(
+            $crate::dkrt_abi::provider::PART_STATE,
+            $crate::dkrt_abi::provider::STATE_NEWEST,
+            &DK_SVC_STATE as *const _ as *const (),
+        )
+    };
     // the resident query entry: only with the Query part. It calls the part's function with the instance of `DK_SVC_OWNER`.
     (@resident_query $svc:ty, $($part:ident),*) => {
         $crate::service!(@resident_query_of [$($part),*] $svc);
@@ -316,7 +327,7 @@ macro_rules! service {
     (@hooks $(($site:literal, $entry:path $(, $dev:ident)?)),*) => {
         [$((
             $crate::name_hash($site),
-            $entry as usize as *const u8,
+            $entry as *const () as *const u8,
             $crate::hook_device!($($dev)?),
         )),*]
     };

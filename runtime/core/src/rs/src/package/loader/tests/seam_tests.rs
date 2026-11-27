@@ -14,14 +14,14 @@ fn id(n: usize) -> PackageId {
 }
 
 /// Module 0 at `PATH`, and the shared state of the seams over `l`.
-fn shared(l: &mut Fake) -> Session<FakePlatform, FakeImages, FakeRegistry> {
+pub(super) fn shared(l: &mut Fake) -> Session<FakePlatform, FakeImages, FakeRegistry> {
     let mut paths = [None; MAX_MODULES];
     paths[0] = Some(PATH.as_ptr());
     Session::new(l as *mut Fake, paths)
 }
 
 /// Provider `j` of the search is the file at `PATH` (the one file of the fake store).
-fn found_at(l: &mut Fake, j: usize) {
+pub(super) fn found_at(l: &mut Fake, j: usize) {
     l.found.paths[j][..PATH.len() - 1].copy_from_slice(&PATH[..PATH.len() - 1]);
     l.found.path_len[j] = PATH.len() - 1;
     l.found.n = j + 1;
@@ -520,7 +520,7 @@ impl<C: dkrt_abi::core_api::CoreApi> Provider<C> for Refuser {
 }
 
 #[test]
-fn can_stop_of_a_module_asks_every_loaded_service_and_a_service_is_not_asked() {
+fn can_stop_of_a_module_asks_every_loaded_service_and_a_service_is_asked_for_itself() {
     let _g = LOCK.lock_with_package().unwrap_or_else(|e| e.into_inner());
     unsafe {
         let _ = crate::package::handlers::services();
@@ -532,7 +532,7 @@ fn can_stop_of_a_module_asks_every_loaded_service_and_a_service_is_not_asked() {
         assert_eq!(crate::package::provider_rows::add(rec, Fixture::of::<Refuser>("refuser").source(), None), OK);
         assert_eq!(host.can_stop(id(0)), Err(E_RELOAD_ROUTED));
         assert_eq!(host.can_stop(id(1)), Err(E_RELOAD_ROUTED), "any module: a provider's `can_stop` names no consumer");
-        assert_eq!(host.can_stop(id(rec)), Ok(()), "a service is asked nothing: its consumers are");
+        assert_eq!(host.can_stop(id(rec)), Err(E_RELOAD_ROUTED), "a service answers for itself (the live job asks it again when it says busy)");
         crate::package::provider_rows::remove(rec);
         assert_eq!(host.can_stop(id(1)), Ok(()), "back to no refusal once the service is gone");
     }

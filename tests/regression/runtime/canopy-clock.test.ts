@@ -3,7 +3,7 @@ import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { button, repoRoot } from '@digi/test-support';
 import { expect, onTestFinished, test } from 'vitest';
-import { withSession } from '../support.ts';
+import { withSession } from '../session-handle.ts';
 import { liveOptions } from './live-options.ts';
 import { captureRemoteOled } from './remote.ts';
 import { planSymbol, type RuntimePlan } from './runtime-plan.ts';

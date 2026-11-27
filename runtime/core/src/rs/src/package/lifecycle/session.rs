@@ -1,3 +1,4 @@
+use super::carried_state::CarriedState;
 use super::{RtColdFire, RtHost, RtInstallers, RtLinker, RtPlacer, RtSharc};
 use crate::package::loader::discover::PATH_CAP;
 use crate::package::loader::package::{Entries, Flight};
@@ -57,6 +58,8 @@ pub struct Session<P: PackagePlatform, M: Images, R: Registry> {
     pub(super) numbered: bool,
     /// What each record's last failed step left.
     pub(super) outcome: [Outcome; REC_MAX],
+    /// The state a reload of a service carries to its next copy.
+    pub(super) carried: CarriedState,
 }
 
 /// A pointer to a [`Session`], held by each seam.
@@ -117,6 +120,7 @@ impl<P: PackagePlatform, M: Images, R: Registry> Session<P, M, R> {
         addr_of_mut!((*out).boot_count).write(0);
         addr_of_mut!((*out).numbered).write(true);
         addr_of_mut!((*out).outcome).write(OUTCOMES);
+        addr_of_mut!((*out).carried).write(CarriedState::NEW);
     }
 
     /// The placer, linker, host and installers of one manager (the manifest is built beside them, `RtManifest::of`).
@@ -167,6 +171,8 @@ impl<P: PackagePlatform, M: Images, R: Registry> Session<P, M, R> {
     /// A refused module takes no number from a service.
     pub(super) unsafe fn number_keys(&mut self, graph: &PackageGraph, live: &LiveSet) {
         if self.numbered {
+            // after the boot only a reload asks again: the services that came back know no number, and their sticky maps give the same ones
+            (*self.loader).settle_accepted();
             return;
         }
         self.numbered = true;

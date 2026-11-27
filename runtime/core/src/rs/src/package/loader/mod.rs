@@ -67,11 +67,14 @@ pub(crate) mod discover;
 pub(crate) mod exports;
 pub(crate) mod install;
 mod live;
+mod op_clock;
 mod load;
 pub(crate) mod package;
+mod park;
 pub(crate) use package::PhaseKind;
 mod plan;
 mod port;
+mod provider_reload;
 mod quiesce;
 pub(crate) mod records;
 pub(crate) mod role;
@@ -84,12 +87,14 @@ use check::{v2_layout, Checked, Placed};
 use plan::{parse_provs, service_import_owner, table_of_file, table_span};
 #[cfg(test)]
 pub(crate) use plan::table_keys;
+use plan::settle_ctx;
 #[cfg(test)]
-use plan::{settle_ctx, unmet_needs, WANT_MAX};
+use plan::{unmet_needs, WANT_MAX};
 #[cfg(test)]
 pub(crate) use live::{live_caps, own_use};
 pub use live::{live_check_load, reload_check, retire_index};
 pub use quiesce::{reload_abort, reload_quiesce};
+pub use provider_reload::provider_check;
 pub(crate) use live::{live_capacity, live_indices};
 pub use plan::{capture, find_providers, keys_of, planned_dsp, reset_plan};
 pub(crate) use plan::{boot_caps, live_settle_ctx};
@@ -176,6 +181,8 @@ pub struct Loader<P: PackagePlatform, M: Images, R: Registry> {
     m: M,
     r: R,
     phase: Phase,
+    /// The provider record whose file a reload check or prepare is reading (`provider_check`): the stock-bytes check of the new file does not count the sites that record holds.
+    replacing: Option<u8>,
     /// The role word of each record's file (0 module, 1 service, 2 port): which `RoleSteps` its undo uses.
     roles: [u8; records::REC_MAX],
     /// The name of the missing module of the last load that failed with E_IMPORT (`import_needs`), NUL padded; empty when none. The boot clears it before
@@ -186,6 +193,8 @@ pub struct Loader<P: PackagePlatform, M: Images, R: Registry> {
     decl_diff: (u32, u32),
     /// The name hash that the port file did not list, of the last service file that failed with E_IMPORT for it (`port::Lookup::Unlisted`); 0: none.
     import_hash: u32,
+    /// The name hash of the import that the last `check_file` could not resolve (0: none). A live check relaxes the refusal only when a found provider that is not up yet exports that name.
+    import_name: u32,
     /// The header table of the module at each selection index, kept while the boot reads each file once (`capture`); `table_len` 0: none (the file
     /// is missing, torn, of the old format or has a larger table).
     tables: [[u8; TABLE_MAX]; SEL_MAX],
@@ -220,10 +229,15 @@ pub struct Loader<P: PackagePlatform, M: Images, R: Registry> {
     sel_of_rec: [u8; MAX_MODULES],
     /// The steps of a teardown that ran for each record (`TORN_*`): a second `unload_body` after `E_BUSY` skips them, so `fini` and the role's undo run once.
     torn: [u8; records::REC_MAX],
-    /// The tick address of a module whose tick the teardown stopped (valid while `TORN_TICK` is set): a reload that cannot finish gives it back.
-    saved_tick: [u32; MAX_MODULES],
+    /// The operation (a boot or the live job) the lifecycle events belong to (`Rt` enters and leaves it; the installer gate reads it).
+    ops: op_clock::OpClock,
+    /// Host tests: the next this many restores answer busy, as when a task below the UI task is not parked (the gate itself is covered by `park_tests`).
+    #[cfg(test)]
+    busy_restores: u32,
+    /// The tick address of a record (a module, or a service of a reload) whose tick the teardown stopped (valid while `TORN_TICK` is set): a reload that cannot finish gives it back.
+    saved_tick: [u32; records::REC_MAX],
     /// The block count when a reload closed the entries of each module (`TORN_DRAIN`); `None`: the platform has no block clock.
-    drain_at: [Option<u32>; MAX_MODULES],
+    drain_at: [Option<u32>; records::REC_MAX],
     /// A package the package manager starts applies the records of the services in the table first and leaves those of the loaded service files to `attach`
     /// (`package_attach`): set for the duration of `package_start`.
     split_apply: bool,
@@ -308,15 +322,20 @@ pub unsafe fn dsp_progress() -> u32 {
 
 /// Is `path` the store path of a loaded provider (a service file)?
 pub unsafe fn is_provider_path(path: *const u8) -> bool {
+    provider_of_path(path).is_some()
+}
+
+/// The provider record loaded from the store path `path` (NUL terminated): what a live job names a service by.
+pub unsafe fn provider_of_path(path: *const u8) -> Option<usize> {
     let mut j = 0;
     while j < PROVIDER_MAX {
         let rec = MAX_MODULES + j;
         if records::module(rec).used != 0 && cstr_eq(records::path(rec).as_ptr(), path) {
-            return true;
+            return Some(rec);
         }
         j += 1;
     }
-    false
+    None
 }
 
 /// The name of the missing module of the last load that failed with `E_IMPORT` (`Loader::missing`).
@@ -355,10 +374,14 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
             m,
             r,
             phase: Phase::Closed,
+            replacing: None,
+            #[cfg(test)]
+            busy_restores: 0,
             roles: [0; records::REC_MAX],
             missing: [0; NEEDS_LEN],
             decl_diff: (0, 0),
             import_hash: 0,
+            import_name: 0,
             tables: [[0; TABLE_MAX]; SEL_MAX],
             table_len: [0; SEL_MAX],
             accepted: [false; SEL_MAX],
@@ -374,8 +397,9 @@ impl<P: PackagePlatform, M: Images, R: Registry> Loader<P, M, R> {
             dsp_install: DspInstaller::new(),
             sel_of_rec: [0; MAX_MODULES],
             torn: [0; records::REC_MAX],
-            saved_tick: [0; MAX_MODULES],
-            drain_at: [None; MAX_MODULES],
+            ops: op_clock::OpClock::new(),
+            saved_tick: [0; records::REC_MAX],
+            drain_at: [None; records::REC_MAX],
             split_apply: false,
             keep_dsp: false,
             reg_block: [(core::ptr::null(), 0); MAX_MODULES],

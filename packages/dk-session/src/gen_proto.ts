@@ -183,7 +183,7 @@ export const LOAD_STATUS: [number, string, string][] = [
   [
     -45,
     'E_BOOT_ONLY',
-    'the module set is fixed after the boot hook (a reload of a loaded module is the only later load)',
+    'the module set is fixed after the boot hook: a service that must start at boot cannot load now, restart the device to load it (a reload of a loaded module is the only later load)',
   ],
   [-46, 'E_RANGE', 'a card write outside the store range'],
   [-47, 'E_CARD_RO', "the card's store area is not ours and not blank"],
@@ -386,6 +386,8 @@ export const LOG_KIND = {
   PROJECT_MODULE: 63,
   VIEW_CHANGED: 64,
   VALUE_CHANGED: 65,
+  LIFECYCLE: 66,
+  STATE_CARRIED: 67,
 } as const;
 
 /** The kind of a LOG event by id: its name and the names of its five arguments ("-": not used). */
@@ -453,6 +455,8 @@ export const LOG_KINDS: Record<number, [string, [string, string, string, string,
   63: ['PROJECT_MODULE', ['slot', 'what', 'status', 'index', 'id_hash']],
   64: ['VIEW_CHANGED', ['old_view', 'view', 'old_class', 'class', 'generation']],
   65: ['VALUE_CHANGED', ['scope', 'key', 'old', 'new', 'generation']],
+  66: ['LIFECYCLE', ['op', 'name_hash', 'info', 'status', 'detail']],
+  67: ['STATE_CARRIED', ['op', 'name_hash', 'outcome', 'version', 'len']],
 };
 
 /** `MACHINE_FAULT` argument 1, low byte: what the DSP guard found. */

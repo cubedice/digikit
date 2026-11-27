@@ -3,7 +3,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { repoRoot } from '@digi/test-support';
 import { expect, test } from 'vitest';
-import { withSession } from '../support.ts';
+import { withSession } from '../session-handle.ts';
 
 interface Observer {
   syx_sha256: string;

@@ -1,5 +1,5 @@
 import { emulatorClock, panelInput, type Session } from '@digi/test-support';
-import type { TestRuntime } from '../support.ts';
+import type { TestRuntime } from '../test-runtime.ts';
 import { Ui } from './ui.ts';
 
 /**
