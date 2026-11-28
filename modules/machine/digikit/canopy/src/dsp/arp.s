@@ -1260,14 +1260,12 @@ _ca_tail_render:
     DM(_ca_active) = R0;
     I0 = _ca_tail_pcm;
     I1 = _ca_pcm;
-    R2 = 32;
-_ca_tail_mix:
+    LCNTR = 32, DO _ca_tail_mix UNTIL LCE;
     F0 = DM(I0, M6);
     F1 = DM(I1, M5);
     F0 = F0 + F1;
+_ca_tail_mix:
     DM(I1, M6) = F0;
-    R2 = R2 - 1;
-    IF NE JUMP _ca_tail_mix;
 _ca_tail_next:
     R0 = DM(_ca_tail_index);
     R0 = R0 + 1;

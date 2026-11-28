@@ -290,11 +290,9 @@ _cp_render:
 _cp_render_begin:
     I2 = R8;
     R0 = 0;
-    R1 = 32;
+    LCNTR = 32, DO _cp_clear_output UNTIL LCE;
 _cp_clear_output:
     DM(I2, M6) = R0;
-    R1 = R1 - 1;
-    IF NE JUMP _cp_clear_output;
     I0 = R4;
     R11 = PASS R4;
     R14 = DM(_cp_render_count);
@@ -418,36 +416,27 @@ _cp_legacy_samples:
     R0 = DM(_wt_enabled);
     R0 = PASS R0;
     IF NE JUMP _cp_block_samples;
-    R13 = 32;
+    // The per-sample oscillator as two hardware loops (linear and native AMP), with the float operations of the former
+    // per-sample call in their order. The harmonic steps and the level sit in registers: R8, R14 and R15 are the
+    // caller's and come back below.
+    DM(_cp_keep_r8) = R8;
+    DM(_cp_keep_r14) = R14;
+    DM(_cp_keep_r15) = R15;
+    F13 = DM(_cp_h2step);
+    F14 = DM(_cp_h3);
+    F15 = DM(_cp_h3step);
+    F8 = DM(_cp_level);
     R0 = DM(_cp_amp_native);
     R0 = PASS R0;
     IF NE JUMP _cp_native_samples;
-_cp_sample:
+    LCNTR = 32, DO _cp_sample UNTIL LCE;
     F7 = F7 + F10;
     F0 = 0.0;
     F7 = MAX(F7, F0);
     F0 = 1.0;
     F7 = MIN(F7, F0);
-    CALL _cp_sample_body;
-    R13 = R13 - 1;
-    IF NE JUMP _cp_sample;
-    JUMP _cp_samples_done;
-_cp_native_samples:
-    I1 = _cp_amp_samples;
-_cp_native_sample:
-    F7 = DM(I1, M6);
-    CALL _cp_sample_body;
-    R13 = R13 - 1;
-    IF NE JUMP _cp_native_sample;
-    F7 = DM(_cp_amp_end);
-    JUMP _cp_samples_done;
-_cp_sample_body:
-    F0 = DM(_cp_h2step);
-    F12 = F12 + F0;
-    F0 = DM(_cp_h3);
-    F1 = DM(_cp_h3step);
-    F0 = F0 + F1;
-    DM(_cp_h3) = F0;
+    F12 = F12 + F13;
+    F14 = F14 + F15;
     F0 = F2 * F5;
     F1 = F3 * F4;
     F9 = F0 + F1;
@@ -468,17 +457,58 @@ _cp_sample_body:
     F1 = 3.0;
     F0 = F1 - F0;
     F0 = F0 * F2;
-    F1 = DM(_cp_h3);
-    F0 = F0 * F1;
+    F0 = F0 * F14;
     F0 = F9 + F0;
     F0 = F0 * F6;
     F0 = F0 * F7;
-    F1 = DM(_cp_level);
-    F0 = F0 * F1;
+    F0 = F0 * F8;
     F1 = DM(I2, M5);
     F0 = F0 + F1;
+_cp_sample:
     DM(I2, M6) = F0;
-    RTS;
+    JUMP _cp_sample_end;
+_cp_native_samples:
+    I1 = _cp_amp_samples;
+    LCNTR = 32, DO _cp_native_sample UNTIL LCE;
+    F7 = DM(I1, M6);
+    F12 = F12 + F13;
+    F14 = F14 + F15;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+    F2 = PASS F9;
+    // sin(2p)=2xy; sin(3p)=x(3-4x*x). Finite additive spectra,
+    // not a clipped/waveshaped oscillator with unbounded high harmonics.
+    F0 = F2 * F3;
+    F1 = 2.0;
+    F0 = F0 * F1;
+    F0 = F0 * F12;
+    F9 = F2 + F0;
+    F0 = F2 * F2;
+    F1 = 4.0;
+    F0 = F0 * F1;
+    F1 = 3.0;
+    F0 = F1 - F0;
+    F0 = F0 * F2;
+    F0 = F0 * F14;
+    F0 = F9 + F0;
+    F0 = F0 * F6;
+    F0 = F0 * F7;
+    F0 = F0 * F8;
+    F1 = DM(I2, M5);
+    F0 = F0 + F1;
+_cp_native_sample:
+    DM(I2, M6) = F0;
+    F7 = DM(_cp_amp_end);
+_cp_sample_end:
+    DM(_cp_h3) = F14;
+    R8 = DM(_cp_keep_r8);
+    R14 = DM(_cp_keep_r14);
+    R15 = DM(_cp_keep_r15);
+    JUMP _cp_samples_done;
 _cp_block_samples:
     // Wavetable voices render a block at a time with the per-sample operations
     // of the pad body: this oscillator fills word 4 of the _wt_blk records,
