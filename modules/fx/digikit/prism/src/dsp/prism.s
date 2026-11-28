@@ -407,14 +407,26 @@ _pr_divert:
     R1 = LW_LEFT * 4;
     R0 = R0 + R1;
     I1 = R0;
+    // The share stands at 1, where the move below leaves it: the mailbox takes each word as it is (y times 1) and the
+    // output block is +0 (y - y), both sides in one run.
+    COMP(R13,R12);
+    IF EQ JUMP _pr_divert_whole;
     CALL _pr_divert_side;
     R13 = PASS R10;
     CALL _pr_divert_side;
     DM(PS_DIVERT,I5) = R13;
+_pr_divert_count:
     R0 = DM(LW_SEQ,I4);
     R0 = R0 + 1;
     DM(LW_SEQ,I4) = R0;
     RTS;
+_pr_divert_whole:
+    R1 = 0;
+    LCNTR = 64, DO _pr_divert_word UNTIL LCE;
+        R0 = DM(I0,M5);
+        DM(I1,M6) = R0;
+_pr_divert_word: DM(I0,M6) = R1;
+    JUMP _pr_divert_count;
 // One side: I0 the output block (read y, write y - a y), I1 the mailbox (a y), F13 the share before the first sample, F12 its
 // target, F9 its step. At a = 1 the mailbox holds y and the output block 0, both exactly. Uses F0 to F2.
 _pr_divert_side:
