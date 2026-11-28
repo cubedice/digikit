@@ -1391,6 +1391,8 @@ _cp_post_unity_last:
     DM(_cp_post_output) = R0;
     RTS;
 _cp_post_clear:
+    R9 = PASS R9; // R9 is one when neither lane can render this block.
+    IF NE RTS;
     I1 = _cp_post_pad;
     I2 = _cp_post_arp;
     R0 = 0;

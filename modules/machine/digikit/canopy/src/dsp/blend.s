@@ -1,6 +1,6 @@
 // Linear PAD/ARP crossfade. R4=pad/output[32], R8=arp[32], R12=state[2].
-// State is {current,target} floats in [0,1]. R9 is zero only after both
-// renderers clear PCM and render no samples. Caller validates audio before/after
+// State is {current,target} floats in [0,1]. R9 is zero only when both lanes
+// rendered no samples and pad/output is clear. Caller validates audio before/after
 // this operation. R0=1 success, 0 invalid state (no writes). This helper owns no
 // voice state: muted groups must still receive gates and advance envelopes.
 .SECTION/PM seg_pmco;
@@ -24,8 +24,7 @@ _cp_blend:
     F2 = DM(0, I2);
     F3 = DM(1, I2);
     R9 = PASS R9;
-    IF EQ JUMP _cp_blend_check_quiet;
-_cp_blend_audio:
+    IF EQ JUMP _cp_blend_quiet;
     I0 = R4;
     I1 = R8;
     R10 = 32;
@@ -63,11 +62,23 @@ _cp_blend_output:
 _cp_blend_bad:
     R0 = 0;
     RTS;
-_cp_blend_check_quiet:
-    // Both PCM lanes and the common-AMP scratch are already clear. Keep the
-    // full blend during a MIX ramp so the next note enters at the same gain.
+_cp_blend_quiet:
+    // Run the same gain recurrence even when there is nothing to mix, so the
+    // next sounding block uses the same crossfade. The pad/output is clear.
     COMP(R2, R3);
-    IF NE JUMP _cp_blend_audio;
+    IF EQ JUMP _cp_blend_quiet_post;
+    F4 = 0.00104112432;
+    F6 = 0.000030517578125;
+    LCNTR = 32, DO _cp_blend_quiet_ramp UNTIL LCE;
+    F0 = F3 - F2;
+    F7 = ABS F0;
+    F0 = F0 * F4;
+    F2 = F2 + F0;
+    COMP(F7, F6);
+_cp_blend_quiet_ramp:
+    IF LE F2 = PASS F3;
+    DM(0,I2) = F2;
+_cp_blend_quiet_post:
     R0 = DM(_cp_post_output);
     R0 = PASS R0;
     IF EQ JUMP _cp_blend_quiet_done;

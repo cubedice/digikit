@@ -142,12 +142,10 @@ _fm_copy:
     DM(712,I0) = R0;
     I2 = I0;
     MODIFY(I2,680) (NW);
-    R2 = 32;
-_fm_copy_bank:
+    LCNTR = 32, DO _fm_copy_bank UNTIL LCE;
     R0 = DM(I1,M6);
+_fm_copy_bank:
     DM(I2,M6) = R0;
-    R2 = R2 - 1;
-    IF NE JUMP _fm_copy_bank;
 _fm_fade:
     R4 = DM(714,I0);
     R5 = 1;

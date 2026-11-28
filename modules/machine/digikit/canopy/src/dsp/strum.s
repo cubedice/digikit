@@ -236,6 +236,16 @@ _cs_schedule_next:
     COMP(R0, R1);
     IF LT JUMP _cs_schedule;
 _cs_tick_begin:
+    R0 = DM(_cs_state);
+    I2 = R0;
+    R0 = DM(176, I2);
+    R1 = DM(178, I2);
+    R0 = R0 OR R1;
+    R1 = DM(180, I2);
+    R0 = R0 OR R1;
+    R1 = DM(182, I2);
+    R0 = R0 OR R1;
+    IF EQ RTS;
     R0 = 0;
     DM(_cs_index) = R0;
 _cs_tick:
