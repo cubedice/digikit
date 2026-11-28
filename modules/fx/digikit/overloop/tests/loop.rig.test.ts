@@ -537,7 +537,7 @@ describe('Overloop engine: the boundary cases', () => {
     });
   });
 
-  test('START while the crossfader moves, and the seam while it stands between: the heaviest blocks', async () => {
+  test.each([false, true])('START during a crossfade and playback across the seam, with wet return %s', async (wet) => {
     await withRig({ tap: true }, async (rig) => {
       // This START is block 322 of the performance. Place it at the end of
       // a 16-block display interval so packing its extrema also runs here.
@@ -545,6 +545,7 @@ describe('Overloop engine: the boundary cases', () => {
       const { take, change } = await armedChange(rig, 3, 1);
       // STOP, and START again two blocks later, while the loop side still fades out: the restart's declick, the loop
       // side's fade in, the crossfader on its way and the mix, all in the same blocks
+      if (wet) rig.wet = { signal: SOUND_B };
       rig.stop();
       await rig.run(2, SOUND_B);
       rig.setXfad(30);
@@ -563,7 +564,7 @@ describe('Overloop engine: the boundary cases', () => {
       }
       expect(worst, 'the tap at a crossfader of 30').toBe(0);
       note(
-        `heaviest blocks: the restart with the crossfader moving ${Math.max(...moving.instructions)} instructions, the seam at a crossfader of 30 ${Math.max(...turn.instructions)}`,
+        `heaviest blocks (wet return ${wet}): the restart with the crossfader moving ${Math.max(...moving.instructions)} instructions, the seam at a crossfader of 30 ${Math.max(...turn.instructions)}`,
       );
     });
   });
