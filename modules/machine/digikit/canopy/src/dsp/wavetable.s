@@ -1057,11 +1057,31 @@ _wt_control_last:
     F9 = DM(_wt_size_b);
     F6 = DM(_wt_mip_mix);
     I0 = _wt_blk;
+    // The frame mix is zero in every sample (R2 = 1) when it is zero in the last one and nothing moved the frame
+    // position in this block: no scan step, no position step, and no envelope step or no envelope amount.
+    R2 = 0;
+    R1 = DM(_wt_frame_mix);
+    R3 = DM(_wt_scan_step);
+    R1 = R1 OR R3;
+    R3 = DM(_wt_position_step);
+    R1 = R1 OR R3;
+    IF NE JUMP _wt_frames_ready;
+    R1 = DM(_wt_env_step);
+    R1 = PASS R1;
+    IF EQ JUMP _wt_frames_flat;
+    R1 = DM(_wt_env_amount);
+    R1 = PASS R1;
+    IF NE JUMP _wt_frames_ready;
+_wt_frames_flat:
+    R2 = 1;
+_wt_frames_ready:
     R0 = DM(_wt_table_base_b);
     R1 = DM(_wt_table_base_a);
     COMP(R0, R1);
     R0 = DM(I0,M4); // frame offset of record 0; each iteration loads the next
     IF EQ JUMP _wt_tables_one;
+    R2 = PASS R2;
+    IF NE JUMP _wt_tables_two_flat;
     LCNTR = 32, DO _wt_tables_two_last UNTIL LCE;
     F1 = DM(-5,I0); // read phase
     F2 = F8 * F1, F7 = DM(-6,I0); // frame mix
@@ -1214,6 +1234,8 @@ _wt_tables_two_last:
     R0 = DM(I0,M4);
     JUMP _wt_blend;
 _wt_tables_one:
+    R2 = PASS R2;
+    IF NE JUMP _wt_tables_one_flat;
     LCNTR = 32, DO _wt_tables_one_last UNTIL LCE;
     F1 = DM(-5,I0); // read phase
     F2 = F8 * F1, F7 = DM(-6,I0); // frame mix
@@ -1297,6 +1319,107 @@ _wt_one_final:
 _wt_one_join:
     DM(-3,I0) = F0;
 _wt_tables_one_last:
+    R0 = DM(I0,M4);
+    JUMP _wt_blend;
+// A frame position that stands on a whole frame for the block (_wt_flat): the second frame's weight is zero in every
+// sample, so each table is read in one frame, as the final frame is.
+_wt_tables_two_flat:
+    LCNTR = 32, DO _wt_tables_two_flat_last UNTIL LCE;
+    F1 = DM(-5,I0); // read phase
+    F2 = F8 * F1, F7 = DM(-6,I0); // frame mix
+    R3 = TRUNC F2;
+    F4 = FLOAT R3;
+    F4 = F2 - F4;
+    R3 = LSHIFT R3 BY 1;
+    R14 = R3 + R0;
+    F2 = F9 * F1;
+    R3 = TRUNC F2;
+    F5 = FLOAT R3;
+    F5 = F2 - F5;
+    R3 = LSHIFT R3 BY 1;
+    R15 = R3 + R0;
+    R1 = R14 + R10;
+    R2 = R15 + R11, I1 = R1;
+    I2 = R2;
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
+    F0 = F1 + F0;
+    F3 = F3 - F2;
+    F3 = F5 * F3;
+    F2 = F3 + F2;
+    F2 = F2 - F0;
+    F2 = F2 * F6;
+    F0 = F2 + F0;
+    DM(-3,I0) = F0;
+    R1 = R14 + R12;
+    R2 = R15 + R13, I1 = R1;
+    I2 = R2;
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
+    F0 = F1 + F0;
+    F3 = F3 - F2;
+    F3 = F5 * F3;
+    F2 = F3 + F2;
+    F2 = F2 - F0;
+    F2 = F2 * F6;
+    F0 = F2 + F0;
+    DM(-2,I0) = F0;
+_wt_tables_two_flat_last:
+    R0 = DM(I0,M4);
+    JUMP _wt_blend;
+_wt_tables_one_flat:
+    LCNTR = 32, DO _wt_tables_one_flat_last UNTIL LCE;
+    F1 = DM(-5,I0); // read phase
+    F2 = F8 * F1, F7 = DM(-6,I0); // frame mix
+    R3 = TRUNC F2;
+    F4 = FLOAT R3;
+    F4 = F2 - F4;
+    R3 = LSHIFT R3 BY 1;
+    R14 = R3 + R0;
+    F2 = F9 * F1;
+    R3 = TRUNC F2;
+    F5 = FLOAT R3;
+    F5 = F2 - F5;
+    R3 = LSHIFT R3 BY 1;
+    R15 = R3 + R0;
+    R1 = R14 + R10;
+    R2 = R15 + R11, I1 = R1;
+    I2 = R2;
+    R0 = DM(M5,I1) (SWSE);
+    R1 = DM(M6,I1) (SWSE);
+    R2 = DM(M5,I2) (SWSE);
+    R3 = DM(M6,I2) (SWSE);
+    F0 = FLOAT R0;
+    F1 = FLOAT R1;
+    F2 = FLOAT R2;
+    F3 = FLOAT R3;
+    F1 = F1 - F0;
+    F1 = F4 * F1;
+    F0 = F1 + F0;
+    F3 = F3 - F2;
+    F3 = F5 * F3;
+    F2 = F3 + F2;
+    F2 = F2 - F0;
+    F2 = F2 * F6;
+    F0 = F2 + F0;
+    DM(-3,I0) = F0;
+_wt_tables_one_flat_last:
     R0 = DM(I0,M4);
 _wt_blend:
     // Pass 4: table transition and source blend into the audio word.
