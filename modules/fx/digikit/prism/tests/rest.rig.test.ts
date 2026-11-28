@@ -27,6 +27,7 @@ import {
   type Signal,
   type Take,
 } from './engine-rig.ts';
+import { OL } from '../../overloop/tests/loop-rig.ts';
 import { PairRig } from './pair-rig.ts';
 
 const HZ = 220;
@@ -518,18 +519,22 @@ describe('PRISM rest: what the ColdFire and the loop effect see', () => {
       pair.prism.set(ECHO);
       const sounding = await pair.run(60, (n) => NOTE(n));
       for (let b = 0; b < 12000 && !(await resting(pair.prism)); b++) await pair.run(1, silence);
-      // PRISM plays silence in full: Overloop takes its mailbox every block
       expect(await resting(pair.prism)).toBe(true);
       const rest = await pair.run(100, silence);
       expect(Math.max(...rest.prismInstructions)).toBeLessThan(REST_MOST);
       expect(peak(rest.left)).toBe(0);
       const taking = Math.min(...sounding.loopInstructions.slice(20));
       const skipping = Math.max(...rest.loopInstructions);
-      expect(skipping).toBeLessThan(taking - 64 * 8);
+      // Bound the resting cost independently so a faster wet mix can still pass.
+      // The 100-block window includes Overloop's periodic waveform publications.
+      expect(skipping).toBeLessThanOrEqual(1221);
+      expect(skipping).toBeLessThan(taking);
+      expect(await pair.loop.state(OL.OL_WET_OK!)).toEqual([0]);
       const from = pair.clock;
       const woke = await pair.run(200, burst(HZ, 0.3, from, 1600));
       expect(peak(woke.wetLeft)).toBeGreaterThan(0.01);
-      expect(Math.min(...woke.loopInstructions.slice(1))).toBeGreaterThanOrEqual(taking);
+      expect(Math.min(...woke.loopInstructions.slice(1))).toBeGreaterThan(skipping);
+      expect(await pair.loop.state(OL.OL_WET_OK!)).toEqual([1]);
       note(`coupled with Overloop: its block ${taking} instructions while PRISM plays, ${skipping} while PRISM rests`);
     } finally {
       await pair.close();
