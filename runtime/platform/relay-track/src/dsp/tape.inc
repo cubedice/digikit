@@ -264,14 +264,22 @@ _tape_read_quality:
 _tape_discard_average:
     R1 = 0; DM(T_WRITE_COUNT,I5) = R1;
 _tape_write_ready:
-    // The pool lookup preserves these mixer scratch registers.
+    R0 = DM(_t_gate); R1 = DM(T_RESET,I5); R0 = R0 OR R1;
+    IF NE JUMP _tape_full_block;
+    R0 = DM(RT_PLAYING,I4); R0 = PASS R0; IF EQ JUMP _tape_dry_block;
+    R0 = DM(_t_rate); R0 = PASS R0; IF EQ JUMP _tape_dry_block;
+    R0 = DM(_t_span); R0 = PASS R0; IF LE JUMP _tape_dry_block;
+_tape_full_block:
+    // The pool lookup preserves these mixer scratch registers. Control
+    // changes are applied before this block, so hold gain and mix in registers.
     R9 = 32767; R11 = -32768;
+    F13 = DM(T_EFF_GAIN,I5); F14 = DM(T_EFF_MIX,I5);
     R0 = DM(RT_POS,I4); DM(_t_wave_start) = R0;
     R5 = 0;
 _tape_sample:
     R0 = LSHIFT R5 BY 2; R1 = DM(_t_left); R1 = R1 + R0; I0 = R1;
     R1 = DM(_t_right); R1 = R1 + R0; I1 = R1; F1 = DM(0,I0); F2 = DM(0,I1);
-    F3 = DM(T_EFF_GAIN,I5); F1 = F1 * F3; F2 = F2 * F3; DM(_t_dry_l) = R1; DM(_t_dry_r) = R2;
+    F1 = F1 * F13; F2 = F2 * F13; DM(_t_dry_l) = R1; DM(_t_dry_r) = R2;
     R0 = DM(RT_PLAYING,I4); R1 = DM(_t_rate); R0 = PASS R0;
     IF EQ JUMP _tape_park; R1 = PASS R1; IF EQ JUMP _tape_park;
     R3 = DM(_t_span); R3 = PASS R3; IF LE JUMP _tape_park;
@@ -375,8 +383,8 @@ _tape_output:
     F2 = DM(13,I5); F2 = F2 - F1; F2 = F2 * F3; F1 = F1 + F2;
 _tape_mix:
     R2 = LSHIFT R5 BY 2; R3 = I5; R2 = R2 + R3; I0 = R2;
-    F2 = DM(T_EFF_MIX,I5); F3 = DM(_t_dry_mix);
-    F0 = F0 * F2; F1 = F1 * F2;
+    F3 = DM(_t_dry_mix);
+    F0 = F0 * F14; F1 = F1 * F14;
     F2 = DM(_t_dry_l); F2 = F2 * F3; F0 = F0 + F2; DM(T_LEFT,I0) = R0;
     F2 = DM(_t_dry_r); F2 = F2 * F3; F1 = F1 + F2; DM(T_RIGHT,I0) = R1;
     R0 = DM(_t_gate); R1 = 1; COMP(R0,R1); IF NE JUMP _tape_next_sample;
@@ -390,6 +398,26 @@ _tape_next_sample:
     R0 = DM(_rt_mode); R1 = 1; COMP(R0,R1); IF NE JUMP _rt_step_next;
     R0 = DM(_rt_written); R1 = DM(_rt_goal); COMP(R0,R1); IF LT JUMP _rt_step_next;
     CALL _tape_close; JUMP _rt_step_next;
+
+_tape_dry_block:
+    // A parked motor with no write or transition emits only the dry mix.
+    // Keep the general mix's float operations and the rounded dry scratch.
+    R0 = 0; DM(T_LAST_L,I5) = R0; DM(T_LAST_R,I5) = R0;
+    F5 = DM(T_EFF_MIX,I5); F5 = F0 * F5;
+    F4 = DM(T_EFF_GAIN,I5); F6 = DM(_t_dry_mix);
+    R0 = DM(_t_left); I0 = R0; R0 = DM(_t_right); I1 = R0;
+    R0 = I5; R1 = 128; R0 = R0 + R1; I2 = R0; R0 = R0 + R1; I3 = R0;
+    LCNTR = 32, DO _tape_dry_sample UNTIL LCE;
+        F1 = DM(I0,M6); F2 = DM(I1,M6);
+        F1 = F1 * F4; F2 = F2 * F4;
+        DM(_t_dry_l) = R1; DM(_t_dry_r) = R2;
+        F1 = DM(_t_dry_l); F2 = DM(_t_dry_r);
+        F1 = F1 * F6; F2 = F2 * F6;
+        F1 = F5 + F1; F2 = F5 + F2;
+        DM(I2,M6) = R1;
+_tape_dry_sample: DM(I3,M6) = R2;
+    R8 = DM(_t_track);
+    JUMP _rt_step_next;
 
 #include "slow-write.inc"
 

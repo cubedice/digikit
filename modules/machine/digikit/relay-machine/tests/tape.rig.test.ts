@@ -11,6 +11,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     'runtime/platform/relay-storage/src/dsp/pool.s',
     'runtime/platform/relay-track/src/dsp/audio.s',
     adapter + '/engine.s',
+    adapter + '/capture.s',
     'modules/machine/digikit/relay-machine/src/dsp/voice.s',
   ];
   const ext = 0x20110000,
@@ -69,7 +70,7 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
   async function block(op = 0, source = 0, rate = 0, arg = 0, end = 0) {
     [0, ++sequence, op, track, source, rate, arg, end].forEach((v, i) => rig.poke(cmd / 4 + i, v >>> 0));
     const b = await rig.call(
-      '_rtm_block',
+      sequence === 1 ? '_rtm_capture' : '_rtm_block',
       { M6: 1, M5: 0 },
       {
         maxSteps: 300000,
@@ -113,6 +114,11 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     for (let i = 0; i < 480; ++i) rig.poke(ext / 4 + i, 0);
     rig.poke(timing / 4 + 1, 512);
     input();
+    const regs = { R1: 0x1234, R8: ext, I4: ext + 256, M5: 0, M6: 1 };
+    const idle = await rig.call('_rtm_capture', regs, { readRegs: Object.keys(regs), reads: [[status / 4, 14]] });
+    expect(idle.halt).toBe('breakpoint');
+    expect(idle.regs).toMatchObject(regs);
+    expect(idle.reads[0]).toEqual(Array(14).fill(0));
     await controls(65536, 4096);
     input(true);
     let b = await block(1, 0, 0, 512, 16);
@@ -159,6 +165,13 @@ it('prints spaced stereo echoes, punches immediately, parks, reverses and undoes
     b = await controls(0, 65536, 50, 0);
     expect(b.audio[0]).toBeCloseTo(0.5, 5);
     expect(b.audio[32]).toBeCloseTo(-0.25, 5);
+    // After the transition, the parked monitor still passes gain and dry mix.
+    b = await block(11, (50 << 5) | (50 << 19), 0, 65536);
+    const dryPosition = b.status[6];
+    b = await block();
+    expect(b.status[6]).toBe(dryPosition);
+    expect(b.audio[0]).toBe(0.125);
+    expect(b.audio[32]).toBe(-0.0625);
     expect(await rig.peek(row, 1)).toEqual([512]);
     // Read the stored native PCM, independent of the dry/wet monitor.
     async function sample(frame: number, slot = 9 + track) {
