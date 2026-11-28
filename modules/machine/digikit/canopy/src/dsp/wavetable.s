@@ -1580,6 +1580,31 @@ _wt_pm_block:
     F4 = 1.0;
     F5 = 0.004158;
     F7 = 0.1591549431; // one radian in cycles
+    // A depth at zero whose target is zero for the whole block (no key scale, or neither a base depth nor a positive
+    // envelope amount) stays zero: the read phases stand, and only the ratio and the modulator phase advance, with the
+    // operations of the full loop below, so a later depth starts from the same phase.
+    R0 = PASS R8;
+    IF NE JUMP _wt_pm_full;
+    COMP(F13, F3);
+    IF EQ JUMP _wt_pm_idle;
+    COMP(F12, F3);
+    IF GT JUMP _wt_pm_full;
+    COMP(F11, F3);
+    IF GT JUMP _wt_pm_full;
+_wt_pm_idle:
+    LCNTR = 32, DO _wt_pm_idle_last UNTIL LCE;
+    F9 = F9 + F14;
+    F0 = F9 * F15;
+    F0 = F0 + F10;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+_wt_pm_idle_last:
+    F10 = F0 - F1;
+    DM(_wt_pm_depth_cursor) = F8;
+    DM(2,I2) = F9;
+    DM(1,I2) = F10;
+    RTS;
+_wt_pm_full:
     // I0 addresses the read phase word: envelope at -2. F6 holds the
     // envelope, then the read phase, which the join stores and steps past.
     I0 = _wt_blk;
