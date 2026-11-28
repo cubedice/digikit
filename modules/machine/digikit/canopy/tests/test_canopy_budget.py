@@ -46,6 +46,7 @@ def family_controls(family):
         # the bank the UI sends for a wavetable sound (CPSB): WT FM at depth 0, and at depth 60
         "wavetable-b": lambda: wavetable_fm_controls(mix=64),
         "wavetable-fm": lambda: wavetable_fm_controls(fm_depth=60, mix=64),
+        "wavetable-settled": lambda: wavetable_fm_controls(mix=64),
     }[family]()
     values[6] = 64
     values[21] = (values[21] & 0xFFFF0000) | 64
@@ -61,6 +62,11 @@ def take(canopy, family, pressure=lambda block: 0, blocks=BLOCKS):
     controls = family_controls(family)
     out, states, cost = [], [], []
     for block in range(blocks):
+        # An instance that has played its wavetable family for a third of a second has its source mix (state word 232)
+        # settled on the wavetable; a take from a new instance reaches that only at its end. "settled" starts there.
+        settled = (
+            {232: 0x3F800000} if block == 0 and family.endswith("settled") else None
+        )
         events = []
         if block == 0:
             events = [note(1, 48), note(2, 55), note(3, 60), note(4, 64)]
@@ -73,6 +79,7 @@ def take(canopy, family, pressure=lambda block: 0, blocks=BLOCKS):
             controls=controls,
             native=AMP,
             post_amp=True,
+            state_edits=settled,
             edits={
                 4: block,
                 12: PLAYING | (pressure(block) << 12),
@@ -109,14 +116,19 @@ def held_owners(state):
     }
 
 
-# The takes at pressure 0, recorded at the commit before the budget (ee79d7018; the two CPSB takes at the budget's
-# commit, whose output the three others show to be the same): the budget and the bit-identical cost work must keep them.
+# The takes at pressure 0, recorded at the commit before the budget (ee79d7018; the CPSB takes at the budget's commit,
+# whose output the three others show to be the same): the budget and the bit-identical cost work must keep them.
+# The three wavetable takes of a new instance changed once, deliberately, with the skipped pad oscillator: from block
+# 414, where the source mix stops 0.000001 short of the wavetable and the pad oscillator's share (-140 dB) goes; the
+# largest difference of a sample is 1.5e-8 at a peak of 0.147 (85a1a7f2... and 932238042f... before). The settled take
+# is the same before and after.
 PINNED = {
     "velvet": "efa291cb3ede4d588eeb98be404c966c3bcbd54c5772c054991576d4d8e20e9d",
-    "wavetable": "85a1a7f2b637fbe8c9516632c8fe422146b90833a1aecdc8dfb84cb6d9f6bc68",
+    "wavetable": "ae8b040407c158012aa5a3c3aba9cb2e18f3c85d7debd917dc7c72b27d997843",
     "fm": "62ec0a005c7db37e272af65ac81cc482305365b448e559e2abf37d297b8c41c6",
-    "wavetable-b": "85a1a7f2b637fbe8c9516632c8fe422146b90833a1aecdc8dfb84cb6d9f6bc68",
-    "wavetable-fm": "932238042f45a69a4542ff9d5a24cd7ece78d1b3c643af852cdbe81a641cf1f9",
+    "wavetable-b": "ae8b040407c158012aa5a3c3aba9cb2e18f3c85d7debd917dc7c72b27d997843",
+    "wavetable-fm": "c79bac7239c9fd29f5cc52076b5088fb5ea9d536290659e6659c8cb5fe1e7799",
+    "wavetable-settled": "939559d42de4ae0738ba2eb6746b94880b600f1e662fd23afadc3cb5a823b0be",
 }
 
 DIRECT = pytest.mark.parametrize(
@@ -149,6 +161,10 @@ def test_report(takes, family):
         pytest.skip("a report, on request")
     out, states, cost = takes(family, 0)
     print(f"\n{family}: sha256 {digest(out)}")
+    if os.environ.get("CANOPY_BUDGET_DUMP"):
+        # the take's samples, to compare two builds numerically
+        with open(f"{os.environ['CANOPY_BUDGET_DUMP']}-{family}.f32", "wb") as file:
+            file.write(b"".join(struct.pack("<32I", *block) for block in out))
     for level in range(8) if family in ("velvet", "wavetable", "fm") else (0,):
         _, states, cost = takes(family, level)
         window = cost[ON + 10 : OFF]

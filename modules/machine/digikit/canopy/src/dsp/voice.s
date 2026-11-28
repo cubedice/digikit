@@ -18,6 +18,7 @@
 .EXTERN _wt_render_block;
 .EXTERN _wt_blk;
 .EXTERN _wt_enabled;
+.EXTERN _wt_pure;
 .EXTERN _wt_r6;
 .EXTERN _wt_r7;
 .EXTERN _fm_enabled;
@@ -496,6 +497,9 @@ _cp_block_samples:
     DM(_cp_keep_f6) = F6;
     DM(_cp_keep_f7) = F7;
     DM(_cp_keep_f10) = F10;
+    R0 = DM(_wt_pure);
+    R0 = PASS R0;
+    IF NE JUMP _cp_block_pure;
     F13 = DM(_cp_h2step);
     F14 = DM(_cp_h3);
     F15 = DM(_cp_h3step);
@@ -527,6 +531,7 @@ _cp_block_samples:
 _cp_block_osc:
     DM(I1,M4) = F0;
     DM(_cp_h3) = F14;
+_cp_block_tables:
     DM(_cp_keep_x) = F2;
     DM(_cp_keep_y) = F3;
     CALL _wt_render_block;
@@ -585,6 +590,20 @@ _cp_block_done:
     F2 = DM(_cp_keep_x);
     F3 = DM(_cp_keep_y);
     JUMP _cp_samples_done;
+// The source mix has settled on the wavetable (_wt_pure): the blend takes nothing from this oscillator's samples, so
+// only its rotation runs, with the operations of the loop above. The wavetable's phase is read from x and y at every
+// block start (_wt_slot), so they must be the same words.
+_cp_block_pure:
+    LCNTR = 32, DO _cp_block_turn UNTIL LCE;
+    F0 = F2 * F5;
+    F1 = F3 * F4;
+    F9 = F0 + F1;
+    F0 = F3 * F5;
+    F1 = F2 * F4;
+    F3 = F0 - F1;
+_cp_block_turn:
+    F2 = PASS F9;
+    JUMP _cp_block_tables;
 _cp_samples_done:
     // One Newton normalization step per block bounds float32 rotation drift.
     F0 = F2 * F2;
