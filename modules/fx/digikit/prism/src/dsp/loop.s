@@ -36,7 +36,16 @@ _prism_colour:
     CALL _pr_smooth;
     DM(PS_COLOUR_MID,I5) = R1;
     DM(PS_COLOUR,I5) = R0;
-    // The numbers at the block's end, then at its start (COLR as the last block left it), and their steps.
+    // Identical COLR endpoints select identical coefficients. Evaluate the table once for a steady block.
+    COMP(R0,R11);
+    IF NE JUMP _pc_moving;
+    CALL _pc_numbers;
+    R10 = 0;
+    R12 = 0;
+    R13 = 0;
+    JUMP _pc_dispatch;
+_pc_moving:
+    // Interpolate from the previous block's coefficients to the new endpoint.
     CALL _pc_numbers;
     R10 = R9;
     R12 = R5;
@@ -50,6 +59,7 @@ _prism_colour:
     F12 = F12 * F1;
     F13 = F13 - F2;
     F13 = F13 * F1;
+_pc_dispatch:
     R0 = I5;
     R1 = PS_Y * 4;
     R0 = R0 + R1;
@@ -122,8 +132,7 @@ _pc_side:
     R11 = R2;
     R6 = 0x3f000000;
     LCNTR = 32, DO _pc_sample UNTIL LCE;
-        F0 = DM(I0,M5);
-        F3 = F3 + F12;
+        F3 = F3 + F12, F0 = DM(I0,M5);
         F1 = F0 - F7;
         F0 = F1 * F3;
         F7 = F7 + F0;

@@ -120,30 +120,23 @@ _hl_move:
     R1 = PS_LINE0 * 4;
     R0 = R0 + R1;
     R4 = R0;
-    R1 = 1024;
-    R0 = R0 + R1;
-    DM(PS_TEMP1,I5) = R0;
-    R0 = R0 + R1;
-    DM(PS_TEMP2,I5) = R0;
-    R0 = R0 + R1;
-    DM(PS_TEMP3,I5) = R0;
     R12 = DM(PS_HALO_INDEX,I5);
     R13 = 1020;
     R15 = 0x3f3504f3; // sqrt(1/2)
     // One sample. F8 and F9 are c and s; R12 the write index of the four lines and R14 the same in bytes; R13 the mask of
-    // a line's 256 words in bytes; R4 the first line's address, the others' in PS_TEMP1 to PS_TEMP3.
+    // a line's 256 words in bytes. The four lines share a write index and occupy consecutive 256-word planes.
     // A line, F0 its input and its output: its delayed word d lies its length before the write index (both in bytes, the
-    // difference masked); the line takes s x - c d, and the output is c x + s d. Uses R1 to R3, R5, I2.
+    // difference masked); the line takes s x - c d, and the output is c x + s d. I2 reads and I3 writes.
     LCNTR = 32, DO _hl_sample UNTIL LCE;
-        F8 = F8 + F10;
-        F9 = F9 + F11;
-        F6 = DM(I0,M5);
-        F7 = DM(I1,M5);
+        F8 = F8 + F10, F6 = DM(I0,M5);
+        F9 = F9 + F11, F7 = DM(I1,M5);
         F0 = F6 + F7;
         F0 = F0 * F15;
         F7 = F6 - F7;
         F7 = F7 * F15;
         R14 = LSHIFT R12 BY 2;
+        R3 = R14 + R4;
+        I3 = R3;
         // the line of 97 samples
         R1 = 388;
         R1 = R14 - R1;
@@ -154,9 +147,7 @@ _hl_move:
         F2 = F0 * F9;
         F3 = F1 * F8;
         F2 = F2 - F3;
-        R3 = R14 + R4;
-        I2 = R3;
-        DM(0,I2) = R2;
+        DM(0,I3) = R2;
         F0 = F0 * F8;
         F1 = F1 * F9;
         F0 = F0 + F1;
@@ -166,16 +157,13 @@ _hl_move:
         R1 = 548;
         R1 = R14 - R1;
         R1 = R1 AND R13;
-        R5 = DM(PS_TEMP1,I5);
-        R1 = R1 + R5;
+        R1 = R1 + R4;
         I2 = R1;
-        F1 = DM(0,I2);
+        F1 = DM(256,I2);
         F2 = F0 * F9;
         F3 = F1 * F8;
         F2 = F2 - F3;
-        R3 = R14 + R5;
-        I2 = R3;
-        DM(0,I2) = R2;
+        DM(256,I3) = R2;
         F0 = F0 * F8;
         F1 = F1 * F9;
         F0 = F0 + F1;
@@ -187,16 +175,13 @@ _hl_move:
         R1 = 764;
         R1 = R14 - R1;
         R1 = R1 AND R13;
-        R5 = DM(PS_TEMP2,I5);
-        R1 = R1 + R5;
+        R1 = R1 + R4;
         I2 = R1;
-        F1 = DM(0,I2);
+        F1 = DM(512,I2);
         F2 = F0 * F9;
         F3 = F1 * F8;
         F2 = F2 - F3;
-        R3 = R14 + R5;
-        I2 = R3;
-        DM(0,I2) = R2;
+        DM(512,I3) = R2;
         F0 = F0 * F8;
         F1 = F1 * F9;
         F0 = F0 + F1;
@@ -206,16 +191,13 @@ _hl_move:
         R1 = 1004;
         R1 = R14 - R1;
         R1 = R1 AND R13;
-        R5 = DM(PS_TEMP3,I5);
-        R1 = R1 + R5;
+        R1 = R1 + R4;
         I2 = R1;
-        F1 = DM(0,I2);
+        F1 = DM(768,I2);
         F2 = F0 * F9;
         F3 = F1 * F8;
         F2 = F2 - F3;
-        R3 = R14 + R5;
-        I2 = R3;
-        DM(0,I2) = R2;
+        DM(768,I3) = R2;
         F0 = F0 * F8;
         F1 = F1 * F9;
         F0 = F0 + F1;
@@ -318,8 +300,7 @@ _hl_late_run:
         R2 = DM(PS_TEMP2,I5);
         R0 = R0 + R2;
         I4 = R0;
-        R0 = DM(0,I4);
-        COMP(R12,R1);
+        COMP(R12,R1), R0 = DM(I4,M5);
         IF LT R0 = R0 - R0;
         R2 = R4;
         F0 = F0 - F4;
@@ -332,8 +313,7 @@ _hl_late_run:
         R3 = DM(PS_TEMP3,I5);
         R0 = R0 + R3;
         I4 = R0;
-        R0 = DM(0,I4);
-        COMP(R12,R1);
+        COMP(R12,R1), R0 = DM(I4,M5);
         IF LT R0 = R0 - R0;
         R3 = R5;
         F0 = F0 - F5;
@@ -362,8 +342,7 @@ _hl_late_run:
         F0 = MIN(F0,F14);
         F0 = MAX(F0,F15);
         DM(I2,M6) = R0;
-        F2 = F4 * F6;
-        F0 = DM(I2,M5);
+        F2 = F4 * F6, F0 = DM(I2,M5);
         F0 = F0 + F2;
         F0 = MIN(F0,F14);
         F0 = MAX(F0,F15);
@@ -385,8 +364,7 @@ _hl_late_run:
         F0 = MIN(F0,F14);
         F0 = MAX(F0,F15);
         DM(I3,M6) = R0;
-        F3 = F5 * F6;
-        F0 = DM(I3,M5);
+        F3 = F5 * F6, F0 = DM(I3,M5);
         F0 = F0 + F3;
         F0 = MIN(F0,F14);
         F0 = MAX(F0,F15);
@@ -397,8 +375,7 @@ _hl_late_run:
         F0 = DM(I0,M6);
         F1 = DM(I0,M6);
         F2 = F0 + F1;
-        F2 = F2 * F10;
-        F0 = DM(I1,M6);
+        F2 = F2 * F10, F0 = DM(I1,M6);
         F1 = DM(I1,M6);
         F3 = F0 + F1;
         F3 = F3 * F10;
