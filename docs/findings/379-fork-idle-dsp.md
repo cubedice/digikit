@@ -56,3 +56,27 @@ The first five callbacks expand the factory wavetables so the first wavetable no
 The fast path runs after event admission and scheduling. An instance with no pad or arp owners, tails, pending replacements, strum delays, or shared arp events can bypass the voice and envelope loops. Control, clock, status and silent MIX updates still run. Paired runs on direct and protected callbacks preserved PCM, AMP, state, status and return values in 18 cases.
 
 The instrument adapter separately skips copying the event payload for an empty batch. The adapter rig saves 194 instructions for one warmed bound slot and 776 for four. A populated batch wakes its own slot, and mixed-slot tests confirmed delivery and isolation. The combined DTII image passed preflight, and the CANOPY package fits in 105,448 of 106,496 staging bytes.
+
+## Active playback against merged fork main [D]
+
+The baseline is fork main at `f6c1e16b3`. Each pair uses the same inputs and the same DSP hook. Counts below are SHARC guest instructions per 32 stereo frames. The peak is the largest callback observed in the named workload.
+
+| Workload | Main peak | Optimized peak |
+| --- | ---: | ---: |
+| CANOPY Velvet, four held notes, arp, voice stealing and release | 26,009 | 25,329 |
+| CANOPY wavetable, same performance | 43,878 | 41,533 |
+| CANOPY wavetable with FM, same performance | 53,179 | 50,573 |
+| CANOPY FM, same performance | 64,504 | 60,307 |
+| PRISM, heaviest block in its effect suite | 21,038 | 20,307 |
+| Overloop, transport restart during an active crossfade | 5,511 | 4,914 |
+| Overloop, same restart with the wet return active | 6,324 | 5,467 |
+| Relay, recording sequence | 10,418 | 9,787 |
+| Relay, slow and reverse playback across tape windows | 10,389 | 9,597 |
+| Track Keyboard, three helper tracks folded into the sounding buses | 1,809 | 1,363 |
+| Track Keyboard, fifteen helper tracks folded | 5,733 | 4,519 |
+
+- CANOPY's fixed wavetable position uses one set of frame coordinates per block. Scanning and moving envelopes retain per-sample updates. The FM lookup reuses the two sine-table bases and restores its index modifier. Across 420 blocks per voice type the output and instrument-state hashes matched. The average FM callback fell from 59,072 to 55,026 instructions.
+- PRISM shares the early HALO lines' write index and combines arithmetic with memory access in the heads, colour filter and late reverb. Six transitions over 1,170 blocks preserved output, tape, delay and reverb state, and status. The steady HALO-on workload at 0.5 fell from 8,070 to 7,529.
+- Overloop computes the seam boundary, crossfader direction and transport fade direction once per block. The stereo wet return uses one master gain ramp. Seven paired runs matched both audio channels, the loop tap, both tape buffers and status through capture, playback, crossfade, stop and restart. The cost test now includes the wet return during restart.
+- Relay's tape window lookup keeps a base adjusted for the current frame range. Samples and fractional positions use scaled integer-to-float conversion. The 121 recording blocks matched audio, track state, tape state and status. All 39 quality-test blocks matched audio over seven rates, including reverse playback.
+- The track keyboard folds each helper into its destination and clears the helper bus in the same loop. All 1,024 bus words matched with zero, one, three and fifteen helpers.
