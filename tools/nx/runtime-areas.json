@@ -64,6 +64,7 @@
         "runtime/core/src/rs/src/package/dsp/**",
         "runtime/core/src/rs/src/package/dsp_stats.rs",
         "runtime/core/abi/src/dsp.rs",
+        "runtime/core/sdk/src/dsp_memory.rs",
         "runtime/core/abi/src/provider/tables/dsp.rs",
         "runtime/core/build/package.dko.json"
       ],
@@ -74,6 +75,21 @@
         "core/services/fx-tests:fx-send.device.test.ts",
         "core/runtime-tests:reload-fx.device.test.ts",
         "core/runtime-lfo-tests:*"
+      ]
+    },
+    "instrument": {
+      "globs": [
+        "runtime/core/sdk/src/instrument_*.rs",
+        "runtime/core/sdk/src/instrument_*/**",
+        "runtime/core/src/rs/src/instrument.rs",
+        "runtime/core/src/rs/src/package/instrument.rs",
+        "runtime/core/src/rs/src/package/instrument/**"
+      ],
+      "tests": [
+        "canopy-arp-tests:needs.device.test.ts",
+        "canopy-arp-tests:load-budget.device.test.ts",
+        "canopy-arp-tests:track-keyboard.device.test.ts",
+        "digikit/prism:tests/coexistence.device.test.ts"
       ]
     },
     "services": {

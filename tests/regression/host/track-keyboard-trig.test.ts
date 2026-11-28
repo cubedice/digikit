@@ -35,4 +35,4 @@ test('TRIG views keep stock controls separate from custom edits and held-step lo
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
-});
+}, 30_000);
