@@ -36,6 +36,7 @@ instrument_vec_table:
     .long ip_src_parameter
     .long ip_src_turn
     .long ip_src_update
+    .long ip_help_draw
     .globl midi_vec_table
 midi_vec_table:
     .long mi_legacy_channel_message

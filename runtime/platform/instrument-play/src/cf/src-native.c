@@ -295,18 +295,19 @@ static void diagram_wavetable(uint8_t *b, const CvDisplay *d)
         if (abs > peak)
             peak = abs;
     }
-    int magnitude = (6 * (samples[0] < 0 ? -samples[0] : samples[0]) + peak / 2) / peak;
+    /* In the stock graphic rows of the top cells, 13 to 29: the scan span on 13, the cycle on 15 to 25, the frame rail on 28. */
+    int magnitude = (5 * (samples[0] < 0 ? -samples[0] : samples[0]) + peak / 2) / peak;
     int last = 20 + (samples[0] < 0 ? magnitude : -magnitude);
     for (int i = 1; i < 74; ++i) {
-        magnitude = (6 * (samples[i] < 0 ? -samples[i] : samples[i]) + peak / 2) / peak;
+        magnitude = (5 * (samples[i] < 0 ? -samples[i] : samples[i]) + peak / 2) / peak;
         int y = 20 + (samples[i] < 0 ? magnitude : -magnitude);
         diagram_line(b, 48 + i, last, 49 + i, y);
         last = y;
     }
-    diagram_line(b, 49, 29, 121, 29);
+    diagram_line(b, 49, 28, 121, 28);
     for (int i = 0; i < 8; ++i) {
         int x = 49 + (72 * i + 3) / 7;
-        diagram_line(b, x, 28, x, 30);
+        diagram_line(b, x, 27, x, 29);
     }
     int x = 49 + (int)((72 * position + 350) / 700), radius = (int)((72 * depth + 100) / 200);
     int lo = x - radius, hi = x + radius;
@@ -314,10 +315,10 @@ static void diagram_wavetable(uint8_t *b, const CvDisplay *d)
         lo = 49;
     if (hi > 121)
         hi = 121;
-    diagram_line(b, lo, 12, hi, 12);
-    diagram_line(b, lo, 12, lo, 14);
-    diagram_line(b, hi, 12, hi, 14);
-    diagram_line(b, x, 13, x, 30);
+    diagram_line(b, lo, 13, hi, 13);
+    diagram_line(b, lo, 13, lo, 15);
+    diagram_line(b, hi, 13, hi, 15);
+    diagram_line(b, x, 14, x, 28);
     diagram_box(b, x - 1, 27, 3, 3, 1);
     /* The scan-shape glyph is qualitative; RAND intentionally promises no
      * future random trajectory. */
@@ -346,7 +347,7 @@ static void diagram_legacy(uint8_t *b, const CvDisplay *d, int width)
         }
         diagram_line(b, 26 + i, 48 - a, 27 + i, 48 - c);
     }
-    diagram_text(b, 27 + width / 2, 59, d->family ? "REED" : "VELVET");
+    /* No word of its own on the caption row: WAVE (A) names the source. */
 }
 static void compact_mix(uint8_t *b, const CvDisplay *d)
 {
@@ -358,33 +359,48 @@ static void compact_mix(uint8_t *b, const CvDisplay *d)
     int x = 77 + (18 * d->raw[CP_ARP_MIX] + 63) / 127;
     diagram_box(b, x - 1, 47, 3, 7, 1);
 }
-/* VOICE G shows the operator lanes selected by ALG. */
+/* VOICE G shows the operator lanes selected by ALG: four 8 by 7 boxes, A B over X Y, in the stock graphic rows 40 to 56. */
 static void compact_fm(uint8_t *b, const CvDisplay *d)
 {
     static const char *const names[] = {"A", "B", "X", "Y"};
     for (unsigned i = 0; i < 4; ++i) {
-        int x = 77 + 13 * (int)(i % 2), y = 39 + 13 * (int)(i / 2);
-        diagram_rect(b, x, y, 8, 8);
+        int x = 77 + 13 * (int)(i % 2), y = 40 + 10 * (int)(i / 2);
+        diagram_rect(b, x, y, 8, 7);
         diagram_text(b, x + 3, y + 1, names[i]);
     }
     uint32_t alg = d->raw[CP_FM_ALG];
-    diagram_line(b, 80, 47, 80, 51);
+    diagram_line(b, 80, 47, 80, 49);
     if (alg == 0)
-        diagram_line(b, 93, 47, 93, 51);
+        diagram_line(b, 93, 47, 93, 49);
     else if (alg == 2)
-        diagram_line(b, 93, 47, 84, 51);
+        diagram_line(b, 93, 47, 84, 49);
     else
-        diagram_line(b, 85, 42, 89, 42);
+        diagram_line(b, 85, 43, 89, 43);
     if (alg == 3)
-        diagram_line(b, 85, 55, 89, 55);
+        diagram_line(b, 85, 53, 89, 53);
 }
+/* The stock placeholder of a cell without a control: a dotted square, 17 pixels a side, on the stock graphic rows (13 to 29
+ * at the top, 40 to 56 at the bottom), centred on the cell. */
+static void placeholder(uint8_t *b, uint32_t cell)
+{
+    int x = 33 + 26 * (int)(cell % 4), top = cell < 4 ? 13 : 40;
+    for (int i = -7; i <= 7; i += 2) {
+        diagram_box(b, x + i, top, 1, 1, 1);
+        diagram_box(b, x + i, top + 16, 1, 1, 1);
+    }
+    for (int y = top + 1; y < top + 16; y += 2) {
+        diagram_box(b, x - 8, y, 1, 1, 1);
+        diagram_box(b, x + 8, y, 1, 1, 1);
+    }
+}
+/* The cells whose body is part of a picture. Velvet and Reed have no FM ENV controls: that page is eight stock placeholders. */
 static uint32_t diagram_mask(uint32_t page, const CvDisplay *d)
 {
     uint32_t family = d->family;
     if (page == CS_VOICE)
         return family < 2 ? 0x70 : family == 2 ? 0x1e : 0x40;
     if (page == CS_FM_ENV)
-        return family < 2 ? 0xff : family == 2 ? 0x07 : 0x8f;
+        return family < 2 ? 0 : family == 2 ? 0x07 : 0x0f;
     return 0x40;
 }
 static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
@@ -400,11 +416,72 @@ static void shared_diagram(const uint8_t *view, uint8_t *b, const CvDisplay *d)
         compact_mix(b, d);
     } else if (d->family >= 2) {
         shared_envelope(view, b, d);
-    } else {
-        diagram_text(b, 73, 17, "FM ENV");
-        diagram_text(b, 73, 34, "SELECT FM OR TABLE");
-        diagram_text(b, 73, 50, "VOLUME ON AMP");
     }
+}
+/* SRC held: the stock help bubble names the machine in the header, by its short name, and then the sample ("ONE: 1-sine220").
+ * CANOPY has no sample: its sound's source stands where the sample's name would ("GLASS", "FM STACK"), or a fault's heading
+ * ("LINK LOST"). The bubble (HelpBubbleView) writes its text in its own font (+0x9c) at y 0x42 minus its height (+0xa4: it
+ * slides in, 10 when it is all in) and inverts its bar; the source is written the same way beside it, as RELAY's tape
+ * (core/relay-track). It starts six pixels after the colon, the stock gap ("ONE:" ends at x 34, the name starts at 40). The
+ * colon is the last dark pixel of the bar's text rows (2 to 7), found once the bubble is all in. */
+enum { HELP_FONT = 0x9c, HELP_HEIGHT = 0xa4, HEADER_GAP = 6, HEADER_ROWS = 0xfc };
+static char header_text[16];
+static uint32_t header_frame;
+static int header_x;
+static void header_source(char out[16], const CvDisplay *d)
+{
+    static const char *const sources[] = {"VELVET", "REED",  "ANALOG", "GLASS",
+                                          "VOCAL",  "ORGAN", "METAL"};
+    static const char *const algorithms[] = {"FM TWIN", "FM STACK", "FM SUM", "FM CHAIN"};
+    const char *s = d->fault                  ? d->heading
+                    : d->family == 3          ? algorithms[d->raw[CP_FM_ALG] & 3]
+                    : d->family < 2           ? sources[d->family]
+                    : d->raw[CP_WT_TABLE] < 5 ? sources[2 + d->raw[CP_WT_TABLE]]
+                                              : "";
+    uint32_t n = 0;
+    while (s[n] && n + 1 < 16) {
+        out[n] = s[n];
+        ++n;
+    }
+    out[n] = 0;
+}
+static int header_colon(const uint8_t *b)
+{
+    if (word(b, 4) != 128 || word(b, 8) != 64 || word(b, 12) != 2 || !word(b, 16))
+        return 0;
+    /* the second word of a column holds screen rows 0 to 31, the top row in bit 0; the bar is lit, its text dark */
+    const uint32_t *upper = (const uint32_t *)pointer(b, 16) + 1;
+    for (int x = 127; x > 17; --x)
+        if (~upper[2 * x] & HEADER_ROWS)
+            return x;
+    return 0;
+}
+/* core/fxview, after the stock help view HELP has drawn: the source of the frame the SRC page drew with SRC held, once. */
+void ip_help_draw(uint8_t *help, uint8_t *bitmap)
+{
+    if (!header_frame) {
+        /* SRC released (or another page): the next hold finds the colon again */
+        header_x = 0;
+        return;
+    }
+    header_frame = 0;
+    int height = *(int32_t *)(help + HELP_HEIGHT);
+    if (height <= 0)
+        return;
+    if (height >= 10) {
+        height = 10;
+        if (!header_x) {
+            int colon = header_colon(bitmap);
+            header_x = colon ? colon + HEADER_GAP : 0;
+        }
+    }
+    if (!header_x || header_x > 100 || !header_text[0])
+        return;
+    uint8_t *font;
+    __builtin_memcpy(&font, help + HELP_FONT, sizeof font);
+    diagram_box(bitmap, header_x, 0, 128 - header_x, height, 0);
+    dk_fw_text_draw(bitmap, font, header_x, 0x42 - height, 128 - header_x, header_text);
+    diagram_box(bitmap, header_x, 0, 128 - header_x, height, -1);
 }
 void ip_src_draw_rotary(uint8_t *view, uint8_t *canvas, uint32_t cell, uint32_t value)
 {
@@ -468,18 +545,24 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
         if (native && (i == 0 || i == 7))
             continue;
         int32_t x = 24 + 26 * (int32_t)(i % 4), y = i < 4 ? 27 : 0;
+        /* A text cell's graphic is its value, as the stock NOTE and PROB: its caption stays (below). */
+        int text_cell = 0;
         if (mask & (1u << i)) {
             /* This control's body is part of the diagram. */
         } else if (display.rotary & (1u << i)) {
             ip_src_draw_rotary(view, canvas, i, display.knob[i]);
+        } else if (!display.label[i][0]) {
+            placeholder(canvas, i);
         } else {
-            dk_fw_text_draw_box(canvas, (uint8_t *)(uintptr_t)ip_src_label_font, x + 9, y + 14, 1,
+            /* the stock text graphic's rows: 19 to 23 at the top, 46 to 50 at the bottom */
+            dk_fw_text_draw_box(canvas, (uint8_t *)(uintptr_t)ip_src_label_font, x + 9, y + 13, 1,
                                 0, 0, "%s", display.value[i]);
+            text_cell = 1;
         }
         /* 0x190 is the firmware's show-values state; native edit focus uses
          * its own countdown. Do not implement another SRC key/timer policy. */
         if (display.label[i][0]) {
-            int values = view[0x190] || ip_src_focus_active(view + 0x94, i);
+            int values = !text_cell && (view[0x190] || ip_src_focus_active(view + 0x94, i));
             dk_fw_text_draw_box(canvas, (uint8_t *)(uintptr_t)ip_src_label_font, x + 9, y, 1, 0, 0,
                                 "%s", values ? display.value[i] : display.label[i]);
         }
@@ -494,6 +577,9 @@ void ip_src_draw(uint8_t *view, uint8_t *canvas)
     }
     if (!compact)
         shared_diagram(view, canvas, &display);
+    header_frame = view[0x190] != 0;
+    if (header_frame)
+        header_source(header_text, &display);
     if (display.fault && display.fault != shown_fault) {
         ++ip_src_fault_toasts;
         toast(display.heading);
@@ -729,12 +815,14 @@ uint32_t ip_src_turn(uint8_t *view, uint8_t *event)
     if (result == CS_NATIVE)
         return ip_src_stock_turn(view, event);
     if (result != CS_STALE) {
+        /* The turned cell shows its value in its caption while the focus countdown runs, as the stock cells do; the
+         * header names a choice that changed (cv_feedback), as the track keyboard's ARP and KEYS pages do. */
         ip_src_focus_touch(view + 0x94, encoder - 1);
         char feedback[32];
         instrument_src_feedback(feedback, encoder - 1);
         if (display.fault)
             toast(display.heading);
-        else if (feedback[0])
+        else if (result == CS_EDIT && feedback[0])
             toast(feedback);
     }
     if (result == CS_EDIT)

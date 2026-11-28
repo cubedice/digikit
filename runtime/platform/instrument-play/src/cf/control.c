@@ -476,8 +476,16 @@ static void recover(void *ctx, int32_t value)
 {
     (void)ctx;
     (void)value;
-    dk_ui_confirm(ui(), "RECOVER KEYBOARD", "Release ALL keyboard keys and pedals. Ready?",
-                  recover_done, 0);
+    /* the stock confirm shows one line of about 30 characters */
+    dk_ui_confirm(ui(), "RECOVER KEYBOARD", "All keys and pedals up?", recover_done, 0);
+}
+static int quarantined(const IpInst *in);
+static const char *readiness(const IpInst *in)
+{
+    return quarantined(in)       ? "RELEASE KEYS / RECOVER"
+           : mi_transport.faults ? "RECOVER OR RESTART"
+           : in->phase == 3      ? "READY"
+                                 : "SELECT CANOPY ON TRACK";
 }
 static int quarantined(const IpInst *in)
 {
@@ -833,9 +841,12 @@ static void status_fill(dk_ui_menu *m, void *ctx)
         }
     }
     dk_ui_menu_add_text(m, where);
+    /* whether the instance plays: a status, so here and not a row of the setup list */
+    dk_ui_menu_add_text(m, readiness(in));
     status_draw_at = now;
 }
-/* VerticalMenuView reserves a narrow left title column. */
+/* VerticalMenuView reserves a narrow left title column (9 characters of its font): one short word, as the stock titles
+ * (SETTINGS; MIDI for MIDI CONFIG). */
 static const dk_ui_menu_desc status_desc = {
     .name = "canopy-status", .title = "STATUS", .flags = DK_UI_TEXT_PAGE, .fill = status_fill};
 static int preset_dirty(void)
@@ -1378,11 +1389,11 @@ static void preset_fill(dk_ui_menu *m, void *ctx)
     dk_ui_menu_add_text(m, preset_result    ? "NOT SAVED - RETRY SAVE"
                            : preset_dirty() ? "UNSAVED CHANGES"
                                             : "SAVED");
-    dk_ui_menu_add_action(m, "SAVE CURRENT SOUND", preset_save, 0, 0);
-    dk_ui_menu_add_action(m, "LOAD SAVED SOUND", preset_load, 0, 0);
+    dk_ui_menu_add_action(m, "SAVE SOUND", preset_save, 0, 0);
+    dk_ui_menu_add_action(m, "LOAD SOUND", preset_load, 0, 0);
 }
 static const dk_ui_menu_desc preset_desc = {
-    .name = "canopy-presets", .title = "Canopy PRESETS", .fill = preset_fill};
+    .name = "canopy-presets", .title = "PRESETS", .fill = preset_fill};
 static const char *const scan_clocks[] = {"FREE HZ", "TEMPO SYNC"};
 static void scan_clock_apply(int value)
 {
@@ -1546,22 +1557,42 @@ refuse:
     return -1;
 }
 #endif
+/* LABEL at the left and VALUE ending on the row's 17th character, where the value rows end theirs. */
+static void named_row(char out[DK_UI_ROW], const char *label, const char *value)
+{
+    uint32_t at = 0, n = 0;
+    while (value[n])
+        ++n;
+    while (*label && at + 1 < DK_UI_ROW)
+        out[at++] = *label++;
+    do
+        out[at++] = ' ';
+    while (at + n < 17 && at + 1 < DK_UI_ROW);
+    while (*value && at + 1 < DK_UI_ROW)
+        out[at++] = *value++;
+    out[at] = 0;
+}
 static void tone_fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
     wheel_amount = cur->wt[CP_WT_WHEEL - 16] - 100;
     fm_wheel_amount = cur->fm[CP_FM_WHEEL - 15] - 100;
     wtfm_wheel_amount = cur->wtfm[CP_WTFM_WHEEL - 28] - 100;
-    dk_ui_menu_add_action(m, scan_clocks[cur->wt[CP_WT_CLOCK - 16]], scan_clock_choice, 0, 0);
-    dk_ui_menu_add_action(m, scan_restarts[cur->wt[CP_WT_RESET - 16]], scan_restart_choice, 0, 0);
-    dk_ui_menu_add_value(m, "WHEEL TO POS", &wheel_amount, -100, 100, amount_changed, 0);
-    dk_ui_menu_add_value(m, "WHEEL TO FM", &fm_wheel_amount, -100, 100, amount_changed,
+    /* A row names its setting and shows the value at the right, as the stock rows (CLOCK RECEIVE and its box) and the
+     * value rows below: the list's font is 4 pixels a character, 17 to a row. */
+    char row[DK_UI_ROW];
+    static const char *const clocks[] = {"FREE", "SYNC"};
+    named_row(row, "SCAN CLOCK", clocks[cur->wt[CP_WT_CLOCK - 16] & 1]);
+    dk_ui_menu_add_action(m, row, scan_clock_choice, 0, 0);
+    named_row(row, "SCAN RESET", scan_restarts[cur->wt[CP_WT_RESET - 16] % 3]);
+    dk_ui_menu_add_action(m, row, scan_restart_choice, 0, 0);
+    dk_ui_menu_add_value(m, "WHEEL POS", &wheel_amount, -100, 100, amount_changed, 0);
+    dk_ui_menu_add_value(m, "WHEEL FM", &fm_wheel_amount, -100, 100, amount_changed,
                          (void *)(uintptr_t)1);
-    dk_ui_menu_add_value(m, "WHEEL TO WT FM", &wtfm_wheel_amount, -100, 100, amount_changed,
+    dk_ui_menu_add_value(m, "WHEEL WT FM", &wtfm_wheel_amount, -100, 100, amount_changed,
                          (void *)(uintptr_t)2);
 }
-static const dk_ui_menu_desc tone_desc = {
-    .name = "canopy-tone", .title = "Canopy MODULATION", .fill = tone_fill};
+static const dk_ui_menu_desc tone_desc = {.name = "canopy-tone", .title = "MOD", .fill = tone_fill};
 static void fill(dk_ui_menu *m, void *ctx)
 {
     (void)ctx;
@@ -1575,15 +1606,12 @@ static void fill(dk_ui_menu *m, void *ctx)
         dk_ui_menu_add_submenu(m, "PRESETS", preset_menu);
     dk_ui_menu_add_action(m, "PANIC", panic, 0, 0);
     dk_ui_menu_add_action(m, "RECOVER KEYBOARD", recover, 0, 0);
-    dk_ui_menu_add_text(m, quarantined(cur)      ? "RELEASE KEYS / RECOVER"
-                           : mi_transport.faults ? "RECOVER OR RESTART"
-                           : cur->phase == 3     ? "READY"
-                                                 : "SELECT CANOPY ON TRACK");
-    /* the track keyboard plays CANOPY from the firmware's MIDI config */
-    dk_ui_menu_add_text(m, "MIDI: TRACK CHANNEL");
+    /* Only actions and settings, as the stock lists: whether CANOPY plays is on STATUS, and the track keyboard plays it from
+     * the firmware's MIDI config (the README says so). */
 }
+/* opened from the DIGIKIT row Canopy, its title is that row's word, as MIDI CONFIG opens as MIDI */
 static const dk_ui_menu_desc desc = {
-    .name = "instrument-keyboard", .title = "Canopy SETUP", .fill = fill};
+    .name = "instrument-keyboard", .title = "Canopy", .fill = fill};
 /* CANOPY is the only admitted instrument policy today. The menu asks with a
  * loaded module's validated id; a null parent is a capability query. */
 int dk_app_instrument_module_settings(const uint8_t *name, dk_ui_menu *parent)
@@ -1604,9 +1632,7 @@ int dk_app_instrument_module_settings(const uint8_t *name, dk_ui_menu *parent)
         menu = dk_ui_menu_new(ui(), &desc);
     if (menu)
         dk_ui_menu_add_submenu(parent, "SETUP", menu);
-    dk_ui_menu_add_text(parent, "LEVEL/DATA: TRACK LEVEL");
-    dk_ui_menu_add_text(parent, "SOUND H: SAMPLE LEVEL");
-    dk_ui_menu_add_text(parent, "SRC HOLD: SHOW VALUES");
+    /* no help rows: the stock lists hold only actions and settings (the README explains LEVEL/DATA, DETAIL H and SRC held) */
     return 1;
 }
 void dk_app_instrument_settings_rows(dk_ui_menu *parent)
@@ -1851,12 +1877,12 @@ void instrument_play_tick(void)
         c[6] = mi_transport.applied[t];
         c[7] = itype;
     }
-    /* what the setup menu's status line shows */
+    /* what STATUS's readiness row shows */
     uint32_t view =
         cur->phase | ((uint32_t)(quarantined(cur) || mi_transport.faults) << 4) | (IDX(cur) << 8);
     if (shown_main != view) {
         shown_main = view;
-        if (menu && dk_ui_menu_is_open(menu))
-            dk_ui_menu_refresh(menu);
+        if (status_menu && dk_ui_menu_is_open(status_menu))
+            dk_ui_menu_refresh(status_menu);
     }
 }

@@ -19,7 +19,7 @@ ports = ["dt2-1.17"]
 [[object]]
 path = "build/fxview-cf.dko.json"
 sources = ["src/native.c", "src/walk.s"]
-optional = ["phrase_fxv_draw", "phrase_fxv_key", "phrase_fxv_turn", "loop_fxv_draw", "loop_fxv_key", "loop_fxv_turn", "phrase_dispatch_trig", "relay_trig", "rtm_stop_key", "rtm_help_draw", "tk_picker_key", "tk_picker_led", "phrase_led_claim"]
+optional = ["phrase_fxv_draw", "phrase_fxv_key", "phrase_fxv_turn", "loop_fxv_draw", "loop_fxv_key", "loop_fxv_turn", "phrase_dispatch_trig", "relay_trig", "rtm_stop_key", "rtm_help_draw", "ip_help_draw", "tk_picker_key", "tk_picker_led", "phrase_led_claim"]
 place = "cf.expansion"
 devices = ["dt2"]
 

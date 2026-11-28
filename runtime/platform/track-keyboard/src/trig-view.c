@@ -414,9 +414,9 @@ static bool draw_widget(uint8_t *view, uint8_t *bitmap, unsigned encoder, int x,
     const uint8_t *av = (const uint8_t *)(uintptr_t)word(a, 0);
     void (*draw)(uint8_t *, uint32_t, int32_t, uint32_t, uint8_t *, uint8_t *, int32_t, int32_t) =
         (void *)(uintptr_t)word(av, PARAMETER_DRAW_CONTROL);
-    /* Stock switch, RATE, and encoder graphics share this x origin. */
+    /* Stock switch, RATE, and encoder graphics share this x origin, the cell's. */
     draw(a, parameter, value << 8, 0, view + CONTROL_STATE + CONTROL_STATE_SIZE * encoder, bitmap,
-         x - 1, y + 7);
+         x, y + 7);
     return true;
 }
 
@@ -483,24 +483,30 @@ void tk_trig_draw(uint8_t *view, uint8_t *bitmap)
         const TrigCell *cell = &cells[i];
         if (!cell->label)
             continue;
-        int x = 25 + 26 * (int)(i % 4u);
+        /* the stock cell: its origin at 24 + 26 a column, its caption and text centred on 33 + 26 a column */
+        int x = 24 + 26 * (int)(i % 4u);
         int y = i < 4 ? 27 : 0;
         int value = 0;
         bool parameter = tk_get_control(&params, cell->control, &value);
         bool locked = parameter && (locks & (1u << cell->control));
+        /* Only a knob's caption shows its value (held, locked or turned), as the stock pages: a switch, the RATE box and a
+         * text value already show it, and keep their caption, as the stock LFO.T, NOTE and PROB. */
+        bool knob = cell->control == TK_CTL_GATE || cell->control == TK_CTL_SWING ||
+                    cell->control == TK_CTL_STRUM;
         bool values =
-            parameter && (held || locked || tk_trig_focus_active(view + FOCUS_TRACKER, i));
+            parameter && knob && (held || locked || tk_trig_focus_active(view + FOCUS_TRACKER, i));
         if (cell->control == TK_CTL_VOICES && value > tk_trig_voice_capacity(track))
             value = tk_trig_voice_capacity(track);
         if (values)
             draw_value(bitmap, font, x + 9, y, cell, value);
         else
             dk_fw_text_draw_box(bitmap, font, x + 9, y, 1, 0, 0, "%s", cell->label);
+        /* a text value on the stock text graphic's rows: 19 to 23 at the top, 46 to 50 at the bottom */
         if ((parameter && !draw_widget(view, bitmap, i, x, y, cell, value)) ||
             (!parameter && tk_trig_open_pool))
-            draw_value(bitmap, font, x + 9, y + 14, cell, value);
+            draw_value(bitmap, font, x + 9, y + 13, cell, value);
         if (locked)
-            dk_fw_draw_fill_rect(bitmap, x - 1, y + 6, i % 4u == 3 ? 122 : x + 21, y + 24, -1);
+            dk_fw_draw_fill_rect(bitmap, x, y + 6, i % 4u == 3 ? 122 : x + 22, y + 24, -1);
     }
 }
 

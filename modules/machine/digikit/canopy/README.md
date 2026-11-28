@@ -169,7 +169,7 @@ shows the scan range. Full DEP reaches 3.5 frames either side before clamping.
 The ENV attack and release drive both PENV and FENV; they do not control AMP.
 
 DEP starts at zero; raise it to hear automatic scanning. To keep a sound, use
-CANOPY SETUP > PRESETS > SAVE CURRENT SOUND.
+SETTINGS > DIGIKIT > Canopy > PRESETS > SAVE SOUND.
 
 TUNE and source LEV appear only on KEYS A/H. Dedicated LEVEL/DATA remains the stock track-level control;
 holding SRC uses the native show-values presentation. No second level scale is added.
@@ -194,7 +194,7 @@ module. No sample-bank upload is needed. User-table import is a later extension.
 Presets use CPST v5 (144 bytes), including independent wavetable, wavetable-FM and FM settings.
 Existing 64-byte v1/v2, 96-byte v3 and 128-byte v4 presets remain readable and receive neutral
 defaults for their missing source settings. Loading an older preset does not
-rewrite it, but SAVE CURRENT SOUND then writes v5; older firmware cannot read
+rewrite it, but SAVE SOUND then writes v5; older firmware cannot read
 that updated record. Native Sound/project persistence and parameter locks remain
 outside this custom preset format.
 

@@ -245,31 +245,49 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       await capture('shared-audio-trig-2-before-arp');
       await tap(1);
       await capture('track-arp-entry');
+      // As the stock TRIG 2: the RATE box and the switches keep their captions when turned or with TRIG held (their graphic is
+      // the value); a knob's caption shows its value (VFAD, PTIM there; GATE here).
       const rateCaption = (frame: Buffer) => crop(frame, 101, 32, 122, 36);
-      const unfocusedCaption = rateCaption(await pixels());
+      const gateCaption = (frame: Buffer) => cellCaption(frame, 2);
+      const idleFrame = await pixels();
+      const unfocusedCaption = rateCaption(idleFrame);
+      const idleGate = gateCaption(idleFrame);
       await turn(4, 12); // ARP defaults to 1/16. Stock RTRG defaults to 1/32.
       const focused = await pixels();
       expect(switchPixels(focused)).toEqual(switchPixels(native));
       expect(ratePixels(focused)).toEqual(ratePixels(native));
-      expect(rateCaption(focused)).not.toEqual(unfocusedCaption);
+      expect(rateCaption(focused), 'a turned RATE box keeps its caption').toEqual(unfocusedCaption);
       await capture('track-arp-rate-focus');
-      await pollEmulated(session, pixels, (p) => rateCaption(p).equals(unfocusedCaption), {
+      await turn(3, 4);
+      await pollEmulated(session, pixels, (p) => !gateCaption(p).equals(idleGate), {
+        emulatedMs: 2000,
+        message: 'a turned knob shows its value in its caption',
+      });
+      await capture('track-arp-gate-focus');
+      await pollEmulated(session, pixels, (p) => gateCaption(p).equals(idleGate), {
         emulatedMs: 6000,
-        message: 'the native edit-focus timer restores the RATE caption',
+        message: 'the native edit-focus timer restores the GATE caption',
+      });
+      await turn(3, -4);
+      await pollEmulated(session, pixels, (p) => gateCaption(p).equals(idleGate), {
+        emulatedMs: 6000,
+        message: 'the GATE caption returns after the turn back',
       });
       await capture('track-arp-rate-idle');
       await edge('PAGE TRIG', true);
       try {
-        await pollEmulated(session, pixels, (p) => !rateCaption(p).equals(unfocusedCaption), {
+        await pollEmulated(session, pixels, (p) => !gateCaption(p).equals(idleGate), {
           emulatedMs: 2000,
-          message: 'holding TRIG PARAMETERS shows the ARP values',
+          message: 'holding TRIG PARAMETERS shows the ARP knob values',
         });
-        expect(ratePixels(await pixels())).toEqual(ratePixels(native));
+        const shown = await pixels();
+        expect(ratePixels(shown)).toEqual(ratePixels(native));
+        expect(rateCaption(shown), 'RATE keeps its caption with TRIG held').toEqual(unfocusedCaption);
         await capture('track-arp-values');
       } finally {
         await edge('PAGE TRIG', false);
       }
-      await pollEmulated(session, pixels, (p) => rateCaption(p).equals(unfocusedCaption), {
+      await pollEmulated(session, pixels, (p) => gateCaption(p).equals(idleGate), {
         emulatedMs: 2000,
         message: 'releasing TRIG PARAMETERS restores captions on ARP',
       });
@@ -322,6 +340,8 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
       const checkPage = async (stem: string, isArp: boolean, nativeColumn: Buffer, valueColumn: Buffer) => {
         const controls = isArp ? [0, 1, 2, 3, 4, 5, 6, 7] : [0, 1, 2, 3, 6];
         const lockable = isArp ? controls : controls.slice(0, 4);
+        // the knobs (GATE and SWNG; STRM), whose captions show their values with TRIG held, as the stock VFAD and PTIM
+        const knobs = isArp ? [2, 5] : [3];
         // Approach the endpoints from both directions. The step writes then
         // keep the same displayed values, isolating inversion from the value change.
         const directions = isArp ? [1, 1, 1, 1, -1, 1, 1, 1] : [1, 1, -1, 1];
@@ -341,6 +361,16 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           const frame = await pixels();
           return controls.filter((i) => !cellCaption(frame, i).equals(cellCaption(reference, i)));
         };
+        // A caption within its own cell (21 pixels): a long value next door (STRM's 500MS) reaches into cellCaption's span.
+        const ownCaption = (frame: Buffer, encoder: number) => {
+          const x = 23 + 26 * (encoder % 4);
+          const y = encoder < 4 ? 32 : 59;
+          return crop(frame, x, y, x + 20, y + 4);
+        };
+        const changedOwn = async (reference: Buffer) => {
+          const frame = await pixels();
+          return controls.filter((i) => !ownCaption(frame, i).equals(ownCaption(reference, i)));
+        };
         await pollEmulated(
           session,
           () => changed(labels),
@@ -357,9 +387,9 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           try {
             await pollEmulated(
               session,
-              () => changed(idle),
-              (indices) => indices.length === controls.length,
-              { emulatedMs: 3000, message: `${stem} shows every parameter value` },
+              () => changedOwn(idle),
+              (indices) => indices.join() === knobs.join(),
+              { emulatedMs: 3000, message: `${stem} shows every knob's value, the other captions stay` },
             );
           } finally {
             await capture(`${stem}-values`);
@@ -387,16 +417,17 @@ describeOn('dt2', 'shared track keyboard panel proof', () => {
           await hold('PAGE TRIG', async () => {
             await pollEmulated(
               session,
-              () => changed(idle),
-              (indices) => indices.length === controls.length,
+              () => changedOwn(idle),
+              (indices) => indices.join() === knobs.join(),
               { emulatedMs: 3000, message: `${stem} holds the value view long enough to avoid a page turn` },
             );
+            // the chord is CHRD's text graphic, on the stock text rows 46 to 50
             const reading = await pixels();
             const width = Array.from({ length: 22 }, (_, i) => 101 + i).filter((x) =>
-              crop(reading, x, 59, x, 63).includes(1),
+              crop(reading, x, 46, x, 50).includes(1),
             ).length;
             expect(width, `${stem} renders a four-glyph chord at the right edge`).toBeGreaterThan(13);
-            expect(crop(reading, 123, 59, 125, 63).includes(1), `${stem} preserves the right margin`).toBe(false);
+            expect(crop(reading, 123, 46, 125, 50).includes(1), `${stem} preserves the right margin`).toBe(false);
             await capture(`${stem}-right-edge`);
           });
           await turn(8, 12);

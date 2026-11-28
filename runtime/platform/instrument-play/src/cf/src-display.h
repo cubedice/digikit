@@ -24,7 +24,8 @@ void cv_build_owner(CvDisplay *, const CsState *, const IsStatus *, uint32_t now
 void cv_preview_notes(CvDisplay *, const uint8_t *pitches, uint32_t count);
 /* Four-byte output including terminator, or five for C#-1. MIDI zero is valid. */
 void cv_note(char out[6], uint32_t note, int valid);
-/* Full native toast text for a custom edit; never used for native TUNE/LEV. */
+/* The toast for a custom edit: the name of a changed choice (WAVE "Glass", ALG "Stack", ...), empty for a number, which the
+ * cell's caption shows. Never used for native TUNE/LEV. */
 void cv_feedback(char out[32], const CsState *, uint32_t encoder);
 /* Visible custom controls with a lock in the held step's effective bank. */
 uint8_t cv_lock_mask(const CsState *, const IlpSnapshot *);

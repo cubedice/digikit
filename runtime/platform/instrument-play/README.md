@@ -26,12 +26,22 @@ WAVE selects Velvet, Reed, one of the five wavetables or FM, and has its own
 view-only identity so it cannot alias the FM algorithm field. Discrete lists
 accumulate four raw ticks per item without acceleration. Family transitions
 retain the held DSP voices and invalidate queued SRC edits. Hold SRC uses the
-firmware's momentary values state. Detailed notes, pedal and clock state are
-under `DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
-See the [accepted UI contract](../../../docs/design/canopy-ui-review.md).
-The global setup entry is CANOPY, with MODULATION, PRESETS, PANIC, RECOVER
-KEYBOARD, the status line and `MIDI: TRACK CHANNEL`. MODULATION holds scan
-clock/restart and the three wheel amounts. TUNE/LEV are exclusive to DETAIL
+firmware's momentary values state: knobs and pictures show their values in
+their captions, while text cells (WAVE, ALG, CLK, ...) keep their captions,
+because their graphic is already the value. The header then names the sound's
+source where a sample track names its sample (`Canopy: GLASS`, `FM STACK`).
+The draw runs after the help view (`ip_help_draw`, called by `core/fxview`).
+A turned cell shows its value in its caption while the stock focus countdown
+runs. Only a changed named choice also gets a toast, such as `Glass`, `Stack`
+or `Tempo sync`. A cell without a control shows the stock dotted placeholder,
+and so does all of FM ENV for Velvet and Reed. Detailed notes, pedal, clock state
+and whether the instance plays are under
+`DIGIKIT > MODULES > CANOPY > SETTINGS > STATUS`.
+See the [accepted UI contract](../../../docs/design/canopy-ui-review.md) and
+the [stock parity review](../../../docs/design/canopy-ui-parity.md).
+The global setup entry is Canopy, with MODULATION, PRESETS, PANIC and RECOVER
+KEYBOARD. MODULATION (titled MOD) holds SCAN CLOCK, SCAN RESET and the three
+wheel amounts. The track keyboard plays CANOPY on the track's MIDI channel. TUNE/LEV are exclusive to DETAIL
 A/H; unused cells cannot edit stock source parameters.
 
 The DTII 1.17 KeyboardView bridge (`core/keyboard-panel`) gives the panel keys

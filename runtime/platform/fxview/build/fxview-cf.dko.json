@@ -188,19 +188,26 @@
    "addend": 0,
    "offset": 44,
    "section": ".text.fxv_help_draw",
+   "symbol": "ip_help_draw",
+   "type": "cf.32"
+  },
+  {
+   "addend": 0,
+   "offset": 62,
+   "section": ".text.fxv_help_draw",
    "symbol": ".sec..text.fxv_visible_view",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 56,
+   "offset": 74,
    "section": ".text.fxv_help_draw",
    "symbol": "phrase_fxv_draw",
    "type": "cf.32"
   },
   {
    "addend": 0,
-   "offset": 80,
+   "offset": 98,
    "section": ".text.fxv_help_draw",
    "symbol": "loop_fxv_draw",
    "type": "cf.32"
@@ -349,10 +356,10 @@
   },
   {
    "align": 2,
-   "hex": "2f032f02262f0010242f000c2f032f024eb900000000508f41f9000000004a8867082f032f024e90508f4eb90000000024004a80673041f9000000004a88670e487800012f032f004e904fef000c41f9000000004a88670e487800012f032f024e904fef000c241f261f4e75",
+   "hex": "2f032f02262f0010242f000c2f032f024eb900000000508f41f9000000004a8867082f032f024e90508f41f9000000004a8867082f032f024e90508f4eb90000000024004a80673041f9000000004a88670e487800012f032f004e904fef000c41f9000000004a88670e487800012f032f024e904fef000c241f261f4e75",
    "kind": "text",
    "name": ".text.fxv_help_draw",
-   "size": 108
+   "size": 126
   },
   {
    "align": 2,
@@ -376,7 +383,7 @@
    "size": 10
   }
  ],
- "source_sha256": "4fdd935f1efb6a9bd35262982092dce7c139586b8dabf8bb576fabaff05534e8",
+ "source_sha256": "c92f50bfaaae1a6fb618b38cc3d64ddd19e1ff4f1642ec60d398405a96bd35f7",
  "symbols": [
   {
    "global": false,
@@ -584,6 +591,12 @@
   },
   {
    "global": true,
+   "name": "ip_help_draw",
+   "section": null,
+   "value": 0
+  },
+  {
+   "global": true,
    "name": "loop_fxv_draw",
    "section": null,
    "value": 0
@@ -665,8 +678,8 @@
   "as": "GNU assembler (GNU Binutils) 2.47.20260726",
   "cflags": "-mcpu=54418 -std=c11 -Os -ffreestanding -fno-builtin -nostdlib -fno-pic -fno-pie -ffunction-sections -fdata-sections -fno-asynchronous-unwind-tables -fno-unwind-tables -fno-stack-protector -Wall -Wextra -Werror",
   "gcc": "m68k-elf-gcc (GCC) 16.2.0",
-  "instructions_redecoded": "421",
-  "isa_check": "ac2164c32fcdb977ff7b7ea3849835a30a0998f1e7744c40c3c05e8492c9e2aa",
+  "instructions_redecoded": "428",
+  "isa_check": "059e67332842565d6b596a7fcceacd3b325ea5f7721e04ea3c9ef008bfec3fbe",
   "ld": "GNU ld (GNU Binutils) 2.47.20260726"
  }
 }

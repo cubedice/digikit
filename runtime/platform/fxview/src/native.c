@@ -31,6 +31,7 @@ extern int phrase_led_claim(uint32_t) OPTIONAL;
 extern void fxv_stock_led(uint8_t *, uint32_t, uint32_t, uint32_t);
 extern void rtm_stop_key(uint32_t) OPTIONAL;
 extern void rtm_help_draw(uint8_t *, uint8_t *) OPTIONAL;
+extern void ip_help_draw(uint8_t *, uint8_t *) OPTIONAL;
 
 /* TRIG keys reach the stock sequencer before they reach the FX view. Called by fxv_walk_hook (walk.s) for every key event the key walker
  * gets (cf.page.hook.phrase_key_walk): 1 consumes the event (the walker returns true at once), 0 lets the walker go on. */
@@ -163,10 +164,12 @@ void fxv_view_draw(uint8_t *view, uint8_t *bitmap)
 void fxv_help_draw(uint8_t *help, uint8_t *bitmap)
 {
     fxv_stock_help_draw(help, bitmap);
-    /* The help view draws after every view, also after the SRC view of a RELAY track: what that page puts in the header
-     * while SRC is held goes beside the stock text here, in the bubble's own font. */
+    /* The help view draws after every view, also after the SRC view of a RELAY or CANOPY track: what that page puts in the
+     * header while SRC is held goes beside the stock text here, in the bubble's own font. */
     if (rtm_help_draw)
         rtm_help_draw(help, bitmap);
+    if (ip_help_draw)
+        ip_help_draw(help, bitmap);
     uint8_t *view = fxv_visible_view();
     if (!view)
         return;

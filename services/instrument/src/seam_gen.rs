@@ -2,7 +2,7 @@
 /// The name of the image table (`[[info]]` of core/instrument-play).
 pub const INFO: &str = "instrument_image";
 pub const MAGIC: u32 = 0x49505331;
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 /// Words of the table: magic, version, count, then one per name.
 pub const WORDS: usize = 69;
 /// The words that must not be 0 (functions and data of the adapter itself).

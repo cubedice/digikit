@@ -1,5 +1,9 @@
 # CANOPY: native DTII interface proposal
 
+The [stock parity review of 2026-11-27](canopy-ui-parity.md) supersedes two rules below. A custom turn shows its value
+in its caption, as the stock cells do; only a changed named choice gets a toast (`Glass`, `Stack`). Velvet and Reed's
+FM ENV page shows the stock empty cells, with no explanation in the body.
+
 ## Review proposal: three groups, four SRC pages (2026-11-12)
 
 **Status: implemented as a local firmware candidate; physical-device and full

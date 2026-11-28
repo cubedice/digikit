@@ -21496,7 +21496,8 @@
       "subsystem": "text",
       "users": [
         "core/ui",
-        "core/services/relay"
+        "core/services/relay",
+        "core/services/instrument"
       ],
       "was": []
     },

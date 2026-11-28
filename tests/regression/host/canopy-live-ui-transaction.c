@@ -273,17 +273,17 @@ static void preset_load_transaction(void)
     setup(&tx, 0);
     install_preset();
     open_preset();
-    press(preset_menu, "SAVE CURRENT SOUND");
+    press(preset_menu, "SAVE SOUND");
     assert(preset_pending == 1);
     begin_action(&tx, preset_menu, 1);
     remember(&tx, &before);
-    press(preset_menu, "LOAD SAVED SOUND");
+    press(preset_menu, "LOAD SOUND");
     assert(tx.prepares == 1);
     unchanged(&tx, &before);
     reserve_ui(&tx, 0);
     uint16_t next = tx.owner[0].reserved;
     begin_action(&tx, preset_menu, 1);
-    press(preset_menu, "LOAD SAVED SOUND");
+    press(preset_menu, "LOAD SOUND");
     assert(tx.prepares == 1 && tx.attaches == 1 && tx.owner[0].handle == next && !preset_pending);
     assert(cur->mode == KB_PLAY && cur->pad_family == 3 && cur->pad_color == 93 &&
            cur->pad_strum == 19);
@@ -311,7 +311,7 @@ static void tone_edit(UiTransaction *tx, unsigned setting, int value)
         else
             scan_restart_done(0, value);
     } else {
-        static const char *const labels[] = {"WHEEL TO POS", "WHEEL TO FM", "WHEEL TO WT FM"};
+        static const char *const labels[] = {"WHEEL POS", "WHEEL FM", "WHEEL WT FM"};
         set_value(tone_menu, labels[setting - IP_PROOF_WT_WHEEL], value);
     }
     assert(!masked && !unsafe_io && dk_ui_menu_is_open(tone_menu));
@@ -362,8 +362,8 @@ static void disabled_callbacks(void)
     install_preset();
     open_preset();
     begin_action(&tx, preset_menu, 0);
-    press(preset_menu, "SAVE CURRENT SOUND");
-    press(preset_menu, "LOAD SAVED SOUND");
+    press(preset_menu, "SAVE SOUND");
+    press(preset_menu, "LOAD SOUND");
     assert(!preset_pending && cur->pad_color == 93 && cur->mode == KB_PLAY);
     open_tone();
     tone_edit(&tx, IP_PROOF_SCAN_CLOCK, 1);

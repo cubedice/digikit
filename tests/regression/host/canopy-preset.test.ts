@@ -149,11 +149,10 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
     'PRESETS',
     'PANIC',
     'RECOVER KEYBOARD',
-    'SELECT CANOPY ON TRACK',
-    'MIDI: TRACK CHANNEL',
   ]);
   const children = layout!.children as string[][];
-  expect(children[0]).toEqual(['FREE HZ', 'FREE', 'WHEEL TO POS', 'WHEEL TO FM', 'WHEEL TO WT FM']);
+  // the scan rows name their setting, the value at the row's end (17 characters), as the stock rows
+  expect(children[0]).toEqual(['SCAN CLOCK   FREE', 'SCAN RESET   FREE', 'WHEEL POS', 'WHEEL FM', 'WHEEL WT FM']);
   const labels = children.flat();
   for (const duplicate of [
     'PLAY',

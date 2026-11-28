@@ -13,7 +13,7 @@ so a second effect could not have a page with keys. Now this module writes the s
 | Slot (anchor) | Function here | What it does |
 | --- | --- | --- |
 | `cf.page.site.phrase_fx_draw` | `fxv_view_draw` | the stock draw, then every adapter's draw |
-| `cf.page.site.phrase_help_draw` | `fxv_help_draw` | the stock help bubble (the title of a page for a moment, the header of a page whose values show), then RELAY's header text (`rtm_help_draw`, any view: a RELAY track's SRC page with SRC held), then every adapter's draw with `header_only` |
+| `cf.page.site.phrase_help_draw` | `fxv_help_draw` | the stock help bubble (the title of a page for a moment, the header of a page whose values show), then RELAY's header text (`rtm_help_draw`, any view: a RELAY track's SRC page with SRC held) and CANOPY's (`ip_help_draw`: a CANOPY track's SRC page with SRC held, its sound's source after the stock `Canopy:`), then every adapter's draw with `header_only` |
 | `cf.page.site.phrase_fx_key` | `fxv_view_key` | the first adapter that takes the key; else the stock function |
 | `cf.page.site.phrase_fx_turn` | `fxv_view_turn` | the first adapter that takes the turn; else the stock function |
 | `cf.page.site.phrase_fx_encoder` | `fxv_encoder_interface` | the view's second encoder entry, same as the turn |
