@@ -906,16 +906,17 @@ _cv_seeded:
     I0 = R0;
     R0 = DM(5, I0);
     I0 = R0;
-    R2 = 32;
+    R2 = 0;
     R1 = 0x7fffffff;
     R4 = 0x3f800000; // final module output must be finite and <=1.0
-_cv_audio_check:
+    // the largest magnitude of the block, as bits (a NaN or an infinity is above every finite value)
+    LCNTR = 32, DO _cv_audio_check UNTIL LCE;
     R0 = DM(I0, M6);
     R0 = R0 AND R1;
-    COMP(R0, R4);
+_cv_audio_check:
+    R2 = MAX(R2, R0);
+    COMP(R2, R4);
     IF GT JUMP _cv_audio_bad;
-    R2 = R2 - 1;
-    IF NE JUMP _cv_audio_check;
     DM(_cv_pad_active) = R3;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);

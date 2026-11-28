@@ -7,6 +7,7 @@
 .SECTION/PM seg_pmco;
 .GLOBAL _ca_process;
 .EXTERN _cp_render_one;
+.EXTERN _cp_render_add;
 .EXTERN _cp_start_one;
 .EXTERN _cp_pressure;
 .EXTERN _cp_retune;
@@ -1253,19 +1254,11 @@ _ca_tail_render:
     R0 = DM(0, I0);
     R0 = PASS R0;
     IF EQ JUMP _ca_tail_next;
-    R8 = _ca_tail_pcm;
-    CALL _cp_render_one;
+    R8 = _ca_pcm;
+    CALL _cp_render_add;
     R1 = DM(_ca_active);
     R0 = R0 OR R1;
     DM(_ca_active) = R0;
-    I0 = _ca_tail_pcm;
-    I1 = _ca_pcm;
-    LCNTR = 32, DO _ca_tail_mix UNTIL LCE;
-    F0 = DM(I0, M6);
-    F1 = DM(I1, M5);
-    F0 = F0 + F1;
-_ca_tail_mix:
-    DM(I1, M6) = F0;
 _ca_tail_next:
     R0 = DM(_ca_tail_index);
     R0 = R0 + 1;
@@ -1305,7 +1298,6 @@ _ca_tail_next:
 
 
 .PKBSS _ca_tail_index, 4;
-.PKBSS _ca_tail_pcm, 128;
 
 .PKBSS _ca_clock, 4;
 .PKBSS _ca_restart, 4;

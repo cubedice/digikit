@@ -502,20 +502,23 @@ _iv_copy_last:
 _iv_post_normalize:
     R0 = DM(_iv_post_buf);
     I1 = R0;
-    R2 = 32;
-_iv_post_validate:
+    // Every gain is zero (both signs mean silence) or a positive float up to one: as bits, the least is not negative
+    // and the largest is not above 1.0 (a NaN is above it or negative).
+    R3 = 0x80000000;
+    R4 = 0;
+    R5 = 0;
+    LCNTR = 32, DO _iv_post_validate UNTIL LCE;
     R0 = DM(I1, M6);
-    R1 = 0x7fffffff;
-    R1 = R0 AND R1;
-    IF EQ JUMP _iv_post_gain_ok; // Both signs of zero mean silence.
-    R0 = PASS R0;
+    COMP(R0, R3);
+    IF EQ R0 = R0 - R0;
+    R4 = MAX(R4, R0);
+_iv_post_validate:
+    R5 = MIN(R5, R0);
+    R5 = PASS R5;
     IF LT JUMP _iv_post_bad;
     R1 = 0x3f800000;
-    COMP(R0, R1);
+    COMP(R4, R1);
     IF GT JUMP _iv_post_bad;
-_iv_post_gain_ok:
-    R2 = R2 - 1;
-    IF NE JUMP _iv_post_validate;
     R0 = DM(_iv_native_valid);
     R0 = PASS R0;
     IF EQ JUMP _iv_post_ok;

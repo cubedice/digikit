@@ -249,6 +249,7 @@ _cp_reject:
 // Single-group entry is for the independent arp owner. The caller owns its
 // 32-byte slot and shared-tail allocation; no extra foreground bank exists.
 .GLOBAL _cp_render_one;
+.GLOBAL _cp_render_add;
 .GLOBAL _cp_start_one;
 .GLOBAL _cp_release_one;
 _cp_start_one:
@@ -282,6 +283,14 @@ _cp_render_one:
     R0 = 1;
     DM(_cp_render_count) = R0;
     JUMP _cp_render_begin;
+// As _cp_render_one, into a buffer that already holds audio: the group is added to it (every renderer adds its sample
+// to the output word), so an arp tail needs no buffer, clear and mix of its own.
+_cp_render_add:
+    R0 = _cp_post_arp;
+    DM(_cp_post_lane) = R0;
+    R0 = 1;
+    DM(_cp_render_count) = R0;
+    JUMP _cp_render_voices;
 _cp_render:
     R0 = _cp_post_pad;
     DM(_cp_post_lane) = R0;
@@ -293,6 +302,7 @@ _cp_render_begin:
     LCNTR = 32, DO _cp_clear_output UNTIL LCE;
 _cp_clear_output:
     DM(I2, M6) = R0;
+_cp_render_voices:
     I0 = R4;
     R11 = PASS R4;
     R14 = DM(_cp_render_count);
