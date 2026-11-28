@@ -279,11 +279,15 @@ static void icon(const PhrasePage *p, const PhraseCanvas *c, int i, int x, int y
 }
 
 /* The caption of cell I in OUT: its label, a state that stands in for the label (*INK 0: a switch that is on, drawn
- * inverted), or with VALUES its value. */
-static void caption(const PhrasePage *p, uint32_t i, int values, char out[16], int *ink)
+ * inverted), or its value: with SHOW_VALUES (FUNC + FX held) every cell's, with FOCUSED (it was turned a moment ago) that
+ * cell's. F's caption names the feedback route (SKEW, PONG, SWAP), which F's press chooses: a turn of F keeps it, and only
+ * the values held show SKEW's distance. */
+static void caption(const PhrasePage *p, uint32_t i, int show_values, int focused, char out[16],
+                    int *ink)
 {
     const PhraseCell *k = &p->cells[i];
     const char *s = k->label;
+    int values = show_values || (focused && i != 5);
     *ink = 1;
     if (values) {
         s = k->value;
@@ -316,7 +320,8 @@ static void caption(const PhrasePage *p, uint32_t i, int values, char out[16], i
 /* The stock FX view draws the header (with its title bubble), the effect's tab at the top left and the page indicator at
  * x 125 to 127; the page paints the body, x 16 to 123 below the header, and the level strip under the tab, where the stock
  * strip would show the effect row's own MIX (PRISM's stays at unity). SHOW_VALUES: FUNC + FX is held, every caption is its
- * value; FOCUS bit i: cell i was turned a moment ago (the view's stock countdown), its caption is its value. */
+ * value; FOCUS bit i: cell i was turned a moment ago (the view's stock countdown), its caption is its value (F's keeps its
+ * route). */
 void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values, uint32_t focus)
 {
     char mix[8];
@@ -343,7 +348,7 @@ void pu_render(const PhrasePage *p, const PhraseCanvas *c, int show_values, uint
         int x = PU_CELL_X + PU_CELL_W * (int)(i % 4), y = i < 4 ? 13 : 40, ink;
         char shown[16];
         icon(p, c, (int)i, x, y + 1);
-        caption(p, i, show_values || ((focus >> i) & 1), shown, &ink);
+        caption(p, i, show_values, (focus >> i) & 1, shown, &ink);
         text(c, x, y + 19, shown, ink);
     }
 }

@@ -271,12 +271,37 @@ describeOn('dt2', 'DTII PRISM native page', () => {
     expect((await control())('PH_C_FLAGS') & routeFlags).toBe(PH.PH_F_PING_PONG);
     expect(float((await control())('PH_C_SKEW'))).toBe(0);
     expect((await page()).cells[5]).toMatchObject({ value: '0', state: 'PONG', lit: true });
+    // F's caption names the route, also while a turn's focus runs: the drawn caption (x 47 to 71, rows 59 to 63, bits 3 to 7 of
+    // each column's bottom byte) is the same before and right after a small turn.
+    const skewCaption = async (tag: string) => {
+      await shot(session, artifacts, tag);
+      const oled = readFileSync(path.join(artifacts, `${tag}.oled`));
+      return Array.from({ length: 25 }, (_, i) => oled[8 * (47 + i)]! >> 3);
+    };
+    const pong = await skewCaption('skew-pong');
+    expect(pong.some((column) => column !== 0)).toBe(true);
+    // the turns the page took (phrase_ui_debug word 4): PONG's turn moves nothing, so count that it arrived
+    const taken = () => word(session, debug + 16);
+    let turns = await taken();
     await turn('ENC F', -3);
+    expect(await taken(), 'the page took the turn of F').toBeGreaterThan(turns);
     expect(await value(PH.PH_P_SKEW!)).toBe(67);
+    expect(await skewCaption('skew-pong-turned'), 'a turn of F keeps PONG named').toEqual(pong);
     await tap(session, 'PUSH F', 120);
     expect(await value(PH.PH_P_ROUTE!)).toBe(PH.PH_ROUTE_SWAP);
     expect((await control())('PH_C_FLAGS') & routeFlags).toBe(routeFlags);
     expect((await page()).cells[5]).toMatchObject({ value: 'R 3', state: 'SWAP', lit: true });
+    const swap = await skewCaption('skew-swap');
+    expect(swap).not.toEqual(pong);
+    // the stock input path holds an encoder's turns back for about 0.3 s after its press (finding 359)
+    await advance(session, 400);
+    turns = await taken();
+    await turn('ENC F', 1);
+    expect(await taken(), 'the page took the turn of F').toBeGreaterThan(turns);
+    expect(await value(PH.PH_P_SKEW!)).toBe(68);
+    expect(await skewCaption('skew-swap-turned'), 'a turn of F keeps SWAP named').toEqual(swap);
+    await turn('ENC F', -1);
+    expect(await value(PH.PH_P_SKEW!)).toBe(67);
     await tap(session, 'PUSH F', 120);
     expect(await value(PH.PH_P_ROUTE!)).toBe(PH.PH_ROUTE_SKEW);
     expect((await control())('PH_C_FLAGS') & routeFlags).toBe(0);
