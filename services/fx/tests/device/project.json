@@ -84,7 +84,8 @@
           "fx-track-route.device.test.ts"
         ],
         "aliases": {
-          "test/dyn-fx-gain-both-2": "test/dyn-fx-gain-both"
+          "test/dyn-fx-gain-both-2": "test/dyn-fx-gain-both",
+          "test/dyn-fx-gain-both-3": "test/dyn-fx-gain-both"
         },
         "dsp": "sharc",
         "modules": [
