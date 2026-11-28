@@ -60,6 +60,7 @@
       },
       {
         "files": [
+          "load-budget.device.test.ts",
           "step-audition.device.test.ts",
           "trig-audition.device.test.ts"
         ],

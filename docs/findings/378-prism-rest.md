@@ -1,4 +1,4 @@
-# 377. PRISM rests while nothing sounds, and a shorter block while it plays
+# 378. PRISM rests while nothing sounds, and a shorter block while it plays
 
 Work of 2026-11-27 on PRISM's engine (`modules/fx/digikit/prism/src/dsp`), Digitakt II OS 1.17. The engine ran on the
 SHARC-only rig and on the emulated Digitakt II; nothing here ran on hardware. Marks as in `docs/FINDINGS.md`: every

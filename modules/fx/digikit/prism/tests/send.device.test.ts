@@ -172,7 +172,7 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
     expect(mix).toBe(1);
 
     // Nothing has sounded and the controls stand: the engine rests (PS_IDLE, word 208 of its state in src/prism.h, is 2;
-    // finding 377). Its status still beats every block, says READY and counts the tape, which the resting blocks fill with
+    // finding 378). Its status still beats every block, says READY and counts the tape, which the resting blocks fill with
     // silence. The notes below wake it: their echoes are measured as before.
     const state = (await rows(session, plan, context.slots))[0]![2]!;
     expect((await dspWords(session, state + 4 * 208, 1))[0], 'the engine rests while nothing sounds').toBe(2);

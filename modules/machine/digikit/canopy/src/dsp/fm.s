@@ -331,6 +331,13 @@ _fm_output:
     I0 = R0;
     F1 = DM(_fm_fade_start);
     F2 = DM(_fm_fade_step);
+    // A fade that stands at one multiplies every sample by one: the words stay as they are.
+    R0 = 0x3f800000;
+    COMP(R1, R0);
+    IF NE JUMP _fm_output_fade;
+    R0 = PASS R2;
+    IF EQ RTS;
+_fm_output_fade:
     R4 = 32;
     R0 = DM(_cp_post_output);
     R0 = PASS R0;

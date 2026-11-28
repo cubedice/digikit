@@ -79,6 +79,7 @@ _wt_prepare:
     R0 = 0;
     DM(_wt_enabled) = R0;
     DM(_wt_pm_active) = R0;
+    DM(_wt_pure) = R0;
     I0 = R4;
     I1 = R8;
     R0 = DM(10, I1);
@@ -129,6 +130,18 @@ _wt_version_ready:
     F2 = 0.03125;
     F0 = F0 * F2;
     DM(_wt_source_step) = F0;
+    // The mix has settled on the wavetable when this block no longer moves it and it is within 0.00001 of one (it
+    // approaches one and stops some 0.000001 short, where its step falls under half an ulp). The pad oscillator then
+    // reaches the output at -100 dB or less: the voices skip it and render the wavetable alone (_wt_pure).
+    F2 = DM(_wt_source_start);
+    COMP(F1, F2);
+    IF NE JUMP _wt_mixed;
+    F2 = 0.99999;
+    COMP(F1, F2);
+    IF LE JUMP _wt_mixed;
+    R0 = 1;
+    DM(_wt_pure) = R0;
+_wt_mixed:
     R0 = DM(_wt_enabled);
     // Finish tiny source-transition residue.
     R1 = DM(232, I0);
@@ -1293,6 +1306,9 @@ _wt_blend:
     F13 = DM(_wt_table_step);
     I0 = _wt_blk;
     MODIFY(I0,4) (NW); // audio word at offset 0
+    R0 = DM(_wt_pure);
+    R0 = PASS R0;
+    IF NE JUMP _wt_blend_pure;
     R0 = DM(_wt_table_base_b);
     R1 = DM(_wt_table_base_a);
     COMP(R0, R1);
@@ -1323,6 +1339,30 @@ _wt_blend_one:
     F0 = F0 * F8;
     F0 = F0 + F1;
 _wt_blend_one_last:
+    DM(I0,M4) = F0;
+    JUMP _wt_blend_done;
+// A settled source mix (_wt_pure): the audio word is the wavetable alone, and the source cursor stands.
+_wt_blend_pure:
+    F2 = 0.00006103515625; // 2^-14: the 16-bit table scale
+    R0 = DM(_wt_table_base_b);
+    R1 = DM(_wt_table_base_a);
+    COMP(R0, R1);
+    IF EQ JUMP _wt_blend_pure_one;
+    LCNTR = 32, DO _wt_blend_pure_two_last UNTIL LCE;
+    F9 = F9 + F13, F1 = DM(1,I0); // table A sample (x 2^14)
+    F0 = DM(2,I0); // table B sample (x 2^14)
+    F0 = F0 - F1;
+    F0 = F0 * F9;
+    F0 = F0 + F1;
+    F0 = F0 * F2;
+_wt_blend_pure_two_last:
+    DM(I0,M4) = F0;
+    JUMP _wt_blend_done;
+_wt_blend_pure_one:
+    LCNTR = 32, DO _wt_blend_pure_one_last UNTIL LCE;
+    F9 = F9 + F13, F0 = DM(1,I0); // table A sample (x 2^14)
+    F0 = F0 * F2;
+_wt_blend_pure_one_last:
     DM(I0,M4) = F0;
 _wt_blend_done:
     DM(_wt_source_cursor) = F8;
@@ -1580,6 +1620,31 @@ _wt_pm_block:
     F4 = 1.0;
     F5 = 0.004158;
     F7 = 0.1591549431; // one radian in cycles
+    // A depth at zero whose target is zero for the whole block (no key scale, or neither a base depth nor a positive
+    // envelope amount) stays zero: the read phases stand, and only the ratio and the modulator phase advance, with the
+    // operations of the full loop below, so a later depth starts from the same phase.
+    R0 = PASS R8;
+    IF NE JUMP _wt_pm_full;
+    COMP(F13, F3);
+    IF EQ JUMP _wt_pm_idle;
+    COMP(F12, F3);
+    IF GT JUMP _wt_pm_full;
+    COMP(F11, F3);
+    IF GT JUMP _wt_pm_full;
+_wt_pm_idle:
+    LCNTR = 32, DO _wt_pm_idle_last UNTIL LCE;
+    F9 = F9 + F14;
+    F0 = F9 * F15;
+    F0 = F0 + F10;
+    R2 = TRUNC F0;
+    F1 = FLOAT R2;
+_wt_pm_idle_last:
+    F10 = F0 - F1;
+    DM(_wt_pm_depth_cursor) = F8;
+    DM(2,I2) = F9;
+    DM(1,I2) = F10;
+    RTS;
+_wt_pm_full:
     // I0 addresses the read phase word: envelope at -2. F6 holds the
     // envelope, then the read phase, which the join stores and steps past.
     I0 = _wt_blk;
@@ -1777,6 +1842,8 @@ _wt_expand_odd:
 .GLOBAL _wt_enabled;
 .VAR _wt_state = 0;
 .VAR _wt_enabled = 0;
+.GLOBAL _wt_pure;
+.VAR _wt_pure = 0;
 .VAR _wt_input = 0;
 .PKBSS _wt_low_controls, 128;
 .PKBSS _wt_controls, 64;
