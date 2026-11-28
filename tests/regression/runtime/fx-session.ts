@@ -10,6 +10,7 @@ import {
   PROGRESS_HANG_S,
   repoRoot,
   resolveInputs,
+  steppedClock,
   withinRuntimeDeadline,
   type Device,
   type RuntimeBaseline,
@@ -124,30 +125,32 @@ export async function readTextRows(session: Session, address: number, count: num
 }
 
 /**
- * Read protocol state while paused using the existing USB transport's legacy 400,000-instruction poll step.
- * Wall time only guards a hang: each control call (a status read, one step) must answer within `hangMs`, so an operation of any emulated length
- * (a closure reload with logging raised steps for minutes) ends when it ends, and a daemon that stops answering fails after one `hangMs`.
+ * Read protocol state while paused. The USB transport steps the guest in 400,000-instruction chunks while awaiting a reply.
+ * The stepped clock advances the guest between protocol polls and measures deadlines in emulated time.
+ * Each control call retains a wall-time hang guard.
  */
 export async function withPausedFxProtocol<T>(
   runtime: Pick<PatchedSession, 'session'>,
   operation: (dk: DkSession) => Promise<T>,
   { hangMs = PROGRESS_HANG_S * 1000 }: { hangMs?: number } = {},
 ): Promise<T> {
-  const call = <R>(run: () => Promise<R>) => withinRuntimeDeadline(Date.now() + hangMs, run);
+  let active = true;
+  const call = async <R>(run: () => Promise<R>): Promise<R> => {
+    if (!active) throw new Error('route protocol is no longer active');
+    const result = await withinRuntimeDeadline(Date.now() + hangMs, run);
+    if (!active) throw new Error('route protocol is no longer active');
+    return result;
+  };
   const status = await call(() => runtime.session.status());
   if (status.mode !== 'paused') throw new Error('route protocol reads require a paused runtime');
-  let active = true;
-  // The daemon is paused: its emulated clock moves only by the transport's steps.
+  const clock = steppedClock(runtime.session);
   const dk = new DkSession(
     new EmuUsbTransport(
-      async <R>(method: string, params?: Record<string, unknown>) => {
-        if (!active) throw new Error('route protocol is no longer active');
-        const result = await call(() => runtime.session.client.call<R>(method, params));
-        if (!active) throw new Error('route protocol is no longer active');
-        return result;
-      },
+      <R>(method: string, params?: Record<string, unknown>) =>
+        call(() => runtime.session.client.call<R>(method, params)),
       { stepInstructions: 400_000 },
     ),
+    { clock: { now: () => call(() => clock.now()), pause: (ms) => call(() => clock.pause(ms)) } },
   );
   try {
     return await operation(dk);
