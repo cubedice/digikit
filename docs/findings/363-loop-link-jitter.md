@@ -144,6 +144,33 @@ on the idle DTII. Pressing H displayed ARMD, and pressing it again cleared ARMD 
 A second idle check at HALO 126, the setting during the first capture, showed NO LOOP in all 450 samples
 over 28 seconds.
 
+### PRISM's RATE text blinks at rest
+
+The owner reports, on image `da44c809` (main 80c9a7fe3), that the text in RATE's graphic (the time in ms when free,
+the ratio with SYNC) blinks while nothing is touched, also with the pattern stopped. Only that text blinks; nothing
+else appears at the same moment; the stock Delay page and Overloop's page do not blink.
+
+**[D]** On the emulator with the owner's settings (SYNC on, 147 MS, SKEW at PONG) RATE's cell kept one picture over
+more than 300 samples at rest, stopped and playing, free and SYNC, and the engine's status words did not change.
+The emulator delivers one frame a block, so it cannot show a mixed reply.
+
+**[D]** DT2 1.17 shows only whole frames: the UI pass (`0x40032992`) lets the view manager clear the bitmap and draw
+every view (`0x4011bc96`), then the panel diff (`0x40133bea`) sends the changed tiles and swaps the two buffers. PRISM
+draws the same RATE text in every pass from its state. On its page that text is the only thing drawn from the engine's
+status: the time (`PH_S_TIME_L`, `PH_S_TIME_R`), `NO LINK` (an error word or no fresh status) or `--`.
+
+**[D]** PRISM's reply shares the cells with Overloop's carrier and RELAY's packets, like the carrier before it was
+signed. The ColdFire's checks covered the packet header (rows 17-20) and the snapshot's magic, version, heartbeat,
+sequence end and generation, but not the times (rows 30, second group of the first packet) or the error word. A copy
+that mixed two replies was taken, and the page then showed another time, `--` or `NO LINK` until its next pass.
+
+**[O]** That such copies are what the owner saw is inferred from the above, not measured on the device. The DSP now
+signs each latched snapshot (`PH_REPLY_CHECK`, the carrier's rotate-and-XOR over the 32 status words, sent in the third
+packet's spare word) and the ColdFire takes a snapshot only when the check agrees. The host regression
+(`mixed_replies` in core/phrase-control's harness) mixes the carrier's words and the snapshot's own second packet into
+the times, and the carrier's words into the error word; the last whole snapshot stays. The SHARC transport test checks
+the signed packets of the assembled writer.
+
 ### Overloop loses readiness while armed
 
 **[D]** On DTII image `0e644e7610b0bfa7` with Overloop 0.5.0, a passive screen capture showed

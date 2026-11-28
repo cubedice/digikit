@@ -76,7 +76,8 @@ _ph_rx_dead:
 
 // Called after the legacy loop carrier has been written. Three of each four
 // frames replace only those14 established cells; diagnostics and instruments
-// keep all their cells. A full snapshot is latched once, not torn across pages.
+// keep all their cells. A full snapshot is latched once, not torn across pages,
+// and signed (PH_REPLY_CHECK): the ColdFire refuses a copy that mixed replies.
 _phrase_reply:
     R0 = DM(_ph_reply_phase);
     R0 = R0 + 1;
@@ -97,13 +98,23 @@ _phrase_reply:
     I2 = _phrase_status;
     I3 = _ph_reply_snapshot;
     R3 = PH_STATUS_WORDS;
+    // R5 the check: rotated left by PH_REPLY_ROT (bits 27 to 31 come round) and XORed with each word. R0 is the phase,
+    // 1 on this path: a scratch until the latch ends.
+    R5 = PH_REPLY_MAGIC;
 _ph_reply_latch:
     R4 = DM(0,I2);
     DM(0,I3) = R4;
+    R0 = FEXT R5 BY 27:PH_REPLY_ROT;
+    R5 = LSHIFT R5 BY PH_REPLY_ROT;
+    R5 = R5 OR R0;
+    R5 = R5 XOR R4;
     MODIFY(I2,1) (NW);
     MODIFY(I3,1) (NW);
     R3 = R3 - 1;
     IF GT JUMP _ph_reply_latch;
+    // the check is the word after the status (PH_REPLY_CHECK), sent in the third packet
+    DM(0,I3) = R5;
+    R0 = 1;
     R3 = DM(_ph_reply_serial);
     R3 = R3 + 1;
     DM(_ph_reply_serial) = R3;

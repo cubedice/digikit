@@ -13,6 +13,13 @@
 #define PH_RX_GRACE 750
 #define PH_CONTROL_WORDS 64
 #define PH_STATUS_WORDS 32
+// The reply: core/phrase-control's DSP side latches the 32 status words once and sends them to the ColdFire in three
+// packets (PH_REPLY_MAGIC, then (serial << 2) | part, then twelve words) in reply cells that Overloop's and RELAY's replies
+// share. A copy of those cells can mix two replies, so the latch also signs the snapshot: seed the check with
+// PH_REPLY_MAGIC, rotate it left by PH_REPLY_ROT and XOR each status word in index order. The check is the snapshot's word
+// PH_REPLY_CHECK (the first after the status, in the third packet); the ColdFire takes no snapshot whose check differs.
+#define PH_REPLY_CHECK 32
+#define PH_REPLY_ROT 5
 // The storage descriptor of core/loop-storage has its own format number. The engine uses the first bank.
 #define PH_STORAGE_FORMAT 1
 #define PH_STORAGE_MAGIC_OFF 0
