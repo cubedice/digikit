@@ -122,7 +122,11 @@ def test_quiet_reply_excludes_pending_cursors_and_audible_filter_tails(fold):
     dm[symbols["_tk_pool_quiet_phase"] // 4] = 7
     dm.update({BUS // 4 + i: 0 for i in range(16 * 64)})
     dm[BUS // 4 + 4 * 64 + 37] = sample(0.001)  # Right channel only.
+    dm[BUS // 4 + 2 * 64 + 63] = 0x337FFFFF  # Just below the threshold.
     dm[BUS // 4 + 5 * 64 + 1] = 0x80000000  # Negative zero is silence.
+    dm[BUS // 4 + 6 * 64 + 63] = 0xB3800000  # Negative, exactly at the threshold.
+    dm[BUS // 4 + 7 * 64 + 12] = 0xFF800000  # Negative infinity.
+    dm[BUS // 4 + 8 * 64 + 18] = 0x7FC00000  # NaN.
     for voice in range(32):
         dm[(0x241484 + 0x1D8 * voice) // 4] = 0
     dm[(0x241484 + 0x1D8 * 6) // 4] = 1
@@ -137,7 +141,7 @@ def test_quiet_reply_excludes_pending_cursors_and_audible_filter_tails(fold):
         max_steps=8000,
     )
     assert output["halt"]["reason"] == "breakpoint", output["halt"]
-    mask = 0xFFFF ^ ((1 << 3) | (1 << 4) | (1 << 15))
+    mask = 0xFFFF ^ sum(1 << track for track in (3, 4, 6, 7, 8, 15))
     assert output["status"] == [(mask << 16) | 0x4B51, ((mask ^ 0x32F7 ^ 1) << 16) | 1]
 
 
@@ -186,11 +190,10 @@ def test_quiet_scan_is_spread_two_tracks_a_block(fold):
     for i, p in enumerate(published[1:], 1):
         assert p == (published[i - 1] if i % 8 != 7 else p)
     assert published[0] == (0, 0)
-    # No block carries more than two tracks' share: each of the two is its 64 bus words at four instructions and under 20
-    # around them, plus the save and restore of the routine. One block inspecting all sixteen took over 4,300.
-    share = 2 * (64 * 4 + 20) + 110
-    assert max(costs) <= share, costs
-    assert max(costs) - min(costs) <= 2 * (64 * 4 + 20), costs
+    # Two instructions per bus word in the pipelined scan, plus setup and the final comparison for each track.
+    per_track = 64 * 2 + 23
+    assert max(costs) <= 2 * per_track + 110, costs
+    assert max(costs) - min(costs) <= 2 * per_track, costs
 
 
 def test_a_round_that_starts_late_marks_the_tracks_it_missed_as_not_quiet(fold):
