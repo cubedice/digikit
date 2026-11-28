@@ -24,6 +24,9 @@
 .EXTERN _cp_amp_input;
 .EXTERN _cp_post_output;
 .EXTERN _cp_post_init;
+.EXTERN _cp_shed;
+.EXTERN _cp_pressure;
+.EXTERN _cp_shed_mask;
 _canopy_reset:
     R0 = PASS R8;
     IF LE JUMP _cv_bad;
@@ -111,6 +114,8 @@ _canopy_process:
     DM(_cv_shared) = R0;
     DM(_cv_shared_arp_count) = R0;
     DM(_cp_post_output) = R0;
+    DM(_cp_pressure) = R0;
+    DM(_cp_shed_mask) = R0;
     I2 = R8;
     R0 = DM(0, I2);
     R1 = 2;
@@ -226,6 +231,9 @@ _cv_v5:
     COMP(R0, R1);
     IF NE JUMP _cv_bad;
 _cv_status_input:
+    R0 = DM(12, I2); // V5+ timing flags carry the host's load pressure in bits 12..14
+    R0 = FEXT R0 BY 12:3;
+    DM(_cp_pressure) = R0;
     R0 = DM(23, I2);
     R1 = 13;
     COMP(R0, R1);
@@ -858,6 +866,8 @@ _cv_retuned:
 _cv_seeded:
     R0 = 1;
     DM(3, I0) = R0;
+    R4 = DM(_cv_state);
+    CALL _cp_shed;
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     CALL _fm_prepare;

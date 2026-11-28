@@ -8,6 +8,7 @@
 .GLOBAL _ca_process;
 .EXTERN _cp_render_one;
 .EXTERN _cp_start_one;
+.EXTERN _cp_pressure;
 .EXTERN _cp_retune;
 .EXTERN _cp_blend;
 .EXTERN _cp_tune_changed;
@@ -1016,7 +1017,8 @@ _ca_fine:
     R2 = 0x800;
     R2 = R1 AND R2;
     IF NE JUMP _ca_master_lost; // malformed BPM before any valid tempo
-    R1 = PASS R1;
+    R2 = 0xffff8fff; // bits 12..14 are the host's load pressure, not a provider
+    R1 = R1 AND R2;
     IF EQ JUMP _ca_fine_absent;
     R2 = 0x400;
     R1 = R1 AND R2;
@@ -1198,6 +1200,9 @@ _ca_save_tail:
     R0 = DM(7, I2);
     R0 = PASS R0;
     IF EQ RTS;
+    R0 = DM(_cp_pressure);
+    R0 = PASS R0;
+    IF NE RTS; // under load a step takes no tail: the same-slot ramp
     R0 = DM(_ca_state);
     R1 = 128;
     R0 = R0 + R1;

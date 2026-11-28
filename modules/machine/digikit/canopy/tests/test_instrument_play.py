@@ -50,6 +50,8 @@ def playback_object():
 .PKDATA _instrument_session, 4;
 .PKDATA _mi_carrier_stamp, 4;
 .PKDATA _mi_envelope_records, 4;
+.PKDATA _dv_rec, 12; // core/dsp-voice: [0] the reply record the last block built (core/dsp-link)
+.PKDATA _test_reply_record, 16;
 .PKDATA _iv_amp_attack_table, 512;
 .PKDATA _iv_amp_decay_table, 512;
 .PKDATA _iv_amp_hold_table, 512;

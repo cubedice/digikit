@@ -105,6 +105,7 @@
   "modules/machine/digikit/canopy/tests/copy-handoff.device.test.ts": 7,
   "modules/machine/digikit/canopy/tests/copy-observation.manual.device.test.ts": 5,
   "modules/machine/digikit/canopy/tests/engine-parity.manual.device.test.ts": 10,
+  "modules/machine/digikit/canopy/tests/load-budget.device.test.ts": 6,
   "modules/machine/digikit/canopy/tests/memory-cancel-proof.manual.device.test.ts": 5,
   "modules/machine/digikit/canopy/tests/needs.device.test.ts": 9,
   "modules/machine/digikit/canopy/tests/opaque-proof.manual.device.test.ts": 1,

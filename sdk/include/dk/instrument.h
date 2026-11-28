@@ -52,6 +52,14 @@ typedef struct dk_instrument_in_v4 {
  * selected tempo. A rejected or missing frame clears all capabilities; tempo
  * consumers may retain their last accepted BPM independently of phase health.
  * These high bits are absent from V2..V4 inputs.
+ * Bits12..14 are the adapter's load pressure, 0..7 (0: none). The adapter
+ * raises it while the DSP block costs more than its budget and lowers it when
+ * the load has stayed under it, the same value for every instance. A callback
+ * may shed work in steps as the value rises (fewer release tails first, held
+ * voices last), each step without a discontinuity in its output, and restore
+ * it as the value falls. The bits are advisory and carry no timing meaning: a
+ * callback that ignores them stays valid, and a test for "no provider" must
+ * mask them. They are absent (zero) in V2..V4 inputs.
  * status is an adapter-owned, aligned L2 buffer of exactly 13 words: ready,
  * then twelve normalized UI payload words. The adapter clears ready before
  * every process call. A successful callback may fill all payload words then

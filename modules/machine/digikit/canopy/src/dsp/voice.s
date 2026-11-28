@@ -126,6 +126,9 @@ _cp_next_slot:
     R0 = DM(7, I0);
     R0 = PASS R0;
     IF EQ JUMP _cp_start; // an unrendered onset is silent; no tail required
+    R0 = DM(_cp_pressure);
+    R0 = PASS R0;
+    IF NE JUMP _cp_no_tail; // under load a steal keeps the same-slot ramp
     R0 = 128;
     R0 = R4 + R0;
     I2 = R0;
@@ -137,6 +140,7 @@ _cp_find_tail:
     MODIFY(I2, 8) (NW);
     R2 = R2 - 1;
     IF NE JUMP _cp_find_tail;
+_cp_no_tail:
     R0 = R3 - R4;
     R0 = LSHIFT R0 BY -1;
     R1 = 192;
@@ -316,6 +320,22 @@ _cp_render_owned:
     // Keep the shared carrier held for the whole block containing a tail's
     // final samples. QUIET is safe only on the following empty block.
     R15 = 1;
+    R0 = DM(_cp_shed_mask);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_render_audible;
+    CALL _cp_masked;
+    R0 = PASS R0;
+    IF EQ JUMP _cp_render_audible;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_render_audible;
+    R0 = DM(7, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_render_next; // a shed owner that is silent keeps its token and gate; nothing renders
+_cp_render_audible:
     CALL _cp_amp_begin;
     CALL _cp_post_collect;
     F2 = DM(2, I0); // oscillator x,y
@@ -885,6 +905,14 @@ _cp_amp_reset_last:
 _cp_amp_begin:
     R0 = 0;
     DM(_cp_amp_native) = R0;
+    // A voice the load budget shed (_cp_shed_mask) takes the same eased ramp, whatever its gate, and stays at zero.
+    R0 = DM(_cp_shed_mask);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_amp_unmasked;
+    CALL _cp_masked;
+    R0 = PASS R0;
+    IF NE JUMP _cp_amp_reset;
+_cp_amp_unmasked:
     // A lifecycle reset or steal (gate 2) of a voice of the V2 instance (it has a sidecar: a pad or tail slot, or the arp
     // group) takes the eased ramp below, with either AMP. A bank without sidecars keeps the linear ramp of the renderer.
     R0 = DM(1, I0);
@@ -1072,7 +1100,165 @@ _cp_amp_done:
     R0 = 1;
     DM(_cp_amp_native) = R0;
     RTS;
+
+// Host load pressure: bits 12..14 of the timing flags of a V5+ input (0: none; sdk/include/dk/instrument.h). The adapter
+// raises it while the DSP block costs more than its limit, and the instance sheds in this order, every voice through the
+// eased gate-2 ramp above (at most 64 samples), never a cut (finding 377):
+//   1+  no new tail: a pad steal queues behind the same-slot ramp, an arp step ramps its group; the tails that sound end;
+//   2+  released foreground voices and a released arp group end;
+//   3-6 at most 6 - pressure held pad owners sound (3, 2, 1, 0): the newest are masked. A masked owner ramps to zero and
+//       keeps its token and gate, so the chord, the arp's members and a later release stay as they were, and it fades
+//       back in with its attack when the pressure falls;
+//   7   the arp group is masked too: it keeps its clock and its notes, silently.
+// _cp_shed runs once a block after the events: R4 = instance state. _cp_shed_mask: bit 0..3 a foreground slot, bit 4 the
+// arp group. Clobbers R0-R3, R5-R7, R10, I0, I1.
+.GLOBAL _cp_shed;
+.GLOBAL _cp_pressure;
+.GLOBAL _cp_shed_mask;
+_cp_shed:
+    R0 = 0;
+    DM(_cp_shed_mask) = R0;
+    R7 = DM(_cp_pressure);
+    R7 = PASS R7;
+    IF EQ RTS;
+    R0 = 128;
+    R0 = R4 + R0;
+    I0 = R0;
+    R2 = 2;
+_cp_shed_tail:
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_shed_tail_next;
+    R0 = DM(1, I0);
+    R1 = 4;
+    R0 = R0 AND R1; // an arp-owned tail stays in the arp's lane
+    R1 = 2;
+    R0 = R0 OR R1;
+    DM(1, I0) = R0;
+_cp_shed_tail_next:
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_shed_tail;
+    R0 = 2;
+    COMP(R7, R0);
+    IF LT RTS;
+    I0 = R4;
+    R2 = 4;
+_cp_shed_released:
+    CALL _cp_shed_release;
+    MODIFY(I0, 8) (NW);
+    R2 = R2 - 1;
+    IF NE JUMP _cp_shed_released;
+    R0 = 544;
+    R0 = R4 + R0;
+    I0 = R0;
+    CALL _cp_shed_release;
+    R0 = 3;
+    COMP(R7, R0);
+    IF LT RTS;
+    R0 = 7;
+    COMP(R7, R0);
+    IF LT JUMP _cp_shed_pads;
+    R0 = 16;
+    DM(_cp_shed_mask) = R0;
+_cp_shed_pads:
+    R6 = 6;
+    R6 = R6 - R7;
+    R0 = 0;
+    R6 = MAX(R6, R0); // held pad owners that may sound
+// Mask the newest unmasked owner until at most R6 are left. A slot's owner is its queued onset, else its held voice.
+_cp_shed_newest:
+    I0 = R4;
+    R0 = 192;
+    R0 = R4 + R0;
+    I1 = R0;
+    R2 = 0;
+    R5 = 0;
+_cp_shed_owner:
+    R0 = 1;
+    R10 = LSHIFT R0 BY R2;
+    R0 = DM(_cp_shed_mask);
+    R0 = R0 AND R10;
+    IF NE JUMP _cp_shed_owner_next;
+    R0 = DM(0, I1);
+    R0 = PASS R0;
+    IF NE JUMP _cp_shed_owned;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R0 = R0 AND R1;
+    R1 = 1;
+    COMP(R0, R1);
+    IF NE JUMP _cp_shed_owner_next;
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_shed_owner_next;
+_cp_shed_owned:
+    R1 = 0x80000000;
+    R0 = R0 XOR R1; // tokens rise with the order of the onsets: compare them unsigned
+    R5 = R5 + 1;
+    R1 = 1;
+    COMP(R5, R1);
+    IF EQ JUMP _cp_shed_take;
+    COMP(R0, R3);
+    IF LE JUMP _cp_shed_owner_next;
+_cp_shed_take:
+    R3 = PASS R0;
+    DM(_cp_shed_bit) = R10;
+_cp_shed_owner_next:
+    MODIFY(I0, 8) (NW);
+    MODIFY(I1, 4) (NW);
+    R2 = R2 + 1;
+    R0 = 4;
+    COMP(R2, R0);
+    IF LT JUMP _cp_shed_owner;
+    COMP(R5, R6);
+    IF LE RTS;
+    R0 = DM(_cp_shed_mask);
+    R1 = DM(_cp_shed_bit);
+    R0 = R0 OR R1;
+    DM(_cp_shed_mask) = R0;
+    JUMP _cp_shed_newest;
+// I0 = a foreground voice or the arp group: a released one (not yet on a ramp) takes the gate-2 ramp. Clobbers R0, R1.
+_cp_shed_release:
+    R0 = DM(0, I0);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(1, I0);
+    R1 = 3;
+    R1 = R0 AND R1;
+    IF NE RTS;
+    R1 = 4;
+    R0 = R0 AND R1;
+    R1 = 2;
+    R0 = R0 OR R1;
+    DM(1, I0) = R0;
+    RTS;
+// I0 = a voice of the V2 instance. R0 = its bit of _cp_shed_mask when it is masked, else 0. Clobbers R0-R2.
+_cp_masked:
+    R1 = I0;
+    R2 = DM(_cp_amp_state);
+    R1 = R1 - R2;
+    R0 = 16;
+    R2 = 544;
+    COMP(R1, R2);
+    IF EQ JUMP _cp_masked_bit;
+    R0 = 0;
+    R1 = PASS R1;
+    IF LT RTS;
+    R2 = 128;
+    COMP(R1, R2);
+    IF GE RTS;
+    R1 = LSHIFT R1 BY -5;
+    R0 = 1;
+    R0 = LSHIFT R0 BY R1;
+_cp_masked_bit:
+    R2 = DM(_cp_shed_mask);
+    R0 = R0 AND R2;
+    RTS;
 .SECTION/DM seg_dmda;
+.VAR _cp_pressure = 0;
+.VAR _cp_shed_mask = 0;
+.VAR _cp_shed_bit = 0;
 .VAR _cp_amp_mode = 0;
 .VAR _cp_amp_state = 0;
 .VAR _cp_amp_input = 0;
