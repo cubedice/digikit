@@ -317,11 +317,9 @@ _iv_quiet:
     DM(8, I0) = R0;
     DM(18, I0) = R0;
     I0 = _iv_output;
-    R1 = 32;
+    LCNTR = 32, DO _iv_clear_output UNTIL LCE;
 _iv_clear_output:
     DM(I0, M6) = R0;
-    R1 = R1 - 1;
-    IF NE JUMP _iv_clear_output;
     RTS;
 
 _iv_post_fault:
@@ -490,13 +488,13 @@ _iv_slot_store:
     I1 = _iv_controls;
     R2 = 32;
     JUMP _iv_copy_out;
-// Copy R2 words from I1 to I2; both advance. Clobbers R0/R2.
+// Copy R2 (at least one) words from I1 to I2; both advance. Clobbers R0.
 _iv_copy:
 _iv_copy_out:
+    LCNTR = R2, DO _iv_copy_last UNTIL LCE;
     R0 = DM(I1, M6);
+_iv_copy_last:
     DM(I2, M6) = R0;
-    R2 = R2 - 1;
-    IF NE JUMP _iv_copy;
     RTS;
 
 // V7 preserves the callback's shaped PCM, then moves its common gain past

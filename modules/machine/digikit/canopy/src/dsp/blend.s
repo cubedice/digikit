@@ -31,6 +31,8 @@ _cp_blend:
     R0 = DM(_cp_post_output);
     R0 = PASS R0;
     IF NE JUMP _cp_post_blend_setup;
+    COMP(R2, R3);
+    IF EQ JUMP _cp_blend_settled;
 _cp_blend_sample:
     F0 = F3 - F2;
     F7 = ABS F0;
@@ -57,6 +59,21 @@ _cp_blend_output:
 _cp_blend_bad:
     R0 = 0;
     RTS;
+// The mix at its target: every sample of the loop above snaps to it and weighs with the same two factors, so they are
+// taken once (the same operations on the same operands).
+_cp_blend_settled:
+    F0 = F5 - F2;
+    LCNTR = 32, DO _cp_blend_settled_last UNTIL LCE;
+    F1 = DM(I0, M5);
+    F7 = F0 * F1;
+    F1 = DM(I1, M6);
+    F1 = F1 * F2;
+    F7 = F7 + F1;
+_cp_blend_settled_last:
+    DM(I0, M6) = F7;
+    DM(0, I2) = F2;
+    R0 = 1;
+    RTS;
 
 // Keep the legacy loop unchanged. V7 uses the same floating-point operations
 // and snap decisions for PCM and for its lane-weighted common AMP envelope.
@@ -80,6 +97,8 @@ _cp_post_blend_setup:
     I3 = _cp_post_pad;
     I4 = _cp_post_arp;
     I5 = R0;
+    COMP(R2, R3);
+    IF EQ JUMP _cp_post_blend_settled;
 _cp_post_blend_sample:
     F0 = F3 - F2;
     F7 = ABS F0;
@@ -106,6 +125,24 @@ _cp_post_blend_output:
     DM(I5,M6) = F0;
     R10 = R10 - 1;
     IF NE JUMP _cp_post_blend_sample;
+    JUMP _cp_post_blend_restore;
+// The mix at its target, as _cp_blend_settled: PCM and the common envelope with the same two factors.
+_cp_post_blend_settled:
+    F7 = F5 - F2;
+    LCNTR = 32, DO _cp_post_blend_settled_last UNTIL LCE;
+    F1 = DM(I0,M5);
+    F0 = F7 * F1;
+    F1 = DM(I1,M6);
+    F1 = F1 * F2;
+    F0 = F0 + F1;
+    DM(I0,M6) = F0;
+    F0 = DM(I3,M6);
+    F0 = F0 * F7, F1 = DM(I4,M6);
+    F1 = F1 * F2;
+    F0 = F0 + F1;
+_cp_post_blend_settled_last:
+    DM(I5,M6) = F0;
+_cp_post_blend_restore:
     DM(0,I2) = F2;
     R0 = DM(_cp_post_save_i3);
     I3 = R0;
