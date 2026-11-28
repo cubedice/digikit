@@ -26,6 +26,9 @@ export interface PairTake {
   wetLeft: Float32Array;
   /** the tap PRISM received for each block (Overloop's of the block before) */
   tapLeft: Float32Array;
+  /** instructions of each block's hook call: PRISM's, and Overloop's (none while it does not run) */
+  prismInstructions: number[];
+  loopInstructions: number[];
 }
 
 export class PairRig {
@@ -76,6 +79,8 @@ export class PairRig {
       returnLeft: new Float32Array(n),
       wetLeft: new Float32Array(n),
       tapLeft: new Float32Array(n),
+      prismInstructions: [],
+      loopInstructions: [],
     };
     const pair = (v: number | readonly [number, number]): readonly [number, number] => (typeof v === 'number' ? [v, v] : v);
     const send: Signal = (k) => {
@@ -87,6 +92,7 @@ export class PairRig {
       const seq = this.prism.wetSeq;
       const p = await this.prism.run(1, send);
       const wrote = this.prism.wetSeq !== seq;
+      t.prismInstructions.push(...p.instructions);
       const ml = new Float32Array(BLOCK);
       const mr = new Float32Array(BLOCK);
       for (let k = 0; k < BLOCK; k++) {
@@ -107,6 +113,7 @@ export class PairRig {
         const o = await this.loop.run(1, (k) => [ml[k - at]!, mr[k - at]!]);
         t.left.set(o.left, b * BLOCK);
         t.right.set(o.right, b * BLOCK);
+        t.loopInstructions.push(...o.instructions);
         this.taken = await this.loop.taken();
         const tap = await this.loop.tapWords();
         this.prism.pokeLoop(tap, this.taken);

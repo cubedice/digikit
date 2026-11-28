@@ -171,6 +171,22 @@ describeOn('dt2', 'DTII PRISM as a send effect', () => {
     const mix = float((await dspWords(session, planSymbol(plan, '_phrase_control_info'), 64))[PH.PH_C_MIX! / 4]!);
     expect(mix).toBe(1);
 
+    // Nothing has sounded and the controls stand: the engine rests (PS_IDLE, word 208 of its state in src/prism.h, is 2;
+    // finding 378). Its status still beats every block, says READY and counts the tape, which the resting blocks fill with
+    // silence. The notes below wake it: their echoes are measured as before.
+    const state = (await rows(session, plan, context.slots))[0]![2]!;
+    expect((await dspWords(session, state + 4 * 208, 1))[0], 'the engine rests while nothing sounds').toBe(2);
+    const beat = engine('PH_S_HEARTBEAT');
+    await advance(session, 200);
+    const resting = await status();
+    expect((await dspWords(session, state + 4 * 208, 1))[0]).toBe(2);
+    expect(resting('PH_S_HEARTBEAT') - beat, 'a resting block publishes its status').toBeGreaterThan(100);
+    expect(resting('PH_S_HEARTBEAT')).toBe(resting('PH_S_SEQ_END'));
+    expect(resting('PH_S_STATE')).toBe(PH.PH_READY);
+    // (the whole bank once 21.5 s have run)
+    expect(resting('PH_S_TAPE')).toBeGreaterThanOrEqual(Math.min(1032192, engine('PH_S_TAPE') + 4096));
+    expect(resting('PH_S_TIME_L')).toBe(time);
+
     // With no track chosen: the two tracks as they are.
     const second = await sound('track2-none', 2);
     const first = await sound('track1-none', 1);

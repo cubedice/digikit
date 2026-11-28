@@ -14,6 +14,10 @@
 // After the loop, the route (this file): while the loop effect runs, the output goes to the wet mailbox, which the loop
 // effect adds behind its crossfader in the same block, instead of the FX return (dk_loop.inc).
 //
+// Rest (this file, "Rest"): when the whole written tape and everything behind the heads hold silence and nothing is left to
+// finish, a block does none of the above. It checks the link, the controls and the input, writes silence to the tape and
+// to the output and publishes the status; a control that changed or an input that sounds runs the block in full.
+//
 // The colour filter and HALO sit between the heads and the tape, so each pass through the loop adds to them. While HOLD
 // stands the tape is not written: what it holds repeats unchanged, and colour and HALO work on the output only.
 #include "dk_fx.inc"
@@ -61,15 +65,22 @@ _prism_process:
     COMP(R6,R0);
     IF NE JUMP _prism_bad_link;
     // The snapshot is immutable for this call. The provider updates before the FX callback; the second sequence read
-    // rejects a mixed publication.
+    // rejects a mixed publication. It holds the words the engine reads: the ten from ZONE to INPUT and the owner's
+    // generation (the other words of PS_CONTROL stay 0).
+    R0 = I4;
+    R1 = PH_C_ZONE;
+    R0 = R0 + R1;
+    I4 = R0;
     R0 = I5;
-    R1 = PS_CONTROL * 4;
-    R2 = R0 + R1;
-    I3 = R2;
-    LCNTR = PH_CONTROL_WORDS, DO _prism_control_copy UNTIL LCE;
+    R1 = PC_ZONE * 4;
+    R0 = R0 + R1;
+    I3 = R0;
+    LCNTR = PRISM_IDLE_KEYS, DO _prism_control_copy UNTIL LCE;
         R0 = DM(I4,M6);
 _prism_control_copy: DM(I3,M6) = R0;
     I4 = _phrase_control_info;
+    R0 = DM(PH_C_OWNER_GENERATION / 4,I4);
+    DM(PC_OWNER,I5) = R0;
     R0 = DM(PH_C_SEQ / 4,I4);
     COMP(R0,R6);
     IF NE JUMP _prism_bad_link;
@@ -180,7 +191,12 @@ _prism_initialize:
     DM(PS_CH_R + CH_A_DIR,I5) = R0;
     DM(PS_CH_R + CH_B_DIR,I5) = R0;
 _prism_run:
-    CALL _prism_input;
+    CALL _pi_head;
+    R0 = DM(PS_IDLE,I5);
+    R0 = PASS R0;
+    IF NE JUMP _prism_rest;
+_prism_awake:
+    CALL _pi_mix;
     CALL _prism_plan;
     CALL _prism_heads;
     CALL _prism_colour;
@@ -192,6 +208,7 @@ _prism_run:
     DM(PS_FIRST,I5) = R0;
     // a block that ran has no error: a link that came back clears the one it left
     DM(PS_ERROR,I5) = R0;
+    CALL _prism_settle;
     CALL _prism_publish;
     R0 = DK_FX_OK;
     JUMP (M13,I13);
@@ -226,7 +243,9 @@ _prism_silent: DM(I0,M6) = R0;
 // loop; else the loop's side is silence, never older memory. INPT (PC_INPUT) moves the loop's share c of the input toward 0 or
 // 1 by PRISM_SWITCH_STEP a sample: input = send * (1 - w) + tap * PRISM_LOOP_TRIM * w, w = c c (3 - 2 c), written to PS_IN,
 // which the tape then takes. While c is 0 and stays 0 the send bus is the input as it is. Uses R0 to R5, R8 to R13, I0 to I4.
-_prism_input:
+// Two parts. _pi_head: what the loop effect does and where the switch stands, every block; it leaves R4 (the loop feeds the
+// input), R12 (the switch's target, the bits of 0.0 or 1.0) and R13 (where it stands) to _pi_mix, which makes the input.
+_pi_head:
     I4 = _loop_wet;
     R0 = DM(LW_TAKEN,I4);
     R1 = DM(PS_OL_LAST,I5);
@@ -294,6 +313,8 @@ _pi_target:
     IF NE R0 = PASS R1;
     DM(PS_INPUT_ON,I5) = R0;
     R13 = DM(PS_INPT,I5);
+    RTS;
+_pi_mix:
     R0 = R12 OR R13;
     R0 = PASS R0;
     IF EQ RTS;
@@ -393,14 +414,26 @@ _pr_divert:
     R1 = LW_LEFT * 4;
     R0 = R0 + R1;
     I1 = R0;
+    // The share stands at 1, where the move below leaves it: the mailbox takes each word as it is (y times 1) and the
+    // output block is +0 (y - y), both sides in one run.
+    COMP(R13,R12);
+    IF EQ JUMP _pr_divert_whole;
     CALL _pr_divert_side;
     R13 = PASS R10;
     CALL _pr_divert_side;
     DM(PS_DIVERT,I5) = R13;
+_pr_divert_count:
     R0 = DM(LW_SEQ,I4);
     R0 = R0 + 1;
     DM(LW_SEQ,I4) = R0;
     RTS;
+_pr_divert_whole:
+    R1 = 0;
+    LCNTR = 64, DO _pr_divert_word UNTIL LCE;
+        R0 = DM(I0,M5);
+        DM(I1,M6) = R0;
+_pr_divert_word: DM(I0,M6) = R1;
+    JUMP _pr_divert_count;
 // One side: I0 the output block (read y, write y - a y), I1 the mailbox (a y), F13 the share before the first sample, F12 its
 // target, F9 its step. At a = 1 the mailbox holds y and the output block 0, both exactly. Uses F0 to F2.
 _pr_divert_side:
@@ -415,6 +448,249 @@ _pr_divert_side:
         F0 = F0 - F1;
         DM(I0,M6) = R0;
 _pr_divert_sample: DM(I1,M6) = R1;
+    RTS;
+
+// ---- Rest (docs/findings/377). A block of the engine costs the same with or without sound. _prism_settle, at the end of a
+// block that ran, lets the next block rest (PS_IDLE 1) when every one of these holds:
+//   - the whole written tape is silence: the frames written in a row under PRISM_IDLE_LEVEL (PS_TAPE_QUIET, loop.s) are
+//     at least PS_VALID. A tape that stands (HOLD) is not written and keeps its count, so HOLD on a tape that sounds never
+//     rests; repeats at or above unity keep the written frames above the level while anything circulates.
+//   - after that the wet signal was silence for PRISM_IDLE_QUIET frames in a row, PRISM_IDLE_LATE while HALO's late
+//     network runs (PS_QUIET, loop.s): the filters, HALO's lines and the late network have played out.
+//   - nothing is left to finish: no crossfade of the heads, no write crossfade after a release (PS_WFADE), no frames
+//     still to take after HOLD (PS_POST), both sides' heads playing (a side still filling changes by itself), and the
+//     input's switch at one end.
+// A resting block (_prism_rest) runs after the link's and the lease's checks and after _pi_head. It runs in full instead
+// (_rs_wake) when a control word differs from the block that set PS_IDLE (the plan and the status follow every change),
+// when the input's switch has to move, or when a sample of the input (the send bus, or the loop's tap at INPT LOOP)
+// reaches PRISM_IDLE_LEVEL. Else it writes 32 frames of silence to the tape, as the engine would have (the write position
+// and PS_VALID go on, so the status is the same as without rest; a standing tape is left alone), clears the output block
+// and publishes. It does not write the wet mailbox and leaves LW_SEQ alone: the loop effect then adds nothing.
+// In its first resting block the engine empties what it does not run any more: the filters, HALO's lines and the late
+// network's rings, so the block that wakes starts from silence; and it lands a head that still glides on its target. The
+// smoothed controls take their values at once in the block that wakes (PS_FIRST), as after a start. What stands still
+// while the engine rests: the drift's phase and the turn of a reverse segment or a held loop.
+_prism_settle:
+    R0 = DM(PS_CH_L + CH_FADE_LEFT,I5);
+    R1 = DM(PS_CH_R + CH_FADE_LEFT,I5);
+    R0 = R0 OR R1;
+    R1 = DM(PS_WFADE,I5);
+    R0 = R0 OR R1;
+    R1 = DM(PS_POST,I5);
+    R0 = R0 OR R1;
+    R0 = PASS R0;
+    IF NE RTS;
+    R0 = DM(PS_CH_L + CH_A_KIND,I5);
+    R0 = PASS R0;
+    IF EQ RTS;
+    R0 = DM(PS_CH_R + CH_A_KIND,I5);
+    R0 = PASS R0;
+    IF EQ RTS;
+    // the switch stands at the end its target names: PS_INPT is exactly 0.0 or 1.0 there
+    R0 = DM(PS_INPT,I5);
+    R1 = DM(PS_INPUT_ON,I5);
+    R2 = 0;
+    R3 = 0x3f800000;
+    R1 = PASS R1;
+    IF NE R2 = PASS R3;
+    COMP(R0,R2);
+    IF NE RTS;
+    R0 = DM(PS_TAPE_QUIET,I5);
+    R1 = DM(PS_VALID,I5);
+    COMP(R0,R1);
+    IF LT RTS;
+    R0 = DM(PS_QUIET,I5);
+    R1 = PRISM_IDLE_QUIET;
+    R2 = PRISM_IDLE_LATE;
+    R3 = DM(PS_LATE + PL_VALID,I5);
+    R3 = PASS R3;
+    IF NE R1 = PASS R2;
+    COMP(R0,R1);
+    IF LT RTS;
+    R0 = 1;
+    DM(PS_IDLE,I5) = R0;
+    // the controls of this block: a block that differs runs
+    R0 = I5;
+    R1 = PC_ZONE * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = I5;
+    R1 = PS_IDLE_KEY * 4;
+    R0 = R0 + R1;
+    I1 = R0;
+    LCNTR = PRISM_IDLE_KEYS, DO _ps_key UNTIL LCE;
+        R0 = DM(I0,M6);
+_ps_key: DM(I1,M6) = R0;
+    RTS;
+
+// A block at rest. From _pi_head: R4 the loop feeds the input, R12 the switch's target, R13 where it stands; kept for
+// _pi_mix when the block runs after all. Uses R0 to R3, R10, I0 to I4.
+_prism_rest:
+    R0 = I5;
+    R1 = PC_ZONE * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    R0 = I5;
+    R1 = PS_IDLE_KEY * 4;
+    R0 = R0 + R1;
+    I1 = R0;
+    R2 = 0;
+    LCNTR = PRISM_IDLE_KEYS, DO _rs_key UNTIL LCE;
+        R0 = DM(I0,M6);
+        R1 = DM(I1,M6);
+        R0 = R0 XOR R1;
+_rs_key: R2 = R2 OR R0;
+    R2 = PASS R2;
+    IF NE JUMP _rs_wake;
+    COMP(R12,R13);
+    IF NE JUMP _rs_wake;
+    // the input: the send bus, or the loop's tap (silence while it carries no loop)
+    I0 = DM(PS_INPUT,I5);
+    R13 = PASS R13;
+    IF EQ JUMP _rs_scan;
+    R4 = PASS R4;
+    IF EQ JUMP _rs_silent;
+    R0 = _loop_tap;
+    R1 = LT_LEFT * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+_rs_scan:
+    R2 = 0;
+    LCNTR = 64, DO _rs_scan_last UNTIL LCE;
+        F0 = DM(I0,M6);
+        F0 = ABS F0;
+_rs_scan_last: F2 = MAX(F2,F0);
+    R0 = PRISM_IDLE_LEVEL;
+    COMP(F2,F0);
+    IF GE JUMP _rs_wake;
+_rs_silent:
+    R0 = DM(PS_IDLE,I5);
+    R1 = 2;
+    COMP(R0,R1);
+    IF EQ JUMP _rs_tape;
+    // the first block at rest
+    DM(PS_IDLE,I5) = R1;
+    R0 = 0;
+    DM(PS_FILT_L + FL_HIGH,I5) = R0;
+    DM(PS_FILT_L + FL_LOW,I5) = R0;
+    DM(PS_FILT_R + FL_HIGH,I5) = R0;
+    DM(PS_FILT_R + FL_LOW,I5) = R0;
+    R1 = DM(PS_HALO_ON,I5);
+    R1 = PASS R1;
+    IF EQ JUMP _rs_late;
+    R1 = I5;
+    R2 = PS_LINE0 * 4;
+    R1 = R1 + R2;
+    I2 = R1;
+    LCNTR = 1024, DO _rs_lines UNTIL LCE;
+_rs_lines: DM(I2,M6) = R0;
+_rs_late:
+    // The late network keeps its count of valid samples (a reset would fade the next sound's excitation in); its rings
+    // and its filters are emptied instead.
+    R1 = DM(PS_LATE + PL_VALID,I5);
+    R1 = PASS R1;
+    IF EQ JUMP _rs_heads;
+    DM(PS_LATE + PL_DAMP_L,I5) = R0;
+    DM(PS_LATE + PL_DAMP_R,I5) = R0;
+    DM(PS_LATE + PL_PRIOR_L,I5) = R0;
+    DM(PS_LATE + PL_PRIOR_R,I5) = R0;
+    R1 = I5;
+    R2 = PS_LATE_LINE_L * 4;
+    R1 = R1 + R2;
+    I2 = R1;
+    LCNTR = 2 * PRISM_LATE_RING, DO _rs_rings UNTIL LCE;
+_rs_rings: DM(I2,M6) = R0;
+_rs_heads:
+    R0 = I5;
+    R1 = PS_CH_L * 4;
+    R0 = R0 + R1;
+    I3 = R0;
+    CALL _rs_land;
+    MODIFY(I3,PS_CH_R - PS_CH_L) (NW);
+    CALL _rs_land;
+_rs_tape:
+    // the tape goes on with silence, unless it stands
+    R0 = DM(PS_HOLD,I5);
+    R0 = PASS R0;
+    IF NE JUMP _rs_out;
+    R10 = DM(PS_WPOS,I5);
+    R0 = LSHIFT R10 BY 2;
+    R1 = DM(PS_BANK,I5);
+    R0 = R0 + R1;
+    I1 = R0;
+    R1 = DM(PS_CAPACITY,I5);
+    R2 = LSHIFT R1 BY 2;
+    R0 = R0 + R2;
+    I2 = R0;
+    R0 = 0;
+    LCNTR = 32, DO _rs_frames UNTIL LCE;
+        DM(I1,M6) = R0;
+_rs_frames: DM(I2,M6) = R0;
+    R0 = 32;
+    R10 = R10 + R0;
+    COMP(R10,R1);
+    IF GE R10 = R10 - R1;
+    DM(PS_WPOS,I5) = R10;
+    R2 = DM(PS_VALID,I5);
+    R2 = R2 + R0;
+    R2 = MIN(R2,R1);
+    DM(PS_VALID,I5) = R2;
+    R2 = DM(PS_TAPE_QUIET,I5);
+    R2 = R2 + R0;
+    R2 = MIN(R2,R1);
+    DM(PS_TAPE_QUIET,I5) = R2;
+_rs_out:
+    I0 = DM(PS_OUTPUT,I5);
+    R0 = 0;
+    LCNTR = 64, DO _rs_zero UNTIL LCE;
+_rs_zero: DM(I0,M6) = R0;
+    // the route: the share of the output the loop effect takes is where it would stand, without a move to hear
+    R1 = 0x3f800000;
+    R2 = DM(PS_ALIVE,I5);
+    R2 = PASS R2;
+    IF NE R0 = PASS R1;
+    DM(PS_DIVERT,I5) = R0;
+    R0 = 0;
+    DM(PS_ERROR,I5) = R0;
+    CALL _prism_publish;
+    R0 = DK_FX_OK;
+    JUMP (M13,I13);
+_rs_wake:
+    R0 = 0;
+    DM(PS_IDLE,I5) = R0;
+    R0 = 1;
+    DM(PS_FIRST,I5) = R0;
+    JUMP _prism_awake;
+
+// I3 one side: a head A that glides (forward, on the running tape) lands where its glide ends, its target plus the drift,
+// at rest. The tape is silence, so the move is not heard. Uses R0 to R2.
+_rs_land:
+    R0 = DM(CH_GLIDE,I3);
+    R0 = PASS R0;
+    IF EQ RTS;
+    F0 = DM(CH_DRIFT,I3);
+    R1 = TRUNC F0;
+    F2 = FLOAT R1;
+    F0 = F0 - F2;
+    R2 = 0;
+    COMP(F0,F2);
+    IF GE JUMP _rs_land_whole;
+    R2 = 0x3f800000;
+    F0 = F0 + F2;
+    R1 = R1 - 1;
+_rs_land_whole:
+    R2 = DM(CH_TARGET,I3);
+    R1 = R1 + R2;
+    R2 = PRISM_TIME_MIN;
+    COMP(R1,R2);
+    IF GE JUMP _rs_land_set;
+    R1 = R2;
+    R0 = 0;
+_rs_land_set:
+    DM(CH_A_DINT,I3) = R1;
+    DM(CH_A_FRAC,I3) = R0;
+    R0 = 0;
+    DM(CH_VEL,I3) = R0;
     RTS;
 
 // The controls become this block's plan: the two sides' times in frames (PS_TIME_L, PS_TIME_R), the hold state, the frame

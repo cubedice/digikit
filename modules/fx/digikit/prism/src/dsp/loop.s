@@ -58,11 +58,22 @@ _prism_colour:
     R1 = PS_FILT_L * 4;
     R0 = R0 + R1;
     I3 = R0;
+    // COLR stands (the three steps are 0) at a place without saturation (the uncoloured point and above): the short loop.
+    R0 = R10 OR R12;
+    R0 = R0 OR R13;
+    R0 = R0 OR R2;
+    R0 = PASS R0;
+    IF EQ JUMP _pc_plain;
     R14 = 0x3f800000;
     R15 = 0xbf800000;
     CALL _pc_side;
     MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
     CALL _pc_side;
+    RTS;
+_pc_plain:
+    CALL _pc_plain_side;
+    MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
+    CALL _pc_plain_side;
     RTS;
 
 // The numbers of COLR F0 (-1..1): F9 the low pass's coefficient, F5 the high pass's, F2 a third of the saturation.
@@ -134,6 +145,32 @@ _pc_sample: DM(I0,M6) = R0;
     DM(FL_LOW,I3) = R8;
     RTS;
 
+// _pc_side for numbers that stand and no saturation: I0, I3, F9 and F5 as there. It gives the same words: a step of 0
+// leaves a number as it is, and y - 0 t^3 is y, but for a y of -0, which that difference turns into +0 as the sum with +0
+// does here. Uses F0, F1, F3, F4, F6, F7, F8 and F11.
+_pc_plain_side:
+    F7 = DM(FL_HIGH,I3);
+    F8 = DM(FL_LOW,I3);
+    R4 = R9;
+    R3 = R5;
+    R11 = 0;
+    R6 = 0x3f000000;
+    LCNTR = 32, DO _pc_plain_sample UNTIL LCE;
+        F0 = DM(I0,M5);
+        F1 = F0 - F7;
+        F0 = F1 * F3;
+        F7 = F7 + F0;
+        F0 = F0 * F6;
+        F0 = F1 - F0;
+        F1 = F0 - F8;
+        F1 = F1 * F4;
+        F8 = F8 + F1;
+        F0 = F8 + F11;
+_pc_plain_sample: DM(I0,M6) = R0;
+    DM(FL_HIGH,I3) = R7;
+    DM(FL_LOW,I3) = R8;
+    RTS;
+
 _prism_loop:
     // RPTS: 0 .. 0.75 is a gain of 0 .. 1, 0.75 .. 1 a gain of 1 .. 1.1. The gain and MIX move smoothly (PRISM_SMOOTH).
     F0 = DM(PC_RPTS,I5);
@@ -195,6 +232,32 @@ _lp_gain:
     R15 = 0x3eaaaaab; // 1/3
     CALL _lp_side;
     CALL _lp_side;
+    // Rest (prism.s): the frames in a row whose wet signal was silence. They are counted only while the whole written tape
+    // is silence, so a block that plays does not pay for the look at its wet signal.
+    R2 = 0;
+    R0 = DM(PS_TAPE_QUIET,I5);
+    R1 = DM(PS_VALID,I5);
+    COMP(R0,R1);
+    IF LT JUMP _lp_quiet;
+    R0 = I5;
+    R1 = PS_Y * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    R3 = 0;
+    LCNTR = 64, DO _lp_quiet_last UNTIL LCE;
+        F0 = DM(I0,M6);
+        F0 = ABS F0;
+_lp_quiet_last: F3 = MAX(F3,F0);
+    R0 = PRISM_IDLE_LEVEL;
+    COMP(F3,F0);
+    IF GE JUMP _lp_quiet;
+    R2 = DM(PS_QUIET,I5);
+    R0 = 32;
+    R2 = R2 + R0;
+    R0 = PRISM_IDLE_LATE;
+    R2 = MIN(R2,R0);
+_lp_quiet:
+    DM(PS_QUIET,I5) = R2;
 
     // ---- the tape
     R0 = DM(PS_HOLD,I5);
@@ -219,18 +282,37 @@ _lp_gain:
     R9 = DM(PS_WFADE,I5);
     R9 = PASS R9;
     IF NE JUMP _lp_write_fade;
+    // F3: the largest magnitude written (rest, prism.s)
+    R3 = 0;
     LCNTR = 32, DO _lp_write_left UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F2 = ABS F0;
+        F3 = MAX(F3,F2);
 _lp_write_left: DM(I1,M6) = R0;
     LCNTR = 32, DO _lp_write_right UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F2 = ABS F0;
+        F3 = MAX(F3,F2);
 _lp_write_right: DM(I2,M6) = R0;
+    // the frames written in a row that were silence, up to the tape's length
+    R0 = DM(PS_TAPE_QUIET,I5);
+    R1 = 32;
+    R0 = R0 + R1;
+    R1 = DM(PS_CAPACITY,I5);
+    R0 = MIN(R0,R1);
+    R2 = PRISM_IDLE_LEVEL;
+    COMP(F3,F2);
+    IF GE R0 = R0 - R0;
+    DM(PS_TAPE_QUIET,I5) = R0;
     JUMP _lp_advance;
 _lp_write_fade:
+    // the crossfade writes a mix with what stood on the tape: not counted as silence
+    R0 = 0;
+    DM(PS_TAPE_QUIET,I5) = R0;
     // The new signal's share rises by 1 / PRISM_WFADE a frame; what stands on the tape gives way to it.
     R0 = PRISM_WFADE;
     R0 = R0 - R9;
@@ -421,41 +503,58 @@ _lp_ping_ramp:
 
 // One side: I0 the wet signal, I1 the feedback, I2 the output (all advanced by 32). PS_TEMP and PS_TEMP1 the gain and MIX
 // before the block, F4 and F5 their steps; F6 and F7 the output's bounds; F12 the limiter's knee, F13 its slope, F14 its
-// span, F15 a third.
+// span, F15 a third. A sample under the knee, the usual one, runs straight through the loop; the feedback comes first, so
+// that the call for one above the knee does not stand at the loop's end. Uses F0 to F3.
 _lp_side:
     F10 = DM(PS_TEMP,I5);
     F11 = DM(PS_TEMP1,I5);
-    R8 = 32;
-_lp_sample:
-    F0 = DM(I0,M6);
-    F10 = F10 + F4;
-    F11 = F11 + F5;
-    F1 = F0 * F11;
-    F1 = MIN(F1,F6);
-    F1 = MAX(F1,F7);
-    DM(I2,M6) = R1;
-    F0 = F0 * F10;
-    F1 = ABS F0;
-    COMP(F1,F12);
-    IF LE JUMP _lp_store;
-    // Above the knee: knee + span * (u - u^3 / 3), u = (|x| - knee) * slope up to 1, with the sign of x.
+    R0 = R4 OR R5;
+    R0 = PASS R0;
+    IF EQ JUMP _lp_steady;
+    LCNTR = 32, DO _lp_sample UNTIL LCE;
+        F0 = DM(I0,M6);
+        F10 = F10 + F4;
+        F2 = F0 * F10;
+        F1 = ABS F2;
+        COMP(F1,F12);
+        IF GT CALL _lp_bend;
+        DM(I1,M6) = R2;
+        F11 = F11 + F5;
+        F1 = F0 * F11;
+        F1 = MIN(F1,F6);
+        F1 = MAX(F1,F7);
+_lp_sample: DM(I2,M6) = R1;
+    RTS;
+// The gain and MIX stand (both steps are 0): the same loop without the two sums, which would leave them as they are.
+_lp_steady:
+    LCNTR = 32, DO _lp_steady_sample UNTIL LCE;
+        F0 = DM(I0,M6);
+        F2 = F0 * F10;
+        F1 = ABS F2;
+        COMP(F1,F12);
+        IF GT CALL _lp_bend;
+        DM(I1,M6) = R2;
+        F1 = F0 * F11;
+        F1 = MIN(F1,F6);
+        F1 = MAX(F1,F7);
+_lp_steady_sample: DM(I2,M6) = R1;
+    RTS;
+// F2 a sample above the knee and F1 its magnitude: F2 = knee + span * (u - u^3 / 3), u = (|x| - knee) * slope up to 1, with
+// the sign of x. Uses F1, F3.
+_lp_bend:
     F1 = F1 - F12;
     F1 = F1 * F13;
-    R2 = 0x3f800000;
-    F1 = MIN(F1,F2);
-    F2 = F1 * F1;
-    F2 = F2 * F1;
-    F2 = F2 * F15;
-    F1 = F1 - F2;
+    R3 = 0x3f800000;
+    F1 = MIN(F1,F3);
+    F3 = F1 * F1;
+    F3 = F3 * F1;
+    F3 = F3 * F15;
+    F1 = F1 - F3;
     F1 = F1 * F14;
     F1 = F1 + F12;
-    R0 = PASS R0;
+    R2 = PASS R2;
     IF LT F1 = -F1;
-    R0 = R1;
-_lp_store:
-    DM(I1,M6) = R0;
-    R8 = R8 - 1;
-    IF GT JUMP _lp_sample;
+    R2 = R1;
     RTS;
 
 // COLR's table: the low pass's coefficient, the high pass's and a third of the saturation, three floats a row, nine rows

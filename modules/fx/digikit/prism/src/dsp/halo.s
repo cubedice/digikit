@@ -119,7 +119,7 @@ _hl_move:
     R0 = I5;
     R1 = PS_LINE0 * 4;
     R0 = R0 + R1;
-    DM(PS_TEMP,I5) = R0;
+    R4 = R0;
     R1 = 1024;
     R0 = R0 + R1;
     DM(PS_TEMP1,I5) = R0;
@@ -128,66 +128,102 @@ _hl_move:
     R0 = R0 + R1;
     DM(PS_TEMP3,I5) = R0;
     R12 = DM(PS_HALO_INDEX,I5);
-    R14 = 32;
+    R13 = 1020;
     R15 = 0x3f3504f3; // sqrt(1/2)
-_hl_sample:
-    F8 = F8 + F10;
-    F9 = F9 + F11;
-    F6 = DM(I0,M5);
-    F7 = DM(I1,M5);
-    F0 = F6 + F7;
-    F0 = F0 * F15;
-    F7 = F6 - F7;
-    F7 = F7 * F15;
-    R4 = 97;
-    R5 = DM(PS_TEMP,I5);
-    CALL _hl_line;
-    R6 = R0;
-    R0 = R7;
-    R4 = 137;
-    R5 = DM(PS_TEMP1,I5);
-    CALL _hl_line;
-    F7 = F6 - F0;
-    F7 = F7 * F15;
-    F0 = F6 + F0;
-    F0 = F0 * F15;
-    R4 = 191;
-    R5 = DM(PS_TEMP2,I5);
-    CALL _hl_line;
-    DM(I0,M6) = R0;
-    R0 = R7;
-    R4 = 251;
-    R5 = DM(PS_TEMP3,I5);
-    CALL _hl_line;
-    DM(I1,M6) = R0;
-    R12 = R12 + 1;
-    R0 = 255;
-    R12 = R12 AND R0;
-    R14 = R14 - 1;
-    IF GT JUMP _hl_sample;
+    // One sample. F8 and F9 are c and s; R12 the write index of the four lines and R14 the same in bytes; R13 the mask of
+    // a line's 256 words in bytes; R4 the first line's address, the others' in PS_TEMP1 to PS_TEMP3.
+    // A line, F0 its input and its output: its delayed word d lies its length before the write index (both in bytes, the
+    // difference masked); the line takes s x - c d, and the output is c x + s d. Uses R1 to R3, R5, I2.
+    LCNTR = 32, DO _hl_sample UNTIL LCE;
+        F8 = F8 + F10;
+        F9 = F9 + F11;
+        F6 = DM(I0,M5);
+        F7 = DM(I1,M5);
+        F0 = F6 + F7;
+        F0 = F0 * F15;
+        F7 = F6 - F7;
+        F7 = F7 * F15;
+        R14 = LSHIFT R12 BY 2;
+        // the line of 97 samples
+        R1 = 388;
+        R1 = R14 - R1;
+        R1 = R1 AND R13;
+        R1 = R1 + R4;
+        I2 = R1;
+        F1 = DM(0,I2);
+        F2 = F0 * F9;
+        F3 = F1 * F8;
+        F2 = F2 - F3;
+        R3 = R14 + R4;
+        I2 = R3;
+        DM(0,I2) = R2;
+        F0 = F0 * F8;
+        F1 = F1 * F9;
+        F0 = F0 + F1;
+        R6 = R0;
+        R0 = R7;
+        // the line of 137 samples
+        R1 = 548;
+        R1 = R14 - R1;
+        R1 = R1 AND R13;
+        R5 = DM(PS_TEMP1,I5);
+        R1 = R1 + R5;
+        I2 = R1;
+        F1 = DM(0,I2);
+        F2 = F0 * F9;
+        F3 = F1 * F8;
+        F2 = F2 - F3;
+        R3 = R14 + R5;
+        I2 = R3;
+        DM(0,I2) = R2;
+        F0 = F0 * F8;
+        F1 = F1 * F9;
+        F0 = F0 + F1;
+        F7 = F6 - F0;
+        F7 = F7 * F15;
+        F0 = F6 + F0;
+        F0 = F0 * F15;
+        // the line of 191 samples
+        R1 = 764;
+        R1 = R14 - R1;
+        R1 = R1 AND R13;
+        R5 = DM(PS_TEMP2,I5);
+        R1 = R1 + R5;
+        I2 = R1;
+        F1 = DM(0,I2);
+        F2 = F0 * F9;
+        F3 = F1 * F8;
+        F2 = F2 - F3;
+        R3 = R14 + R5;
+        I2 = R3;
+        DM(0,I2) = R2;
+        F0 = F0 * F8;
+        F1 = F1 * F9;
+        F0 = F0 + F1;
+        DM(I0,M6) = R0;
+        R0 = R7;
+        // the line of 251 samples
+        R1 = 1004;
+        R1 = R14 - R1;
+        R1 = R1 AND R13;
+        R5 = DM(PS_TEMP3,I5);
+        R1 = R1 + R5;
+        I2 = R1;
+        F1 = DM(0,I2);
+        F2 = F0 * F9;
+        F3 = F1 * F8;
+        F2 = F2 - F3;
+        R3 = R14 + R5;
+        I2 = R3;
+        DM(0,I2) = R2;
+        F0 = F0 * F8;
+        F1 = F1 * F9;
+        F0 = F0 + F1;
+        DM(I1,M6) = R0;
+        R12 = R12 + 1;
+        R0 = 255;
+_hl_sample: R12 = R12 AND R0;
     DM(PS_HALO_INDEX,I5) = R12;
-    RTS;
-
-// One line. F0 the input and the output; R4 the line's length, R5 its address, R12 the write index, F8 and F9 c and s.
-// Uses R1 to R3, I2.
-_hl_line:
-    R1 = R12 - R4;
-    R2 = 255;
-    R1 = R1 AND R2;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R5;
-    I2 = R1;
-    F1 = DM(0,I2);
-    F2 = F0 * F9;
-    F3 = F1 * F8;
-    F2 = F2 - F3;
-    R3 = LSHIFT R12 BY 2;
-    R3 = R3 + R5;
-    I2 = R3;
-    DM(0,I2) = R2;
-    F0 = F0 * F8;
-    F1 = F1 * F9;
-    F0 = F0 + F1;
     RTS;
 
 // Late stereo room: two downsampled delays, one pole per return and a damped
@@ -237,6 +273,19 @@ _hl_late_on:
     F5 = DM(PL_DAMP_R,I4);
     R11 = DM(PL_INDEX,I4);
     R12 = DM(PL_VALID,I4);
+    // The network starts, empty. Silence up to here stays silence behind it: the count of silent frames (rest, prism.s) moves
+    // up by what the network adds to the frames asked for, so the engine waits no longer than without it.
+    R12 = PASS R12;
+    IF NE JUMP _hl_late_run;
+    R0 = DM(PS_QUIET,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _hl_late_run;
+    R1 = PRISM_IDLE_LATE - PRISM_IDLE_QUIET;
+    R0 = R0 + R1;
+    R1 = PRISM_IDLE_LATE;
+    R0 = MIN(R0,R1);
+    DM(PS_QUIET,I5) = R0;
+_hl_late_run:
     R13 = PRISM_LATE_RING - 1;
     R0 = I5;
     R1 = PS_LATE_LINE_L * 4;
@@ -355,17 +404,10 @@ _hl_late_on:
         F3 = F3 * F10;
         // Start new excitation at zero with zero slope. The first reading of
         // either refilled delay must not expose a full-amplitude sample.
+        // After PRISM_LATE_START pairs the weight is exactly 1.
         R0 = PRISM_LATE_START;
-        R0 = MIN(R12,R0);
-        F0 = FLOAT R0;
-        R1 = 0x3b800000; // 1 / PRISM_LATE_START
-        F0 = F0 * F1;
-        F0 = F0 * F0;
-        R1 = 0x40000000;
-        F1 = F1 - F0;
-        F0 = F0 * F1;
-        F2 = F2 * F0;
-        F3 = F3 * F0;
+        COMP(R12,R0);
+        IF LT CALL _hl_late_rise;
         F0 = F4 + F5;
         F1 = F4 - F5;
         F0 = F0 * F9;
@@ -395,4 +437,17 @@ _hl_late_pair: R12 = R12 + 1;
     DM(PL_VALID,I4) = R12;
     DM(PL_DAMP_L,I4) = R4;
     DM(PL_DAMP_R,I4) = R5;
+    RTS;
+// The excitation F2 and F3 of pair R12 of a network that starts (R12 below PRISM_LATE_START), times
+// w (2 - w), w = (R12 / PRISM_LATE_START)^2. Uses F0, F1.
+_hl_late_rise:
+    F0 = FLOAT R12;
+    R1 = 0x3b800000; // 1 / PRISM_LATE_START
+    F0 = F0 * F1;
+    F0 = F0 * F0;
+    R1 = 0x40000000;
+    F1 = F1 - F0;
+    F0 = F0 * F1;
+    F2 = F2 * F0;
+    F3 = F3 * F0;
     RTS;

@@ -46,6 +46,13 @@ _test_fold:
 .GLOBAL _test_quiet;
 _test_quiet:
     CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
+    CALL _tk_pool_fold;
     CALL _tk_pool_quiet_reply;
     RTS;
 """
@@ -57,7 +64,9 @@ _test_quiet:
 
 def run(fold, first, second):
     linked, symbols = fold
-    payload = {symbols["_tk_pool_quiet_phase"] // 4: 0}
+    # every block inspects two tracks for the quiet mask: the module starts with zeroed data, and the cursors are idle
+    payload = {symbols[name] // 4: 0 for name in symbols}
+    payload.update({(0x241484 + 0x1D8 * voice) // 4: 0 for voice in range(32)})
     for i, v in enumerate(first):
         payload[(RING + SUFFIX) // 4 + i] = v
     for i, v in enumerate(second):
@@ -109,6 +118,7 @@ def test_valid_empty_map_restores_unmodified_buses(fold):
 def test_quiet_reply_excludes_pending_cursors_and_audible_filter_tails(fold):
     linked, symbols = fold
     dm = {symbols[name] // 4: 0 for name in symbols}
+    # a round of eight blocks, two tracks a block: the eighth publishes
     dm[symbols["_tk_pool_quiet_phase"] // 4] = 7
     dm.update({BUS // 4 + i: 0 for i in range(16 * 64)})
     dm[BUS // 4 + 4 * 64 + 37] = sample(0.001)  # Right channel only.
@@ -124,8 +134,73 @@ def test_quiet_reply_excludes_pending_cursors_and_audible_filter_tails(fold):
         regs={"I4": reply},
         dm_words=dm,
         reads={"status": ((reply + 0x60) // 4, 2)},
-        max_steps=5000,
+        max_steps=8000,
     )
     assert output["halt"]["reason"] == "breakpoint", output["halt"]
     mask = 0xFFFF ^ ((1 << 3) | (1 << 4) | (1 << 15))
     assert output["status"] == [(mask << 16) | 0x4B51, ((mask ^ 0x32F7 ^ 1) << 16) | 1]
+
+
+def quiet_session(fold):
+    """A core that keeps its memory between calls: silent buses, idle cursors, no helper map."""
+    linked, symbols = fold
+    session = pk_sharc.CallSession([linked], 0xB9F000)
+    for name in symbols:
+        session.poke(symbols[name] // 4, 0)
+    for i in range(16 * 64):
+        session.poke(BUS // 4 + i, 0)
+    for voice in range(32):
+        session.poke((0x241484 + 0x1D8 * voice) // 4, 0)
+        session.poke((0x241484 + 0x1D8 * voice) // 4 + 0x76, 0)
+    return session, symbols
+
+
+def test_quiet_scan_is_spread_two_tracks_a_block(fold):
+    session, symbols = quiet_session(fold)
+    session.poke(symbols["_tk_pool_quiet_phase"] // 4, 7)
+    mask_at = symbols["_tk_pool_quiet_mask"] // 4
+    serial_at = symbols["_tk_pool_quiet_serial"] // 4
+    costs = []
+    published = []
+    # Three rounds. Track t sounds only in the block of round 1 that inspects it (phase t // 2), on one side; track 9's
+    # cursor is active through round 2.
+    for block in range(24):
+        phase = block % 8
+        for track in (2 * phase, 2 * phase + 1):
+            loud = 8 <= block < 16 and track in (2, 7, 12)
+            session.poke(
+                BUS // 4 + 64 * track + 5 + 32 * (track % 2),
+                sample(0.01) if loud else 0,
+            )
+        session.poke((0x241484 + 0x1D8 * 18) // 4, 1 if 8 <= block < 16 else 0)
+        result = session.call("_tk_pool_fold", {}, max_steps=5000)
+        assert result["halt"]["reason"] == "breakpoint", result["halt"]
+        costs.append(result["instructions"])
+        published.append((session.peek(serial_at), session.peek(mask_at)))
+    # The mask and its serial move in the last block of a round and nowhere else.
+    assert [p for i, p in enumerate(published) if i % 8 == 7] == [
+        (1, 0xFFFF),
+        (2, 0xFFFF ^ ((1 << 2) | (1 << 7) | (1 << 12) | (1 << 9))),
+        (3, 0xFFFF),
+    ]
+    for i, p in enumerate(published[1:], 1):
+        assert p == (published[i - 1] if i % 8 != 7 else p)
+    assert published[0] == (0, 0)
+    # No block carries more than two tracks' share: each of the two is its 64 bus words at four instructions and under 20
+    # around them, plus the save and restore of the routine. One block inspecting all sixteen took over 4,300.
+    share = 2 * (64 * 4 + 20) + 110
+    assert max(costs) <= share, costs
+    assert max(costs) - min(costs) <= 2 * (64 * 4 + 20), costs
+
+
+def test_a_round_that_starts_late_marks_the_tracks_it_missed_as_not_quiet(fold):
+    session, symbols = quiet_session(fold)
+    # the module starts with phase 0: its first block is phase 1, so tracks 0 and 1 are not inspected in the first round
+    for _ in range(7):
+        session.call("_tk_pool_fold", {}, max_steps=5000)
+    assert session.peek(symbols["_tk_pool_quiet_serial"] // 4) == 1
+    assert session.peek(symbols["_tk_pool_quiet_mask"] // 4) == 0xFFFC
+    for _ in range(8):
+        session.call("_tk_pool_fold", {}, max_steps=5000)
+    assert session.peek(symbols["_tk_pool_quiet_serial"] // 4) == 2
+    assert session.peek(symbols["_tk_pool_quiet_mask"] // 4) == 0xFFFF

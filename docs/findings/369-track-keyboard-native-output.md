@@ -152,8 +152,11 @@ The scanner now checks individual note destinations and treats a pending kit
 transition or unrecognized record as busy. The native audition dispatcher
 and sequencer due hook exclude independent notes on leased destinations.
 
-Every eight blocks the DSP checks both sample cursors and the complete
-pre-fold stereo track bus. This handles a native AMP phase that parks after
+Every eight blocks the DSP has checked both sample cursors and the complete
+pre-fold stereo track bus of every track: two tracks a block, each over that
+whole block, and the mask of all sixteen with the eighth (since 2026-11-27;
+before, one block in eight checked all sixteen, 4,455 instructions in that
+block against 646 in every block now). This handles a native AMP phase that parks after
 its source ends. A stopped ONESHOT cursor with every sample below a half
 24-bit sample step is quiescent even if the AMP still holds its last release
 coefficient. The quiet mask and its
