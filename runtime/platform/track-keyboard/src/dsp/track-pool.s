@@ -189,9 +189,8 @@ _tk_pool_bus:
     LCNTR = 64, DO _tk_pool_sample UNTIL LCE;
         R0 = DM(I0,M5);
         R1 = DM(I1,M5);
-        F1 = F1 + F0;
-        DM(I1,M6) = R1;
-_tk_pool_sample: DM(I0,M6) = R2;
+        F1 = F1 + F0, DM(I0,M6) = R2;
+_tk_pool_sample: DM(I1,M6) = R1;
 _tk_pool_next_bus:
     R5 = LSHIFT R5 BY -1;
     R5 = PASS R5;

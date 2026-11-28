@@ -159,6 +159,20 @@ def quiet_session(fold):
     return session, symbols
 
 
+def test_three_sounding_helpers_fit_the_fold_budget(fold):
+    session, symbols = quiet_session(fold)
+    helpers = (1, 9, 15)
+    session.poke(symbols["_tk_pool_mask"] // 4, sum(1 << track for track in helpers))
+    for track in helpers:
+        for i in range(64):
+            session.poke(BUS // 4 + track * 64 + i, sample((track + i) / 128))
+    result = session.call("_tk_pool_fold", {}, max_steps=5000)
+    assert result["halt"]["reason"] == "breakpoint"
+    assert result["instructions"] < 1400
+    for i in range(64):
+        assert session.peek(BUS // 4 + i) == sample(sum(track + i for track in helpers) / 128)
+
+
 def test_quiet_scan_is_spread_two_tracks_a_block(fold):
     session, symbols = quiet_session(fold)
     session.poke(symbols["_tk_pool_quiet_phase"] // 4, 7)
