@@ -106,7 +106,7 @@ export function defineMemaudit(set: (device: Device) => AuditSet | undefined, o:
     describe.skipIf(o.full === true && !FULL_TIER)(
       `${device.toUpperCase()} ${FIRMWARE[device]}: memaudit ${spec.title}`,
       () => {
-        let guard: GuardPlan | undefined;
+        let loadGuard: GuardPlan | undefined;
         let blocks: Pick<DkModule, 'name' | 'cf_base' | 'cf_size'>[] = [];
         let cardSpec: CardSpec | undefined;
         const synthDir = spec.full ? fs.mkdtempSync(path.join(os.tmpdir(), 'digi-memaudit-synth-')) : '';
@@ -204,11 +204,23 @@ export function defineMemaudit(set: (device: Device) => AuditSet | undefined, o:
 
             // the files of the services are blocks of the arena as well: their code and statics are not strays
             const pkg = await packageBlock(session, h.plan);
-            blocks = [...modules, ...(await providerBlocks(session, h.plan)), pkg];
+            const providers = await providerBlocks(session, h.plan);
+            blocks = [...modules, ...providers, pkg];
             const plan = guardPlan(device, FIRMWARE[device], h.plan, blocks, arena, [
               { owner: pkg.name, lo: pkg.cf_base, hi: pkg.cf_base + pkg.cf_size },
             ]);
-            guard = plan;
+            loadGuard = plan;
+            // During cold boot the bundled machines service emits the load records and populates the image's registry rows.
+            // Give that service the loader's writer allowance for the cold-boot watch only.
+            const machinesProvider = providers.find(({ name }) => name === 'core/services/machines');
+            if (machinesProvider) {
+              const { cf_base: lo, cf_size: size, name: owner } = machinesProvider;
+              const hi = lo + size;
+              expect(arena[0] <= lo && lo < hi && hi <= arena[1], 'machines service block lies in the arena').toBe(
+                true,
+              );
+              loadGuard = { ...plan, code: [...plan.code, { owner, lo, hi }] };
+            }
             record(h.artifacts, 'memaudit-plan', {
               protect: plan.protect.map((r) => [r.label, r.lo, r.hi]),
               code: plan.code.map((c) => [c.owner, c.lo, c.hi]),
@@ -264,13 +276,13 @@ export function defineMemaudit(set: (device: Device) => AuditSet | undefined, o:
             ...common,
             // the watch of this daemon is the audit's: the ranges come from the first pass (the arena is deterministic)
             env: (prepared) => {
-              if (!guard) return {}; // the drive test failed: the load pass skips
-              return loadWatchEnv(guard, dmaHoles(prepared.plan));
+              if (!loadGuard) return {}; // the drive test failed: the load pass skips
+              return loadWatchEnv(loadGuard, dmaHoles(prepared.plan));
             },
           });
 
           test('a cold boot of the same card with the write watch on: the load and init of the modules store nothing outside their blocks', async (ctx) => {
-            if (!cardSpec || !guard) return ctx.skip('the drive test did not get as far as arming the guard');
+            if (!cardSpec || !loadGuard) return ctx.skip('the drive test did not get as far as arming the guard');
             const runtime = await h.load('load-pass', cardSpec);
             await runtime.ui.wait({ ms: 300, why: SETTLE });
             const stores = loggedStores(h.artifacts);
