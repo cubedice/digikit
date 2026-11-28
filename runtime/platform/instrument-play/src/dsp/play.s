@@ -433,9 +433,18 @@ _iv_slot_load:
     I2 = _iv_output;
     R2 = 32;
     CALL _iv_copy;
+    // The normalizer writes each event before publishing a new nonzero count.
+    // An empty batch has no payload to restore.
+    R0 = DM(_iv_input + 32); // input word 8: event count
+    R0 = PASS R0;
+    IF EQ JUMP _iv_slot_load_no_events;
     I2 = _iv_events;
     R2 = 48;
     CALL _iv_copy;
+    JUMP _iv_slot_load_controls;
+_iv_slot_load_no_events:
+    MODIFY(I1, 48) (NW);
+_iv_slot_load_controls:
     I2 = _iv_controls;
     R2 = 32;
     CALL _iv_copy;
@@ -482,9 +491,18 @@ _iv_slot_store:
     I1 = _iv_output;
     R2 = 32;
     CALL _iv_copy_out;
+    // Process clears the count after consuming a batch. Keep only the count
+    // in that case; old event words in the slot are no longer live.
+    R0 = DM(_iv_input + 32);
+    R0 = PASS R0;
+    IF EQ JUMP _iv_slot_store_no_events;
     I1 = _iv_events;
     R2 = 48;
     CALL _iv_copy_out;
+    JUMP _iv_slot_store_controls;
+_iv_slot_store_no_events:
+    MODIFY(I2, 48) (NW);
+_iv_slot_store_controls:
     I1 = _iv_controls;
     R2 = 32;
     JUMP _iv_copy_out;
