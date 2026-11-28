@@ -47,6 +47,8 @@ def family_controls(family):
         "wavetable-b": lambda: wavetable_fm_controls(mix=64),
         "wavetable-fm": lambda: wavetable_fm_controls(fm_depth=60, mix=64),
         "wavetable-settled": lambda: wavetable_fm_controls(mix=64),
+        # a frame position on a whole frame with nothing moving it (no scan depth, a neutral timbre envelope)
+        "wavetable-frame-settled": lambda: wavetable_fm_controls(position=300, mix=64),
     }[family]()
     values[6] = 64
     values[21] = (values[21] & 0xFFFF0000) | 64
@@ -122,6 +124,7 @@ def held_owners(state):
 # 414, where the source mix stops 0.000001 short of the wavetable and the pad oscillator's share (-140 dB) goes; the
 # largest difference of a sample is 1.5e-8 at a peak of 0.147 (85a1a7f2... and 932238042f... before). The settled take
 # is the same before and after.
+# The whole-frame take was recorded before the table pass skipped its second frame.
 PINNED = {
     "velvet": "efa291cb3ede4d588eeb98be404c966c3bcbd54c5772c054991576d4d8e20e9d",
     "wavetable": "ae8b040407c158012aa5a3c3aba9cb2e18f3c85d7debd917dc7c72b27d997843",
@@ -129,6 +132,7 @@ PINNED = {
     "wavetable-b": "ae8b040407c158012aa5a3c3aba9cb2e18f3c85d7debd917dc7c72b27d997843",
     "wavetable-fm": "c79bac7239c9fd29f5cc52076b5088fb5ea9d536290659e6659c8cb5fe1e7799",
     "wavetable-settled": "939559d42de4ae0738ba2eb6746b94880b600f1e662fd23afadc3cb5a823b0be",
+    "wavetable-frame-settled": "537c24511a37b205c81b52e8d2efce1f055c0ff4e235be0c90ea0a9dd3511cbe",
 }
 
 DIRECT = pytest.mark.parametrize(
