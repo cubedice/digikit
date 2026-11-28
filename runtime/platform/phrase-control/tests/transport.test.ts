@@ -17,6 +17,9 @@ const put = (at: number | string, word: number, offset = 0): Op => ({ op: 'poke'
 const read = (tag: string, at: number | string, count: number): Op => ({ op: 'read', tag, at, count });
 const putWords = (at: number | string, words: number[]): Op[] => words.map((word, i) => put(at, word, 4 * i));
 const checksum = (words: number[]) => words.slice(0, 63).reduce((check, value) => (check ^ value) >>> 0, 0x73509c21);
+// A status snapshot's check (dk_phrase.inc, PH_REPLY_CHECK): the reply's magic, rotated left by 5 and XORed with each word.
+const sign = (snapshot: number[]) =>
+  snapshot.reduce((check, value) => (((check << 5) | (check >>> 27)) ^ value) >>> 0, 0x50485231);
 function frame(sequence = 1): number[] {
   const data = Array.from({ length: 64 }, (_, i) => (0x13000000 + i * 997) >>> 0);
   data[0] = 0x50484331;
@@ -185,7 +188,7 @@ test('sequence ordering accepts forward wrap and rejects ambiguous half-range ju
   expect(words('halfRange', 'copied')).toEqual(Array<number>(64).fill(0));
   expect(words('halfRange', 'sequence')).toEqual([0]);
 });
-test('reply publishes three coherent snapshot pages then preserves the complete legacy fourth frame', () => {
+test('reply publishes three coherent snapshot pages, the third with the check, then preserves the complete legacy fourth frame', () => {
   for (let phase = 0; phase < 5; phase++) {
     const actual = words('pages', `record${phase}`);
     const packet = carrier.map((offset) => actual[offset / 4]!);
@@ -193,7 +196,7 @@ test('reply publishes three coherent snapshot pages then preserves the complete 
     else {
       const page = phase === 4 ? 0 : phase;
       const snapshot = phase === 4 ? statuses[4]! : statuses[0]!;
-      const padded = [...snapshot, 0, 0, 0, 0];
+      const padded = [...snapshot, sign(snapshot), 0, 0, 0];
       expect(packet).toEqual([
         0x50485231,
         (phase === 4 ? 2 : 1) * 4 + page,
@@ -205,7 +208,7 @@ test('reply publishes three coherent snapshot pages then preserves the complete 
       if (!carrierWords.has(index)) expect(value, `frame${phase} word${index}`).toBe(sentinel);
     });
   }
-  expect(words('pages', 'snapshot')).toEqual([...statuses[4]!, 0, 0, 0, 0]);
+  expect(words('pages', 'snapshot')).toEqual([...statuses[4]!, sign(statuses[4]!), 0, 0, 0]);
   expect(words('pages', 'serial')).toEqual([2]);
 });
 test('disabled phrase status leaves every native/legacy reply word untouched', () => {

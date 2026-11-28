@@ -56,7 +56,11 @@ good mailbox, and only `PH_RX_GRACE` (750) refusals in a row clear the magic and
 before it uses the words.
 
 The existing loop telemetry carrier (rows 17-20 and 29-31, words +0x44/+0x48) is multiplexed: one of four frames keeps
-the legacy loop status; three carry a latched 32-word snapshot of `_phrase_status` tagged with a page and a serial. CF
+the legacy loop status; three carry a latched 32-word snapshot of `_phrase_status` tagged with a page and a serial. The
+latch signs the snapshot (`PH_REPLY_CHECK`, the word after the status in the third packet: the reply's magic rotated left
+by `PH_REPLY_ROT` and XORed with each status word). Overloop's and RELAY's replies use the same cells, and on the device a
+copy of the reply can hold one reply in rows 17-20 and another in rows 29-31; CF takes a snapshot only when its check
+agrees, so such a copy never reaches the page (finding 363, "PRISM's RATE text blinks at rest"). CF
 assembles it in the audio interrupt, so UI-task scheduling cannot lose a page. The UI copies the completed snapshot with
 interrupts masked briefly (`dkrt_phrase_snapshot`). No allocation, drawing or settings write occurs in the interrupt.
 
@@ -64,11 +68,13 @@ interrupts masked briefly (`dkrt_phrase_snapshot`). No allocation, drawing or se
 
 - `tests/control.test.ts` compiles `src/control.c` with stand-ins for the settings: values to control words, the ranges,
   SYNC's zone of the beat at every tempo and its frames for every zone and ratio against the formula, the bound at the top,
-  the checksum, persistence (HOLD not kept, another format ignored, values clamped) and
-  the status assembly.
+  the checksum, persistence (HOLD not kept, another format ignored, values clamped),
+  the status assembly, and copies that mix two replies (the times from Overloop's carrier or from the snapshot's own
+  second packet, the error word from the carrier, a wrong check): the last whole snapshot stays.
 - `tests/transport.test.ts` runs the assembled receiver and reply on the concrete SHARC rig
   (`tools/patchkit/pk_phrase_transport_probe.py`): a valid frame is copied, each kind of invalid frame is refused and the
-  next valid one accepted, the reply pages are coherent, and the register context is preserved.
+  next valid one accepted, the reply pages are coherent and the third carries the snapshot's check, and the register
+  context is preserved.
 
 ```bash
 pnpm nx:pilot run core/phrase-control:test-host

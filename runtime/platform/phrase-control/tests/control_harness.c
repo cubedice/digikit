@@ -53,17 +53,39 @@ static u32 word(u32 name)
 {
     return control[published][name / 4];
 }
-/* One reply fragment in the cells the loop telemetry carrier uses. */
+/* The halfword offset of reply cell I (0 to 13): +0x44 and +0x48 of rows 17 to 20, then of rows 29 to 31. */
+static u32 cell_at(u32 i)
+{
+    u32 r = i < 8 ? 17 + i / 2 : 29 + (i - 8) / 2;
+    return (0x1c + 0x54 * r + 0x44 + (i & 1) * 4) / 2;
+}
+/* The check of a snapshot as dk_phrase.inc defines it: the reply's magic, rotated left by 5 and XORed with each word. */
+static u32 sign(const u32 *snapshot)
+{
+    u32 check = PH_REPLY_MAGIC;
+    for (u32 i = 0; i < 32; ++i)
+        check = (check << 5 | check >> 27) ^ snapshot[i];
+    return check;
+}
+/* One reply fragment in the cells the loop telemetry carrier uses; the third carries the snapshot's check. */
 static void packet(u16 *out, u32 part, u32 seq, const u32 *snapshot)
 {
-    u32 w[14] = {PH_REPLY_MAGIC, (seq << 2) | part};
-    for (u32 i = 0; i < 12 && part * 12 + i < 32; ++i)
-        w[i + 2] = snapshot[part * 12 + i];
+    u32 w[14] = {PH_REPLY_MAGIC, (seq << 2) | part}, signed_snapshot[36] = {0};
+    memcpy(signed_snapshot, snapshot, 32 * sizeof(u32));
+    signed_snapshot[PH_REPLY_CHECK] = sign(snapshot);
+    for (u32 i = 0; i < 12; ++i)
+        w[i + 2] = signed_snapshot[part * 12 + i];
     for (u32 i = 0; i < 14; ++i) {
-        u32 r = i < 8 ? 17 + i / 2 : 29 + (i - 8) / 2;
-        u32 off = (0x1c + 0x54 * r + 0x44 + (i & 1) * 4) / 2;
-        out[off] = (u16)w[i];
-        out[off + 1] = (u16)(w[i] >> 16);
+        out[cell_at(i)] = (u16)w[i];
+        out[cell_at(i) + 1] = (u16)(w[i] >> 16);
+    }
+}
+/* Cells FIRST to LAST of OUT from another reply: a copy that mixed two replies. */
+static void mix(u16 *out, const u16 *other, u32 first, u32 last)
+{
+    for (u32 i = first; i <= last; ++i) {
+        out[cell_at(i)] = other[cell_at(i)];
+        out[cell_at(i) + 1] = other[cell_at(i) + 1];
     }
 }
 /* One block's control words as the provider sends them, for a position suffix whose word 5 holds TEMPO120 in its upper
@@ -314,6 +336,70 @@ static void status_assembly(void)
     assert(dkrt_phrase_snapshot(out, 32));
 }
 
+/* Copies of the reply cells that mix two replies, as the device makes them (the cells lie in two groups about 1.1 KB apart,
+ * and Overloop's and RELAY's replies use the same cells): the packet's magic, serial and part are good, and so are the
+ * snapshot's magic, version, heartbeat and generation. Before the snapshot was signed each of these was taken, and PRISM's
+ * RATE text showed another time, --, or NO LINK until the next snapshot. Now the last whole snapshot stays. */
+static void mixed_replies(void)
+{
+    u32 s[32] = {0}, out[32] = {0};
+    u16 wire[0xabc / 2] = {0}, other[0xabc / 2] = {0};
+    s[0] = PH_STATUS_MAGIC;
+    s[1] = PH_VERSION;
+    s[PH_S_STATE / 4] = PH_READY;
+    s[PH_S_OWNER_GENERATION / 4] = generation;
+    s[PH_S_TIME_L / 4] = s[PH_S_TIME_R / 4] = 7059; /* the owner's 147 MS */
+    s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 500;
+    frame = 20000;
+    for (u32 i = 0; i < 3; ++i) {
+        packet(wire, i, 100, s);
+        reply(wire);
+    }
+    assert(dkrt_phrase_snapshot(out, 32) && out[PH_S_HEARTBEAT / 4] == 500);
+    /* Overloop's carrier in the same cells: its magic, heartbeat, state, length and waveform words */
+    static const u32 carrier[14] = {0x4f564c33, 9001, 3, 96000, 0, 123, 0x3f000000, 0x1234abcd,
+                                    120, 16, 1118464, 0x3366, 7, 0};
+    for (u32 c = 0; c < 3; ++c) {
+        s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 504 + 4 * c;
+        frame += 4;
+        if (c == 1)
+            /* the snapshot's own second packet: its second group holds status words 18 to 23, zeros */
+            packet(other, 1, 101 + c, s);
+        else
+            for (u32 i = 0; i < 14; ++i) {
+                other[cell_at(i)] = (u16)carrier[i];
+                other[cell_at(i) + 1] = (u16)(carrier[i] >> 16);
+            }
+        packet(wire, 0, 101 + c, s);
+        if (c == 2)
+            mix(wire, other, 6, 7); /* the first group's last row: ERROR from Overloop's carrier */
+        else
+            mix(wire, other, 8, 13); /* the second group: the times from another reply */
+        reply(wire);
+        for (u32 i = 1; i < 3; ++i) {
+            packet(wire, i, 101 + c, s);
+            reply(wire);
+        }
+        assert(dkrt_phrase_snapshot(out, 32));
+        assert(out[PH_S_HEARTBEAT / 4] == 500 && out[PH_S_TIME_L / 4] == 7059 &&
+               out[PH_S_TIME_R / 4] == 7059 && out[PH_S_ERROR / 4] == PH_ERROR_NONE);
+    }
+    /* a check that does not match is refused like a mix; the next whole snapshot is taken */
+    s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 520;
+    for (u32 i = 0; i < 3; ++i) {
+        packet(wire, i, 110, s);
+        if (i == 2)
+            wire[cell_at(10)] ^= 1;
+        reply(wire);
+    }
+    assert(dkrt_phrase_snapshot(out, 32) && out[PH_S_HEARTBEAT / 4] == 500);
+    for (u32 i = 0; i < 3; ++i) {
+        packet(wire, i, 111, s);
+        reply(wire);
+    }
+    assert(dkrt_phrase_snapshot(out, 32) && out[PH_S_HEARTBEAT / 4] == 520 &&
+           out[PH_S_TIME_L / 4] == 7059);
+}
 /* A saved record of format 3 with COUNT values: value i is i + 1 (in range for each), the tracks (if counted) TRACKS. */
 static void store(u32 count, u32 tracks)
 {
@@ -461,6 +547,7 @@ int main(void)
     controls();
     sync_times();
     status_assembly();
+    mixed_replies();
     /* The settings are global and survive the owner: every value but HOLD. */
     assert(writes && saved_bytes == 4 + PH_PARAM_COUNT * 4 && saved[2] == 5);
     u32 before[PH_PARAM_COUNT];

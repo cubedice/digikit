@@ -15,7 +15,8 @@ static u32 frame, reply_frame, assembled_seq, fragments, status[PH_STATUS_WORDS]
 /* The block in which the engine's heartbeat last moved. The DSP side returns its latest snapshot again and again; only a
  * heartbeat that moves shows that the engine still runs. */
 static u32 beat_frame, beat, beating;
-static u32 assembling[PH_STATUS_WORDS];
+/* The snapshot being assembled from the three packets, and the check its third packet carries (PH_REPLY_CHECK). */
+static u32 assembling[PH_STATUS_WORDS], assembling_check;
 static char key[48], sends_key[48];
 static char title[24];
 /* Format 4 stores an explicit route. Format 3 stored a switch, or an older prefix without tracks or routing. */
@@ -313,8 +314,21 @@ static u32 queued(u32 queue, u32 entry)
     volatile u16 *p = (volatile u16 *)(queue + 4 * entry + 2);
     return p[0] | ((u32)p[2] << 16);
 }
+/* The check the DSP side signs a status snapshot with (dk_phrase.inc): the reply's magic, rotated left by PH_REPLY_ROT and
+ * XORed with each word in index order. */
+static u32 snapshot_check(const u32 *s)
+{
+    u32 check = PH_REPLY_MAGIC;
+    for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
+        check = ((check << PH_REPLY_ROT) | (check >> (32 - PH_REPLY_ROT))) ^ s[i];
+    return check;
+}
 /* Same reply cells as the loop UI, explicitly time multiplexed by magic.
- * Page 0 latches a 32-word status snapshot; pages 1 and 2 finish that same snapshot. */
+ * Page 0 latches a 32-word status snapshot; pages 1 and 2 finish that same snapshot. The cells lie in two groups about
+ * 1.1 KB apart in the reply (rows 17 to 20 and 29 to 31), and Overloop and RELAY write the same cells: on the device a copy
+ * can carry one reply in the first group and another in the second, with a good magic, part, serial and heartbeat (finding
+ * 363 saw such copies in Overloop's status on the device). The second group of the first packet holds the engine's times,
+ * which PRISM's page shows as RATE's text: only a snapshot whose check agrees is taken. */
 static void reply(const volatile u16 *p)
 {
     if (!p)
@@ -338,10 +352,13 @@ static void reply(const volatile u16 *p)
         return;
     for (u32 i = 0; i < 12 && part * 12 + i < PH_STATUS_WORDS; ++i)
         assembling[part * 12 + i] = w[i + 2];
+    if (part == PH_REPLY_CHECK / 12)
+        assembling_check = w[2 + PH_REPLY_CHECK % 12];
     fragments |= 1u << part;
     if (fragments != 7 || assembling[0] != PH_STATUS_MAGIC || assembling[1] != PH_VERSION ||
         assembling[PH_S_HEARTBEAT / 4] != assembling[PH_S_SEQ_END / 4] ||
-        assembling[PH_S_OWNER_GENERATION / 4] != generation)
+        assembling[PH_S_OWNER_GENERATION / 4] != generation ||
+        snapshot_check(assembling) != assembling_check)
         return;
     for (u32 i = 0; i < PH_STATUS_WORDS; ++i)
         status[i] = assembling[i];
