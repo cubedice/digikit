@@ -129,6 +129,8 @@ class RunModeTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp) / "root"
             out = Path(tmp) / "out"
+            # A test root can be inside a larger checkout that has its own pytest config.
+            (Path(tmp) / "pytest.ini").write_text("[pytest]\n")
             root.mkdir()
             (root / "test_ok.py").write_text("def test_a():\n    pass\n")
             (root / "test_skip.py").write_text(
