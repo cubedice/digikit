@@ -15,7 +15,7 @@ Counts are instructions per 32-frame block. Each comparison runs the same inputs
 | Overloop | Live rolling record | 1,486 | 1,390 |
 | Overloop | Held loop with transport stopped | 1,610 | 1,514 |
 | Overloop | Heaviest tested block | 5,511 | 5,483 |
-| CANOPY | Settled Velvet idle, native AMP and protected callback | 13,467 | 13,051 |
+| CANOPY | Velvet idle callback during factory wavetable expansion, native AMP | 13,467 | 13,051 |
 | CANOPY | One FM note, native AMP and protected callback | 22,202 | 22,078 |
 | CANOPY | One FM pad voice plus arp, native AMP and protected callback | 30,984 | 30,795 |
 | RELAY | Before the first command | 120 | 6 |
@@ -25,7 +25,7 @@ Counts are instructions per 32-frame block. Each comparison runs the same inputs
 | RELAY | Unity playback | 5,231 | 4,992 |
 | Track Keyboard | Quiet scan, highest-cost block of the reporting round | 646 | 392 |
 
-Overloop and PRISM measure the effect hook, including its adapter. CANOPY measures its protected callback. Its process test ceiling remains 100,000 instructions per block. The largest reported FM source-handoff case used 77,920, and the FM reset used 1,131 against its 1,600-instruction ceiling. RELAY measures its capture wrapper, and Track Keyboard measures the quiet-bus and routing hook.
+Overloop and PRISM measure the effect hook, including its adapter. CANOPY measures its protected callback. The Velvet idle sample came from the second callback of a fresh DSP image, when the engine was still expanding factory wavetables. Its process test ceiling remains 100,000 instructions per block. The largest reported FM source-handoff case used 77,920, and the FM reset used 1,131 against its 1,600-instruction ceiling. RELAY measures its capture wrapper, and Track Keyboard measures the quiet-bus and routing hook.
 
 ## Changes and checks
 
@@ -40,3 +40,19 @@ The combined release set passed DTII firmware preflight. PRISM, Overloop, CANOPY
 ## Coupled idle comparison [D]
 
 A paired `coupled_ab` run used both firmware images' DSP changes over the same stock-ready snapshot. It exercised the track-bus hook, including Track Keyboard's quiet scan and RELAY's capture entry before the first command. The one-second PCM hashes matched. Across the whole DSP, interpreted instructions fell from 17,833,731 to 17,684,602 and fast-tier instructions fell from 28,590,796 to 28,187,589. The combined reduction was 552,336 guest instructions. AOT instruction counts matched. This pair establishes the idle instruction difference on the emulator. Hardware cycle measurements and active module timing are open [O].
+
+## Warmed CANOPY quiet path [D]
+
+The first five callbacks expand the factory wavetables so the first wavetable note has all tables available. The 13,051-instruction Velvet sample above included that work. These counts start after seven completed blocks and isolate the recurring cost.
+
+| Protected callback | Before | After |
+| --- | ---: | ---: |
+| Velvet, native AMP | 2,545 | 1,794 |
+| Wavetable, native AMP | 3,258 | 2,507 |
+| FM, native AMP | 3,022 | 2,271 |
+| Legacy AMP | 1,382 | 905 |
+| Silent while MIX moves | 3,255 | 1,990 |
+
+The fast path runs after event admission and scheduling. An instance with no pad or arp owners, tails, pending replacements, strum delays, or shared arp events can bypass the voice and envelope loops. Control, clock, status and silent MIX updates still run. Paired runs on direct and protected callbacks preserved PCM, AMP, state, status and return values in 18 cases.
+
+The instrument adapter separately skips copying the event payload for an empty batch. The adapter rig saves 194 instructions for one warmed bound slot and 776 for four. A populated batch wakes its own slot, and mixed-slot tests confirmed delivery and isolation. The combined DTII image passed preflight, and the CANOPY package fits in 105,448 of 106,496 staging bytes.
