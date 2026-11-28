@@ -730,6 +730,8 @@ fn the_patch_sets_are_the_rt021_flash_modules() {
             // run-time effects (core/dynfx and the chain it reserves rows in): both devices have them in both sets (the Digitone II's emulator set since the engine bars only the
             // changed blocks: the hook costs x1.01 DSP CPU there, finding 55)
             want.extend(["core/dynfx", "core/fx"]);
+            // Both patch sets include the additional LFO waveforms.
+            want.push("core/lfo-table");
             // core/runtime requires the platform adapter (its hooks and the exception hook install)
             want.push("core/platform");
             // the SETTINGS hook of the menu, the controls and the views of modules (the DIGIKIT menu in the system package is drawn by it)
