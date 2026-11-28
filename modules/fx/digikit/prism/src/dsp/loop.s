@@ -58,11 +58,22 @@ _prism_colour:
     R1 = PS_FILT_L * 4;
     R0 = R0 + R1;
     I3 = R0;
+    // COLR stands (the three steps are 0) at a place without saturation (the uncoloured point and above): the short loop.
+    R0 = R10 OR R12;
+    R0 = R0 OR R13;
+    R0 = R0 OR R2;
+    R0 = PASS R0;
+    IF EQ JUMP _pc_plain;
     R14 = 0x3f800000;
     R15 = 0xbf800000;
     CALL _pc_side;
     MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
     CALL _pc_side;
+    RTS;
+_pc_plain:
+    CALL _pc_plain_side;
+    MODIFY(I3,PS_FILT_R - PS_FILT_L) (NW);
+    CALL _pc_plain_side;
     RTS;
 
 // The numbers of COLR F0 (-1..1): F9 the low pass's coefficient, F5 the high pass's, F2 a third of the saturation.
@@ -130,6 +141,32 @@ _pc_side:
         F1 = F1 * F11;
         F0 = F8 - F1;
 _pc_sample: DM(I0,M6) = R0;
+    DM(FL_HIGH,I3) = R7;
+    DM(FL_LOW,I3) = R8;
+    RTS;
+
+// _pc_side for numbers that stand and no saturation: I0, I3, F9 and F5 as there. It gives the same words: a step of 0
+// leaves a number as it is, and y - 0 t^3 is y, but for a y of -0, which that difference turns into +0 as the sum with +0
+// does here. Uses F0, F1, F3, F4, F6, F7, F8 and F11.
+_pc_plain_side:
+    F7 = DM(FL_HIGH,I3);
+    F8 = DM(FL_LOW,I3);
+    R4 = R9;
+    R3 = R5;
+    R11 = 0;
+    R6 = 0x3f000000;
+    LCNTR = 32, DO _pc_plain_sample UNTIL LCE;
+        F0 = DM(I0,M5);
+        F1 = F0 - F7;
+        F0 = F1 * F3;
+        F7 = F7 + F0;
+        F0 = F0 * F6;
+        F0 = F1 - F0;
+        F1 = F0 - F8;
+        F1 = F1 * F4;
+        F8 = F8 + F1;
+        F0 = F8 + F11;
+_pc_plain_sample: DM(I0,M6) = R0;
     DM(FL_HIGH,I3) = R7;
     DM(FL_LOW,I3) = R8;
     RTS;
