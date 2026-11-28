@@ -170,7 +170,9 @@ def test_three_sounding_helpers_fit_the_fold_budget(fold):
     assert result["halt"]["reason"] == "breakpoint"
     assert result["instructions"] < 1400
     for i in range(64):
-        assert session.peek(BUS // 4 + i) == sample(sum(track + i for track in helpers) / 128)
+        assert session.peek(BUS // 4 + i) == sample(
+            sum(track + i for track in helpers) / 128
+        )
 
 
 def test_quiet_scan_is_spread_two_tracks_a_block(fold):
