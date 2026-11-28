@@ -135,7 +135,7 @@ describeOn('dt2', 'CANOPY under the DSP load budget', () => {
     const limit = await word('_iv_budget_limit');
     evidence.limit = limit;
     evidence.cost = await word('_iv_budget_cost');
-    expect(limit, "the adapter's default limit").toBe(570000);
+    expect(limit, "the adapter's default limit").toBe(615000);
     expect(evidence.cost as number, 'the adapter reads the cost of the last block').toBeGreaterThan(0);
     expect(evidence.cost as number, "the emulator's count is under the limit").toBeLessThan(limit);
     expect(await word('_iv_pressure'), 'no pressure under the limit').toBe(0);

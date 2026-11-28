@@ -68,8 +68,8 @@ retains a silent dispatch row after a fault rather than falling into a stock
 sample renderer for that type.
 
 The adapter keeps a DSP load budget (finding 377). Once per block it compares the cost of the last block handler
-(word 0 of the reply record, `_dv_rec[0]` of `core/dsp-voice`) with `_iv_budget_limit` (570000 cycles): a block over the
-limit raises `_iv_pressure` by one, up to 7; `_iv_budget_calm` (150) blocks in a row that stay `_iv_budget_margin` (40000)
+(word 0 of the reply record, `_dv_rec[0]` of `core/dsp-voice`) with `_iv_budget_limit` (615000 cycles): a block over the
+limit raises `_iv_pressure` by one, up to 7; `_iv_budget_calm` (150) blocks in a row that stay `_iv_budget_margin` (25000)
 or more under it lower it by one. Every V5+ input carries the pressure in bits 12..14 of its timing flags, and CANOPY
 sheds tails, released voices, held pads and the arp in that order through its 64-sample ramp, keeping their ownership,
 and takes them back as the pressure falls. An instrument that ignores the bits is not affected. The words are plain DSP
