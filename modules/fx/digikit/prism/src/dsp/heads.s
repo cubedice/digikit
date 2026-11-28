@@ -369,6 +369,47 @@ _ph_channel:
     R10 = DM(PS_REF,I5);
     R8 = DM(CH_A_DINT,I3);
     R9 = DM(CH_A_FRAC,I3);
+    // ---- The short way. A forward head A that plays on a whole frame, neither glides nor crossfades and stays clear of
+    // its seam through the block reads 32 frames in a row, when they do not pass the tape's end. The loop below gives the
+    // same words for such a block: per sample the frame at the delay as it is (no fraction, no head B), a delay that moves
+    // by the reference's advance minus 1, and a read frame that moves on by 1.
+    R0 = DM(CH_GLIDE,I3);
+    R1 = DM(CH_FADE_LEFT,I3);
+    R0 = R0 OR R1;
+    R0 = R0 OR R9;
+    R0 = PASS R0;
+    IF NE JUMP _ph_slow;
+    R0 = DM(CH_A_KIND,I3);
+    R0 = PASS R0;
+    IF EQ JUMP _ph_slow;
+    R0 = DM(CH_A_DIR,I3);
+    R0 = PASS R0;
+    IF LE JUMP _ph_slow;
+    // the delay after the block (R2): above the seam, so every sample's is
+    R2 = R12 - 1;
+    R2 = LSHIFT R2 BY 5;
+    R2 = R8 + R2;
+    R1 = DM(CH_SEAM,I3);
+    COMP(R2,R1);
+    IF LE JUMP _ph_slow;
+    // the first frame, as the loop below finds it; the last of the 32 lies before the tape's end
+    R0 = R10 - R8;
+    IF LT R0 = R0 + R13;
+    COMP(R0,R13);
+    IF GE R0 = R0 - R13;
+    R1 = 31;
+    R1 = R0 + R1;
+    COMP(R1,R13);
+    IF GE JUMP _ph_slow;
+    R1 = LSHIFT R0 BY 2;
+    R1 = R1 + R11;
+    I2 = R1;
+    LCNTR = 32, DO _ph_run UNTIL LCE;
+        R4 = DM(I2,M6);
+_ph_run: DM(I1,M6) = R4;
+    DM(CH_A_DINT,I3) = R2;
+    RTS;
+_ph_slow:
     R14 = 32;
     R15 = _prism_fade;
 _ph_sample:
