@@ -127,6 +127,8 @@ _tk_pool_no_head:
 // custom capture or native send reads a track bus. Leave owners untouched
 // in the disabled case. The physical helpers have their own note, filter,
 // amp and pan state already applied to these planar stereo buses.
+// Every block also inspects two tracks for the quiet mask (below), so no
+// block carries the scan of all sixteen.
 .GLOBAL _tk_pool_fold;
 _tk_pool_fold:
     DM(_tk_pool_r0) = R0;
@@ -141,12 +143,6 @@ _tk_pool_fold:
     R0 = R0 + 1;
     R0 = FEXT R0 BY 0:3;
     DM(_tk_pool_quiet_phase) = R0;
-    R0 = PASS R0;
-    IF EQ JUMP _tk_pool_save;
-    R0 = DM(_tk_pool_mask);
-    R0 = PASS R0;
-    IF EQ JUMP _tk_pool_return;
-_tk_pool_save:
     DM(_tk_pool_r1) = R1;
     DM(_tk_pool_r2) = R2;
     DM(_tk_pool_r3) = R3;
@@ -172,9 +168,7 @@ _tk_pool_save:
     L1 = 0;
     M5 = 0;
     M6 = 1;
-    R0 = DM(_tk_pool_quiet_phase);
-    R0 = PASS R0;
-    IF EQ CALL _tk_pool_quiet_scan;
+    CALL _tk_pool_quiet_scan;
     R0 = DM(_tk_pool_mask);
     R0 = PASS R0;
     IF EQ JUMP _tk_pool_restore;
@@ -231,7 +225,6 @@ _tk_pool_restore:
     R3 = DM(_tk_pool_r3);
     R2 = DM(_tk_pool_r2);
     R1 = DM(_tk_pool_r1);
-_tk_pool_return:
     R0 = DM(_tk_pool_astat);
     ASTATX = R0;
     R0 = DM(_tk_pool_mode);
@@ -241,16 +234,35 @@ _tk_pool_return:
     R0 = DM(_tk_pool_r0);
     RTS;
 
-// Inspect each native stereo cursor pair and its completed track block.
+// Inspect a native stereo cursor pair and its completed track block.
 // AHD/ADSR state may park in release after a source ends. Cursor inactivity
 // plus output below a half 24-bit sample step excludes the audible tail.
 // Native filters can keep decaying for seconds below this level.
 // A looped cursor stays claimed even if its envelope has reached silence.
+// The phase counts the blocks of a round of eight. The block of phase p
+// inspects tracks 2p and 2p + 1, each over that whole block, and the block
+// of phase 7 publishes the mask of all sixteen with a new serial: a mask
+// every eight blocks, as when one block inspected them all, with each
+// track's block up to seven blocks older than the mask. A round that did
+// not start at phase 0 leaves the tracks it missed marked as not quiet.
 _tk_pool_quiet_scan:
-    I1 = 0x241484;   // first native sample record + 0x1b8
-    R6 = TK_TRACK_BUS;
-    R7 = 0;
-    R2 = 16;
+    R0 = DM(_tk_pool_quiet_phase);
+    R7 = DM(_tk_pool_quiet_pending);
+    R0 = PASS R0;
+    IF EQ R7 = R7 - R7;
+    // the pair's first native sample record + 0x1b8 (0x760 bytes a pair)
+    R1 = LSHIFT R0 BY 11;
+    R2 = LSHIFT R0 BY 7;
+    R1 = R1 - R2;
+    R2 = LSHIFT R0 BY 5;
+    R1 = R1 - R2;
+    R2 = 0x241484;
+    R1 = R1 + R2;
+    I1 = R1;
+    R6 = LSHIFT R0 BY 9;
+    R2 = TK_TRACK_BUS;
+    R6 = R6 + R2;
+    R2 = 2;
     R5 = 0x00010001; // ACTIVE and seed-pending byte flags
 _tk_pool_quiet_track:
     R7 = LSHIFT R7 BY -1;
@@ -275,6 +287,11 @@ _tk_pool_quiet_next:
     R6 = R6 + R3;
     R2 = R2 - 1;
     IF NE JUMP _tk_pool_quiet_track;
+    DM(_tk_pool_quiet_pending) = R7;
+    R0 = DM(_tk_pool_quiet_phase);
+    R1 = 7;
+    COMP(R0,R1);
+    IF NE RTS;
     DM(_tk_pool_quiet_mask) = R7;
     R0 = DM(_tk_pool_quiet_serial);
     R0 = R0 + 1;
@@ -320,6 +337,7 @@ _tk_pool_quiet_reply:
 .VAR _tk_pool_quiet_phase;
 .VAR _tk_pool_quiet_serial;
 .VAR _tk_pool_quiet_mask;
+.VAR _tk_pool_quiet_pending;
 .VAR _tk_pool_astat;
 .VAR _tk_pool_stky;
 .VAR _tk_pool_r1;
