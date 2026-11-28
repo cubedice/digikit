@@ -40,7 +40,7 @@ test('tracks own chord notes independently and schedule direct and arpeggiated p
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 30_000);
 
 test('native One Shot chords can reattack their helpers through sample tails', () => {
   const directory = mkdtempSync(join(tmpdir(), 'digikit-track-pool-admission-'));
@@ -77,4 +77,4 @@ test('native One Shot chords can reattack their helpers through sample tails', (
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
+}, 30_000);

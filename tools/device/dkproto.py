@@ -6,6 +6,8 @@ READ_MAX = 768
 PEEK_MAX = 512
 MAX_REQUEST_WIRE = 40960
 MAX_REPLY_WIRE = 1024
+QUERY_REQUEST_MAX = 149
+QUERY_REPLY_MAX = 870
 
 # the .dkm loader's format limits ([limits.format])
 DKM_HEADER = 160
@@ -31,6 +33,10 @@ INFO_MAX = 64
 DSP_SLOT_WORDS = 16
 MAX_VOICES = 8
 MAX_FX = 4
+MAX_SELECTION = 8
+MAX_MACHINE_TYPES = 64
+MAX_MACHINE_PAGES = 16
+MAX_SHORTCUT_BINDINGS = 16
 H_ROLE = 56
 
 # the record kinds of a .dkm ([records.kinds])
@@ -169,6 +175,8 @@ STATUS: dict[int, tuple[str, str]] = {
         "E_MODULE_UI_SCOPE",
         "project settings are active; change this setting on the device",
     ),
+    -90: ("E_MODULE_UI_METHOD", "the module has no query with this method number"),
+    -91: ("E_MODULE_UI_TOO_BIG", "the query reply does not fit the reply budget"),
 }
 
 LOAD_STATUS: dict[int, tuple[str, str]] = {
@@ -190,7 +198,7 @@ LOAD_STATUS: dict[int, tuple[str, str]] = {
     -14: ("E_TABLE_FULL", "no free module record"),
     -15: ("E_LOST", "the sample backing was lost and the reload failed"),
     -16: ("E_POOL", "the sample pool is full"),
-    -17: ("E_CHANGED", "the sample file differs from the selection snapshot"),
+    -17: ("E_CHANGED", "the data changed since it was read"),
     -18: ("E_EXISTS", "the file exists already (dk_files_create does not overwrite)"),
     -19: (
         "E_CONTEXT",
@@ -314,6 +322,7 @@ CAP: dict[str, int] = {
     "LIVE": 19,
     "MODULE_UI": 20,
     "MODULE_SECTIONS": 21,
+    "MODULE_QUERIES": 22,
 }
 
 RANGES: dict[str, tuple[int, int]] = {

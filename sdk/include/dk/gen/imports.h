@@ -8,6 +8,7 @@
 
 /* Opaque handles ([handle] types): the runtime or the provider module gives one out in `init`. */
 typedef struct dk_module_ctx dk_module_ctx;
+typedef struct dk_workbench_query dk_workbench_query;
 typedef struct dk_settings dk_settings;
 typedef struct dk_files dk_files;
 typedef struct dk_sample_pool dk_sample_pool;
@@ -89,8 +90,11 @@ uint32_t dk_module_ctx_device(dk_module_ctx *ctx);
 /* The runtime version, packed major << 16 | minor << 8 | patch; 0 for a pointer that is not a context. Context: any. Since runtime 0.7.0. */
 uint32_t dk_module_ctx_runtime_version(dk_module_ctx *ctx);
 
-/* Register this content module's Workbench settings descriptor during init, once per load. The runtime copies the version 1 descriptor (up to 512 bytes); see the Workbench settings schema in the module authoring guide. Returns 0, DK_E_CONTEXT for the wrong owner or phase, DK_E_FORMAT for a bad descriptor, or DK_E_STATE if already registered. Workbench may read settings while a settings overlay is installed; use the device menu to edit them in that case. Context: init. Since runtime 0.11.4. */
+/* Register this content module's Workbench settings descriptor during init, once per load. The runtime copies the descriptor (up to 512 bytes; version 1 holds text and file-name settings, version 2 also integer, boolean and choice settings and needs runtime 0.13.4); see the Workbench settings schema in the module authoring guide. Returns 0, DK_E_CONTEXT for the wrong owner or phase, DK_E_FORMAT for a bad descriptor, or DK_E_STATE if already registered. Workbench may read settings while a settings overlay is installed; use the device menu to edit them in that case. Context: init. Since runtime 0.11.4. */
 int32_t dk_workbench_register(dk_module_ctx *ctx, const uint8_t *descriptor, uint32_t size);
+
+/* Register this content module's Workbench query table during init, once per load, after `dk_workbench_register`. The runtime keeps the pointer (the table must stay valid while the module is loaded; it is not copied): `count` entries (1 to 16) of `dk_workbench_query` (<dk/query.h>: `{ call; u8 method; u8 reserved[3]; }`, 8 bytes, 2-byte aligned), `method` strictly increasing from 1. `call` runs on the UI task with `*out_len` set to the room in `out` and returns 0 with `*out_len` the reply length, or an error code the Workbench receives as refused. Returns 0, DK_E_CONTEXT for the wrong owner or phase, DK_E_FORMAT for a bad table, or DK_E_STATE if queries are registered already or no settings descriptor is. Context: init. Since runtime 0.13.5. */
+int32_t dk_workbench_register_queries(dk_module_ctx *ctx, const dk_workbench_query *table, uint32_t count);
 
 /* Open this module's settings: `*out` is the handle (the same one every time), the result 0. A negative result outside init (DK_E_NOT_FOUND) or for a bad context (DK_E_CONTRACT); `*out` is untouched then. Context: init. Since runtime 0.7.0. */
 int32_t dk_settings_open(dk_module_ctx *ctx, dk_settings **out);
@@ -321,6 +325,18 @@ int32_t dk_project_current(uint32_t *slot, uint8_t *name);
 
 /* The state of the project service as bits: bit 0 a `.dkp` file is loaded for the current project, bit 1 the data has changes the file does not hold (written at the next successful stock save), bit 2 a write was deferred after 30 s of a busy store, bit 3 a file of the slot was not used (a stamp, device, version or crc mismatch). Context: ui. Since runtime 0.11.0. */
 uint32_t dk_project_status(void);
+
+/* The firmware's projects from slot `first_slot` upward into `out`, an array of `max` `dk_project_entry` (19 bytes: slot, flags, name length, 16 name bytes; <dk/platform/project.h>): the number written, at most `max`, empty slots skipped; call again with the last slot + 1 for the next page (the last slot is 127). The flags are DK_PROJECT_CURRENT, DK_PROJECT_DATA (a `.dkp` file of the slot is in the store) and DK_PROJECT_DATA_UNKNOWN (the first listing of the store folder has not ended: bit 1 is not known yet). No card access. Context: ui. Since runtime 0.13.5. */
+int32_t dk_project_list(uint32_t first_slot, void *out, uint32_t max);
+
+/* The summary of project `slot` into `out`, a `dk_project_summary` (name, save stamp, write counter, the module list with each module's id, store hash, number of settings entries and state; <dk/platform/project.h>). The current project is answered at once (0). For another slot the first call queues a read of its `.dkp` and returns DK_E_AGAIN, as does every call until the read ended; then 0, or DK_E_NOT_FOUND when the slot has no usable file or the firmware lists none. The service keeps one summary: a call for another slot replaces it, and a change of the slot's file drops it. A module's state is DK_PROJECT_MODULE_LOADED or DK_PROJECT_MODULE_UNKNOWN (the card is not looked at). DK_E_RANGE for a null `out`. Context: ui. Since runtime 0.13.5. */
+int32_t dk_project_get(uint32_t slot, void *out);
+
+/* The saved settings of module `module_id` (`id_len` bytes, `<author>/<name>`, 1 to 31) in project `slot`, from entry `cursor` (0 for the first) into `out`, an array of `max` `dk_project_setting` (116 bytes: key without the module's prefix, full value length, the first 64 value bytes; <dk/platform/project.h>): the number written. `*next` (may be NULL) is the cursor of the next page, 0 when the module has no more entries. `version` is the write counter of the project (`dk_project_get`): a project that changed since answers DK_E_CHANGED and writes nothing (read the summary again). The current project answers at once from its live image. For another slot the first call queues a read of its `.dkp` and returns DK_E_AGAIN, as does every call until it ended; one read keeps at most 4 entries, so a page of another project can be shorter than `max` (continue with `*next`), and a call for another module or cursor reads the file again. DK_E_NOT_FOUND when the slot has no usable file, the firmware lists none or the project's module list does not hold the module. DK_E_RANGE for a null `module_id` or `out`, a `max` of 0 or an id of 0 or over 31 bytes. Context: ui. Since runtime 0.13.6. */
+int32_t dk_project_settings(uint32_t slot, const uint8_t *module_id, uint32_t id_len, uint32_t version, uint32_t cursor, void *out, uint32_t max, uint32_t *next);
+
+/* The raw `.dkp` bytes of project `slot` from byte `offset` into `out` (`max` bytes at most): the number written, 0 at or past the end. `*total` (may be NULL) is the length of the whole file image. `version` is the write counter of the project (`dk_project_get`): a project that changed since answers DK_E_CHANGED and writes nothing (read the summary again). Every project, the open one too, is read from its `.dkp` on the card: the first call queues the read and returns DK_E_AGAIN, as does every call until it ended (the file of the open project holds its last save, not unsaved changes). One read keeps a window of at most 4096 bytes of the file, so a call can write less than `max` (continue at `offset` plus the number written); a call inside the window reads nothing again, a call for an offset outside it reads the file again. The settings and summary of the same slot share the read. DK_E_NOT_FOUND when the slot has no usable file or the firmware lists none. DK_E_RANGE for a null `out` or a `max` of 0. Context: ui. Since runtime 0.13.6. */
+int32_t dk_project_read(uint32_t slot, uint32_t version, uint32_t offset, uint8_t *out, uint32_t max, uint32_t *total);
 
 /* ---- service ui ---- */
 

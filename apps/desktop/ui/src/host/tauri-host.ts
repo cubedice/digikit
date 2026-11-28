@@ -2,6 +2,8 @@
 // small arguments in headers, as the Rust commands take them (`tauri::ipc::Request`); the names and arguments follow the Rust signatures.
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import type { SaveResult } from '@digi/module-ui';
+import { createSaveFiles } from './save-files';
 import { createFirmwareSymbols } from '../firmware-symbols';
 import { localStorageKeyValue } from '@digi/workbench-core/storage.ts';
 import type { EmuRpc, Host, SymbolImageMap, SymbolRelease } from '@digi/workbench-core/host/host.ts';
@@ -51,6 +53,7 @@ export function createTauriHost(): Host {
       mount: (root, firmware) => invoke('session_mount', { root, firmware }),
       release: (card) => invoke('session_release', { card }),
       save: (root, card, name) => invoke('session_save', { root, card, name }),
+      saveDsp: (root, module, source) => invoke('session_save_dsp', { root, module, source }),
       preserve: (card) => invoke('session_preserve', { card }),
       attach: (root, source) => invoke('session_attach', { root, source }),
       readCapture: (root, path) => invoke('session_read_capture', { root, path }),
@@ -68,12 +71,19 @@ export function createTauriHost(): Host {
       read: (id) => analyzerCall('analyzer_read', { id }),
       close: (id) => analyzerCall('analyzer_close', { id }),
     },
+    dspQuality: {
+      listModules: () => invoke('dsp_quality_modules'),
+      run: (module) => invoke('dsp_quality_run', { module }),
+    },
     fs: {
       pickFolder: ({ start, title }) => invoke('local_pick_folder', { start, title }),
       list: (root, rel) => invoke('local_list', { root, rel }),
       read: (root, rel, head) => invoke('local_read', { root, rel, head }),
       saveLog: (bytes, name, kind = 'log') =>
         invoke('log_save', bytes, { headers: { 'x-name': encodeURIComponent(name), 'x-kind': kind } }),
+      saveFiles: createSaveFiles({
+        saveWithDialog: (packed) => invoke<SaveResult>('files_save_with_dialog', packed),
+      }),
     },
     library: {
       build: (device) => invoke('lib_build', { device }),

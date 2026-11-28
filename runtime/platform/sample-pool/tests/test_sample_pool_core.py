@@ -29,11 +29,14 @@ int main(void)
 
     printf("nw32 %x %x %x\n", sp_nw32(BASE), sp_nw32(0x7ffffffc), sp_nw32(BASE + 2));
     /* mono, 1000 frames: P = 2000, F = 2080, A = align_up(P + 96, 8192) = 8192 */
-    printf("mono %d %x %x %u %u %u\n", sp_geometry(BASE, 0x10000, 8192, 0, 2000, 2080, &h), h.base_l, h.base_r, h.frames, h.rate, h.channels);
+    int32_t result = sp_geometry(BASE, 0x10000, 8192, 0, 2000, 2080, &h);
+    printf("mono %d %x %x %u %u %u\n", result, h.base_l, h.base_r, h.frames, h.rate, h.channels);
     /* stereo, 1000 frames: P = 4000, F = 4080, A = 8192 */
-    printf("stereo %d %x %x %u %u %u\n", sp_geometry(BASE, 0x10000, 8192, 1, 4000, 4080, &h), h.base_l, h.base_r, h.frames, h.rate, h.channels);
+    result = sp_geometry(BASE, 0x10000, 8192, 1, 4000, 4080, &h);
+    printf("stereo %d %x %x %u %u %u\n", result, h.base_l, h.base_r, h.frames, h.rate, h.channels);
     /* a Transfer-like file without the trailer: F = 64 + P */
-    printf("notrailer %d %u\n", sp_geometry(BASE, 0x10000, 8192, 0, 2000, 2064, &h), h.frames);
+    result = sp_geometry(BASE, 0x10000, 8192, 0, 2000, 2064, &h);
+    printf("notrailer %d %u\n", result, h.frames);
     printf("bad %d %d %d %d %d %d\n",
            sp_geometry(BASE, 0x10000, 8192, 1, 4002, 4082, &h),      /* P not a whole stereo frame */
            sp_geometry(BASE, 0x10000, 8192, 0, 0, 80, &h),           /* no PCM */

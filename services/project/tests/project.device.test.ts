@@ -1,4 +1,9 @@
 import { expect, test } from 'vitest';
+import { createModuleClient, type ModuleFileClient, type ServiceClient } from '@digi/module-ui';
+import { createDeviceModuleChannel } from '../../../packages/workbench-core/src/module-ui/device-module-channel.ts';
+import { deviceQueryChannel } from '../../../packages/workbench-core/src/module-ui/device-queries.ts';
+import { deviceSettingsChannel } from '../../../packages/workbench-core/src/module-ui/device-settings.ts';
+import { ProjectUser } from '../../../tests/fixtures/modules/project-user/workbench/gen/project_user_pb.js';
 import { pollUntil } from '@digi/test-support';
 import { currentRecord } from '@digi/regression/runtime/card-record.ts';
 import { CARD_SYMBOLS } from '@digi/regression/runtime/card-symbols.ts';
@@ -36,6 +41,12 @@ import type { TestRuntime } from '@digi/regression/test-runtime.ts';
  * The panel flows (`savePanelProject`, `saveProjectAs`, `loadProject`, `renameProject`, `copyPasteProject`, `clearProject` of project-kit.ts) follow the stock menus as seen on
  * screen; `from` is the current project's slot, where the lists open.
  */
+
+type ProjectUserClient = ServiceClient<typeof ProjectUser>;
+const unused = async (): Promise<never> => {
+  throw new Error('this test uses no module files');
+};
+const noFiles: ModuleFileClient = { list: unused, read: unused, send: unused, remove: unused };
 
 const USER = 'test/project-user';
 const SINE = 'test/sine';
@@ -257,6 +268,74 @@ cardRigs(
           message: () => `E: ${archived} appears (events ${log.summary(sinceClear)})`,
         });
         expect(slotFile(afterClear, SLOT_COPY), 'E: slot 3 has no file after the clear').toBeUndefined();
+
+        await rt.session.expectNoFault('after case E');
+        // G: the exports a browsing module calls (dk_project_list, dk_project_get) show the saved projects: the fixture's queries list slot 1 with its name and its file, and its summary names the fixture
+        const ask = <T>(call: (service: ProjectUserClient) => Promise<T>): Promise<T> =>
+          run.usb(rt, async (dk) => {
+            const mod = (await dk.modules()).find((m) => m.name === USER);
+            const channel = createDeviceModuleChannel({
+              settings: deviceSettingsChannel(USER),
+              queries: deviceQueryChannel(async () => dk.moduleQueries(mod!.index, mod!.uiInstance!, () => true)),
+              files: noFiles,
+            });
+            return call(createModuleClient(channel).service(ProjectUser));
+          });
+        const listed = await pollUntil(
+          rt.clock,
+          async () => {
+            const r = await ask((q) => q.list({ firstSlot: 0 }));
+            return r.ok ? r.value : null;
+          },
+          (l) => l !== null && l.items.find((i) => i.slot === SLOT_FIRST)?.dataUnknown === false,
+          { withinMs: WITHIN_MS, message: 'G: the list knows the files' },
+        );
+        const entry = listed!.items.find((i) => i.slot === SLOT_FIRST);
+        expect(entry, 'G: slot 1 is in the list').toBeDefined();
+        expect(entry!.hasData, 'G: slot 1 has data').toBe(true);
+        expect(entry!.name, 'G: the listed name is the project name').toBe(name.slice(0, 16));
+        const got = await pollUntil(
+          rt.clock,
+          async () => {
+            const r = await ask((q) => q.get({ slot: SLOT_FIRST }));
+            return r.ok ? r.value : null;
+          },
+          (v) => v !== null && !v.loading,
+          { withinMs: WITHIN_MS, message: 'G: the summary of slot 1 is read' },
+        );
+        expect(got!.found, 'G: the summary of slot 1 is found').toBe(true);
+        expect(
+          got!.modules.map((m) => m.id),
+          'G: the module list of slot 1 holds the fixture',
+        ).toContain(USER);
+        // the settings of the fixture in slot 1: the value it saved under "seen" (VALUE_A, a 32-bit word), read from the file of the slot
+        const saved = await pollUntil(
+          rt.clock,
+          async () => {
+            const r = await ask((q) => q.getSettings({ slot: SLOT_FIRST, module: USER, version: got!.counter, cursor: 0 }));
+            return r.ok ? r.value : null;
+          },
+          (v) => v !== null && !v.loading,
+          { withinMs: WITHIN_MS, message: 'G: the settings of the fixture in slot 1 are read' },
+        );
+        expect(saved!.found, 'G: slot 1 holds settings of the fixture').toBe(true);
+        const seen = saved!.entries.find((e) => e.key === 'seen');
+        expect(seen, `G: the fixture's saved "seen" is listed (keys ${saved!.entries.map((e) => e.key).join()})`).toBeDefined();
+        expect([...seen!.value], 'G: its value is the one saved in case A').toEqual([...word32(VALUE_A)]);
+        expect(seen!.valueLength, 'G: its full length').toBe(4);
+        // the raw file of slot 1: a .dkp that starts with its magic, and as long as the total the first page names
+        const raw = await pollUntil(
+          rt.clock,
+          async () => {
+            const r = await ask((q) => q.readFile({ slot: SLOT_FIRST, version: got!.counter, offset: 0 }));
+            return r.ok ? r.value : null;
+          },
+          (v) => v !== null && !v.loading,
+          { withinMs: WITHIN_MS, message: 'G: the file of slot 1 is read' },
+        );
+        expect(raw!.found, 'G: slot 1 has a file').toBe(true);
+        expect(new TextDecoder().decode(raw!.data.slice(0, 4)), 'G: the file starts with its magic').toBe('DKPJ');
+        expect(raw!.data.length, 'G: the first page holds the file up to one page').toBe(Math.min(raw!.total, 768));
 
         await rt.session.expectNoFault('the project service flows');
       },

@@ -15,6 +15,7 @@
     uv run python -m tools.patchkit.patchkit inject STOCK.syx --runtime [--patch-set NAME]  the emulator patches STOCK.syx itself
 
 `DIGI_PK_ROOT=DIR` runs the binary with another repository root (a module variant, tools/patchkit/pk_variant.py).
+`PATCHKIT_BIN=PATH` runs a prebuilt executable and skips Cargo (the web test target supplies its built CLI).
 
 `patch` defaults the output to out/patch/<firmware stem>+<modules>.syx and writes plan.json and the ship address map (docs/ADDRMAP.md)
 next to it (X.plan.json, X.addrmap.json; `pack` writes OUT.addrmap.json, the module's map, next to the .dkm). `explain`
@@ -53,6 +54,13 @@ def binary(build: bool = True) -> Path:
     `release/patchkit`, which every `cargo build` rewrites (a process that execs it meanwhile can hang)."""
     global _BUILT
     from tools.devtools import stablebin
+
+    override = os.environ.get("PATCHKIT_BIN")
+    if override:
+        exe = Path(override).resolve()
+        if not exe.is_file() or not os.access(exe, os.X_OK):
+            raise SystemExit(f"PATCHKIT_BIN is not an executable file: {exe}")
+        return exe
 
     target = target_dir()
     exe = target / "release" / "patchkit"

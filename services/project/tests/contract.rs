@@ -9,7 +9,7 @@
 use dkrt_abi::keys::KeysCopy;
 use dkrt_abi::profiles::ALL;
 use dkrt_svc_project::dkp;
-use dkrt_svc_project::engine::{Pending, StoreJob};
+use dkrt_svc_project::engine::{HookRecord, Pending, StoreJob};
 use dkrt_svc_project::project::Project;
 use dkrt_test_support::contract::{Dsp, Fixture, Init, Module, Rows};
 use dkrt_test_support::{provider_contract, subject, FakeCore, Recipe, RowBuilder};
@@ -19,14 +19,21 @@ use host::TestHost;
 
 type Owner = Project<TestHost>;
 
-/// The owner with no part but the lifecycle: the service has no record kind, no DSP, no query.
+/// The owner with the lifecycle and the state part: the service has no record kind, no DSP, no query.
 struct ProjectRecipe;
 
 impl Recipe for ProjectRecipe {
     type P = Owner;
     const NAME: &'static str = "project";
+    const NONE_STARTS_DIFFERENTLY: Option<&'static str> = Some(
+        "import(None) starts named and unbound: a fresh start at run time would bind the firmware's slot byte, which is right only at boot",
+    );
     fn parts(b: RowBuilder<Owner>) -> RowBuilder<Owner> {
-        b
+        b.state()
+    }
+    fn change_state(p: &mut Owner) -> bool {
+        current(p);
+        p.scope_put(b"test/ca", b"k", b"unsaved") == 0
     }
 }
 
@@ -37,15 +44,15 @@ fn current(p: &mut Owner) {
     }
     let job = StoreJob::new();
     p.tick(
-        &Pending {
+        &HookRecord::new(Pending {
             slot_val: 3,
             slot_flag: 1,
             ..Pending::new()
-        },
+        }),
         &job,
     );
     for _ in 0..4 {
-        p.tick(&Pending::new(), &job);
+        p.tick(&HookRecord::default(), &job);
     }
     assert_eq!(p.engine().slot(), 3);
 }

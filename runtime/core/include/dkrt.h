@@ -33,8 +33,8 @@
 #define DKRT_CAP_MAX 20
 /* The module arena: a static array of the runtime's bss. Every device has the same one (the device files' [limits] arena_bytes must equal it). The fork: 440 KiB (upstream 512 KiB): a V2 file keeps its DSP section on the card and its image is streamed from there while it is sent (no relocated copy), and RELAY runs from the service file relay.dks (37.6 KB of arena while it is loaded), so the hardware set peaks near 383 KB, and the rest is image space (docs/plans/upstream-merge-1124). */
 #define DKRT_ARENA_BYTES 450560
-/* The system package block: a static array of the runtime's bss, outside the module arena (upstream: 327,680; the fork: 385,024, for the instrument host in the package (381,920 used after the upstream merge of 2026-11-27), docs/plans/upstream-merge-1124, upstream-merge-1125 and upstream-merge-1127). Stage 1 places the package in it (a body whose placed size is larger is refused, by patchkit at build and by stage 1 at load). */
-#define DKRT_PACKAGE_BYTES 385024
+/* The system package block is a static array in the runtime BSS, outside the module arena. The fork reserves 392 KiB for the combined upstream runtime and the instrument host. Stage 1 and PatchKit reject packages whose placed size exceeds this block. */
+#define DKRT_PACKAGE_BYTES 401408
 /* The staging buffer of a .dkm file and of the store directory: a static array of the runtime's bss ([limits.max] stage_bytes of sdk/sdk.toml). The fork: 104 KiB (upstream: 128 KiB), so that RELAY fits beside CANOPY, Overloop, PRISM and the track keyboard on the fork's hardware image; the largest staged file is CANOPY (102,344 bytes). */
 #define DKRT_STAGE_BYTES 106496
 /* Machine and voice rows the runtime's tables have: the most run-time machine types a device can have (DkrtDevice.dyn_types; the runtime checks it at start). */
@@ -223,7 +223,7 @@
 #define DKRT_E_TABLE_FULL (-14)          /* no free module record */
 #define DKRT_E_LOST (-15)                /* the sample backing was lost and the reload failed */
 #define DKRT_E_POOL (-16)                /* the sample pool is full */
-#define DKRT_E_CHANGED (-17)             /* the sample file differs from the selection snapshot */
+#define DKRT_E_CHANGED (-17)             /* the data changed since it was read */
 #define DKRT_E_EXISTS (-18)              /* the file exists already (dk_files_create does not overwrite) */
 #define DKRT_E_CONTEXT (-19)             /* the call is not allowed in this context (dk_files_* writes run in an I/O step) */
 #define DKRT_E_NO_REGISTRY (-20)         /* register records, but the image has no registry */

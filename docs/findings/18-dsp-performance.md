@@ -2196,3 +2196,23 @@ Hand-picked loops run at about 0.6 ticks per guest instruction, large auto CFG r
 - Write native kernels for hot functions such as `0x1c10e3`.
 - Lower the ColdFire instruction budget if it is the limit.
 - Compile in the background and keep an on-disk cache.
+
+## Replay coverage after the runtime 0.13.6 integration
+
+The stock-profiled core left parts of the runtime replay in the interpreter. The same emulator reproduced all three over-budget results on pre-integration fixtures. The DNII soft-reset case spent 148.04 million instructions per audio second in the interpreter. It lacked generated entries for several hot loops that the first-boot workload never reached.
+
+[D] On the integration fixtures, the DNII core generated from stock, first-boot and reset coverage and the checked-in fallback lists gave these rates. The DTII result uses the stock-profiled core and the checked-in entry lists. Each pair retained identical PCM and canonical DSP state.
+
+| Replay | Interpreted before | Interpreted after | Budget |
+| --- | ---: | ---: | ---: |
+| DNII first boot | 12,849,673 | 3,802,807 | 5,000,000 |
+| DNII soft reset | 148,042,356 | 4,074,475 | 4,500,000 |
+| DTII first boot | 3,094,912 | 2,387,217 | 2,400,000 |
+
+The reset replay also stayed below its 8 million block entries per audio second budget at 4,803,843.
+
+To refresh coverage, start with the stock profile from `mise run perf:aot -- dn2` and collect both runtime replays with `SHARC_PROFILE_PREFIX` set to a path in an existing directory. Use `mise run perf:fast-roots -- check --device dn2` to capture the two workloads. The check can report that the starting core is over budget while still writing the coverage files.
+
+Merge the stock `prof-merged-c1`, `.entries` and `.trans` files with the replay captures using `tools.sharc_dev.aot_fxprof` and its `--base-cov`, `--base-entries`, `--base-trans` and `--live` options. Generate a core from the merged `prof-fx` output with `tools.sharc_dev.sharc_rsgen`, using the stock generator's work directory and the `--model-safe --explicit-memory-model 0 --chain` flags. Write it to a separate directory to keep the starting core for comparison.
+
+Point `SHARC_GEN_DIR_DN2` at the new directory for `tools.devtools.verify_build cores --device dn2`. The resulting library can be selected by `DIGI_SHARC_CORE_LIB_DN2` for a paired replay against the same saved fixtures. The gate hashes the selected library. On WSL, place `DIGI_EMUD_STORE` on the Linux filesystem so the large DTII card can be verified.

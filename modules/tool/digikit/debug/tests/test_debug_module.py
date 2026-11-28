@@ -151,7 +151,8 @@ int main(int argc, char **argv)
         if (!strcmp(argv[k], "busy")) span_busy = 1;
         if (!strcmp(argv[k], "old-runtime")) runtime_version = DK_SPAN_START_TICK_VERSION - 1u;
     }
-    printf("init %d %d\n", (int)dk_module.init(NULL), the_sink != NULL);
+    int init_result = (int)dk_module.init(NULL);
+    printf("init %d %d\n", init_result, the_sink != NULL);
     while (fgets(line, sizeof line, stdin)) {
         unsigned a, b, c, d;
         char hex[2048];

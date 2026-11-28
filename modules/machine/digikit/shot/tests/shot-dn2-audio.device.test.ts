@@ -92,9 +92,11 @@ dn2Tests('DN2 stereo audio: first note, retrigger, filter types, pan', 'shot-dn2
     };
     log.retrigger = m;
     const text = JSON.stringify(m);
+    // SHOT applies DK_SAMPLE_STOCK_GAIN to the output. Keep the original audibility floor in those units.
+    const retriggerFloor = 0.05 * 0.4045;
     expect(m.finite, 'finite output').toBe(true);
-    expect(m.beforeB, `before the retrigger the sample is in its B part ${text}`).toBeGreaterThan(Math.max(0.05, m.beforeA * 1.5));
-    expect(m.afterA, `after the retrigger the sample starts again with A ${text}`).toBeGreaterThan(Math.max(0.05, m.beforeA * 2.5));
+    expect(m.beforeB, `before the retrigger the sample is in its B part ${text}`).toBeGreaterThan(Math.max(retriggerFloor, m.beforeA * 1.5));
+    expect(m.afterA, `after the retrigger the sample starts again with A ${text}`).toBeGreaterThan(Math.max(retriggerFloor, m.beforeA * 2.5));
     expect(m.afterB, `B has dropped after the retrigger ${text}`).toBeLessThan(m.beforeB * 0.6);
     await expectNoNewFault('retrigger');
   });

@@ -305,6 +305,7 @@ fn table_with_needs(
     callback_order: Option<dkneeds::keys::Pair>,
     local: &LocalImports,
     registration_floor: u32,
+    payloads: &[crate::module::PayloadBody],
 ) -> Result<Vec<u8>> {
     use dkneeds::keys::{KeyGroup, Keys, Pair, Table, write_table};
     let keys = if reg.is_empty() {
@@ -331,6 +332,18 @@ fn table_with_needs(
         record_kind_needs(&mut needs, &kinds);
     }
     needs.extend_from_slice(&local.needs);
+    // the owner of a payload is a hard need: the file cannot load without the service that installs its body
+    for p in payloads {
+        let service = dkneeds::keys::name_hash(&p.service);
+        match needs.iter_mut().find(|n| n.service == service) {
+            Some(n) => n.hard = true,
+            None => needs.push(dkneeds::keys::Need {
+                service,
+                min_version: 0,
+                hard: true,
+            }),
+        }
+    }
     if registration_floor != 0 {
         let service = dkneeds::keys::name_hash("runtime");
         match needs.iter_mut().find(|n| n.service == service) {
@@ -375,7 +388,18 @@ fn table_with_needs(
         .iter()
         .map(|(kind, keys)| KeyGroup { kind: *kind, keys })
         .collect();
+    // the offsets are set when the file is laid out (`emit`)
+    let places: Vec<dkneeds::keys::Payload> = payloads
+        .iter()
+        .map(|p| dkneeds::keys::Payload {
+            service: dkneeds::keys::name_hash(&p.service),
+            kind: p.kind,
+            offset: 0,
+            bytes: p.body.len() as u32,
+        })
+        .collect();
     let t = Table {
+        payloads: &places,
         provides: &provided,
         needs: &needs,
         uses: &uses,
@@ -422,6 +446,8 @@ pub struct Options {
     pub service: Option<Provided>,
     /// Services the module needs because an adapter it requires runs from them (`served_by`, `Library::served_needs`): hard `NEEDS`.
     pub served: Vec<String>,
+    /// The bodies the file carries for services (`[[object]] payload = ...`): behind the image, with a `PAYLOADS` item each and a hard need on the owner.
+    pub payloads: Vec<crate::module::PayloadBody>,
 }
 
 /// The low 24 bits of a `HOOKS` entry of a service file: the handler's image offset. The top byte is the device mask of the hook.
@@ -555,7 +581,15 @@ fn valid_name(n: &str) -> bool {
 /// Pack a ColdFire object. The entry points are the fields of its `dk_module` constant. Every undefined symbol is an import resolved by the
 /// runtime's table at load time; only 32-bit absolute relocations may name one.
 pub fn pack(obj: &Dko, o: &Options) -> Result<Vec<u8>> {
-    pack_inner(Some(obj), false, &[], &[], o, max_file(), &[])
+    pack_inner(
+        Some(obj),
+        false,
+        &[],
+        &[],
+        o,
+        max_file(),
+        &Declared::default(),
+    )
 }
 
 /// The image of a data-only module: `init` is `moveq #0,d0; rts`. The `register` records do the work.
@@ -597,33 +631,42 @@ pub fn pack_full_max(
     o: &Options,
     max_file: usize,
 ) -> Result<Vec<u8>> {
-    pack_inner(obj, obj.is_none(), keys, dsp, o, max_file, &[])
-}
-
-/// Pack an object (or none), the keys table and a DSP section (see [`crate::dkmdsp`]; empty: none). The table at the header's 0x90 pair is the
-/// keys table (`dkneeds::keys`, from `dkneeds::keys::write_keys`; size 0 for a module with no machine and no effect). The module declares its
-/// machines, pages and parameters with builder calls in `init`.
-pub fn pack_keys(obj: Option<&Dko>, keys: &[u8], dsp: &[u8], o: &Options) -> Result<Vec<u8>> {
-    pack_keys_with_service_imports(obj, keys, dsp, o, &[])
-}
-
-/// Pack a manifest's objects with its locally declared service imports.
-pub(crate) fn pack_keys_with_service_imports(
-    obj: Option<&Dko>,
-    keys: &[u8],
-    dsp: &[u8],
-    o: &Options,
-    service_imports: &[crate::module::ServiceImport],
-) -> Result<Vec<u8>> {
     pack_inner(
         obj,
         obj.is_none(),
         keys,
         dsp,
         o,
-        max_file(),
-        service_imports,
+        max_file,
+        &Declared::default(),
     )
+}
+
+/// Pack an object (or none), the keys table and a DSP section (see [`crate::dkmdsp`]; empty: none). The table at the header's 0x90 pair is the
+/// keys table (`dkneeds::keys`, from `dkneeds::keys::write_keys`; size 0 for a module with no machine and no effect). The module declares its
+/// machines, pages and parameters with builder calls in `init`.
+pub fn pack_keys(obj: Option<&Dko>, keys: &[u8], dsp: &[u8], o: &Options) -> Result<Vec<u8>> {
+    pack_keys_with_declared(obj, keys, dsp, o, &Declared::default())
+}
+
+/// What a manifest declares beyond its objects.
+#[derive(Default)]
+pub(crate) struct Declared<'a> {
+    /// The locally declared service imports.
+    pub service_imports: &'a [crate::module::ServiceImport],
+    /// The least runtime the file needs, besides what its imports and tables need (0: none).
+    pub runtime_floor: u32,
+}
+
+/// Pack a manifest's objects with what it declares.
+pub(crate) fn pack_keys_with_declared(
+    obj: Option<&Dko>,
+    keys: &[u8],
+    dsp: &[u8],
+    o: &Options,
+    declared: &Declared,
+) -> Result<Vec<u8>> {
+    pack_inner(obj, obj.is_none(), keys, dsp, o, max_file(), declared)
 }
 
 #[derive(Default)]
@@ -703,7 +746,15 @@ pub fn pack_data_only_max(
     o: &Options,
     max_file: usize,
 ) -> Result<Vec<u8>> {
-    pack_inner(Some(obj), true, keys, dsp, o, max_file, &[])
+    pack_inner(
+        Some(obj),
+        true,
+        keys,
+        dsp,
+        o,
+        max_file,
+        &Declared::default(),
+    )
 }
 
 fn pack_inner(
@@ -713,7 +764,7 @@ fn pack_inner(
     dsp: &[u8],
     o: &Options,
     max_file: usize,
-    service_imports: &[crate::module::ServiceImport],
+    declared: &Declared,
 ) -> Result<Vec<u8>> {
     if let Some(obj) = obj {
         obj.require_isa_checked()?;
@@ -773,7 +824,7 @@ fn pack_inner(
         }
     }
     let imports: Vec<&str> = imports.into_iter().collect();
-    let local = LocalImports::of(o, &imports, service_imports)?;
+    let local = LocalImports::of(o, &imports, declared.service_imports)?;
     for n in &imports {
         if n.len() >= IMPORT_LEN {
             return Err(err!("import name {n} is longer than {}", IMPORT_LEN - 1));
@@ -1038,6 +1089,7 @@ fn pack_inner(
         callback_order,
         &local,
         registration_floor,
+        &o.payloads,
     )?;
     if registration_floor != 0 && table.len() > dkneeds::keys::BOOT_TABLE_MAX {
         return Err(err!(
@@ -1059,6 +1111,7 @@ fn pack_inner(
         runtime_word: needed_runtime(imports.iter().copied())
             .max(crate::sdkgen::table_runtime())
             .max(registration_floor)
+            .max(declared.runtime_floor)
             | if o.trace { FLAG_TRACE } else { 0 },
         svc_abi,
         image: &image,
@@ -1069,6 +1122,7 @@ fn pack_inner(
         entries: [init, fini, tick, menu],
         table: &table,
         dsp,
+        payloads: &o.payloads,
         max_file,
     })
 }
@@ -1095,10 +1149,12 @@ pub(crate) struct EmitParts<'a> {
     pub table: &'a [u8],
     /// The DSP section (empty: none).
     pub dsp: &'a [u8],
+    /// The payload bodies, in the order of the table's `PAYLOADS` items: each is placed behind the image, at a multiple of 4, and its offset is written in the table.
+    pub payloads: &'a [crate::module::PayloadBody],
     pub max_file: usize,
 }
 
-/// The file layout: header, imports, relocations, header table, DSP section, image, with the file hash. 0x3c..0x40 stay zero.
+/// The file layout: header, imports, relocations, header table, DSP section, image, the payload bodies (each aligned to 4), with the file hash. 0x3c..0x40 stay zero.
 pub(crate) fn emit(p: &EmitParts) -> Result<Vec<u8>> {
     let [init, fini, tick, menu] = p.entries;
     let (imports, relocs, reg, dsp, image) = (p.imports, p.relocs, p.table, p.dsp, p.image);
@@ -1108,7 +1164,23 @@ pub(crate) fn emit(p: &EmitParts) -> Result<Vec<u8>> {
     let reg_size = reg.len();
     let dsp_off = align_up(reg_off + reg_size, 16);
     let image_off = align_up(dsp_off + dsp.len(), 16);
-    let total = image_off + image.len();
+    // the bodies behind the image: their offsets go in the table, whose size does not depend on them
+    let mut at = align_up(image_off + image.len(), 4);
+    let mut body_at = vec![];
+    for b in p.payloads {
+        body_at.push(at);
+        at = align_up(at + b.body.len(), 4);
+    }
+    let total = if p.payloads.is_empty() {
+        image_off + image.len()
+    } else {
+        at
+    };
+    let mut table = reg.to_vec();
+    let offsets: Vec<u32> = body_at.iter().map(|o| *o as u32).collect();
+    dkneeds::keys::set_payload_offsets(&mut table, &offsets)
+        .map_err(|e| err!("header table: {e:?}"))?;
+    let reg = &table[..];
     if total > p.max_file {
         return Err(err!(
             "the module file is {total} bytes; the runtime stages {}",
@@ -1153,7 +1225,10 @@ pub(crate) fn emit(p: &EmitParts) -> Result<Vec<u8>> {
         put(&mut f, H_DSP_SIZE, dsp.len() as u32);
         f[dsp_off..dsp_off + dsp.len()].copy_from_slice(dsp);
     }
-    f[image_off..].copy_from_slice(image);
+    f[image_off..image_off + image.len()].copy_from_slice(image);
+    for (b, at) in p.payloads.iter().zip(&body_at) {
+        f[*at..*at + b.body.len()].copy_from_slice(&b.body);
+    }
     let sha = file_sha(&f);
     f[H_SHA..H_SHA + 32].copy_from_slice(&sha);
     Ok(f)
@@ -1309,7 +1384,7 @@ impl Dkm {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::dko::*;
 
@@ -1341,7 +1416,7 @@ mod tests {
     }
     /// text: `jsr imp.l; jsr f.l; rts` plus a data pointer to bss and to an import with an addend, and the `dk_module` record (init, fini, tick, menu) at data offset 8
     /// with `init` and `tick` set. Carries the build's ISA check record.
-    fn object() -> Dko {
+    pub(crate) fn object() -> Dko {
         let mut o = unstamped();
         o.stamp_isa();
         o
@@ -1385,6 +1460,7 @@ mod tests {
 
     fn opts() -> Options {
         Options {
+            payloads: vec![],
             name: "test/x".into(),
             version: 0x010203,
             trace: false,
@@ -1505,6 +1581,57 @@ mod tests {
         };
         let f = pack(o, &opts).unwrap();
         (Dkm::parse(&f).unwrap(), f)
+    }
+
+    #[test]
+    fn payload_bodies_go_behind_the_image_and_their_owner_becomes_a_hard_need() {
+        use dkneeds::keys::{Keys, name_hash};
+        let payloads = vec![
+            crate::module::PayloadBody {
+                service: "local-ping".into(),
+                kind: 1,
+                body: vec![1, 2, 3],
+            },
+            crate::module::PayloadBody {
+                service: "local-ping".into(),
+                kind: 2,
+                body: vec![9; 8],
+            },
+        ];
+        let o = Options {
+            payloads: payloads.clone(),
+            ..opts()
+        };
+        let f = pack(&object(), &o).unwrap();
+        let d = Dkm::parse(&f).unwrap();
+        let k = Keys::parse(&d.register).unwrap();
+        assert_eq!(k.version(), 2);
+        let items: Vec<_> = k.payloads().collect();
+        assert_eq!(items.len(), 2);
+        // every body is where its item says, behind the image, at a multiple of 4, in order
+        let image_end = get(&f, H_IMAGE_OFF) as usize + d.image.len();
+        let mut at = image_end.next_multiple_of(4);
+        for (item, p) in items.iter().zip(&payloads) {
+            assert_eq!((item.service, item.kind), (name_hash("local-ping"), p.kind));
+            assert_eq!(item.offset as usize, at);
+            assert_eq!(&f[at..at + p.body.len()], &p.body[..]);
+            at = (at + p.body.len()).next_multiple_of(4);
+        }
+        assert_eq!(f.len(), at);
+        // the owner is a need, and a hard one
+        let need = k
+            .needs()
+            .find(|n| n.service == name_hash("local-ping"))
+            .expect("the owner of a payload is a need");
+        assert!(need.hard);
+        // a module without payloads is the file it was: no entry, the image ends the file
+        let plain = pack(&object(), &opts()).unwrap();
+        assert_eq!(
+            Keys::parse(&Dkm::parse(&plain).unwrap().register)
+                .unwrap()
+                .payload_count(),
+            0
+        );
     }
 
     #[test]

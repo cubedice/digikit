@@ -17,7 +17,7 @@ const CELL: u32 = 0x44f3_7090;
 const OBJECT: u32 = 0x4500_0000;
 
 fn parks() -> [Park; 2] {
-    [Park { tcb: TCB_A, wait: QUEUE, indirect: false, off: 0xc }, Park { tcb: TCB_B, wait: CELL, indirect: true, off: 0x18 }]
+    [Park { tcb: TCB_A, wait: QUEUE, indirect: false, off: 0xc, made: 0x14 }, Park { tcb: TCB_B, wait: CELL, indirect: true, off: 0x18, made: 0 }]
 }
 
 fn put(f: &FakePlatform, addr: u32, v: u32) {
@@ -29,6 +29,7 @@ fn fake() -> FakePlatform {
     let f = FakePlatform::new(profiles::ALL[0]);
     f.put_code(SITE, &STOCK);
     put(&f, QUEUE + 0xc, TCB_A);
+    put(&f, QUEUE + 0x14, 0x4000_0000);
     put(&f, CELL, OBJECT);
     put(&f, OBJECT + 0x18, TCB_B);
     f
@@ -39,7 +40,7 @@ fn hook(ctx: u8) -> HookItem {
 }
 
 fn live<'a>(parks: &'a [Park]) -> Gate<'a> {
-    Gate { live: true, parks: Some(parks), op: 0 }
+    Gate { live: true, parks: Some(parks), op: Some(0) }
 }
 
 fn bytes(f: &FakePlatform) -> Vec<u8> {
@@ -83,14 +84,11 @@ fn a_task_site_is_refused_with_busy_while_a_task_runs_and_nothing_changes() {
 }
 
 #[test]
-fn a_wait_word_that_holds_another_task_or_a_missing_object_is_not_parked() {
+fn a_wait_word_that_holds_another_task_is_not_parked() {
     let p = parks();
     let f = fake();
     put(&f, QUEUE + 0xc, 0x1234_5678);
     assert_eq!(install(&mut Installer::new(), &f, CTX_TASK, &live(&p)), Err(E_BUSY), "another task waits there");
-    let f = fake();
-    put(&f, CELL, 0);
-    assert_eq!(install(&mut Installer::new(), &f, CTX_TASK, &live(&p)), Err(E_BUSY), "the BgWorker object does not exist yet");
 }
 
 #[test]
@@ -117,7 +115,7 @@ fn the_boot_never_waits() {
     let p = parks();
     let mut ins = Installer::new();
     // no task has run at the boot: the words are 0 and the gate is not live
-    assert_eq!(install(&mut ins, &f, CTX_TASK, &Gate { live: false, parks: Some(&p), op: 0 }), Ok(()));
+    assert_eq!(install(&mut ins, &f, CTX_TASK, &Gate { live: false, parks: Some(&p), op: Some(0) }), Ok(()));
     assert_eq!(bytes(&f), JMP.to_vec());
     assert_eq!(unsafe { ins.restore_gated(&f, 1, &Gate::BOOT) }, Ok(()));
     assert_eq!(bytes(&f), STOCK.to_vec());
@@ -135,7 +133,7 @@ fn a_task_site_is_restored_only_while_the_tasks_are_parked() {
     install(&mut ins, &f, CTX_TASK, &live(&p)).unwrap();
     put(&f, OBJECT + 0x18, 0);
     f.calls.borrow_mut().clear();
-    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Err(E_BUSY));
+    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Err(Refusal::Busy { task: 1 }));
     assert_eq!((bytes(&f), ins.count(), f.depth.get()), (JMP.to_vec(), 1, 0), "the hook is still in and still owned");
     assert_eq!(*f.calls.borrow(), [Call::Mask, Call::Restore]);
     // the BgWorker parks: the retry takes the site down
@@ -161,9 +159,108 @@ fn a_patch_of_task_context_waits_too() {
 fn a_port_file_without_the_task_facts_refuses_a_task_site_at_run_time() {
     let f = fake();
     let mut ins = Installer::new();
-    let g = Gate { live: true, parks: None, op: 0 };
+    let g = Gate { live: true, parks: None, op: Some(0) };
     assert_eq!(install(&mut ins, &f, CTX_TASK, &g), Err(E_IMPORT));
     assert_eq!(bytes(&f), STOCK.to_vec());
     // a device with no such task has an empty list: nothing to wait for
     assert_eq!(install(&mut ins, &f, CTX_TASK, &live(&[])), Ok(()));
+}
+
+#[test]
+fn a_task_that_was_never_created_does_not_hold_a_task_site() {
+    // the console task exists only on a unit with its serial-console flag: its queue was never built (the word at `made` is 0), so it is parked whatever the waiter word says
+    let p = parks();
+    let f = fake();
+    put(&f, QUEUE + 0xc, 0);
+    put(&f, QUEUE + 0x14, 0);
+    let mut ins = Installer::new();
+    assert_eq!(install(&mut ins, &f, CTX_TASK, &live(&p)), Ok(()));
+    // a built queue whose task runs still waits
+    let f = fake();
+    put(&f, QUEUE + 0xc, 0);
+    let mut ins = Installer::new();
+    assert_eq!(install(&mut ins, &f, CTX_TASK, &live(&p)), Err(E_BUSY));
+}
+
+#[test]
+fn a_bgworker_that_does_not_exist_yet_does_not_hold_a_task_site() {
+    // the singleton is built on first use: its cell stays 0 until then, and nothing can be inside a hook of a task that does not exist
+    let p = parks();
+    let f = fake();
+    put(&f, CELL, 0);
+    let mut ins = Installer::new();
+    assert_eq!(install(&mut ins, &f, CTX_TASK, &live(&p)), Ok(()));
+    // the object exists and its task runs: it still waits
+    let f = fake();
+    put(&f, OBJECT + 0x18, 0);
+    let mut ins = Installer::new();
+    assert_eq!(install(&mut ins, &f, CTX_TASK, &live(&p)), Err(E_BUSY));
+}
+
+#[test]
+fn a_busy_restore_names_the_task_it_found_unparked() {
+    let p = parks();
+    let f = fake();
+    let mut ins = Installer::new();
+    install(&mut ins, &f, CTX_TASK, &live(&p)).unwrap();
+    put(&f, OBJECT + 0x18, 0);
+    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Err(Refusal::Busy { task: 1 }), "the second task, not task 0");
+    put(&f, QUEUE + 0xc, 0);
+    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Err(Refusal::Busy { task: 0 }));
+    put(&f, QUEUE + 0xc, TCB_A);
+    put(&f, OBJECT + 0x18, TCB_B);
+    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Ok(()));
+}
+
+#[test]
+fn a_busy_restore_evaluates_the_gate_once() {
+    let p = parks();
+    let f = fake();
+    let mut ins = Installer::new();
+    install(&mut ins, &f, CTX_TASK, &live(&p)).unwrap();
+    put(&f, OBJECT + 0x18, 0);
+    f.code_reads.set(0);
+    assert_eq!(unsafe { ins.restore_gated(&f, 1, &live(&p)) }, Err(Refusal::Busy { task: 1 }));
+    // the console-like task reads two words, the BgWorker-like one two: one pass over both, no second look to name the task
+    assert_eq!(f.code_reads.get(), 4);
+}
+
+mod quiet {
+    use super::*;
+    use crate::dlog::{self, Ev};
+    use dkrt_lifecycle::Step;
+    use dkrt_sdk::logk;
+
+    static mut SEEN: Vec<Ev> = Vec::new();
+
+    unsafe extern "C" fn keep(e: *const Ev) {
+        if (*e).kind == logk::LIFECYCLE {
+            (*core::ptr::addr_of_mut!(SEEN)).push(*e);
+        }
+    }
+
+    /// The park-wait events (`(operation, task)`) that a refused restore of a record with a `task` site logs under `op`.
+    fn park_waits(op: Option<u32>) -> Vec<(u32, u32)> {
+        let _g = crate::test_lock::LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let (p, f, mut ins) = (parks(), fake(), Installer::new());
+        install(&mut ins, &f, CTX_TASK, &live(&p)).unwrap();
+        put(&f, OBJECT + 0x18, 0);
+        unsafe {
+            (*core::ptr::addr_of_mut!(SEEN)).clear();
+            dlog::dk_debug_log_sink_set(keep as *const () as usize as *mut u8, core::ptr::null_mut());
+            assert_eq!(ins.restore_gated(&f, 1, &live(&p).in_op(op)), Err(Refusal::Busy { task: 1 }));
+            dlog::test_reset_sinks();
+            (*core::ptr::addr_of!(SEEN)).iter().filter(|e| e.a[2] >> 8 & 0xff == Step::ParkWait as u32).map(|e| (e.a[0], e.a[4])).collect()
+        }
+    }
+
+    #[test]
+    fn a_numbered_operation_logs_the_park_wait_with_the_task() {
+        assert_eq!(park_waits(Some(7)), [(7, 1)]);
+    }
+
+    #[test]
+    fn a_quiet_operation_logs_nothing_from_the_gate() {
+        assert_eq!(park_waits(None), []);
+    }
 }

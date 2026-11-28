@@ -285,16 +285,20 @@ struct ProtoLimits {
     peek_max: u32,
     max_request_wire: u32,
     max_reply_wire: u32,
+    query_request_max: u32,
+    query_reply_max: u32,
 }
 impl ProtoLimits {
     /// (generated name, value) in file order.
-    fn all(&self) -> [(&'static str, u32); 5] {
+    fn all(&self) -> [(&'static str, u32); 7] {
         [
             ("MAX_CHUNK", self.max_chunk),
             ("READ_MAX", self.read_max),
             ("PEEK_MAX", self.peek_max),
             ("MAX_REQUEST_WIRE", self.max_request_wire),
             ("MAX_REPLY_WIRE", self.max_reply_wire),
+            ("QUERY_REQUEST_MAX", self.query_request_max),
+            ("QUERY_REPLY_MAX", self.query_reply_max),
         ]
     }
 }
@@ -458,6 +462,13 @@ fn format_limits(sdk: &Sdk) -> Vec<(&'static str, u32)> {
         ("DSP_SLOT_WORDS", sdk.dsp.slots.words),
         ("MAX_VOICES", sdk.limits.max.machine_rows as u32),
         ("MAX_FX", sdk.limits.max.fx_slots as u32),
+        ("MAX_SELECTION", sdk.limits.max.modules as u32),
+        ("MAX_MACHINE_TYPES", sdk.limits.max.machine_types as u32),
+        ("MAX_MACHINE_PAGES", sdk.limits.max.machine_pages as u32),
+        (
+            "MAX_SHORTCUT_BINDINGS",
+            sdk.limits.max.shortcut_bindings as u32,
+        ),
     ]
 }
 
@@ -694,6 +705,9 @@ pub struct LimitsMax {
     pub page_rows: u64,
     pub machine_rows: u64,
     pub stage_bytes: u64,
+    pub machine_types: u64,
+    pub machine_pages: u64,
+    pub shortcut_bindings: u64,
 }
 
 /// The value of the `[limits.max]` key `key`.
@@ -708,6 +722,9 @@ fn limits_max_value(m: &LimitsMax, key: &str) -> Option<u64> {
         "page_rows" => m.page_rows,
         "machine_rows" => m.machine_rows,
         "stage_bytes" => m.stage_bytes,
+        "machine_types" => m.machine_types,
+        "machine_pages" => m.machine_pages,
+        "shortcut_bindings" => m.shortcut_bindings,
         _ => return None,
     })
 }
@@ -866,6 +883,10 @@ struct Runtime {
     service_registration: String,
     /// The runtime version that first handles resident query exports separately.
     resident_query: String,
+    /// The runtime version that first accepts a version 2 Workbench settings descriptor.
+    workbench_typed: String,
+    /// The runtime version that first accepts Workbench query tables and the MODULE_UI call verb.
+    workbench_queries: String,
 }
 /// The runtime version of a parsed file as (major, minor, patch).
 fn runtime_parts(sdk: &Sdk) -> Result<(u8, u8, u8)> {
@@ -922,6 +943,18 @@ pub fn service_registration_runtime() -> u32 {
 pub fn resident_query_runtime() -> u32 {
     parse_runtime(&sdk_embedded().runtime.resident_query)
         .expect("sdk/sdk.toml [runtime] resident_query")
+}
+
+/// Minimum runtime for a module whose Workbench settings descriptor is version 2.
+pub fn workbench_typed_runtime() -> u32 {
+    parse_runtime(&sdk_embedded().runtime.workbench_typed)
+        .expect("sdk/sdk.toml [runtime] workbench_typed")
+}
+
+/// Minimum runtime for a module that declares Workbench queries.
+pub fn workbench_queries_runtime() -> u32 {
+    parse_runtime(&sdk_embedded().runtime.workbench_queries)
+        .expect("sdk/sdk.toml [runtime] workbench_queries")
 }
 
 pub fn embedded_runtime() -> u32 {
@@ -1077,6 +1110,18 @@ fn parse(text: &str) -> Result<Sdk> {
     if query < registration || query > version {
         return Err(err!(
             "{SOURCE}: [runtime] resident_query must be between service_registration and version"
+        ));
+    }
+    let typed = parse_runtime(&sdk.runtime.workbench_typed)?;
+    if typed < query || typed > version {
+        return Err(err!(
+            "{SOURCE}: [runtime] workbench_typed must be between resident_query and version"
+        ));
+    }
+    let queries = parse_runtime(&sdk.runtime.workbench_queries)?;
+    if queries < typed || queries > version {
+        return Err(err!(
+            "{SOURCE}: [runtime] workbench_queries must be between workbench_typed and version"
         ));
     }
     for (i, (n, k)) in sdk.records.kinds.iter().enumerate() {
@@ -1352,6 +1397,21 @@ fn rust(sdk: &Sdk) -> String {
     let m = &sdk.limits.max;
     let _ = writeln!(s, "    pub const SEL_MAX: usize = {};", m.modules);
     let _ = writeln!(s, "    pub const MAP_N: usize = {};", m.map_entries);
+    let _ = writeln!(
+        s,
+        "    pub const MACHINE_TYPES: usize = {};",
+        m.machine_types
+    );
+    let _ = writeln!(
+        s,
+        "    pub const MACHINE_PAGES: usize = {};",
+        m.machine_pages
+    );
+    let _ = writeln!(
+        s,
+        "    pub const SHORTCUT_BINDINGS: usize = {};",
+        m.shortcut_bindings
+    );
     let _ = writeln!(s, "    pub const MACHINE_ROWS: usize = {};", m.machine_rows);
     let _ = writeln!(s, "    pub const PARAM_ROWS: usize = {};", m.param_rows);
     let _ = writeln!(s, "    pub const PAGE_ROWS: usize = {};", m.page_rows);

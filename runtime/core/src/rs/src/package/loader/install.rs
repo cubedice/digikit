@@ -65,13 +65,16 @@ pub struct CfItems<'a> {
 /// A task of a priority below the UI task's that can be inside a `task` hook (the BgWorker, the console task) and the place of the word that says whether it waits: the task is
 /// parked iff the waiter word of its top-level wait object holds its own TCB (the kernel's pend stores the TCB there before it blocks and the post clears it, so a task that is
 /// running or was just woken reads "not parked"). The waiter word is at `*wait + off` when `indirect` (the wait object hangs off a cell: the BgWorker singleton), else at
-/// `wait + off`; a cell that holds 0 is a task without its object yet, which reads "not parked".
+/// `wait + off`; a cell that holds 0 is a task without its object yet, which reads "not parked". `made` (0: none) is the offset from `wait` of a word that is 0 until the task's
+/// wait object is built: a task whose object was never built does not exist (the firmware creates the console task only on a unit with its serial-console flag), so it cannot be
+/// inside a hook and reads "parked".
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Park {
     pub tcb: u32,
     pub wait: u32,
     pub indirect: bool,
     pub off: u32,
+    pub made: u32,
 }
 
 /// Most tasks the installer waits for.
@@ -85,52 +88,68 @@ pub const PARKS_MAX: usize = 4;
 pub struct Gate<'a> {
     pub live: bool,
     pub parks: Option<&'a [Park]>,
-    /// The operation whose events a wait adds (`Loader::op`): 0 for none.
-    pub op: u32,
+    /// The operation whose events a wait adds (`Loader::logging_op`): `None` while the operation is quiet (a retry that logs nothing), 0 for no numbered operation.
+    pub op: Option<u32>,
+}
+
+/// Why a gate does not let a write through.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Refusal {
+    /// A task is not parked: `task` is the first one found so, its place in the port file's list (read under the same mask as the answer). Nothing changed; ask again on a later pass.
+    Busy { task: usize },
+    /// The port file lists no task facts, so a `task` site cannot be gated.
+    NoTaskFacts,
+}
+
+impl Refusal {
+    /// The status an install answers with.
+    pub fn status(self) -> i32 {
+        if let Refusal::Busy { .. } = self {
+            E_BUSY
+        } else {
+            E_IMPORT
+        }
+    }
 }
 
 impl Gate<'static> {
     /// The boot (and a test that has no task): no waiting.
-    pub const BOOT: Gate<'static> = Gate { live: false, parks: Some(&[]), op: 0 };
+    pub const BOOT: Gate<'static> = Gate { live: false, parks: Some(&[]), op: Some(0) };
 }
 
 impl<'a> Gate<'a> {
     /// The gate whose wait events belong to operation `op`.
-    pub fn in_op(mut self, op: u32) -> Gate<'a> {
+    pub fn in_op(mut self, op: Option<u32>) -> Gate<'a> {
         self.op = op;
         self
     }
 }
 
 impl Gate<'_> {
-    /// `Ok` when every task is parked (or the gate is not live). Call it under the mask.
-    unsafe fn clear<P: PackagePlatform>(&self, p: &P) -> Result<(), i32> {
+    /// `Ok` when every task is parked (or the gate is not live); else the first task that is not. Call it under the mask. The gate evaluates the tasks once.
+    unsafe fn clear<P: PackagePlatform>(&self, p: &P) -> Result<(), Refusal> {
         if !self.live {
             return Ok(());
         }
         let Some(parks) = self.parks else {
-            return Err(E_IMPORT);
+            return Err(Refusal::NoTaskFacts);
         };
-        let mut i = 0;
-        while i < parks.len() {
-            if !parked(p, &parks[i]) {
-                // the task that is not parked (its place in the port file's list) is the event's detail
-                if crate::package::lifecycle::trace_on() {
-                    crate::package::lifecycle::trace_emit(
-                        self.op,
-                        dkrt_lifecycle::Phase::Note,
-                        dkrt_lifecycle::Step::ParkWait,
-                        crate::package::lifecycle::TRACE_NO_PACKAGE,
-                        0,
-                        E_BUSY,
-                        i as u32,
-                    );
-                }
-                return Err(E_BUSY);
-            }
-            i += 1;
+        let Some(i) = parks.iter().position(|k| !parked(p, k)) else {
+            return Ok(());
+        };
+        // the task that is not parked is the event's detail; a quiet operation has no number to log under (its owner notes a change)
+        if let (Some(op), true) = (self.op, crate::package::lifecycle::trace_on()) {
+            crate::package::lifecycle::trace_emit(
+                op,
+                dkrt_lifecycle::Phase::Note,
+                dkrt_lifecycle::Step::ParkWait,
+                crate::package::lifecycle::TRACE_NO_PACKAGE,
+                0,
+                E_BUSY,
+                i as u32,
+            );
         }
-        Ok(())
+        Err(Refusal::Busy { task: i })
     }
 }
 
@@ -157,9 +176,13 @@ unsafe fn parked<P: PackagePlatform>(p: &P, k: &Park) -> bool {
     let mut at = k.wait;
     if k.indirect {
         at = word(p, at);
+        // a zero cell: the singleton is built on first use and does not exist yet, so no task is inside a hook (under the mask nothing builds it)
         if at == 0 {
-            return false;
+            return true;
         }
+    }
+    if k.made != 0 && word(p, at.wrapping_add(k.made)) == 0 {
+        return true;
     }
     word(p, at.wrapping_add(k.off)) == k.tcb
 }
@@ -458,7 +481,7 @@ impl Installer {
         if hooks.iter().any(|h| h.ctx == CTX_TASK) || patches.iter().any(|h| h.ctx == CTX_TASK) {
             if let Err(e) = gate.clear(p) {
                 p.irq_restore(sr);
-                return Err(e);
+                return Err(e.status());
             }
         }
         // the compare under the mask: nothing may have changed the sites since the copies were read
@@ -541,7 +564,7 @@ impl Installer {
 
     /// [`Installer::restore`] with a [`Gate`]: at run time a record with a `task` site is restored only while the tasks of the gate are parked (checked under the mask), else
     /// `E_BUSY` and nothing changed (the caller asks again on a later pass); a record with `ui` and `irq` sites only never waits.
-    pub unsafe fn restore_gated<P: PackagePlatform>(&mut self, p: &P, rec: u8, gate: &Gate<'_>) -> Result<(), i32> {
+    pub unsafe fn restore_gated<P: PackagePlatform>(&mut self, p: &P, rec: u8, gate: &Gate<'_>) -> Result<(), Refusal> {
         // a record that installed nothing (a file that failed before its install) costs no platform call
         if !self.sites[..self.n].iter().any(|s| s.rec == rec) && !self.patches[..self.np].iter().any(|s| s.rec == rec) && !self.slot_words[..self.ns].iter().any(|s| s.0 == rec) {
             return Ok(());

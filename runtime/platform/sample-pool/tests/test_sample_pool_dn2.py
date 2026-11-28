@@ -272,7 +272,8 @@ int main(void)
 
     /* the acknowledgement: good, then every kind of wrong */
     halves(h, 1, 0x0305, 0x10002, 0x0402);
-    printf("ack %d %u %u %u %x %x\n", spw_ack_decode(h, &a), a.status, a.error, a.errcount, a.count, a.last);
+    int decoded = spw_ack_decode(h, &a);
+    printf("ack %d %u %u %u %x %x\n", decoded, a.status, a.error, a.errcount, a.count, a.last);
     halves(h, 1, 0, 0, 0); h[0] = 0x5351; h[7] = (spw_ack_sum(h) ^ SPW_ACK_XOR) & 0xffff; printf("bad magic %d\n", spw_ack_decode(h, &a));
     halves(h, 1, 0, 0, 0); h[1] = 1; h[7] = (spw_ack_sum(h) ^ SPW_ACK_XOR) & 0xffff; printf("bad version %d\n", spw_ack_decode(h, &a));
     halves(h, 4, 0, 0, 0); printf("bad status %d\n", spw_ack_decode(h, &a));
@@ -284,7 +285,8 @@ int main(void)
     spw_snap_store(&s, 0, &a);
     printf("snap empty %d\n", spw_snap_read(&s, &a));
     halves(h, 1, 0, 5, 9); spw_ack_decode(h, &a); spw_snap_store(&s, 1, &a);
-    printf("snap %d %u\n", spw_snap_read(&s, &a), a.count);
+    int snap_read = spw_snap_read(&s, &a);
+    printf("snap %d %u\n", snap_read, a.count);
     s.seq++;
     printf("snap odd %d\n", spw_snap_read(&s, &a));
     s.seq++;
@@ -294,17 +296,20 @@ int main(void)
         spw_ack arm = {1, 0, 0, 10, spw_tag_last(spw_tag(4, 99))}, ok = arm, err = arm, dead = arm;
         int32_t r;
         spw_begin(&x, 100);
-        printf("wait %d %d\n", spw_poll(&x, 100, 0), spw_poll(&x, 399, 0));
+        r = spw_poll(&x, 100, 0);
+        printf("wait %d %d\n", r, spw_poll(&x, 399, 0));
         printf("armed timeout %d\n", spw_poll(&x, 400, 0));
         spw_begin(&x, 100);
         r = spw_poll(&x, 101, &arm);
         printf("ready %d next %x\n", r, spw_next_tag(&x, 6));
         spw_sent(&x, spw_next_tag(&x, 6), 101);
-        printf("pending %d %d\n", spw_poll(&x, 102, &arm), spw_poll(&x, 175, 0));       /* no news, then just before the deadline */
+        r = spw_poll(&x, 102, &arm);
+        printf("pending %d %d\n", r, spw_poll(&x, 175, 0));       /* no news, then just before the deadline */
         printf("resend at 176 %d\n", spw_poll(&x, 176, 0));
         spw_resent(&x, 176);
         ok.count = 11; ok.last = spw_tag_last(spw_tag(5, 6));
-        printf("acked %d base %u next %x\n", spw_poll(&x, 177, &ok), x.base_count, spw_next_tag(&x, 7));
+        r = spw_poll(&x, 177, &ok);
+        printf("acked %d base %u next %x\n", r, x.base_count, spw_next_tag(&x, 7));
         /* a stale error (same error count) is not ours; a new one ends the load; the code decides the kind */
         spw_begin(&x, 0); err.status = SPW_ST_ERROR; err.errcount = 3; err.error = SPW_ERR_SEQ;
         spw_poll(&x, 1, &err);
@@ -328,7 +333,8 @@ int main(void)
         printf(" dead %d\n", spw_poll(&x, 2000, &dead));
         /* the clock wraps */
         spw_begin(&x, 0xfffffff0u);
-        printf("wrap %d %d\n", spw_poll(&x, 0xfffffff0u + 299, 0), spw_poll(&x, 0xfffffff0u + 300, 0));
+        r = spw_poll(&x, 0xfffffff0u + 299, 0);
+        printf("wrap %d %d\n", r, spw_poll(&x, 0xfffffff0u + 300, 0));
     }
 
     /* the file header */

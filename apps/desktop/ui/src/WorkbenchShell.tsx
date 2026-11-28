@@ -1,3 +1,5 @@
+import { targetKey } from '@digi/workbench-core/transfer/session-core.ts';
+import { watchOpenModule } from './shell/open-module';
 import {
   For,
   Match,
@@ -14,10 +16,16 @@ import {
 } from 'solid-js';
 import CopyErrorButton from '@digi/workbench-core/ui/components/CopyErrorButton.tsx';
 import ModulePageView from '@digi/workbench-core/ui/module-ui/ModulePageView.tsx';
+import { hasModuleEntry } from '@digi/workbench-core/module-ui/module-page-tabs.ts';
 import { moduleFilePage, moduleFilePages } from './module-file-pages';
 import { runtimeModulePages } from './runtime-module-pages';
-import type { ModulePageSource } from '@digi/workbench-core/module-ui/module-page.ts';
-import { targetKey } from '@digi/workbench-core/transfer/session-core.ts';
+import { modulePageLoaders } from './module-page-loaders';
+import { createDeviceChannelFactory } from '@digi/workbench-core/module-ui/device-channel-factory.ts';
+import type { ModuleChannelFactory } from '@digi/workbench-core/module-ui/module-channel-factory.ts';
+import {
+  createModulePageRegistry,
+  type ModulePageLoaders,
+} from '@digi/workbench-core/module-ui/module-page-registry.ts';
 import LivePanel, { type LivePanelApi } from '@digi/workbench-core/ui/components/LivePanel.tsx';
 import { defaultFaceplate, panels } from '@digi/workbench-core/data/faceplates.ts';
 import { registry } from '@digi/workbench-core/data/device-profiles.ts';
@@ -45,6 +53,7 @@ import { createDeviceNames, createEmulatorNames, selectedSymbolImage } from './l
 import { windowShown } from './log-follow-core';
 import type { DesktopApps } from './desktop-app';
 import WorkbenchDrawer from './WorkbenchDrawer';
+import DspPage from './dsp/DspPage';
 import LogPanel from './LogPanel';
 import FirmwareSymbols from './FirmwareSymbols';
 import FirmwareCatalog, { type CatalogSelection } from './FirmwareCatalog';
@@ -78,7 +87,10 @@ const PerformancePanel = lazy(() => import('./PerformancePanel'));
 const AnalyzerPanel = lazy(() => import('./analyzer/AnalyzerPanel'));
 
 export interface WorkbenchShellOptions {
-  modulePages?: ModulePageSource;
+  /** The channel of a loaded module instance. The default is the device's; the preview simulates one. */
+  moduleChannels?: ModuleChannelFactory;
+  /** The module pages to load. The default is the pages of the modules in this checkout; the preview adds the fixtures'. */
+  modulePageLoaders?: ModulePageLoaders;
   initialPage?: Page;
   browserPreview?: boolean;
   logSources?: Pick<FollowEnv, 'emulator' | 'device'>;
@@ -94,6 +106,7 @@ export default function WorkbenchShell(
   },
 ) {
   const app = useTransferApp();
+  onCleanup(app.connection.dispose);
   const fw = useFirmwareApp();
   const { drawer, log, logWriter, emulatorActions } = untrack(() => props.tools);
   const { logEvent, logInput } = logWriter;
@@ -124,21 +137,35 @@ export default function WorkbenchShell(
     setPage('firmware');
   }
   const filePages = moduleFilePages(app);
-  const runtimePage = runtimeModulePages(app, (id, schema, open) => moduleFilePage(app, id, schema, open));
+  const runtimePage = runtimeModulePages(
+    app,
+    props.moduleChannels ?? createDeviceChannelFactory(app, (files) => props.host.fs.saveFiles(files)),
+    createModulePageRegistry(props.modulePageLoaders ?? modulePageLoaders),
+    (id, schema, definition, channel) => moduleFilePage(app, id, { schema, channel, definition }),
+  );
   const modulePages = createMemo(() => {
-    const source = props.modulePages;
     if (app.target.switching() || app.target.libraryOnly()) return [];
-    const key = targetKey(target());
     return app.inventory.modules().flatMap((module) => {
       const { name } = module;
-      const view = source?.lookup(key, name) ?? runtimePage(module) ?? filePages.get(name);
-      return view ? [{ id: name, name: view.descriptor.name, view }] : [];
+      const view = runtimePage(module) ?? filePages.get(name);
+      return view && hasModuleEntry(view.descriptor) ? [{ id: name, name: view.descriptor.name, view }] : [];
     });
   });
+  function openModule(id: string) {
+    setModuleId(id);
+    setPage('module');
+  }
   const modulePage = () => modulePages().find((item) => item.id === moduleId())?.view;
-  createEffect(() => {
-    if (page() === 'module' && !app.target.switching() && !modulePage()) setPage('transfer');
-  });
+  watchOpenModule(
+    {
+      target: () => targetKey(app.target.target()),
+      switching: app.target.switching,
+      inventory: app.inventory,
+      hasPage: (module) => module.uiInstance !== undefined || filePages.get(module.name) !== undefined,
+    },
+    () => (page() === 'module' ? { id: moduleId() } : undefined),
+    () => setPage('transfer'),
+  );
   const [card, setCard] = createSignal<CardStatus>();
   let live: LivePanelApi | undefined;
   let folderInput: HTMLInputElement | undefined;
@@ -238,15 +265,12 @@ export default function WorkbenchShell(
     )
       return;
     const binding = app.target.bindSession();
-    const read = app.inventory.reader();
-    void binding
-      .session()
-      .then(async (s) => {
-        const info = await s.info(true);
-        binding.check();
-        await read(s, info);
-      })
-      .catch(() => {});
+    void app.inventory.refresh(async () => {
+      const session = await binding.session();
+      const info = await session.info(true);
+      binding.check();
+      return { session, info };
+    });
   });
   const pollAudio = async () => {
     try {
@@ -600,10 +624,7 @@ export default function WorkbenchShell(
           modules={modulePages()}
           moduleId={moduleId()}
           onNavigate={setPage}
-          onOpenModule={(id) => {
-            setModuleId(id);
-            setPage('module');
-          }}
+          onOpenModule={openModule}
         />
         <div class="content">
           {/* The faceplate stays mounted behind the Transfer and Remote pages: the emulator, its audio and the snapshot pump run on. */}
@@ -688,15 +709,35 @@ export default function WorkbenchShell(
               </Show>
             </div>
           </div>
-          <Show when={page() === 'module' && modulePage()} keyed>
-            {(view) => <ModulePageView page={view} current={() => modulePage() === view} />}
+          <Show when={page() === 'module'}>
+            <Show
+              when={modulePage()}
+              keyed
+              fallback={
+                <p class="note" role="status">
+                  This module is not loaded on {targetLabel(target())}.
+                </p>
+              }
+            >
+              {(view) => <ModulePageView page={view} current={() => modulePage() === view} />}
+            </Show>
           </Show>
+          <DspPage
+            active={page() === 'dsp'}
+            fs={props.host.fs}
+            rig={props.host.dspQuality}
+            session={workspaceSession?.dspSession()}
+            sessionBusy={workspaceSession?.disabled()}
+            saveDsp={workspaceSession?.saveDsp}
+            openTransfer={() => setPage('transfer')}
+          />
           <Show when={page() === 'transfer'}>
             <TransferPage
               onFlash={() => {
                 setFirmwareTab('flash');
                 setPage('firmware');
               }}
+              pages={{ has: (id) => modulePages().some((item) => item.id === id), open: openModule }}
             />
           </Show>
           <Show when={page() === 'files' && !app.target.switching() && selected()} keyed>

@@ -30,6 +30,7 @@ use std::vec::Vec;
 
 mod lfo_closure_reload;
 mod lifecycle_events;
+mod payloads;
 mod settings_page;
 mod workbench;
 
@@ -330,6 +331,29 @@ fn newer_ping_row() -> &'static dkrt_abi::provider::ProviderRow {
     &ROW
 }
 
+/// The row of the provider fixture whose state part accepts only layouts newer than its own (an empty range): the fixture's own row with only the State entry replaced, as the file's
+/// table cannot differ on the host (the row is the test binary's).
+fn state_beyond_ping_row() -> &'static dkrt_abi::provider::ProviderRow {
+    use crate::package::core_api::RealCore;
+    use dkrt_abi::provider::{check, PartLookup, PartRef, ProviderRow, StateV1, PART_STATE, STATE_NEWEST};
+    use dkrt_fixture_local_ping::LocalPing;
+    let own = dkrt_fixture_local_ping::dk_svc_row();
+    // SAFETY: the row and its tables are statics of the fixture
+    let checked = unsafe { check(own, 0..usize::MAX) }.expect("the fixture's row");
+    let mut parts: Vec<PartRef> = (1..PART_STATE)
+        .filter_map(|tag| match checked.part(tag, u16::MAX) {
+            PartLookup::Found { table, version } => Some(PartRef::new(tag, version, table)),
+            _ => None,
+        })
+        .collect();
+    let state: &'static StateV1 = Box::leak(Box::new({
+        let own = StateV1::of::<LocalPing, RealCore>();
+        StateV1 { accepts_from: own.version + 1, ..own }
+    }));
+    parts.push(PartRef::new(PART_STATE, STATE_NEWEST, state as *const _ as *const ()));
+    Box::leak(Box::new(ProviderRow::new(own.name(), Box::leak(parts.into_boxed_slice()))))
+}
+
 fn other_name_ping_row() -> &'static dkrt_abi::provider::ProviderRow {
     use dkrt_abi::provider::{LifecycleV1, PartRef, ProviderRow, LIFECYCLE_NEWEST, PART_LIFECYCLE};
     use crate::package::core_api::RealCore;
@@ -346,7 +370,9 @@ pub(super) struct Card {
     staged: Vec<u8>,
     staged_path: Vec<u8>,
     pub(super) live: Vec<(u32, Vec<u128>)>,
-    allocs: u32,
+    pub(super) allocs: u32,
+    /// The allocation (counted by `allocs`) that finds the arena full: a case that needs a refusal for lack of room.
+    pub(super) fail_alloc: Option<u32>,
     /// The blocks given back: (address, bytes). Only a load that fails flushes a block after its free (its cleanup), so a golden shows `freed:` only for such a path.
     freed: Vec<(u32, u32)>,
     /// The runtime id of the device whose `init` the card replays.
@@ -368,6 +394,8 @@ pub(super) struct Card {
     pub(super) newer_parts: bool,
     /// The `local-ping` row declares another service name than the file PROVIDES.
     pub(super) wrong_name: bool,
+    /// The provider fixture's state part accepts no layout the old copy has (`state_beyond_ping_row`).
+    pub(super) state_beyond: bool,
     /// The device addresses of the runtime's functions that the imports of a service file name (`svc_import_addr`).
     imports: crate::fake_platform::address_map::AddressMap,
 }
@@ -378,6 +406,8 @@ pub(super) enum Builder {
     Machine(u32),
     Fx(u32),
     Workbench { offset: usize, len: usize },
+    /// `dk_workbench_register_queries` with a table of `count` entries whose method numbers are `methods`, read from the packed table. The host cannot run ColdFire code, so each entry gets a host stand-in function.
+    Queries { count: u32, methods: [u8; crate::package::module_ui::QUERIES_MAX] },
 }
 
 impl Card {
@@ -398,6 +428,7 @@ impl Card {
             staged_path: Vec::new(),
             live: Vec::new(),
             allocs: 0,
+            fail_alloc: None,
             freed: Vec::new(),
             device,
             init_calls: Vec::new(),
@@ -408,6 +439,7 @@ impl Card {
             provider_recs: Vec::new(),
             newer_parts: false,
             wrong_name: false,
+            state_beyond: false,
             imports: crate::fake_platform::address_map::AddressMap::new(),
         }
     }
@@ -427,6 +459,9 @@ impl Images for Card {
     }
     unsafe fn alloc(&mut self, n: u32) -> Option<Block> {
         self.allocs += 1;
+        if self.fail_alloc == Some(self.allocs) {
+            return None;
+        }
         let addr = 0x0010_0000 * self.allocs;
         let mut mem = std::vec![0u128; (n as usize + 15) / 16];
         let ptr = mem.as_mut_ptr() as *mut u8;
@@ -489,6 +524,14 @@ impl Images for Card {
                 match *call {
                     Builder::Machine(i) => crate::package::handlers::machines_fixture::add_machine(ctx, i),
                     Builder::Fx(i) => crate::package::handlers::fx_fixture::add_fx(ctx, i),
+                    Builder::Queries { count, methods } => {
+                        let table = crate::package::module_ui::stand_in_queries(&methods[..count as usize]);
+                        let status = crate::package::module_ui::dk_workbench_register_queries(ctx, table, count);
+                        if status != OK {
+                            crate::dlog::leave_module(prev);
+                            return status;
+                        }
+                    }
                     Builder::Workbench { offset, len } => {
                         let bytes = &f[offset..offset + len];
                         let status = crate::package::module_ui::dk_workbench_register(ctx, bytes.as_ptr(), len as u32);
@@ -556,8 +599,15 @@ impl Images for Card {
             dkrt_fixture_local_ping::dk_svc_stop();
             let instance = dkrt_fixture_local_ping::dk_svc_start().expect("the instance of local-ping starts");
             self.provider_recs.push(rec);
-            let row = if self.wrong_name { other_name_ping_row() } else if self.newer_parts { newer_ping_row() } else { dkrt_fixture_local_ping::dk_svc_row() };
+            let row = if self.wrong_name { other_name_ping_row() } else if self.newer_parts { newer_ping_row() } else if self.state_beyond { state_beyond_ping_row() } else { dkrt_fixture_local_ping::dk_svc_row() };
             return crate::package::collect::dk_provider_declare_row(ctx, row, instance);
+        }
+        if stem == "local-payload" {
+            // the payload fixture, as local-ping: its own row (with the payloads part) over an instance that `dk_svc_start` makes
+            dkrt_fixture_local_payload::dk_svc_stop();
+            let instance = dkrt_fixture_local_payload::dk_svc_start().expect("the instance of local-payload starts");
+            self.provider_recs.push(rec);
+            return crate::package::collect::dk_provider_declare_row(ctx, dkrt_fixture_local_payload::dk_svc_row(), instance);
         }
         let name: &'static str = Box::leak(stem.into_boxed_str());
         let kinds: &'static [(u32, u32)] = Box::leak(kinds.into_boxed_slice());
@@ -586,6 +636,7 @@ impl Images for Card {
         if let Some(at) = self.provider_recs.iter().position(|r| *r == rec) {
             self.provider_recs.remove(at);
             dkrt_fixture_local_ping::dk_svc_stop();
+            dkrt_fixture_local_payload::dk_svc_stop();
             crate::package::handlers::dks_decls::fx_stop();
             crate::package::handlers::dks_decls::machines_stop();
         }
@@ -614,6 +665,7 @@ pub(super) fn clean() -> Clean {
         crate::package::handlers::lfo_tests::image_has_wave_table(true);
         // a case that ended early left the instance of the provider fixture started
         dkrt_fixture_local_ping::dk_svc_stop();
+        dkrt_fixture_local_payload::dk_svc_stop();
         crate::package::handlers::dks_decls::fx_stop();
         crate::package::handlers::dks_decls::machines_stop();
         // the link script is a static: a test with no DSP part never calls `script_link`, and would see the strict tick drop of the initial value or the state of
@@ -654,6 +706,9 @@ pub(super) const LOCAL_PATCH_USER: Fixture = Fixture { leaf: "local-patch-user",
 pub(super) const SVC_TEST: Fixture = Fixture { leaf: "svc-test", nx: "test/svc-test" };
 pub(super) const LOCAL_PING: Fixture = Fixture { leaf: "local-ping", nx: "test/local-ping" };
 pub(super) const LOCAL_PING_USER: Fixture = Fixture { leaf: "local-ping-user", nx: "test/local-ping-user" };
+/// The service that takes payloads (the payloads part) and the module that carries two for it.
+pub(super) const LOCAL_PAYLOAD: Fixture = Fixture { leaf: "local-payload", nx: "test/local-payload" };
+pub(super) const LOCAL_PAYLOAD_USER: Fixture = Fixture { leaf: "local-payload-user", nx: "test/local-payload-user" };
 pub(super) const LOCAL_PING_USER_B: Fixture = Fixture { leaf: "local-ping-user-b", nx: "test/local-ping-user-b" };
 /// A module that binds a key combination with `dk_shortcut_add`: a user of the shortcuts service file, no DSP section.
 pub(super) const SHORTCUT_DEMO: Fixture = Fixture { leaf: "shortcut-demo", nx: "test/shortcut-demo" };
@@ -789,7 +844,7 @@ pub(super) unsafe fn boot_run(l: &mut Boot, plan: &Plan, modules: &[&Fixture], p
     s.begin_boot(&capacity(&l.p), modules.len());
     let manifest = RtManifest::of(&mut *s, modules.len());
     let (placer, linker, installers, host) = crate::package::lifecycle::traced_seams(&mut *s);
-    let mut pm = Manager::new(manifest, placer, linker, installers, host).unwrap();
+    let mut pm = Manager::new(manifest, placer, linker, installers, host, 50).unwrap();
     let mut roots: Vec<PackageId> = (0..modules.len()).map(|k| PackageId(k as u8)).collect();
     if pin_services {
         roots.extend((0..plan.np).map(|j| PackageId((MAX_MODULES + j) as u8)));
@@ -1434,8 +1489,8 @@ fn a_project_user_loads_with_the_project_service_file_and_takes_its_hooks() {
             .count();
         assert_eq!(keys.count(tag::HOOKS), 5, "{}", dev.name);
         assert_eq!(present, 5, "{}: every hook has a site", dev.name);
-        // the two functions the service gives modules
-        assert_eq!(keys.count(tag::EXPORTS), 2, "{}", dev.name);
+        // the functions the service gives modules: current, status, list, get, settings, read
+        assert_eq!(keys.count(tag::EXPORTS), 6, "{}", dev.name);
     }
 }
 
@@ -1729,8 +1784,8 @@ fn a_card_without_the_fx_service_file_refuses_an_effect_naming_the_service() {
     }
 }
 
-/// The shortcuts seam: a module that calls `dk_shortcut_add` has a hard NEED on the service file, its builder import is an export of `shortcuts.dks`, and the file owns the
-/// SHORTCUT kind of the module's records. A card without the file refuses the module naming the service.
+/// The shortcuts seam: a module that calls `dk_shortcut_add` has a hard NEED on the service file, its builder import is an export of `shortcuts.dks`, the file owns the
+/// SHORTCUT kind of the module's records and takes no firmware site (its key routine subscribes to `core/input`'s table, `input_keys_info`: the patchkit test `key_subscribers`). A card without the file refuses the module naming the service.
 #[test]
 fn a_module_that_binds_a_shortcut_needs_the_shortcuts_service_file() {
     let _g = clean();
@@ -1745,9 +1800,9 @@ fn a_module_that_binds_a_shortcut_needs_the_shortcuts_service_file() {
         let keys = Keys::parse(&t).unwrap();
         let kinds: Vec<u32> = (0..keys.count(tag::KINDS)).map(|i| keys.words(tag::KINDS, i).unwrap().0).collect();
         assert_eq!(kinds, [dkrt_sdk::records::KIND_SHORTCUT], "{}: the kinds shortcuts.dks declares", dev.name);
-        // the one hook it takes: the entry of the key walker (ports/fw/input.toml), listed by the port file of the device and present on it
+        // no hook: the key walker belongs to core/input (ports/fw/input.toml), which the service subscribes to (`input_keys_info`)
         let hooks: Vec<u32> = (0..keys.count(tag::HOOKS)).map(|i| keys.words(tag::HOOKS, i).unwrap().0).collect();
-        assert_eq!(hooks, [name_hash("cf.input.hook.key_event")], "{}: the hooks shortcuts.dks declares", dev.name);
+        assert_eq!(hooks, Vec::<u32>::new(), "{}: shortcuts.dks declares no hook", dev.name);
         let image = Image::read(*dev, "emulator");
         unsafe {
             // with the file on the card the module is accepted and the file is the provider that loads, and its builder import is one of its exports
@@ -1755,10 +1810,8 @@ fn a_module_that_binds_a_shortcut_needs_the_shortcuts_service_file() {
             assert!(found(&l, &plan).contains("services/shortcuts.dks"), "{}", dev.name);
             let run = boot_run(&mut l, &plan, &[&SHORTCUT_DEMO], true);
             assert_eq!(run.verdict(0), Verdict::Accepted, "{}", dev.name);
-            // the hook site is one `jmp` at the walker entry of the device's firmware
-            let binds = binds_of(*dev, &l, &plan);
-            assert_eq!(binds.len(), 1, "{}: the sites shortcuts.dks installs", dev.name);
-            assert_eq!(binds[0].0, name_hash("cf.input.hook.key_event"), "{}", dev.name);
+            // it takes no firmware site: the file is admitted without the key hook
+            assert!(binds_of(*dev, &l, &plan).is_empty(), "{}: the sites shortcuts.dks installs", dev.name);
             assert!(l.exports.owned(name_hash("dk_shortcut_add")).is_some(), "{}: dk_shortcut_add is no export of shortcuts.dks", dev.name);
             let listed: Vec<u32> = (0..keys.count(tag::EXPORTS)).map(|i| keys.words(tag::EXPORTS, i).unwrap().0).collect();
             assert_eq!(listed, [name_hash("dk_shortcut_add")], "{}: the header table's exports", dev.name);
@@ -1901,7 +1954,7 @@ fn the_service_query_is_private_to_its_provider_and_reaches_its_typed_dispatcher
             assert_eq!(ask(dkrt_fixture_local_ping::OP_COUNTERS, core::ptr::null(), 0, out, len), E_MISSING, "no owner, no provider");
             dkrt_fixture_local_ping::dk_svc_start().expect("the owner starts");
             assert_eq!(ask(dkrt_fixture_local_ping::OP_COUNTERS, core::ptr::null(), 0, out, len), len as i32, "the reply is the counters");
-            assert_eq!(ask(dkrt_fixture_local_ping::OP_COUNTERS + 1, core::ptr::null(), 0, out, len), E_NOT_FOUND);
+            assert_eq!(ask(dkrt_fixture_local_ping::OP_COUNT + 1, core::ptr::null(), 0, out, len), E_NOT_FOUND);
             assert_eq!(ask(dkrt_fixture_local_ping::OP_COUNTERS, core::ptr::null(), 0, out, len - 1), E_TOO_BIG);
         }
         clean_state();

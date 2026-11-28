@@ -6,8 +6,9 @@
 // `--why` adds a line to each selected file: the names that selected it, and the changed files that selected it with `--base`.
 // `--base REF` (and `--gate`) adds the tests the changed files select by ownership (tools/nx/device-owners.mjs, docs/TESTING.md
 // "Device test selection"): the owned tests of the touched projects, the tests that name them, the tests that load a changed fixture
-// and the tests that import a changed file, plus the fixed smoke set gate-device-smoke when `affected` selects a device test. A changed
-// path no project owns, or that no test names, selects nothing and is printed. What `affected` selects and the gate skips is listed.
+// and the tests that import a changed file, plus the fixed smoke set gate-device-smoke when `affected` selects a device test. Runtime
+// source files are decided by area first (tools/nx/runtime-areas.json, docs/TESTING.md "Runtime areas"): the mapped tests of the area, or none for a host-proven
+// file (a file in neither fails the gate). A changed path no project owns, or that no test names, selects nothing and is printed. What `affected` selects and the gate skips is listed.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -15,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { budget, startAtOnce, workCores } from './resources.mjs';
 import { closureFiles, testImportInputs } from './ts-imports.mjs';
 import { gateContext } from './gate-context.mjs';
+import { areaSelection } from './runtime-areas.mjs';
 import { DEVICES, leavesOf, ownedConformance, ownershipSelection } from './device-owners.mjs';
 
 export { DEVICES };
@@ -66,17 +68,37 @@ export const modeSummary = (tests, work = workCores()) => {
   return { count, cores: b.budget, slots: b.tasks, once: startAtOnce(count, b.budget, b.tasks) };
 };
 
-// The `run-many` calls for the selection. One call when the cross product of its projects and targets is exact (a project that does not
-// have a target is skipped by Nx); else one call per target.
+// A run-many call selects every existing target among its listed projects and targets.
+// Merge target groups while both directions of the expanded selection stay exact.
 export const invocations = (pairs, projects) => {
   const have = new Map(projects.map((p) => [p.name, new Set(p.targets)]));
-  const wanted = new Set(pairs.map((p) => `${p.project}:${p.target}`));
   const names = [...new Set(pairs.map((p) => p.project))];
-  const targets = [...new Set(pairs.map((p) => p.target))];
-  const exact = names.every((n) => targets.every((t) => !have.get(n)?.has(t) || wanted.has(`${n}:${t}`)));
-  const call = (ts, ns) => ['run-many', '-t', ts.join(','), '-p', ns.join(',')];
-  if (exact) return [call(targets, names)];
-  return targets.map((t) => call([t], [...new Set(pairs.filter((p) => p.target === t).map((p) => p.project))]));
+  const byTarget = new Map();
+  for (const { project, target } of pairs) {
+    if (!byTarget.has(target)) byTarget.set(target, new Set());
+    byTarget.get(target).add(project);
+  }
+  const batches = [];
+  for (const [target, selected] of byTarget) {
+    const batch = batches.find(
+      ({ projects, targets }) =>
+        [...projects].every((p) => selected.has(p) || !have.get(p)?.has(target)) &&
+        [...selected].every((p) => projects.has(p) || targets.every((t) => !have.get(p)?.has(t))),
+    );
+    if (batch) {
+      batch.targets.push(target);
+      for (const p of selected) batch.projects.add(p);
+    } else {
+      batches.push({ targets: [target], projects: selected });
+    }
+  }
+  return batches.map(({ targets, projects }) => [
+    'run-many',
+    '-t',
+    targets.join(','),
+    '-p',
+    names.filter((p) => projects.has(p)).join(','),
+  ]);
 };
 
 // `fixed`: the FIXED entries that Nx `affected` selects (see affectedFixed); the others are left out.
@@ -187,7 +209,7 @@ const gitShow = (root, ref, file) => {
 };
 const readIfExists = (file) => (existsSync(file) ? readFileSync(file, 'utf8') : null);
 
-const loadProjects = (root) => {
+export const loadProjects = (root) => {
   const dir = resolve(root, 'out/runs/test-subset');
   mkdirSync(dir, { recursive: true });
   const file = resolve(dir, 'graph.json');
@@ -225,8 +247,16 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     const changed = changedFiles(root, base);
     const importInputs = testImportInputs(root);
     const ctx = gateContext(root, base);
+    // Runtime source files are decided by their area (runtime-areas.json); the rest by ownership.
+    const area = areaSelection(projects, changed);
+    if (area.unclassified.length) {
+      console.error(
+        `test:subset: runtime file(s) in no area and not host-proven: ${area.unclassified.slice(0, 10).join(' ')}; add them to tools/nx/runtime-areas.json`,
+      );
+      process.exit(2);
+    }
     const owned = ownershipSelection(projects, {
-      changed,
+      changed: changed.filter((f) => !area.governed.has(f)),
       closureOf: (projectRoot, file) => closureFiles(importInputs, `${projectRoot}/${file}`),
       portUsers: ctx.portUsers,
       deviceOf: ctx.deviceOf,
@@ -236,10 +266,11 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     const seen = new Set();
     selection = {
       ...owned,
-      tests: [...owned.tests, ...named.tests].filter(
+      tests: [...area.tests, ...owned.tests, ...named.tests].filter(
         (t) => !seen.has(`${t.project}:${t.file}`) && seen.add(`${t.project}:${t.file}`),
       ),
       unknown: named.unknown,
+      areaNotes: area.notes,
       deviceFiles: owned.devices,
       changed,
     };
@@ -285,6 +316,7 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
     ).values(),
   ];
   console.log(`test:subset: ${[...names, ...(base ? [`--base ${base}`] : [])].join(' ')}`);
+  for (const note of selection.areaNotes ?? []) console.log(`  ${note}`);
   for (const { file, project } of mapped.slice(0, 20)) console.log(`  owner ${project} <- ${file}`);
   if (mapped.length > 20) console.log(`  owner: ${mapped.length - 20} more changed files`);
   for (const { file, why } of (selection.unowned ?? []).slice(0, 20))

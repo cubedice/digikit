@@ -8,10 +8,11 @@ use crate::FakeCore;
 use core::ffi::c_void;
 use dkrt_abi::dsp::{DspSec, Job};
 use dkrt_abi::provider::{
-    Describe, DescribeV1, DspPart, DspV1, LifecycleV1, PartRef, Provider, ProviderHandle,
-    ProviderRow, Query, QueryV1, Records, RecordsV1, Status, TickV1, Ticker, DESCRIBE_NEWEST,
-    DSP_NEWEST, LIFECYCLE_NEWEST, PART_DESCRIBE, PART_DSP, PART_LIFECYCLE, PART_QUERY,
-    PART_RECORDS, PART_TICK, QUERY_NEWEST, RECORDS_NEWEST, TICK_NEWEST,
+    Describe, DescribeV1, DspPart, DspV1, LifecycleV1, PartRef, Payloads, PayloadsV1, Provider,
+    ProviderHandle, ProviderRow, Query, QueryV1, Records, RecordsV1, State, StateV1, Status,
+    TickV1, Ticker, DESCRIBE_NEWEST, DSP_NEWEST, LIFECYCLE_NEWEST, PART_DESCRIBE, PART_DSP,
+    PART_LIFECYCLE, PART_PAYLOADS, PART_QUERY, PART_RECORDS, PART_STATE, PART_TICK,
+    PAYLOADS_NEWEST, QUERY_NEWEST, RECORDS_NEWEST, STATE_NEWEST, TICK_NEWEST,
 };
 use dkrt_abi::service::{
     ApplyCtx, CheckCtx, Claim, Declare, ModuleCommitCtx, Problem, RowWrite, SettleCtx, TableFault,
@@ -111,6 +112,18 @@ impl<P: Provider<FakeCore> + 'static> RowBuilder<P> {
         self
     }
 
+    pub fn payloads(mut self) -> Self
+    where
+        P: Payloads<FakeCore>,
+    {
+        self.parts.push(PartRef::new(
+            PART_PAYLOADS,
+            PAYLOADS_NEWEST,
+            leak(PayloadsV1::of::<P, FakeCore>()),
+        ));
+        self
+    }
+
     pub fn describe(mut self) -> Self
     where
         P: Describe<FakeCore>,
@@ -119,6 +132,19 @@ impl<P: Provider<FakeCore> + 'static> RowBuilder<P> {
             PART_DESCRIBE,
             DESCRIBE_NEWEST,
             leak(DescribeV1::of::<P, FakeCore>()),
+        ));
+        self
+    }
+
+    /// Adopt the state part.
+    pub fn state(mut self) -> Self
+    where
+        P: State<FakeCore>,
+    {
+        self.parts.push(PartRef::new(
+            PART_STATE,
+            STATE_NEWEST,
+            leak(StateV1::of::<P, FakeCore>()),
         ));
         self
     }
@@ -139,6 +165,7 @@ impl<P: Provider<FakeCore> + 'static> RowBuilder<P> {
         match handle {
             Ok(handle) => Ok(Started {
                 handle,
+                instance,
                 validate: self.validate,
                 stop: self.stop,
             }),
@@ -154,6 +181,7 @@ impl<P: Provider<FakeCore> + 'static> RowBuilder<P> {
 /// A started owner object and its resolved row.
 pub struct Started {
     handle: ProviderHandle,
+    instance: *mut c_void,
     validate: Validate,
     stop: unsafe fn(*mut c_void, &FakeCore),
 }
@@ -164,11 +192,90 @@ pub trait Recipe {
     /// The name of the service.
     const NAME: &'static str;
     fn parts(b: RowBuilder<Self::P>) -> RowBuilder<Self::P>;
+
+    /// Why `import(None)` does not give the state of a fresh copy, when the service decides otherwise (it then starts from what a run-time start cannot know).
+    const NONE_STARTS_DIFFERENTLY: Option<&'static str> = None;
+
+    /// Change the state the service carries over a reload, on the old copy before it exports: `true` when it did. A service that adopts the state part gives it, so a state
+    /// that two fresh copies share cannot let a no-op `import` pass the round trip.
+    fn change_state(_: &mut Self::P) -> bool {
+        false
+    }
 }
 
 /// The cases of the contract for the provider `R` describes, on the profile of `f`.
 pub fn provider_contract<R: Recipe>(f: &Fixture) {
-    run::<Provided<R>>(f)
+    run::<Provided<R>>(f);
+    state_round_trip::<R>(f);
+}
+
+/// The state part of a service that adopts it (nothing to check otherwise): what one copy exports another takes and exports again as it was, the bytes fit the room
+/// `export_max` asked for, and `import(None)` gives the start state of a fresh copy. The runtime's own checks (name, version range) are the loader's and sit in its tests.
+fn state_round_trip<R: Recipe>(f: &Fixture) {
+    // the core of the fixture's profile and image: a service that binds an image table at its start (lfo, machines) is refused with `E_NO_REGISTRY` on a bare core
+    let mut core = FakeCore::new();
+    core.device = f.device;
+    (f.image)(&mut core);
+    let start = |core: &FakeCore| {
+        R::parts(RowBuilder::<R::P>::new(R::NAME))
+            .start(core)
+            .unwrap_or_else(|e| panic!("{}: start refused with {e}", R::NAME))
+    };
+    let (old, new) = (start(&core), start(&core));
+    let Some((version, from)) = old.handle.state_versions() else {
+        return;
+    };
+    assert!(
+        from <= version,
+        "{}: the range of the state part is empty",
+        R::NAME
+    );
+    let c = cptr(&core);
+    let export = |s: &Started| unsafe {
+        let mut out = std::vec![0u8; s.handle.state_export_max(c)];
+        let n = s.handle.state_export(c, &mut out);
+        out.truncate(n);
+        out
+    };
+    let fresh = export(&new);
+    let changed = R::change_state(unsafe { &mut *(old.instance as *mut R::P) });
+    let bytes = export(&old);
+    if changed {
+        assert_ne!(
+            bytes,
+            fresh,
+            "{}: `change_state` did not change what the part exports",
+            R::NAME
+        );
+    }
+    // a copy that took the old copy's bytes exports them again
+    assert_eq!(
+        unsafe { new.handle.state_import(c, Some((version, &bytes))) },
+        dkrt_sdk::OK,
+        "{}",
+        R::NAME
+    );
+    assert_eq!(
+        export(&new),
+        bytes,
+        "{}: import then export is the same bytes",
+        R::NAME
+    );
+    // no bytes: the start state of a fresh copy
+    assert_eq!(
+        unsafe { new.handle.state_import(c, None) },
+        dkrt_sdk::OK,
+        "{}",
+        R::NAME
+    );
+    if R::NONE_STARTS_DIFFERENTLY.is_none() {
+        assert_eq!(
+            export(&new),
+            fresh,
+            "{}: import(None) is the fresh state",
+            R::NAME
+        );
+    }
 }
 
 /// A provider as the subject of a suite case: `Lifecycle::<Provided<R>>`.
@@ -329,5 +436,89 @@ impl<R: Recipe> Driver for ProviderDriver<R> {
         write: bool,
     ) -> Option<RowWrite> {
         self.handle().dsp_row_step(cptr(core), rec, want, write)
+    }
+}
+
+#[cfg(test)]
+mod payload_tests {
+    use super::*;
+    use dkrt_abi::provider::{ConsumerId, Payloads, Step};
+
+    /// An owner that takes a payload over three calls (two `Pending`), keeps the first body it saw and refuses kind 9.
+    #[derive(Default)]
+    struct Slow {
+        calls: u32,
+        first_body: Vec<u8>,
+        later_bodies: u32,
+        retired: Vec<u8>,
+    }
+
+    impl Provider<FakeCore> for Slow {
+        fn start_in(_: &FakeCore, slot: &mut core::mem::MaybeUninit<Slow>) -> Result<(), Status> {
+            slot.write(Slow::default());
+            Ok(())
+        }
+    }
+
+    impl Payloads<FakeCore> for Slow {
+        fn check(
+            &mut self,
+            _: &FakeCore,
+            kind: u16,
+            _: &[u8],
+            _: ConsumerId,
+        ) -> Result<(), Status> {
+            if kind == 9 {
+                Err(dkrt_sdk::E_FORMAT)
+            } else {
+                Ok(())
+            }
+        }
+        fn install(
+            &mut self,
+            _: &FakeCore,
+            _: u16,
+            body: Option<&[u8]>,
+            _: ConsumerId,
+        ) -> Result<Step, Status> {
+            match body {
+                Some(b) => self.first_body = b.to_vec(),
+                None => self.later_bodies += 1,
+            }
+            self.calls += 1;
+            Ok(if self.calls < 3 {
+                Step::Pending
+            } else {
+                Step::Done
+            })
+        }
+        fn retire(&mut self, _: &FakeCore, who: ConsumerId) -> Step {
+            self.retired.push(who.get());
+            Step::Done
+        }
+    }
+
+    #[test]
+    fn a_payload_goes_through_the_part_table_with_its_body_on_the_first_call_only() {
+        let core = FakeCore::new();
+        let started = RowBuilder::<Slow>::new("slow")
+            .payloads()
+            .start(&core)
+            .unwrap();
+        let h = &started.handle;
+        assert!(h.has_payloads());
+        let c = cptr(&core);
+        unsafe {
+            assert_eq!(h.payload_check(c, 1, b"x", 4), 0);
+            assert_eq!(h.payload_check(c, 9, b"x", 4), dkrt_sdk::E_FORMAT);
+            assert_eq!(h.payload_install(c, 1, Some(b"abc"), 4), Ok(Step::Pending));
+            assert_eq!(h.payload_install(c, 1, None, 4), Ok(Step::Pending));
+            assert_eq!(h.payload_install(c, 1, None, 4), Ok(Step::Done));
+            assert_eq!(h.payload_retire(c, 4), Step::Done);
+            let slow = &*(h.instance() as *const Slow);
+            assert_eq!(slow.first_body, b"abc");
+            assert_eq!(slow.later_bodies, 2);
+            assert_eq!(slow.retired, [4]);
+        }
     }
 }

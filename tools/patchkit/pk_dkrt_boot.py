@@ -431,9 +431,15 @@ class BootRig(M.Rig):
         args = ["addr", "--map", ship]
         snap: list[object] = []
         for r in json.loads(pk(*args, "--format", "reads")):
-            at, n = int(maps["symbols"][r["symbol"]]), r["len"]
+            symbol = r["symbol"]
+            at = (
+                self.package_symbol(symbol.removeprefix("DKRT_"))
+                if r.get("host_id") is not None
+                else int(maps["symbols"][symbol])
+            )
+            n = r["len"]
             data = b"".join(struct.pack(">I", self.w(at + i)) for i in range(0, n, 4))
-            snap += ["--snapshot", f"{r['symbol']}={data[:n].hex()}"]
+            snap += ["--snapshot", f"{symbol}={data[:n].hex()}"]
         loads = json.loads(pk(*args, *snap, "--format", "loads"))["modules"]
         hit = [m for m in loads if m["id"].rpartition("/")[2] == service]
         if not hit:

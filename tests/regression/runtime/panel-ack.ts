@@ -134,6 +134,22 @@ export function acknowledgedPanel(session: PanelSession, { timeoutMs = 30_000, p
       if (mapped < 1 || mapped > profile.panel.encoders) throw new Error(`Invalid mapped encoder ${mapped}`);
       const pending = (await word(decoder + 0x34)) + 8 * mapped;
       const queue = await word(queueLiteral);
+      if (
+        (await word(decoder + 0x1c)) !== 0xe78841f9 ||
+        (await word(decoder + 0x38)) >>> 16 !== 0x2039 ||
+        (await word(decoder + 0x42)) !== 0xb2806504
+      )
+        throw new Error('Unexpected encoder click-release guard');
+      const releaseTick = await word((await word(decoder + 0x20)) + 4 * (mapped - 1));
+      const tickAddress = await word(decoder + 0x3a);
+      // The decoder discards a turn in the first 40 ticks after the mapped
+      // click release. Compare unsigned, as it does, including when the tick
+      // counter wraps and revisits a retained release timestamp (finding 58).
+      phase = 'click-release guard';
+      await until(
+        async () => ((await word(tickAddress)) - releaseTick) >>> 0,
+        (age) => age >= 40,
+      );
       phase = 'send';
       await withinRuntimeDeadline(deadline, () => session.client.inputTurn(encoder, detents));
       phase = 'UART';

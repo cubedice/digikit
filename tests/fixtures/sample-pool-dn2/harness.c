@@ -749,7 +749,8 @@ int main(int argc, char **argv)
                sent_tags[0], cur_page[0], cur_page[1], cur_page[2], cur_page[3], cur_page[4095],
                bad_port, port_words_total);
         stuck_pages = 1;
-        printf("stuck send %d max polls %u reads\n", sp_raw_send(0xd0123457u, page), max_polls);
+        int send_result = sp_raw_send(0xd0123457u, page);
+        printf("stuck send %d max polls %u reads\n", send_result, max_polls);
     } else if (
         !strcmp(
             s,

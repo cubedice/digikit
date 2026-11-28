@@ -2,7 +2,7 @@
 // texts) from the committed ports and module roots. Never reads out/modules (generated oracles hold firmware
 // words). The bundle equals `tools/patchkit/patchkit.py bundle` (the node test compares them).
 //
-// The objects of content modules (every module but category "core") are build output, not committed: `patchkit build` (the Rust CLI, run through cargo) makes them
+// The objects of content modules (every module but category "core") are build output, not committed: `patchkit build` makes them
 // first (it needs the m68k-elf toolchain; nothing is built when they are current) and they are read from the cache out/cache/dko/<id>/<src12>/ (`patchkit build MODDIR... --paths` names the files).
 // It also writes what the Transfer page ships (see shipModules): per device the prebuilt .dkm of each run-time content module
 // (public/modules/<dev>/<leaf>.dkm, the bytes the workbench app's `lib_build` writes to out/modules/<dev>/), public/modules/index.json and the sources of the
@@ -66,18 +66,16 @@ export function buildObjects(dirs, root = repoRoot) {
 function patchkit(args, { root = repoRoot } = {}) {
   const env = { ...process.env };
   delete env.PATCHKIT_MODULES; // only the committed roots go into the bundle
+  const executable = env.PATCHKIT_BIN ? resolve(root, env.PATCHKIT_BIN) : 'cargo';
+  const prefix = env.PATCHKIT_BIN ? [] : ['run', '-q', '--release', '--offline', '-p', 'patchkit', '--'];
   try {
-    return execFileSync(
-      'cargo',
-      ['run', '-q', '--release', '--offline', '-p', 'patchkit', '--', '--root', root, ...args],
-      {
-        cwd: root,
-        env,
-        encoding: 'utf8',
-        stdio: 'pipe',
-        maxBuffer: 256 * 1024 * 1024,
-      },
-    );
+    return execFileSync(executable, [...prefix, '--root', root, ...args], {
+      cwd: root,
+      env,
+      encoding: 'utf8',
+      stdio: 'pipe',
+      maxBuffer: 256 * 1024 * 1024,
+    });
   } catch (e) {
     const err = new Error(
       String(e.stderr ?? e.message ?? e)

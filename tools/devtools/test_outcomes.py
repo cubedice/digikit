@@ -294,7 +294,7 @@ def run_one(
         )
     cmd = [
         sys.executable, "-m", "pytest", "-q", "-p", "no:cacheprovider",
-        f"--junitxml={xml}", *extra, *pytest_args, rel,
+        f"--rootdir={root}", f"--junitxml={xml}", *extra, *pytest_args, rel,
     ]  # fmt: skip
     start = time.monotonic()
     timed_out = False

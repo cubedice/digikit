@@ -6,6 +6,7 @@
 // the same framing and every command of the protocol (INFO, LIST, upload, DELETE, CLEAR, ABORT, MODULES, CAPACITY, READ, VERIFY, SELECT,
 // RESTART, LOG), with the numbers generated from sdk/sdk.toml (`gen_proto.ts`). The desktop app uses it (no wasm, no Python).
 import { wireModuleSettings } from './module-settings.ts';
+import { wireModuleQueries } from './module-queries.ts';
 import { decodeModulesPage, OLD_MODULES } from './modules-reply.ts';
 import {
   CAP as GCAP,
@@ -162,6 +163,8 @@ export class DkError extends Error {
   /** The spec's status name (`E_FULL`) for a device error. */
   status?: string;
   freeBytes?: number;
+  /** The revision a module settings refusal carried. */
+  revision?: number;
   constructor(j: { error: string; kind: string; status?: string; free_bytes?: number | null }) {
     super(j.error);
     this.kind = j.kind;
@@ -840,9 +843,16 @@ export interface DkSessionOptions {
   emulatedProbe?: EmulatedProbe;
   /** Time source of `waitForBoot` and `waitForRestart` (default `wallClock`). A harness and `wb --emu` give `emulatedClock(status)`; a paused daemon gives a stepping clock. */
   clock?: Clock;
-  /** Called once per request: true after the matching reply, false after the last failed try (not for a cancelled request), with the reason. */
-  onLink?: (ok: boolean, reason?: string, silentInfo?: boolean) => void;
+  /**
+   * Called once per request: true after the matching reply, false after the last failed try (not for a cancelled request), with the reason.
+   * `optional`: the command belongs to a module the target may not have loaded (LOG, PEEK, LOGCFG and the other service commands): its loss says
+   * nothing about the connection.
+   */
+  onLink?: (ok: boolean, reason?: string, silentInfo?: boolean, optional?: boolean) => void;
 }
+
+/** The commands of service modules: a target answers them only while its module is loaded (CAP_LOG, CAP_PEEK, CAP_LOGCFG, ...). */
+const OPTIONAL_COMMANDS: ReadonlySet<number> = new Set(Object.values(SERVICE_CMD));
 
 /** Options of `waitForBoot` and `waitForRestart`. */
 export interface BootWaitOptions {
@@ -1212,6 +1222,7 @@ export class DkSession {
           false,
           failure instanceof Error ? failure.message : String(failure),
           cmd === GCMD.INFO && failure instanceof DkError && failure.kind === 'timeout',
+          OPTIONAL_COMMANDS.has(cmd),
         );
       throw failure;
     } finally {
@@ -1447,6 +1458,10 @@ export class DkSession {
 
   moduleSettings(slot: number, instance: number, current: () => boolean) {
     return wireModuleSettings(this, slot, instance, current);
+  }
+
+  moduleQueries(slot: number, instance: number, current: () => boolean) {
+    return wireModuleQueries(this, slot, instance, current);
   }
 
   /** CAPACITY (runtime 0.2.2): per resource `{limit, used, largest}`, keyed by the kind's name. */
