@@ -1105,6 +1105,8 @@ _fm_ramp_b_last:
     DM(38,I0) = F1;
     DM(39,I0) = F2;
     DM(40,I0) = F3;
+    // Each sine lookup loads its table pointer one instruction before the first read (the fraction's FLOAT sits
+    // between them), so the pointer's load-to-use distance is two.
     // Pass O: the operator graph, two internal samples per output sample, into
     // the halfband history pairs (odd at offset 0, even at 1). Phases and the
     // delayed B output stay in registers for the block.
@@ -1136,11 +1138,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1152,11 +1154,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1170,11 +1172,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1189,11 +1191,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1215,11 +1217,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1231,11 +1233,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1249,11 +1251,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
@@ -1268,11 +1270,11 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
+    R1 = R2 AND R15;
+    R1 = LSHIFT R1 BY 2;
+    R1 = R1 + R14;
+    I1 = R1;
     F1 = FLOAT R2;
-    R2 = R2 AND R15;
-    R2 = LSHIFT R2 BY 2;
-    R2 = R2 + R14;
-    I1 = R2;
     F0 = F0 - F1, F1 = DM(0,I1);
     F2 = DM(1,I1);
     F2 = F2 - F1;
