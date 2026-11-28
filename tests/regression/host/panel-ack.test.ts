@@ -9,7 +9,13 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 
-function fixture({ device = 'dt2' as const, firmware = '1.17', stalled = false, filteredTurn = false } = {}) {
+function fixture({
+  device = 'dt2' as const,
+  firmware = '1.17',
+  stalled = false,
+  filteredTurn = false,
+  clickReleaseTicks = [] as number[],
+} = {}) {
   const mask = Buffer.alloc(8),
     maskAddress = 0x1000,
     queueAddress = 0x2000;
@@ -17,12 +23,15 @@ function fixture({ device = 'dt2' as const, firmware = '1.17', stalled = false, 
   const queueLiteral = portAnchorAddress(device, firmware, 'cf.view.site.ui_loop.queue_lit');
   const decoder = portAnchorAddress(device, firmware, 'cf.input.fn.enc_decoder');
   const mapAddress = 0x3000,
-    pendingBase = 0x4000;
+    pendingBase = 0x4000,
+    releaseBase = 0x5000,
+    tickAddress = 0x6000;
   const events: { code: number; down: boolean; time: number; mask: string }[] = [];
   let count = 0,
     hits = 5,
     packets = 0,
-    pendingDelta = 0;
+    pendingDelta = 0,
+    panelTick = 100;
   const inputButton = vi.fn(async (code: number, down: boolean) => {
     events.push({ code, down, time: Date.now(), mask: mask.toString('hex') });
     if (stalled && down) return;
@@ -67,11 +76,19 @@ function fixture({ device = 'dt2' as const, firmware = '1.17', stalled = false, 
     if (address === queueLiteral) return queueAddress;
     if (address === queueAddress + 4) return count;
     if (address === maskAddress || address === maskAddress + 4) return mask.readUInt32BE(address - maskAddress);
+    if (address === decoder + 0x1c) return 0xe78841f9;
+    if (address === decoder + 0x20) return releaseBase;
     if (address === decoder + 0x30) return 0x2440d5fc;
+    if (address === decoder + 0x38) return 0x203947dd;
+    if (address === decoder + 0x3a) return tickAddress;
+    if (address === decoder + 0x42) return 0xb2806504;
     if (address === decoder + 0x10) return mapAddress;
     if (address === decoder + 0x34) return pendingBase;
     if (address >= mapAddress && address < mapAddress + 36) return (address - mapAddress) / 4 + 1;
     if (address >= pendingBase + 8 && address <= pendingBase + 72) return pendingDelta;
+    if (address >= releaseBase && address < releaseBase + 36)
+      return clickReleaseTicks[(address - releaseBase) / 4] ?? 0;
+    if (address === tickAddress) return panelTick;
     return null;
   });
   const session = {
@@ -86,6 +103,9 @@ function fixture({ device = 'dt2' as const, firmware = '1.17', stalled = false, 
     inputTurn,
     memPeek,
     mask,
+    setPanelTick: (value: number) => {
+      panelTick = value;
+    },
     setHits: (value: number) => {
       hits = value;
     },
@@ -232,6 +252,24 @@ test('turn waits beyond UART delivery for the decoder flush, queue, and handler'
   expect(f.inputTurn.mock.calls).toEqual([[2, 1]]);
   expect(f.memPeek).toHaveBeenCalledWith(0x4010); // one-based mapped encoder row
   expect(vi.getTimerCount()).toBe(0);
+});
+
+test('a turn waits until the firmware accepts it after revisiting a click release tick', async () => {
+  const releaseTick = 0x776;
+  const f = fixture({ clickReleaseTicks: [0, 0, 0, releaseTick] });
+  f.setPanelTick(releaseTick);
+  const done = acknowledgedPanel(f.session, { pollMs: 20 }).turn(4, 12);
+  await vi.advanceTimersByTimeAsync(20);
+  expect(f.inputTurn).not.toHaveBeenCalled();
+
+  f.setPanelTick(releaseTick + 39);
+  await vi.advanceTimersByTimeAsync(20);
+  expect(f.inputTurn).not.toHaveBeenCalled();
+
+  f.setPanelTick(releaseTick + 40);
+  await vi.advanceTimersByTimeAsync(260);
+  await done;
+  expect(f.inputTurn.mock.calls).toEqual([[4, 12]]);
 });
 
 test('a filtered encoder packet completes without requiring a view event', async () => {
