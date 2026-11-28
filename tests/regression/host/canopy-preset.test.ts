@@ -144,12 +144,7 @@ test('compact menus keep non-SRC settings accessible and omit duplicate performa
       'config',
   );
   expect(layout!.entry).toBe('Canopy');
-  expect(layout!.home).toEqual([
-    'MODULATION',
-    'PRESETS',
-    'PANIC',
-    'RECOVER KEYBOARD',
-  ]);
+  expect(layout!.home).toEqual(['MODULATION', 'PRESETS', 'PANIC', 'RECOVER KEYBOARD']);
   const children = layout!.children as string[][];
   // the scan rows name their setting, the value at the row's end (17 characters), as the stock rows
   expect(children[0]).toEqual(['SCAN CLOCK   FREE', 'SCAN RESET   FREE', 'WHEEL POS', 'WHEEL FM', 'WHEEL WT FM']);
