@@ -357,8 +357,8 @@ static void mixed_replies(void)
     }
     assert(dkrt_phrase_snapshot(out, 32) && out[PH_S_HEARTBEAT / 4] == 500);
     /* Overloop's carrier in the same cells: its magic, heartbeat, state, length and waveform words */
-    static const u32 carrier[14] = {0x4f564c33, 9001, 3, 96000, 0, 123, 0x3f000000, 0x1234abcd,
-                                    120, 16, 1118464, 0x3366, 7, 0};
+    static const u32 carrier[14] = {0x4f564c33, 9001, 3,  96000,   0,      123, 0x3f000000,
+                                    0x1234abcd, 120,  16, 1118464, 0x3366, 7,   0};
     for (u32 c = 0; c < 3; ++c) {
         s[PH_S_HEARTBEAT / 4] = s[PH_S_SEQ_END / 4] = 504 + 4 * c;
         frame += 4;

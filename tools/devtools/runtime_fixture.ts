@@ -28,7 +28,7 @@ import {
 } from '../../packages/test-support/src/firmware-inputs.ts';
 import { DkSession, EmuUsbTransport } from '../../packages/dk-session/src/index.ts';
 import { steppedClock } from '../../packages/test-support/src/emulated-clock.ts';
-import { MS, Session } from '../../packages/test-support/src/session.ts';
+import { MS, Session, stepWithProgress } from '../../packages/test-support/src/session.ts';
 
 const FIRMWARE: Record<Device, string> = { dt2: '1.17', dn2: '1.12' };
 
@@ -132,7 +132,8 @@ try {
     // State B: a guest soft reset (RESTART) boots from the card into the used kit. The daemon caches the
     // ready pair of that cold boot in a new directory under runDir/patched; it is the CF snapshot and DSP state.
     const call = <T>(method: string, params?: Record<string, unknown>) => session!.client.call<T>(method, params);
-    const stepSeconds = (s: number) => session!.client.step(s * 1000 * MS, { timeout_wall_s: 300 });
+    // Bound each slice so a slow host can finish the same guest-time waits.
+    const stepSeconds = (s: number) => stepWithProgress(session!.client, s * 1000 * MS);
     const dk = new DkSession(new EmuUsbTransport(call, { stepInstructions: 20_000_000 }), {
       clock: steppedClock(session),
     });

@@ -26,6 +26,7 @@
       "{workspaceRoot}/ports/fw/**/*.toml",
       "{workspaceRoot}/ports/*.toml",
       "{workspaceRoot}/tools/devtools/runtime_fixture.ts",
+      "{workspaceRoot}/packages/test-support/src/session.ts",
       "!{workspaceRoot}/{packages,modules,runtime,services,ports/bindings}/**/{tests.rs,tests_*.rs,*_tests.rs,fake_*.rs}",
       "!{workspaceRoot}/{packages,modules,runtime,services,ports/bindings}/**/tests/**/*.rs"
     ]

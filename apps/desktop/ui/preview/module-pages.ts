@@ -1,6 +1,6 @@
 import { createPreviewSample, moduleId } from '../../../../tests/fixtures/modules/settings-a/workbench/preview';
 import { fakeDkm } from '@digi/workbench-core/target-ops/fake-store.ts';
-import { modulePath } from '@digi/workbench-core/modules/dktransfer.ts';
+import { modulePath } from '@digi/workbench-core/modules/module-path.ts';
 
 // One persisted record per simulated target. Only a boot result creates a page.
 export function createPreviewModulePages() {
