@@ -19,6 +19,8 @@ _fm_render:
 .VAR _wt_state = 0;
 .GLOBAL _wt_enabled;
 .VAR _wt_enabled = 0;
+.GLOBAL _wt_pure;
+.VAR _wt_pure = 0;
 .GLOBAL _fm_enabled;
 .VAR _fm_enabled = 0;
 .PKBSS _wt_blk, 4;
