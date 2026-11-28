@@ -202,7 +202,9 @@ describe('PRISM repeater engine: the active path is pinned', () => {
         if (loop) rig.loop = { alive: true, tap: () => 0, audible: false };
         rig.set({ sync: true, syncTime: 2400, rpts: 0.5, ...controls });
         await rig.run(600, tone);
-        return Math.max(...(await rig.run(20, tone)).instructions);
+        // the most of 20 blocks; with FLIP the mean of 300 (a reverse segment of 2400 samples crossfades for 960 of them)
+        const counts = (await rig.run(controls.flip ? 300 : 20, tone)).instructions;
+        return controls.flip ? Math.round(counts.reduce((a, b) => a + b, 0) / counts.length) : Math.max(...counts);
       } finally {
         await rig.close();
       }
@@ -212,6 +214,7 @@ describe('PRISM repeater engine: the active path is pinned', () => {
       ['HALO off', {}],
       ['HALO 0.5', { halo: 0.5 }],
       ['HALO off, COLR 0', { colr: 0 }],
+      ['HALO off, FLIP', { flip: true }],
     ] as const) {
       const [alone, withLoop] = [await steady(controls, false), await steady(controls, true)];
       expect(alone).toBeGreaterThan(1000);
