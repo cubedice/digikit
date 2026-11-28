@@ -237,6 +237,19 @@ _hl_late_on:
     F5 = DM(PL_DAMP_R,I4);
     R11 = DM(PL_INDEX,I4);
     R12 = DM(PL_VALID,I4);
+    // The network starts, empty. Silence up to here stays silence behind it: the count of silent frames (rest, prism.s) moves
+    // up by what the network adds to the frames asked for, so the engine waits no longer than without it.
+    R12 = PASS R12;
+    IF NE JUMP _hl_late_run;
+    R0 = DM(PS_QUIET,I5);
+    R0 = PASS R0;
+    IF EQ JUMP _hl_late_run;
+    R1 = PRISM_IDLE_LATE - PRISM_IDLE_QUIET;
+    R0 = R0 + R1;
+    R1 = PRISM_IDLE_LATE;
+    R0 = MIN(R0,R1);
+    DM(PS_QUIET,I5) = R0;
+_hl_late_run:
     R13 = PRISM_LATE_RING - 1;
     R0 = I5;
     R1 = PS_LATE_LINE_L * 4;

@@ -60,6 +60,9 @@ export const PS = {
   AUTO: 58,
   CH_L: 128,
   CH_R: 160,
+  IDLE: 208,
+  QUIET: 209,
+  TAPE_QUIET: 210,
 } as const;
 /** Words of one side's record (prism.h CH_*). */
 export const CH = { A_KIND: 0, A_DINT: 1, A_FRAC: 2, A_DIR: 3, B_KIND: 4, VEL: 8, TARGET: 9, FADE_LEFT: 12 } as const;
@@ -265,6 +268,8 @@ export interface PrismRigOptions {
   faults?: boolean;
   /** a friendly register context instead of a hostile one for every block */
   friendly?: boolean;
+  /** the engine never rests: the rig clears its count of silent frames (PS_QUIET) before every block. The reference of a rest case. */
+  awake?: boolean;
 }
 
 export class PrismRig {
@@ -416,6 +421,7 @@ export class PrismRig {
         take.dryRight[b * BLOCK + k] = r;
       }
       this.playLoop(take, b);
+      if (this.o.awake) this.pokeState(PS.QUIET, 0);
       const block = await this.fx.block(master, this.o.friendly ? 'friendly' : undefined);
       const where = `block ${this.clock / BLOCK}`;
       if (!block.returned) throw new Error(`${where}: the hook did not return (${block.halt} at pc 0x${block.finalPc.toString(16)})`);

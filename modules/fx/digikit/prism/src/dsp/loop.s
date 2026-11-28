@@ -195,6 +195,32 @@ _lp_gain:
     R15 = 0x3eaaaaab; // 1/3
     CALL _lp_side;
     CALL _lp_side;
+    // Rest (prism.s): the frames in a row whose wet signal was silence. They are counted only while the whole written tape
+    // is silence, so a block that plays does not pay for the look at its wet signal.
+    R2 = 0;
+    R0 = DM(PS_TAPE_QUIET,I5);
+    R1 = DM(PS_VALID,I5);
+    COMP(R0,R1);
+    IF LT JUMP _lp_quiet;
+    R0 = I5;
+    R1 = PS_Y * 4;
+    R0 = R0 + R1;
+    I0 = R0;
+    R3 = 0;
+    LCNTR = 64, DO _lp_quiet_last UNTIL LCE;
+        F0 = DM(I0,M6);
+        F0 = ABS F0;
+_lp_quiet_last: F3 = MAX(F3,F0);
+    R0 = PRISM_IDLE_LEVEL;
+    COMP(F3,F0);
+    IF GE JUMP _lp_quiet;
+    R2 = DM(PS_QUIET,I5);
+    R0 = 32;
+    R2 = R2 + R0;
+    R0 = PRISM_IDLE_LATE;
+    R2 = MIN(R2,R0);
+_lp_quiet:
+    DM(PS_QUIET,I5) = R2;
 
     // ---- the tape
     R0 = DM(PS_HOLD,I5);
@@ -219,18 +245,37 @@ _lp_gain:
     R9 = DM(PS_WFADE,I5);
     R9 = PASS R9;
     IF NE JUMP _lp_write_fade;
+    // F3: the largest magnitude written (rest, prism.s)
+    R3 = 0;
     LCNTR = 32, DO _lp_write_left UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F2 = ABS F0;
+        F3 = MAX(F3,F2);
 _lp_write_left: DM(I1,M6) = R0;
     LCNTR = 32, DO _lp_write_right UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
+        F2 = ABS F0;
+        F3 = MAX(F3,F2);
 _lp_write_right: DM(I2,M6) = R0;
+    // the frames written in a row that were silence, up to the tape's length
+    R0 = DM(PS_TAPE_QUIET,I5);
+    R1 = 32;
+    R0 = R0 + R1;
+    R1 = DM(PS_CAPACITY,I5);
+    R0 = MIN(R0,R1);
+    R2 = PRISM_IDLE_LEVEL;
+    COMP(F3,F2);
+    IF GE R0 = R0 - R0;
+    DM(PS_TAPE_QUIET,I5) = R0;
     JUMP _lp_advance;
 _lp_write_fade:
+    // the crossfade writes a mix with what stood on the tape: not counted as silence
+    R0 = 0;
+    DM(PS_TAPE_QUIET,I5) = R0;
     // The new signal's share rises by 1 / PRISM_WFADE a frame; what stands on the tape gives way to it.
     R0 = PRISM_WFADE;
     R0 = R0 - R9;

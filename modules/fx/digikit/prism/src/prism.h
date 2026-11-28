@@ -66,6 +66,14 @@
  * stays there this many blocks (0.5 s) while the provider has not set INPT to LOOP: the page does it in its next pass. A
  * crossfade, or waiting for the page, would let the new pattern's first notes into the tape. */
 #define PRISM_AUTO_BLOCKS 750
+/* Rest (prism.s "Rest", docs/findings/377): a sample counts as silence below PRISM_IDLE_LEVEL in magnitude (2^-40, -241 dB;
+ * a one-pole filter's state stalls at a tiny value and never reaches 0). The engine rests once the wet signal was silent for
+ * PRISM_IDLE_QUIET frames in a row (the longest HALO line is 251 frames), or PRISM_IDLE_LATE frames while HALO's late
+ * network runs: its loop gain is 0.75 a turn of at most 1906 frames, so 229376 frames (4.8 s) are 120 turns, which take a
+ * network filled to the output's bound below the level. Both are multiples of 32. */
+#define PRISM_IDLE_LEVEL 0x2b800000
+#define PRISM_IDLE_QUIET 4096
+#define PRISM_IDLE_LATE 229376
 
 /* State offsets, in 32-bit words. */
 #define PS_INIT 0
@@ -200,6 +208,17 @@
 #define PS_FILT_R 200
 #define FL_HIGH 0
 #define FL_LOW 1
+
+/* Rest. PS_IDLE: 0 the engine runs; 1 it may rest from the next block on (set at the end of a block that found nothing left
+ * to play); 2 it rests. PS_QUIET: the frames in a row, up to PRISM_IDLE_LATE, whose wet signal was silence while the whole written tape was. PS_TAPE_QUIET:
+ * the frames last written to the tape in a row, up to the tape's length, that were silence; the whole written tape is
+ * silence when it is at least PS_VALID. PS_IDLE_KEY: the PRISM_IDLE_KEYS control words from ZONE on as they were in the
+ * block that set PS_IDLE; a block whose words differ runs. */
+#define PS_IDLE 208
+#define PS_QUIET 209
+#define PS_TAPE_QUIET 210
+#define PS_IDLE_KEY 212
+#define PRISM_IDLE_KEYS 10
 
 /* The block's signals, 32 left then 32 right: the heads' output, which the colour filter and HALO change in place into
  * the wet signal, and the feedback the write adds to the tape. */
