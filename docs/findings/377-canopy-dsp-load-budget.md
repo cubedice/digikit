@@ -1,7 +1,8 @@
 # 377. A DSP load budget for CANOPY: stock trigs first
 
 Why did stock tracks lose notes while CANOPY played ARP and POLY, and what keeps CANOPY from causing it? DT2 OS 1.17, the
-hardware set with `digikit/debug` selected and a diagnostic image that counts DSP voice starts, 2026-11-27; the budget on the
+hardware set with `digikit/debug` selected and a diagnostic image that counts DSP voice starts, 2026-11-27 (the check of the
+budget on it 2026-11-28); the budget on the
 SHARC core and the emulator, 2026-11-28. Marks as in `docs/FINDINGS.md`.
 
 ## The measurement [D]
@@ -50,8 +51,8 @@ word 0, rotated by 16 bits) and compares it with `_iv_budget_limit`:
 
 | word | default | meaning |
 | --- | --- | --- |
-| `_iv_budget_limit` | 570,000 | cycles a block may cost (85.5 % of the assumed block; `_cs_limit` is 560,000) |
-| `_iv_budget_margin` | 40,000 | how far under the limit a block must stay to count as calm (more than one step of shedding gives back) |
+| `_iv_budget_limit` | 615,000 | cycles a block may cost (92 % of the assumed block; `_cs_limit` is 560,000) |
+| `_iv_budget_margin` | 25,000 | how far under the limit a block must stay to count as calm (more than one voice gives back) |
 | `_iv_budget_calm` | 150 | calm blocks (100 ms) that lower the pressure by one: full pressure takes 0.7 s to go |
 | `_iv_pressure` | 0 | the pressure, 0 to 7 |
 | `_iv_budget_cost`, `_iv_budget_overs` | | the cost last read; the blocks over the limit since boot |
@@ -107,15 +108,35 @@ pressure is on, pads released half way; `CANOPY_BUDGET_REPORT=1`):
 | 5 | 6,867 | 12,398 | 17,692 |
 | 7 | 4,446 | 5,280 | 5,251 |
 
+The defaults were 570,000 and 40,000 at first. That limit lay under what the measured pattern costs without CANOPY (90.5 %,
+about 603,000 cycles), so CANOPY would have been held at high pressure by load that was not its own. 615,000 lies above it and
+under the range where the loss began; the device check below ran with 615,000 and 25,000.
+
+## On the device [D]
+
+The same pattern, an image with the budget and the cost work of this finding, limit 615,000 and margin 25,000, runs of 60 s
+(about 94,000 blocks), DSP voice starts counted by the diagnostic image:
+
+| | voice starts per accepted note, tracks 9 to 11 | largest block |
+| --- | --- | --- |
+| before the budget, CANOPY with ARP and POLY | 0.85 to 1.1 | 95 to 103 % |
+| with the budget, CANOPY with ARP and POLY | 1.28 to 1.55 | 97 to 98 %, in isolated blocks |
+| with the budget, CANOPY muted | 1.34 to 1.59 | 83 % |
+
+- With CANOPY playing, the stock tracks start their voices as with CANOPY muted.
+- 79 to 88 blocks of a run were over the limit, and the pressure stayed at 0 or 1: CANOPY shed its tails for moments and
+  no held voice.
+- Single blocks still reach 97 to 98 %: the budget acts on the block after, and the trigs were kept all the same. How much
+  of the result is the budget and how much the lower cost of CANOPY's blocks was not separated **[O]**.
+
 ## What it does not do [O]
 
 - It predicts a block from the one before. The stock load moves slowly (a sounding stock note costs about 8,200 cycles a block
   for as long as it sounds, finding 375), but the first block of a burst is not protected.
-- With the default limit, the owner's pattern without CANOPY already peaks above it (90.5 % against 85.5 %). In those passages
-  CANOPY will sit at high pressure, mostly silent, because the block has no room for it: if the 130,000 cycles are seven
-  equal voices, one costs about 18,000 cycles (2.8 %), and the loss began below 95 %. The limit, margin and calm count are the words to tune on the device.
-- The hardware effect is not measured yet: whether the voice starts per note return to 1.45 with the budget is the next
-  device check, with `_iv_budget_overs` and `_iv_pressure` read beside the profile.
+- A pattern whose stock tracks alone cost more than the limit leaves CANOPY no room: it sits at high pressure there, mostly
+  silent. If the 130,000 cycles are seven equal voices, one costs about 18,000 cycles (2.8 %). The limit, margin and calm
+  count are the words to tune on the device.
+- The device check is one pattern and 60 s runs; the limit of 615,000 is 3 % under the 95 % where the loss was seen.
 - Several instances share one pressure and each sheds by it; the cost of four loaded instances was not measured (finding 345).
 - The fix lowers CANOPY's load. Why the stock engine loses trigs near a full block, and whether another module can push it
   there, stays open.

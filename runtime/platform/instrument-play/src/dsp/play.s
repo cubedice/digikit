@@ -1929,16 +1929,17 @@ _iv_voice_zero:
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;
 .VAR _iv_result = 0;
-// The load budget (_iv_budget): the cycles a block may cost before the instruments shed (85.5 % of an assumed 1 GHz block
-// of 666,667 cycles; the stock chord budget `_cs_limit` of core/dsp-voice is 560,000), how far under it a block must
-// stay to count as calm, and the calm blocks in a row that lower the pressure by one (150 blocks: 100 ms). Tunable
-// words: a test or a device session pokes them.
+// The load budget (_iv_budget): the cycles a block may cost before the instruments shed (92 % of an assumed 1 GHz block
+// of 666,667 cycles: above what the measured pattern costs without CANOPY, about 603,000, and the value the device
+// check of finding 377 ran with; the stock chord budget `_cs_limit` of core/dsp-voice is 560,000), how far under it a
+// block must stay to count as calm, and the calm blocks in a row that lower the pressure by one (150 blocks: 100 ms).
+// Tunable words: a test or a device session pokes them.
 .GLOBAL _iv_budget_limit;
 .GLOBAL _iv_budget_margin;
 .GLOBAL _iv_budget_calm;
 .GLOBAL _iv_pressure;
-.VAR _iv_budget_limit = 570000;
-.VAR _iv_budget_margin = 40000;
+.VAR _iv_budget_limit = 615000;
+.VAR _iv_budget_margin = 25000;
 .VAR _iv_budget_calm = 150;
 .VAR _iv_pressure = 0;
 .VAR _iv_budget_quiet = 0;

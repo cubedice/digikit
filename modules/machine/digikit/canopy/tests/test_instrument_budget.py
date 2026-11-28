@@ -31,7 +31,7 @@ def test_pressure_follows_the_last_block_cost_with_hysteresis(playback):
     call, put, get, _, _, _, symbols = playback
     block = started(playback, 1)
     limit, margin = get("_iv_budget_limit")[0], get("_iv_budget_margin")[0]
-    assert (limit, margin, get("_iv_budget_calm")[0]) == (570000, 40000, 4)
+    assert (limit, margin, get("_iv_budget_calm")[0]) == (615000, 25000, 4)
     # without a reply record (core/dsp-link has built none) nothing is measured
     assert [block(2 * limit) for _ in range(3)] == [0, 0, 0]
     put("_dv_rec", [symbols["_test_reply_record"], 0, 0])
