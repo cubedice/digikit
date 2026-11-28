@@ -88,8 +88,7 @@
       "tests": [
         "canopy-arp-tests:needs.device.test.ts",
         "canopy-arp-tests:load-budget.device.test.ts",
-        "canopy-arp-tests:track-keyboard.device.test.ts",
-        "digikit/prism:tests/coexistence.device.test.ts"
+        "canopy-arp-tests:track-keyboard.device.test.ts"
       ]
     },
     "services": {

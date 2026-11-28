@@ -142,6 +142,7 @@
   "modules/machine/digikit/pluck/tests/scenarios/pages-dyn-pluck.toml": 1,
   "modules/machine/digikit/pluck/tests/test_dkm_layout.py": 1,
   "modules/machine/digikit/pluck/tests/test_pluck_range.py": 1,
+  "modules/machine/digikit/relay-machine/README.md": 1,
   "modules/machine/digikit/relay-machine/module.toml": 1,
   "modules/machine/digikit/relay-machine/project.json": 1,
   "modules/machine/digikit/relay-machine/tests/pages.device.test.ts": 3,
