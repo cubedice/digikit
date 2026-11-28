@@ -81,8 +81,9 @@
       }
     },
     "test-wasm": {
-      "description": "Tests that load the real public/*.wasm or run the patchkit command line: the Vitest project web-wasm (tests/*.wasm.test.ts).",
-      "dependsOn": ["patchkit-wasm"],
+      "executor": "nx:run-commands",
+      "description": "Tests the real public/*.wasm and the prebuilt patchkit CLI through the Vitest project web-wasm (tests/*.wasm.test.ts).",
+      "dependsOn": ["patchkit-wasm", { "projects": ["patchkit"], "target": "cli" }],
       "inputs": [
         "{projectRoot}/src/**/*",
         "{projectRoot}/scripts/**/*",
@@ -98,10 +99,18 @@
           "dependentTasksOutputFiles": "apps/web/public/*.wasm",
           "transitive": true
         },
+        {
+          "dependentTasksOutputFiles": "dist/patchkit/patchkit"
+        },
         "jsToolchain",
+        "{workspaceRoot}/tools/patchkit/{patchkit,modroots}.py",
         "{workspaceRoot}/vitest.host.config.ts",
         "{workspaceRoot}/vitest.host/web-wasm.json"
-      ]
+      ],
+      "options": {
+        "command": "PATCHKIT_BIN=\"$PWD/dist/patchkit/patchkit\" pnpm --filter @digi/web test-wasm",
+        "cwd": "."
+      }
     }
   }
 }
