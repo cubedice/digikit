@@ -1358,6 +1358,10 @@ describe('PRISM repeater engine: the loop as the input (INPT), and where the out
       const st = await rig.status();
       expect([st[12], st[13], st[15]]).toEqual([0, 1, 1]);
       expect(live.faulted + loop.faulted + back.faulted).toBe(0);
+      const liveCost = Math.max(...live.instructions.slice(20));
+      const loopCost = Math.max(...loop.instructions.slice(20));
+      expect(loopCost - liveCost).toBeLessThan(400);
+      note(`INPT steady block with the loop effect: LIVE ${liveCost}, LOOP ${loopCost} instructions`);
     });
   });
 

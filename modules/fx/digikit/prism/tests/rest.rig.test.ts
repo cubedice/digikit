@@ -140,7 +140,7 @@ describe('PRISM rest: when the engine rests', () => {
       // the block that set the state ran in full; the first resting block empties the filters; the ones after it are the rest
       const first = (await rig.run(1)).instructions[0]!;
       const rest = await rig.run(200);
-      expect(Math.max(...rest.instructions)).toBeLessThan(REST_MOST);
+      expect(Math.max(...rest.instructions)).toBeLessThan(1300);
       expect(first).toBeLessThan(REST_MOST);
       expect(peak(rest.left)).toBe(0);
       expect(peak(rest.right)).toBe(0);
@@ -190,11 +190,11 @@ describe('PRISM rest: when the engine rests', () => {
       // tape is full of silence at 4096 frames
       expect(blocks).toBe(4096 / BLOCK);
       expect(Math.max(...(await rig.run(50, under)).instructions)).toBeLessThan(REST_MOST);
-      // one sample at the level wakes the block
-      const at: Signal = (n) => (n % BLOCK === 17 ? -LEVEL : 0);
-      expect((await rig.run(1, at)).instructions[0]!).toBeGreaterThan(RUN_LEAST);
+      // A sample at the threshold wakes the block even at the last word of the stereo scan.
+      const at = (level: number): Signal => (n) => (n % BLOCK === BLOCK - 1 ? [0, -level] : 0);
+      expect((await rig.run(1, at(LEVEL))).instructions[0]!).toBeGreaterThan(RUN_LEAST);
       // and one above it on the tape (here with the dust's first echo under it) counts as sound: a whole tape is written again
-      expect((await rig.run(1, (n) => 2 * at(n))).instructions[0]!).toBeGreaterThan(RUN_LEAST);
+      expect((await rig.run(1, at(2 * LEVEL))).instructions[0]!).toBeGreaterThan(RUN_LEAST);
       expect(await word(rig, PS.IDLE)).toBe(0);
       expect(await word(rig, PS.TAPE_QUIET)).toBe(0);
       // a whole tape of silence is written after it, then the wet signal is silent for PRISM_IDLE_QUIET frames

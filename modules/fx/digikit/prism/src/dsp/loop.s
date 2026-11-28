@@ -244,10 +244,12 @@ _lp_gain:
     R0 = R0 + R1;
     I0 = R0;
     R3 = 0;
-    LCNTR = 64, DO _lp_quiet_last UNTIL LCE;
-        F0 = DM(I0,M6);
-        F0 = ABS F0;
-_lp_quiet_last: F3 = MAX(F3,F0);
+    R0 = DM(I0,M6);
+    LCNTR = 63, DO _lp_quiet_last UNTIL LCE;
+        F1 = ABS F0, R0 = DM(I0,M6);
+_lp_quiet_last: F3 = MAX(F3,F1);
+    F1 = ABS F0;
+    F3 = MAX(F3,F1);
     R0 = PRISM_IDLE_LEVEL;
     COMP(F3,F0);
     IF GE JUMP _lp_quiet;
@@ -289,15 +291,13 @@ _lp_quiet:
         F1 = DM(I3,M6);
         F0 = F0 + F1;
         F2 = ABS F0;
-        F3 = MAX(F3,F2);
-_lp_write_left: DM(I1,M6) = R0;
+_lp_write_left: F3 = MAX(F3,F2), DM(I1,M6) = R0;
     LCNTR = 32, DO _lp_write_right UNTIL LCE;
         F0 = DM(I0,M6);
         F1 = DM(I3,M6);
         F0 = F0 + F1;
         F2 = ABS F0;
-        F3 = MAX(F3,F2);
-_lp_write_right: DM(I2,M6) = R0;
+_lp_write_right: F3 = MAX(F3,F2), DM(I2,M6) = R0;
     // the frames written in a row that were silence, up to the tape's length
     R0 = DM(PS_TAPE_QUIET,I5);
     R1 = 32;
