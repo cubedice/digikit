@@ -37,6 +37,19 @@ mise run setup      # uv sync, pnpm install
 
 `mise tasks` lists every task.
 
+## Review DSP reports in Workbench
+
+After preparing the rig and Patchkit as described in the [DSP quality guide](INSTRUMENTATION.md#report-a-modules-declarative-dsp-checks), run this from the checkout root.
+
+```sh
+mise run wb:cli -- module quality digikit/freqshift --emit json,html --out out/runs/shift-quality
+```
+
+1. Open the desktop Workbench and choose **DSP → Open report folder**. Select `out/runs/shift-quality`, which contains `quality.json`.
+2. Expand a rig case and check to see its observed and expected values. If you supplied one or more `--comparison PATH/TO/comparison.json` options to the command, choose a comparison and use A/B to switch from baseline to candidate at the same playback position. For a dry/wet comparison, supply the dry capture as the baseline. Keep the exported `quality-media` folder with the report to use the WAV previews and RMS envelope.
+3. To generate fresh declarative rig evidence from a configured checkout, choose a machine or effect from the DSP module picker and click **Run rig report**. The picker lists source modules with `tests/rig/*.toml` cases. Use **Refresh modules** after adding one. The report opens even when its checks fail.
+4. To install a built module, choose **Install .dkm in Transfer** and select the package and target in Transfer.
+
 ## Extract the firmware
 
 ```sh
@@ -157,8 +170,9 @@ Run `mise run wb:preview` and open http://127.0.0.1:5199/. Transfer uses simulat
 
 The default simulated card starts with the settings sample loaded. In the sidebar, select **Modules → Boot settings**, enter a boot value and save. The sample reads the saved value when it next starts. Selecting a different simulated target gives it its own settings. Reloading the browser tab starts a fresh simulation.
 
-The sample declaration and Solid companion live in `tests/fixtures/modules/settings-a/workbench.toml` and the adjacent `workbench/` directory. The sample uses a module-scoped client and appears through the selected target’s loaded inventory. Run `pnpm exec vitest run --config vitest.host.config.ts apps/desktop/ui/tests/module-settings.test.ts` to exercise its state and settings validation without a browser or device.
+A module page is `<module dir>/workbench/index.tsx` with `export default definePage({ id, api: 1, Page })` (`@digi/module-ui`; `Page` is a Solid component that takes `{ client }`). It imports only `@digi/module-ui`, `solid-js` and files of its own module folder; oxlint refuses any other import. The apps give `createModulePageRegistry` (`workbench-core/src/module-ui/module-page-registry.ts`) lazy loaders from Vite `import.meta.glob`: desktop over `modules/*/*/*/workbench/index.tsx`, the preview also over `tests/fixtures/modules/*/workbench/index.tsx`. A loaded module whose page has its id and `api` gets it under the generic settings form; any other module gets the form alone. A new module folder appears in the dev server after HMR.
 
+The sample declaration and page live in `tests/fixtures/modules/settings-a/workbench.toml` and the adjacent `workbench/` directory; the page imports the settings schema that patchkit generates (`patchkit workbench-ts MODDIR --write` writes `workbench/gen/settings.ts`, with the module id and name). A `ModuleChannelFactory` makes the channel of each loaded instance: the device channel over dk-session on a real target (`device-channel-factory.ts`), a memory channel of `@digi/module-ui` (`createMemoryModuleChannel`, with one settings store per simulated target) in the preview (`apps/desktop/ui/preview/module-channels.ts`). The same package decodes the descriptor a device reports; `workbench-core/src/module-ui/device-settings.ts` joins it to a session. A loaded module row in Transfer gets **Open** when the module has a page. Run `pnpm nx:pilot run @digi/desktop:test-host` and `@digi/workbench-core:test-host` to exercise the pages, channels and form state without a browser or device.
 
 Fixture URLs seed specific states for development and screenshots, including `?page=transfer`, `?mode=samples&folder=empty` and `?page=log&log=crash`. After startup the sidebar and target selector work normally. The Samples, Profile and Calibration fixtures simulate their respective backends, and explicit Memory fixtures supply synthetic resource readings.
 
@@ -253,6 +267,7 @@ node modules/fx/digikit/prism/tests/transition-audio.ts out/runs/prism-transitio
 
 For offline WAV and JSON exports, use `mise run wb:cli -- module render` and
 `mise run wb:cli -- audio compare`. See [Render and compare audio from the CLI](INSTRUMENTATION.md#render-and-compare-audio-from-the-cli).
+Use `mise run wb:cli -- module quality` to [report a module's declarative DSP checks](INSTRUMENTATION.md#report-a-modules-declarative-dsp-checks).
 To record the same stock Delay test case on a running emulator or a USB device,
 use [the DT2 stock Delay reference](INSTRUMENTATION.md#replay-the-dt2-stock-delay-reference).
 

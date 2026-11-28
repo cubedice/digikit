@@ -6,6 +6,8 @@ export const READ_MAX = 768;
 export const PEEK_MAX = 512;
 export const MAX_REQUEST_WIRE = 40960;
 export const MAX_REPLY_WIRE = 1024;
+export const QUERY_REQUEST_MAX = 149;
+export const QUERY_REPLY_MAX = 870;
 
 /** The `.dkm` loader's format limits (`[limits.format]`). */
 export const DKM_HEADER = 160;
@@ -31,6 +33,10 @@ export const INFO_MAX = 64;
 export const DSP_SLOT_WORDS = 16;
 export const MAX_VOICES = 8;
 export const MAX_FX = 4;
+export const MAX_SELECTION = 8;
+export const MAX_MACHINE_TYPES = 64;
+export const MAX_MACHINE_PAGES = 16;
+export const MAX_SHORTCUT_BINDINGS = 16;
 export const H_ROLE = 56;
 
 /** The services the runtime image provides itself: the names of `[handle] services` that no `.dks` provider supplies (a `[[service]]` without `rust` and with no static row). A module's NEEDS may name them; every other name needs a `.dks`. */
@@ -135,6 +141,8 @@ export const STATUS: [number, string, string][] = [
   [-72, 'E_AGAIN', 'usb_bulk_send: the engine refused and nothing is in flight; wait for the wake, retry'],
   [-88, 'E_MODULE_UI_CONFLICT', 'the module setting revision changed'],
   [-89, 'E_MODULE_UI_SCOPE', 'project settings are active; change this setting on the device'],
+  [-90, 'E_MODULE_UI_METHOD', 'the module has no query with this method number'],
+  [-91, 'E_MODULE_UI_TOO_BIG', 'the query reply does not fit the reply budget'],
 ];
 
 /** [code, name, text] */
@@ -154,7 +162,7 @@ export const LOAD_STATUS: [number, string, string][] = [
   [-14, 'E_TABLE_FULL', 'no free module record'],
   [-15, 'E_LOST', 'the sample backing was lost and the reload failed'],
   [-16, 'E_POOL', 'the sample pool is full'],
-  [-17, 'E_CHANGED', 'the sample file differs from the selection snapshot'],
+  [-17, 'E_CHANGED', 'the data changed since it was read'],
   [-18, 'E_EXISTS', 'the file exists already (dk_files_create does not overwrite)'],
   [-19, 'E_CONTEXT', 'the call is not allowed in this context (dk_files_* writes run in an I/O step)'],
   [-20, 'E_NO_REGISTRY', 'register records, but the image has no registry'],
@@ -261,6 +269,7 @@ export const CAP = {
   LIVE: 19,
   MODULE_UI: 20,
   MODULE_SECTIONS: 21,
+  MODULE_QUERIES: 22,
 } as const;
 
 /** The command numbers a module may register: [first, last]. */

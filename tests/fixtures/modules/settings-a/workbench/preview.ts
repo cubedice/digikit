@@ -1,30 +1,11 @@
-import type { ModulePage } from '@digi/workbench-core/module-ui/module-page.ts';
-import type Panel from './Panel';
-import { createSettingsSample, descriptor } from './sample';
+// The preview's answer to BootAtInit: the module reads its "boot" setting once in init, so the preview reads the store when the instance
+// loads (the setting as it was before the page changed it).
+import { memoryQueryService, type MemoryQueryService } from '@digi/module-ui';
+import { SettingsA } from './gen/settings_a_pb.js';
 
-export { moduleId } from './sample';
-const companions = import.meta.glob<typeof Panel>('./**/*.tsx', { eager: true, import: 'default' });
-
-export function createPreviewSample() {
-  const sample = createSettingsSample();
-  let page: ModulePage | undefined;
-  return {
-    get page() {
-      return page;
-    },
-    boot(active: boolean) {
-      const open = sample.boot(active);
-      page = open && {
-        descriptor,
-        open(current) {
-          const client = open(current);
-          const Companion = companions[descriptor.component?.replace(/^workbench\//, './') ?? ''];
-          return {
-            settings: client.settings,
-            Panel: Companion,
-          };
-        },
-      };
-    },
-  };
+export default function previewQueries(loaded: (settingId: string) => Uint8Array | undefined): MemoryQueryService {
+  const boot = loaded('boot');
+  return memoryQueryService(SettingsA, {
+    bootAtInit: () => ({ present: boot !== undefined, value: boot ? new TextDecoder().decode(boot) : '' }),
+  });
 }

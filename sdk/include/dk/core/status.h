@@ -18,7 +18,7 @@
 #define DK_E_TABLE_FULL (-14) /* no free module record */
 #define DK_E_LOST (-15) /* the sample backing was lost and the reload failed */
 #define DK_E_POOL (-16) /* the sample pool is full */
-#define DK_E_CHANGED (-17) /* the sample file differs from the selection snapshot */
+#define DK_E_CHANGED (-17) /* the data changed since it was read */
 #define DK_E_EXISTS (-18) /* the file exists already (dk_files_create does not overwrite) */
 #define DK_E_CONTEXT (-19) /* the call is not allowed in this context (dk_files_* writes run in an I/O step) */
 #define DK_E_NO_REGISTRY (-20) /* register records, but the image has no registry */
@@ -89,5 +89,7 @@
 #define DK_E_AGAIN (-72) /* usb_bulk_send: the engine refused and nothing is in flight; wait for the wake, retry */
 #define DK_E_MODULE_UI_CONFLICT (-88) /* the module setting revision changed */
 #define DK_E_MODULE_UI_SCOPE (-89) /* project settings are active; change this setting on the device */
+#define DK_E_MODULE_UI_METHOD (-90) /* the module has no query with this method number */
+#define DK_E_MODULE_UI_TOO_BIG (-91) /* the query reply does not fit the reply budget */
 
 #endif /* DK_CORE_STATUS_H */

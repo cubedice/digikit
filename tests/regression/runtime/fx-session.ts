@@ -7,6 +7,7 @@ import { promisify } from 'node:util';
 import { expect } from 'vitest';
 import { DkSession, EmuUsbTransport } from '@digi/dk-session';
 import {
+  PROGRESS_HANG_S,
   repoRoot,
   resolveInputs,
   withinRuntimeDeadline,
@@ -122,21 +123,26 @@ export async function readTextRows(session: Session, address: number, count: num
   return result;
 }
 
-/** Read protocol state while paused using the existing USB transport's legacy 400,000-instruction poll step. */
+/**
+ * Read protocol state while paused using the existing USB transport's legacy 400,000-instruction poll step.
+ * Wall time only guards a hang: each control call (a status read, one step) must answer within `hangMs`, so an operation of any emulated length
+ * (a closure reload with logging raised steps for minutes) ends when it ends, and a daemon that stops answering fails after one `hangMs`.
+ */
 export async function withPausedFxProtocol<T>(
   runtime: Pick<PatchedSession, 'session'>,
   operation: (dk: DkSession) => Promise<T>,
+  { hangMs = PROGRESS_HANG_S * 1000 }: { hangMs?: number } = {},
 ): Promise<T> {
-  const deadline = Date.now() + 30_000;
-  const status = await withinRuntimeDeadline(deadline, () => runtime.session.status());
+  const call = <R>(run: () => Promise<R>) => withinRuntimeDeadline(Date.now() + hangMs, run);
+  const status = await call(() => runtime.session.status());
   if (status.mode !== 'paused') throw new Error('route protocol reads require a paused runtime');
   let active = true;
-  // Wall-time wait: the daemon is paused, so its emulated clock stands still.
+  // The daemon is paused: its emulated clock moves only by the transport's steps.
   const dk = new DkSession(
     new EmuUsbTransport(
       async <R>(method: string, params?: Record<string, unknown>) => {
         if (!active) throw new Error('route protocol is no longer active');
-        const result = await withinRuntimeDeadline(deadline, () => runtime.session.client.call<R>(method, params));
+        const result = await call(() => runtime.session.client.call<R>(method, params));
         if (!active) throw new Error('route protocol is no longer active');
         return result;
       },
@@ -144,7 +150,7 @@ export async function withPausedFxProtocol<T>(
     ),
   );
   try {
-    return await withinRuntimeDeadline(deadline, () => operation(dk));
+    return await operation(dk);
   } finally {
     active = false;
     dk.cancelPending();

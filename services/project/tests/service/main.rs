@@ -1,5 +1,7 @@
 //! The `project` service over a fake store and a fake firmware list (docs/design/digikit-project.md section 7): load, save, rename, archive, paste, the busy store and the cut write.
 mod archive;
+mod browse;
+mod carry;
 mod changes;
 mod failed_load;
 mod fake;
@@ -10,11 +12,13 @@ mod load_reads;
 mod module_list;
 mod module_restore;
 mod paste;
+mod read;
 mod refusals;
 mod rename;
 mod rig;
 mod save;
 mod scope;
+mod settings;
 mod start;
 mod write;
 

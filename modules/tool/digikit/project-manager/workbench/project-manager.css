@@ -1,0 +1,256 @@
+/* The Project Manager page. It borrows the Transfer page's classes (rows, rtag, empty, h3, h4, act) by wearing `transfer-page`; only the
+   layout of the two panes and the detail view are its own. */
+.transfer-page.pm-page {
+  flex: none;
+  display: grid;
+  grid-template-columns: minmax(14rem, 22rem) 1fr;
+  align-items: start;
+  gap: 0;
+  margin: 0.75rem -1.25rem 0;
+  padding: 0;
+  background: none;
+  overflow: visible;
+  min-height: 24rem;
+}
+.pm-list,
+.pm-details,
+.pm-hint {
+  padding: 16px 20px 0;
+}
+.pm-list {
+  align-self: stretch;
+  border-right: 1px solid var(--line);
+}
+.pm-page .rows .rtag {
+  max-width: none;
+  overflow: visible;
+  white-space: nowrap;
+}
+.pm-project {
+  cursor: pointer;
+}
+.pm-page .rows li {
+  cursor: pointer;
+}
+.pm-details .rows li {
+  cursor: default;
+}
+.pm-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 18px;
+  font-size: 16px;
+}
+.pm-number {
+  font-family: var(--font-mono);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--action);
+}
+.pm-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 24px;
+  margin: 0 0 16px;
+}
+.pm-facts dt {
+  color: var(--ink-3);
+}
+.pm-facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+.pm-error {
+  color: var(--status-err, inherit);
+}
+.pm-more {
+  margin-top: 10px;
+}
+.pm-skeleton {
+  position: relative;
+  display: grid;
+  gap: 10px;
+  max-width: 28rem;
+}
+.pm-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.pm-bar {
+  height: 14px;
+  border-radius: 4px;
+  background: var(--panel-2);
+  animation: pm-pulse 1.2s ease-in-out infinite alternate;
+}
+.pm-bar.big {
+  height: 28px;
+  width: 55%;
+}
+.pm-bar.short {
+  width: 40%;
+}
+@keyframes pm-pulse {
+  from {
+    opacity: 0.45;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pm-bar {
+    animation: none;
+  }
+}
+.pm-details .rows li.pm-module {
+  cursor: pointer;
+}
+.pm-details .rows li.pm-setting {
+  padding-left: 26px;
+  cursor: default;
+}
+.pm-value {
+  flex: 2 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.pm-value.hex {
+  color: var(--ink-3);
+}
+.pm-tabs {
+  display: flex;
+  gap: 6px;
+  margin: 0 0 12px;
+}
+.pm-tabs [aria-selected='true'] {
+  background: var(--panel-2);
+  color: var(--ink-1, inherit);
+}
+.pm-hex {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  user-select: text;
+}
+.pm-hex-line {
+  display: flex;
+  gap: 6px;
+  white-space: nowrap;
+}
+.pm-hex-cells {
+  display: inline-flex;
+  gap: 6px;
+  flex: none;
+  width: calc(16 * 2ch + 15 * 6px);
+}
+.pm-ascii {
+  display: inline-flex;
+  margin-left: 6px;
+  color: var(--ink-2, inherit);
+}
+.pm-ascii-cell {
+  display: inline-block;
+  width: 1ch;
+}
+.pm-hot {
+  background: var(--panel-2);
+  outline: 1px solid var(--action);
+}
+.pm-decoded {
+  margin-top: 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.pm-decoded h3,
+.pm-decoded h4 {
+  margin: 8px 0 4px;
+  font-size: 12px;
+}
+.pm-checksum {
+  margin-left: 10px;
+  font-weight: normal;
+}
+.pm-checksum.ok {
+  color: var(--status-ok, var(--action));
+}
+.pm-checksum.mismatch {
+  color: var(--status-err, var(--action));
+}
+.pm-field {
+  display: grid;
+  grid-template-columns: 14ch 1fr auto;
+  gap: 10px;
+  padding: 1px 4px;
+}
+.pm-field-label,
+.pm-field-size {
+  color: var(--ink-3);
+}
+.pm-field-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;
+}
+.pm-hex-offset {
+  color: var(--ink-3);
+  margin-right: 6px;
+}
+.pm-byte {
+  display: inline-block;
+  width: 2ch;
+  flex: none;
+}
+.pm-byte.pm-k-magic,
+.pm-byte.pm-k-version {
+  color: var(--action);
+}
+.pm-byte.pm-k-device,
+.pm-byte.pm-k-slot,
+.pm-byte.pm-k-name,
+.pm-byte.pm-k-stamp {
+  color: var(--status-ok, var(--action));
+}
+.pm-byte.pm-k-counter,
+.pm-byte.pm-k-used,
+.pm-byte.pm-k-crc {
+  color: var(--status-err, var(--action));
+}
+.pm-byte.pm-k-section,
+.pm-byte.pm-k-unknown {
+  color: var(--ink-3);
+}
+.pm-byte.pm-k-module-id,
+.pm-byte.pm-k-owner {
+  color: var(--action);
+}
+.pm-byte.pm-k-module-hash,
+.pm-byte.pm-k-key {
+  color: var(--status-ok, var(--action));
+}
+.pm-byte.pm-k-value {
+  color: inherit;
+}
+.pm-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pm-check {
+  flex: none;
+  margin: 0 8px 0 0;
+}
+.pm-save-message { margin: 6px 0 10px; color: var(--ink-3); }

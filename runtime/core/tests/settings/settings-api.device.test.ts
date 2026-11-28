@@ -1,5 +1,10 @@
 import type { DkSession } from '@digi/dk-session';
 import { describe, expect, test } from 'vitest';
+import { createModuleClient, decodeDescriptor, settingValueCodec, type ModuleFileClient } from '@digi/module-ui';
+import { createDeviceModuleChannel } from '../../../../packages/workbench-core/src/module-ui/device-module-channel.ts';
+import { deviceQueryChannel } from '../../../../packages/workbench-core/src/module-ui/device-queries.ts';
+import { deviceSettingsChannel } from '../../../../packages/workbench-core/src/module-ui/device-settings.ts';
+import { SettingsA } from '../../../../tests/fixtures/modules/settings-a/workbench/gen/settings_a_pb.js';
 import { bootInfo } from '@digi/regression/runtime/guest-mailbox.ts';
 import { statusOf } from '@digi/regression/runtime/upload-bytes.ts';
 import type { TestRuntime } from '@digi/regression/test-runtime.ts';
@@ -29,6 +34,10 @@ const PUT = 1;
 const GET = 2;
 const REMOVE = 3;
 const DELAY_MS = 2000; // the runtime writes the record this long after the last change
+const unused = async (): Promise<never> => {
+  throw new Error('this test uses no module files');
+};
+const noFiles: ModuleFileClient = { list: unused, read: unused, send: unused, remove: unused };
 const text = (s: string) => Buffer.from(s);
 const hex = (s: string) => text(s).toString('hex');
 
@@ -89,6 +98,35 @@ for (const device of DEVICES) {
       kit.allowStoreWrites(await kit.storeWrites());
     });
 
+    /** BootAtInit of settings-a through the module UI session: the handler runs on the UI task in the module's own code. */
+    const bootAtInit = (rt: TestRuntime) =>
+      kit.usb(rt, async (dk) => {
+        const mod = (await dk.modules()).find((m) => m.name === A);
+        const channel = createDeviceModuleChannel({
+          settings: deviceSettingsChannel(A),
+          queries: deviceQueryChannel(async () => dk.moduleQueries(mod!.index, mod!.uiInstance!, () => true)),
+          files: noFiles,
+        });
+        return createModuleClient(channel).service(SettingsA).bootAtInit({});
+      });
+
+    test('the BootAtInit query answers the boot value init read: unset on the first boot, the saved value after a restart', async () => {
+      const rt = await kit.load('boot-query', spec);
+      expect((await bootInfo(rt.session, kit.plan)).results, 'both modules load').toEqual([0, 0]);
+      expect(await bootAtInit(rt), 'nothing was saved when init read it').toMatchObject({
+        ok: true,
+        value: { present: false, value: '' },
+      });
+      expect((await call(rt, A, PUT, 'boot', text('xyz'))).rc, 'put').toBe(0);
+      await rt.ui.wait({ ms: DELAY_MS + 500, why: SETTLE });
+      const reboot = await kit.restart(rt);
+      expect(await bootAtInit(reboot), 'init of the new boot read the saved value').toMatchObject({
+        ok: true,
+        value: { present: true, value: 'xyz' },
+      });
+      kit.allowStoreWrites(await kit.storeWrites());
+    });
+
     test('the same key in two modules gives two records', async () => {
       const rt = await kit.load('collide', spec);
       expect((await call(rt, A, PUT, 'k', text('A1'))).rc).toBe(0);
@@ -122,6 +160,43 @@ for (const device of DEVICES) {
         await statusOf(() => kit.usb(rt, settingsRecord)),
         'the settings record is still empty (SETTINGS answers E_SET_NOKEY)',
       ).toBe(E_SET_NOKEY);
+    });
+    test('a typed integer put through the module UI session is accepted, read back, and an out-of-range one is refused', async () => {
+      const rt = await kit.load('typed', spec);
+      expect((await bootInfo(rt.session, kit.plan)).results, 'both modules load').toEqual([0, 0]);
+      // the endpoint lives only inside one USB session, so the whole exchange runs in it
+      const r = await kit.usb(rt, async (dk) => {
+        const mod = (await dk.modules()).find((m) => m.name === A);
+        const ui = dk.moduleSettings(mod!.index, mod!.uiInstance!, () => true);
+        const schema = decodeDescriptor(await ui.describe());
+        const field = schema.settings.findIndex((x) => x.id === 'gain');
+        const setting = schema.settings[field]!;
+        const before = await ui.get(field);
+        // gain has two decimals: the display value 0.75 is the stored i32 75, big endian
+        const stored = settingValueCodec.encode(setting, 0.75);
+        const put = await ui.put(field, stored, before.revision);
+        const got = await ui.get(field);
+        // 101 is above the maximum 100 (the codec refuses it, so the bytes are built here): the firmware refuses it
+        const refused = await ui.put(field, Uint8Array.of(0, 0, 0, 101), got.revision).then(
+          () => undefined,
+          (e: { status?: string }) => e.status,
+        );
+        const after = await ui.get(field);
+        return { uiInstance: mod?.uiInstance, field, stored, before, put, got, refused, after };
+      });
+      expect(r.uiInstance, 'settings-a registered its public settings').toBeTruthy();
+      expect(r.field, 'the descriptor lists gain').toBeGreaterThanOrEqual(0);
+      expect([...r.stored], 'stored i32 BE').toEqual([0, 0, 0, 75]);
+      expect(r.put.revision, 'the put makes a new revision').not.toBe(r.before.revision);
+      expect([...(r.got.value ?? [])], 'get returns the stored value').toEqual([0, 0, 0, 75]);
+      expect(r.got.revision, 'get returns the new revision').toBe(r.put.revision);
+      expect(r.refused, 'the firmware refuses a value above the maximum').toBe('E_SET_VALUE');
+      expect([r.after.revision, [...(r.after.value ?? [])]], 'a refused put changes nothing').toEqual([
+        r.got.revision,
+        [0, 0, 0, 75],
+      ]);
+      await rt.ui.wait({ ms: DELAY_MS + 500, why: SETTLE });
+      kit.allowStoreWrites(await kit.storeWrites());
     });
   });
 }

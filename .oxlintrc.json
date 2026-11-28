@@ -34,6 +34,10 @@
               {
                 "name": "@tauri-apps/api/core",
                 "message": "Call the Tauri commands through the Host (packages/workbench-core/src/host/host.ts); only host/tauri-host.ts imports invoke."
+              },
+              {
+                "name": "@tauri-apps/api/event",
+                "message": "Listen to native events through the Host (packages/workbench-core/src/host/host.ts); only host/tauri-host.ts imports listen."
               }
             ],
             "patterns": [
@@ -161,6 +165,22 @@
           {
             "name": "setInterval",
             "message": "Wait in emulated time: rt.ui / rt.listen / pollUntil (docs/plans/test-architecture.md T2 step 3)"
+          }
+        ]
+      }
+    },
+    {
+      "files": ["modules/**/workbench/**/*.{ts,tsx}", "tests/fixtures/modules/**/workbench/**/*.{ts,tsx}"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!@digi/module-ui", "!solid-js", "!solid-js/**", "!./**", "./**/../**"],
+                "message": "A module page imports only @digi/module-ui, solid-js and files inside its own workbench folder (./ paths, never ../)."
+              }
+            ]
           }
         ]
       }

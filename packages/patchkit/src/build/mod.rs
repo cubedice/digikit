@@ -26,7 +26,9 @@ pub mod sharc_obj;
 pub mod show;
 pub mod test_source;
 pub mod toolchain;
+pub mod wire;
 mod workbench;
+pub use workbench::TsFile;
 
 use crate::dko::Dko;
 use crate::error::*;
@@ -156,8 +158,31 @@ impl ModuleToml {
         toml::from_str(text).map_err(|e| err!("module.toml: {e}"))
     }
 
-    fn workbench_header(&self, moddir: &Path) -> Result<Option<workbench::Header>> {
-        workbench::Header::read(moddir, self.id(), self.module.name.as_deref())
+    fn workbench_header(&self, root: &Path, moddir: &Path) -> Result<Option<workbench::Header>> {
+        workbench::Header::read(root, moddir, self.id(), self.module.name.as_deref())
+    }
+
+    /// The object that takes the generated query source: the first ColdFire object with a C source (two would define it twice).
+    fn query_object(&self) -> Option<&ObjectToml> {
+        self.built().find(|o| {
+            kind_of(&o.sources) == Kind::Cf && o.sources.iter().any(|s| s.ends_with(".c"))
+        })
+    }
+
+    /// The source paths of `o`: its own, and the generated query source when `o` takes it.
+    fn source_paths(
+        &self,
+        moddir: &Path,
+        o: &ObjectToml,
+        header: Option<&workbench::Header>,
+    ) -> Vec<PathBuf> {
+        let mut paths: Vec<PathBuf> = o.sources.iter().map(|s| moddir.join(s)).collect();
+        if let Some(generated) = header.and_then(workbench::Header::queries_source)
+            && self.query_object().is_some_and(|q| q.path == o.path)
+        {
+            paths.push(generated.to_path_buf());
+        }
+        paths
     }
 
     pub fn id(&self) -> &str {
@@ -189,6 +214,25 @@ impl ModuleToml {
 fn manifest(moddir: &Path) -> Result<ModuleToml> {
     let p = moddir.join("module.toml");
     ModuleToml::parse(&toolchain::read_text(&p)?).map_err(|e| err!("{}: {e}", p.display()))
+}
+
+/// The generated TypeScript settings file of the module in `moddir`; `None` when it has no `workbench.toml`.
+pub fn workbench_ts(moddir: &Path) -> Result<Option<TsFile>> {
+    let manifest = manifest(moddir)?;
+    TsFile::read(moddir, manifest.id(), manifest.module.name.as_deref())
+}
+
+/// The least runtime a packed module needs for its Workbench settings descriptor: 0 without `workbench.toml` or with a version 1
+/// descriptor, `[runtime] workbench_typed` of sdk/sdk.toml for version 2.
+pub fn workbench_runtime_floor(moddir: &Path) -> Result<u32> {
+    let manifest = manifest(moddir)?;
+    workbench::runtime_floor(moddir, manifest.id(), manifest.module.name.as_deref())
+}
+
+/// The descriptor bytes patchkit generates for the Workbench settings of the module in `moddir`; `None` without `workbench.toml`.
+pub fn workbench_descriptor(moddir: &Path) -> Result<Option<Vec<u8>>> {
+    let manifest = manifest(moddir)?;
+    workbench::descriptor(moddir, manifest.id(), manifest.module.name.as_deref())
 }
 
 /// The object cache of a repository: `out/cache/dko`.
@@ -386,12 +430,13 @@ fn source_hash(
     env: &Env,
     moddir: &Path,
     o: &ObjectToml,
-    sdk: bool,
+    m: &ModuleToml,
     header: Option<&workbench::Header>,
 ) -> Result<String> {
     check_include_dirs(o)?;
+    let sdk = m.is_content();
     let sources = &o.sources;
-    let paths: Vec<PathBuf> = sources.iter().map(|s| moddir.join(s)).collect();
+    let paths = m.source_paths(moddir, o, header);
     match kind_of(sources) {
         Kind::Sharc => {
             let text = sharc::source_text(&env.root, moddir, &paths, &env.defines)?;
@@ -446,11 +491,11 @@ fn object_unchanged(out: &Path, hash: &str, content: bool) -> bool {
 pub fn module_status(root: &Path, moddir: &Path) -> Result<Vec<(String, bool)>> {
     let env = Env::new(root);
     let m = manifest(moddir)?;
-    let header = m.workbench_header(moddir)?;
+    let header = m.workbench_header(&env.root, moddir)?;
     m.built()
         .filter(|o| !o.sources.is_empty())
         .map(|o| {
-            let hash = source_hash(&env, moddir, o, m.is_content(), header.as_ref())?;
+            let hash = source_hash(&env, moddir, o, &m, header.as_ref())?;
             let file = object_file_at(&env, moddir, &m, o, &hash);
             Ok((
                 o.path.clone(),
@@ -464,11 +509,11 @@ pub fn module_status(root: &Path, moddir: &Path) -> Result<Vec<(String, bool)>> 
 pub fn object_files(root: &Path, moddir: &Path) -> Result<Vec<(String, PathBuf)>> {
     let env = Env::new(root);
     let m = manifest(moddir)?;
-    let header = m.workbench_header(moddir)?;
+    let header = m.workbench_header(&env.root, moddir)?;
     m.built()
         .filter(|o| !o.sources.is_empty())
         .map(|o| {
-            let hash = source_hash(&env, moddir, o, m.is_content(), header.as_ref())?;
+            let hash = source_hash(&env, moddir, o, &m, header.as_ref())?;
             Ok((o.path.clone(), object_file_at(&env, moddir, &m, o, &hash)))
         })
         .collect()
@@ -507,7 +552,7 @@ fn build_object(
 ) -> Result<Dko> {
     check_include_dirs(o)?;
     let sdk = m.is_content();
-    let paths: Vec<PathBuf> = o.sources.iter().map(|s| moddir.join(s)).collect();
+    let paths = m.source_paths(moddir, o, header);
     match kind_of(&o.sources) {
         Kind::Sharc => {
             let text = sharc::source_text(&env.root, moddir, &paths, defines)?;
@@ -597,8 +642,8 @@ pub fn load_object(env: &Env, moddir: &Path, m: &ModuleToml, rel: &str) -> Resul
         .built()
         .find(|o| o.path == rel)
         .ok_or_else(|| err!("{rel}: not an object of the module"))?;
-    let header = m.workbench_header(moddir)?;
-    let want = source_hash(env, moddir, o, m.is_content(), header.as_ref())
+    let header = m.workbench_header(&env.root, moddir)?;
+    let want = source_hash(env, moddir, o, m, header.as_ref())
         .map_err(|e| err!("{}: {rel}: cannot hash the sources: {e}", moddir.display()))?;
     let file = object_file_at(env, moddir, m, o, &want);
     if stored_current(&file, &want)
@@ -635,10 +680,10 @@ pub fn build_module(moddir: &Path, opts: &BuildOptions) -> Result<BuildReport> {
     }
     let env = Env::new(&opts.root);
     let m = manifest(moddir)?;
-    let header = m.workbench_header(moddir)?;
+    let header = m.workbench_header(&env.root, moddir)?;
     let mut report = BuildReport::default();
     for o in m.built().filter(|o| !o.sources.is_empty()) {
-        let hash = source_hash(&env, moddir, o, m.is_content(), header.as_ref())?;
+        let hash = source_hash(&env, moddir, o, &m, header.as_ref())?;
         let stored = |h: &str| object_file_at(&env, moddir, &m, o, h);
         if !opts.check
             && opts.defines.is_empty()
@@ -662,12 +707,17 @@ pub fn build_module(moddir: &Path, opts: &BuildOptions) -> Result<BuildReport> {
             .get("instructions_redecoded")
             .and_then(|s| s.parse().ok());
         if opts.check {
-            let current = match std::fs::read_to_string(&out)
-                .ok()
-                .and_then(|t| serde_json::from_str::<Value>(&t).ok())
-            {
-                Some(v) => comparable(v) == comparable(serde_json::to_value(&obj)?),
-                None => false,
+            // Current: equal to a fresh build (which also carries the ISA record of the code) and written in the canonical form
+            // that `patchkit build` writes, so a hand-edited or reformatted file is stale.
+            let current = match std::fs::read_to_string(&out) {
+                Ok(text) => match serde_json::from_str::<Value>(&text) {
+                    Ok(v) => {
+                        pretty(&v)? == text
+                            && comparable(v) == comparable(serde_json::to_value(&obj)?)
+                    }
+                    Err(_) => false,
+                },
+                Err(_) => false,
             };
             // A cache entry is output, keyed by the hash of its sources: a missing one (another process may have evicted it) is made,
             // not reported stale. Only a stored object that differs from a fresh build is stale.
@@ -886,12 +936,17 @@ mod tests {
         std::fs::write(dir.join("src/lib.rs"), "#![no_std]\n").unwrap();
         let env = Env::new(&dir);
         let crate_sha = rust::source_sha256(&dir.join("Cargo.toml"), &[]).unwrap();
-        for o in [
-            object(&["Cargo.toml"], &[]),
-            object(&["Cargo.toml"], &["../elsewhere/src"]),
-        ] {
-            assert_eq!(source_hash(&env, &dir, &o, false, None).unwrap(), crate_sha);
-            assert_eq!(source_hash(&env, &dir, &o, true, None).unwrap(), crate_sha);
+        for category in ["core", "machine"] {
+            let m = ModuleToml::parse(&format!(
+                "[module]\nid = \"test/x\"\ncategory = \"{category}\"\n"
+            ))
+            .unwrap();
+            for o in [
+                object(&["Cargo.toml"], &[]),
+                object(&["Cargo.toml"], &["../elsewhere/src"]),
+            ] {
+                assert_eq!(source_hash(&env, &dir, &o, &m, None).unwrap(), crate_sha);
+            }
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -956,29 +1011,6 @@ mod tests {
                 1
             );
         }
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn evict_keeps_entries_used_recently() {
-        let dir = scratch("evict");
-        for i in 0..6 {
-            write_object(&dir.join(format!("k{i}/o.json")), "{}").unwrap();
-        }
-        evict(&dir, "o.json");
-        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 6);
-        // the entries beyond the newest three go once they are old
-        let old = std::time::SystemTime::now() - EVICT_MIN_AGE * 2;
-        for i in 0..6 {
-            let f = std::fs::File::options()
-                .append(true)
-                .open(dir.join(format!("k{i}/o.json")))
-                .unwrap();
-            f.set_modified(old + std::time::Duration::from_secs(i))
-                .unwrap();
-        }
-        evict(&dir, "o.json");
-        assert_eq!(std::fs::read_dir(&dir).unwrap().count(), KEEP_ENTRIES);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

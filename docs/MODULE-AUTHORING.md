@@ -37,9 +37,12 @@ mise run module:check -- digikit/freqshift
 ```
 
 The first runs the shared DSP contract checks, including bounded output and
-cost. The second runs the effect's own named sound cases. To add yours, put
-deterministic cases in `tests/rig/*.toml` and register them with
-`rigSuite(import.meta.dirname)` in a `tests/*.rig.test.ts` file.
+cost. The second runs the module's own named sound cases. `module:new`
+gives machines and effects a `tests/rig.rig.test.ts` entry and a starter
+case in `tests/rig/` for the template's sine voice or gain effect. Before
+accepting the results, replace the starter expectations with deterministic
+cases and tolerances for what your DSP is designed to do. Use the generated
+`rigSuite(import.meta.dirname)` entry to run the cases in that folder.
 Use the [sound-check guide](TESTING.md#sound-checks-testsrigtoml) and the
 [FREQ SHIFT cases](../modules/fx/digikit/freqshift/tests/rig/freqshift.toml)
 as starting points.
@@ -82,6 +85,86 @@ mise run wb:cli -- --format json profile report "$run/wet/$profile_file"
   functions and loops. The [worked SDK example](../sdk/dsp/README.md#worked-example-pluck)
   shows how to profile the same blocks of two builds without changing the module.
 
+### DSP quality and listening checks
+
+For every new machine or effect, run the module's `test-dsp` behavior checks
+and the shared `test-dsp-conformance` target. Also listen to a repeatable A/B
+in a techno-style mix and with a second musical source that exposes the
+module's role. Use a held stab for motion or pitch, sparse hits for tails, or
+a sustained bass or lead phrase for a pitched machine. Choose material that
+makes the expected effect easy to hear. [ITU-R BS.1116](https://www.itu.int/rec/R-REC-BS.1116/en)
+
+- **Send FX.** Use the `send/percussion` example above with amount `0` for A
+  and a representative active amount for B. Keep the device, source and DSP
+  settings fixed. The 132 BPM scene sends syncopated hats over a dry kick
+  and bass. `send/texture` is a repeatable second source with a held stab.
+  [Send render controls](INSTRUMENTATION.md#listen-to-a-send-return)
+- **Master insert FX.** Use the same stereo mix for both passes. Compare MIX
+  at zero with the intended MIX on the actual master insert route. Feed the
+  original generated dry mix to `FxRig.block` with fresh state for each pass,
+  or replay a fixed project in the emulator and capture its master WAV.
+  The CLI's `send/*` scenes exercise the send hook. Its other FX renders
+  use named conformance cases on the master insert.
+  [Stereo rig inputs and MIX](TESTING.md#sound-checks-testsrigtoml)
+- **Machine.** Compare the backing alone with the same backing plus the new
+  part. Keep a solo render and fix note timing, pitches, velocities and
+  parameters across repeated comparisons. Mix a solo rig render over the
+  generated kick and bass manually at a fixed gain and onset, or capture the
+  same saved emulator project with the new track muted and active.
+  [Generated backing](../packages/sharc-rig-kit/src/listening-stems.ts) · [Saved sessions](WORKBENCH-SESSIONS.md)
+
+On a running emulator with DSP audio, start a take with
+`mise run emu:ctl -- call pcm.tap action=capture path=ABSOLUTE_WAV_PATH`.
+Replay the same bars from the same starting state for A and B, then finish
+each take with `mise run emu:ctl -- call pcm.tap action=capture_stop`.
+Select the session socket explicitly when more than one emulator is running.
+[Control socket commands](CONTROL.md#command-line)
+
+Keep the raw WAVs with their render manifests or a capture manifest you write.
+Record the build, device, route, source or project, seed when applicable,
+settings, playback window and duration. For manual mixes record the stem
+gains and offsets. Compare raw peak and RMS, clipping, relevant onset or tail
+timing, and mean and worst DSP block cost when available. Note which changes
+in gain, harmonics, motion or stereo image were intentional. For timbre,
+match perceived levels on separate listening copies and log the gain applied.
+Use programme loudness and true peak where useful, with tolerances set for
+the module and its intended use. [AES17](https://aes.org/publications/standards-store/?id=21) · [ITU-R BS.1770](https://www.itu.int/rec/R-REC-BS.1770/en)
+
+Check each declared FX route at its neutral level and a representative active
+setting. If you cannot play the WAVs, mark human listening review pending in
+the manifest.
+
+Pick a few probes from the relevant rows. Cover a typical setting and the
+limits or transitions most likely to cause trouble. Use the rig's named sound
+checks where they fit and inspect waveforms or spectra for the remaining probes.
+
+| DSP family | Test signal and checks |
+| --- | --- |
+| All | Start in silence, run an active passage with a live in-range control change, then return to silence. Include quiet and hot inputs where applicable. Check for clicks, finite output, DC, peak, clipping and instruction cost. |
+| Oscillator, FM or sampler | Low, middle and high notes, a retrigger or release, and a known sample for a sampler. Check pitch, onset, decay, loop seams and high-note aliasing. |
+| Filter | An impulse or swept sine at fixed settings. Check cutoff, resonance and gain. An exponential sweep can separate distortion for weakly nonlinear, approximately time-invariant settings. [Farina's swept-sine method](https://angelofarina.it/Public/Papers/134-AES00.PDF) |
+| Shifter, modulation or spatial | A tone for shift and image rejection, a broadband noise spectrogram for moving notches, and stereo input for channel behavior and mono compatibility. Inspect several cycles for steps and clicks. [Barberpole phaser measurements](https://www.ntnu.edu/documents/1001201110/1266017954/DAFx-15_submission_67.pdf) |
+| Nonlinear | Low and high level tones, a two-tone input or a high-frequency sweep. Check gain, harmonic and intermodulation products, and aliasing from hard edges. [Clipping and aliasing examples](https://research.spa.aalto.fi/publications/papers/dafx16-blamp/) |
+| Delay, reverb or dynamics | An isolated hit and silence for delay timing, feedback and decay. Use a level step or repeated hits for attack, release and pumping. |
+
+Run the quality report after defining the module's expectations. For the
+comparison above, add its saved comparison file to the report.
+
+```sh
+mise run wb:cli -- module quality digikit/freqshift --out "$run/quality" \
+  --comparison "$run/compare/comparison.json" --emit json,markdown,html
+```
+
+Review `quality.md` and keep it with `quality.json`. The report records
+the declarative checks' observed values, expected tolerances and results.
+Repeat `--comparison FILE` to link the second source or additional route
+comparisons. Keep `quality.html` and `quality-media/` beside the report when
+moving it. In Workbench, go to **DSP**, choose **Open report folder** and
+select the output folder. With a saved session open and the report's module
+selected, choose **Save to session** to keep the report with that session.
+Keep the shared conformance result and listening notes with the report.
+[Report a module's declarative DSP checks](INSTRUMENTATION.md#report-a-modules-declarative-dsp-checks)
+
 ### Instrument and check in Workbench
 
 Use ordinary function labels and no extra instrumentation for hotspot or
@@ -108,7 +191,7 @@ The [SDK tracing guide](../sdk/README.md#tracing) shows where to read the
 log and fault steps. Marks compile out without `--trace`. Use normal packs
 for both sides of a cost comparison, and do not ship the traced pack.
 
-For the musical check, boot a [saved emulator session](WORKBENCH-SESSIONS.md),
+When profiling a musical check, boot a [saved emulator session](WORKBENCH-SESSIONS.md),
 load the same project and pattern, and run the same playback window for A and
 B. Record in Performance and save the `*.capture.json`. Open it offline
 in Profile or run `mise run wb:cli -- --format json profile report FILE`.
@@ -573,6 +656,60 @@ runtime 0.11.4. The runtime publishes the descriptor once the module is loaded.
 Read the stored bytes with `dk_settings_get` using the declared `id`.
 Patchkit provides the generated header during `module:build` and on demand during `module:pack`. An exported module carries `workbench.toml`
 and regenerates the header on build.
+
+Typed settings (patchkit generates them; the runtime and Workbench side of version 2 descriptors follows in a later step):
+
+| `type` | Fields | Stored value |
+| --- | --- | --- |
+| `integer` | `min`, `max` (greater than `min`), `step` (default 1, divides `max - min`), `decimals` (0 to 4, display only), `unit` (0 to 8 printable ASCII bytes), `default` (in range, on a step) | i32, 4 bytes big-endian |
+| `boolean` | `default` | one byte, 0 or 1 |
+| `choice` | `choices` (1 to 32 labels of 1 to 24 UTF-8 bytes, unique), `default` (a label) | one byte, the index |
+
+`max_bytes` belongs to `text` and `file-name` only. A descriptor with a typed setting starts with byte 2. For each setting the generated
+`<workbench_descriptor.h>` defines `WB_SETTING_<ID>_KEY` (`<ID>` is the id in upper case, `-` as `_`; the id must then be a C identifier).
+An `integer` also gets `_MIN`, `_MAX`, `_STEP` and `_DEFAULT` and `wb_setting_<id>_get(dk_settings *)`, which returns the default when the value is
+missing or invalid, and `wb_setting_<id>_put(dk_settings *, v)`, which returns `DK_E_SET_VALUE` for an invalid `v`. A `boolean` has the same
+functions with `int`. A `choice` defines `WB_SETTING_<ID>_<LABEL>` constants (label in upper case, other characters as `_`), `_COUNT`, `_DEFAULT` and `uint8_t` accessors.
+Choice labels must turn into distinct, non-empty C names (only letters and digits count; runs of other characters become one `_`); patchkit refuses a label with no letter or digit and two labels or settings that share a C name. Ids must be C identifiers (letters, digits, `-` and `_`, not starting with a digit). The generated header includes `dk/gen/imports.h` and `dk/core/status.h`, so do not include them again for it; it writes no label text into comments.
+`patchkit workbench-ts MODDIR --write` writes `MODDIR/workbench/gen/settings.ts` (the schema and the `Settings` type for the module's page);
+`--check` exits 1 and prints the path when the file is missing or differs.
+
+### 5.8a Queries
+
+A module can answer read-only queries from its Workbench page (live state, lists, details). Write the schema as one file
+`workbench/<name>.proto` (proto3) with one `service` of methods, `rpc Name(Request) returns (Reply)`. One `.proto` and one `service` per module;
+import `dk/options.proto` for the bounds. A schema may use `uint32`, `int32`, `bool`, enums, `string` and `bytes` with `[(dk.max_len) = N]`,
+nested messages, and `repeated` with `[(dk.max_count) = N]` (scalars packed). Patchkit refuses maps, `oneof`, `optional`, floats, 64-bit
+and other integer types, groups, a repeated `bytes`, an unbounded string, bytes or repeated field, a message that contains itself and a
+streaming method.
+
+Patchkit generates the C at build time (the same temporary include directory as `<workbench_descriptor.h>`). Include
+`<workbench_queries.h>`, which holds the structs (`<package>_<Message>`), the enum constants (`<PACKAGE>_<Enum>_<VALUE>`, the enum's nested name joined by `_`), `<package>_<Message>_MAX_SIZE` (lowercase package, e.g. `pm_Project_MAX_SIZE`),
+`DK_WORKBENCH_QUERY_COUNT` and `dk_workbench_queries[]` (`<dk/query.h>`), and write one handler per method. The name is the package, `_`, and the
+method name in snake case (`List` in package `pm`: `pm_list`):
+
+```c
+int32_t pm_list(dk_module_ctx *ctx, const pm_ListRequest *request, pm_ListReply *reply);
+```
+
+The handler runs in the UI task. It fills `reply` (zeroed before the call) and returns 0, or a negative `DK_E_*` code that the page sees as
+a refusal (the handler's result, separate from the runtime's own status). Call `dk_workbench_register_queries(ctx, dk_workbench_queries, DK_WORKBENCH_QUERY_COUNT)` in `init`, after `dk_workbench_register`; the function comes with runtime 0.13.5.
+The generated call function decodes the request (`DK_E_FORMAT` when it is malformed, when a bound is broken, or when a singular message field
+occurs twice; unknown fields are skipped), calls the handler and encodes the reply into the runtime's buffer (`DK_E_TOO_BIG` when it does
+not fit). The device does not check strings for UTF-8: the page checks what it shows. The packer links the wire helpers
+(`sdk/src/wire/wire.c`) when the module calls them.
+
+Budgets, checked when patchkit generates the code: a request is at most 149 bytes encoded, a reply at most 870 bytes (`query_request_max` and `query_reply_max` in `sdk/sdk.toml`, the numbers the runtime enforces), and the request and
+reply structs together at most 1024 bytes (they are on the stack). Patchkit names the method and the sizes when a schema is over; lower a
+`max_len` or `max_count`.
+
+The device runs one query at a time for all modules: a call answers busy while another call is queued, running or its reply
+unread (an unread reply is dropped after 2 s), and the client asks again. After a `timeout` a retry may get `busy` for up to about 2 s.
+
+Methods are only appended: the method number a call carries is the method's position in the `service`. `patchkit workbench-ts MODDIR --write`
+writes `workbench/gen/<name>_pb.js`, `<name>_pb.d.ts` (protobuf-es; needs `node`; no `protoc`) and `<name>.methods` (the names in order)
+and refuses a method that was removed or moved; `--check` exits 1 when one of these files is missing or stale. To retire a method, keep it in
+the `service` and answer it with an error.
 
 ### 5.9 Module files and `dk_intro_take`
 

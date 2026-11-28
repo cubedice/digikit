@@ -1,10 +1,14 @@
 import { createPreviewStores } from './module-store';
 import type { EmuRpc } from '@digi/workbench-core/host/host.ts';
-import { createPreviewModulePages } from './module-pages';
-import { firmwarePort } from './firmware-mock';
+import { bindModuleFiles } from '@digi/workbench-core/module-ui/module-files.ts';
+import { createPreviewChannels } from './module-channels';
+import { previewPageLoaders } from './module-page-loaders';
+import { previewSettingsSchemas } from './module-schemas';
+import { firmwarePort, midi as firmwareMidi } from './firmware-mock';
 import { emulator } from './tauri-mock';
 import { createPreviewSymbols } from './symbols-mock';
 import { createDesktopApps } from '../src/desktop-app';
+import { previewHome } from './preview-home';
 import { createTauriHost } from '../src/host/tauri-host';
 import type { WorkbenchEnvironment } from '../src/workbench-environment';
 import { localStorageKeyValue } from '@digi/workbench-core/storage.ts';
@@ -21,9 +25,9 @@ export function createWorkbenchEnvironment(): WorkbenchEnvironment {
   const query = new URLSearchParams(location.search);
   const transferFixture = PARAMS.some((name) => query.has(name)) || query.has('lib');
   const page = query.get('page') ?? (transferFixture ? 'transfer' : undefined);
-  const modulePages = createPreviewModulePages();
   const fixture = createPreviewLibrary();
-  const stores = createPreviewStores(fixture, modulePages);
+  const stores = createPreviewStores(fixture);
+  firmwareMidi.readCard(stores.loadedModules);
   const base = createTauriHost();
   const rpc: EmuRpc = {
     async call<T>(method: string, params?: Record<string, unknown>, session?: number) {
@@ -66,7 +70,18 @@ export function createWorkbenchEnvironment(): WorkbenchEnvironment {
     apps: query.has('defmods') ? { ...apps, firmware: previewFirmware(apps) } : apps,
     options: {
       browserPreview: true,
-      modulePages,
+      moduleChannels: createPreviewChannels(
+        previewSettingsSchemas(),
+        ({ module, current }) => bindModuleFiles(module.name, apps.app.target.bindSession(), current),
+        undefined,
+        async (files) => {
+          const w = window as unknown as { __savedFiles?: { folder: string; names: string[] }[] };
+          const folder = `${previewHome}/Downloads`;
+          (w.__savedFiles ??= []).push({ folder, names: files.map((f) => f.name) });
+          return { saved: files.length, cancelled: false, where: folder };
+        },
+      ),
+      modulePageLoaders: previewPageLoaders,
       initialPage:
         page === 'transfer' || page === 'files' || page === 'firmware' || page === 'settings' ? page : undefined,
       ...(page === 'log'

@@ -145,6 +145,20 @@ pub fn firmware_imports(
     Ok(out)
 }
 
+/// The runtime that Workbench queries need: a module with a `workbench/*.proto` declares queries.
+fn queries_floor(dir: &std::path::Path) -> u32 {
+    let declares = std::fs::read_dir(dir.join("workbench")).is_ok_and(|entries| {
+        entries
+            .flatten()
+            .any(|e| e.path().extension().is_some_and(|x| x == "proto"))
+    });
+    if declares {
+        crate::sdkgen::workbench_queries_runtime()
+    } else {
+        0
+    }
+}
+
 /// Packs the objects of module `id` as they are in memory in `lib`.
 pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
     let m = lib
@@ -171,6 +185,7 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
         gate: false,
         service: crate::module::service_of(m)?,
         served: lib.served_needs(id)?,
+        payloads: m.payloads.clone(),
     };
     // a DSP fill is built from the DSP object of this device and is left out of the file of the others; a ColdFire fill keeps its device mask
     if let Some(dev) = &o.device {
@@ -276,14 +291,33 @@ pub fn pack_module(lib: &Library, id: &str, o: &PackOptions) -> Result<Packed> {
         let devs = crate::devdata::all()
             .iter()
             .filter(|d| m.manifest.module.builds_for(&d.short));
-        crate::protect::check(id, dko, &crate::protect::windows_of(devs))?;
+        let descriptor = if m.dir.as_os_str().is_empty() {
+            None
+        } else {
+            crate::build::workbench_descriptor(&m.dir)?
+        };
+        crate::protect::check(
+            id,
+            dko,
+            &crate::protect::windows_of(devs),
+            descriptor.as_deref(),
+        )?;
     }
-    let bytes = crate::dkm::pack_keys_with_service_imports(
+    // a module without a directory (built from parts) has no `workbench.toml`
+    let runtime_floor = if m.dir.as_os_str().is_empty() {
+        0
+    } else {
+        crate::build::workbench_runtime_floor(&m.dir)?.max(queries_floor(&m.dir))
+    };
+    let bytes = crate::dkm::pack_keys_with_declared(
         service_obj.as_ref().or(cf.first().map(|c| c.0)),
         &reg,
         &dsp,
         &opts,
-        &m.manifest.service_imports,
+        &crate::dkm::Declared {
+            service_imports: &m.manifest.service_imports,
+            runtime_floor,
+        },
     )?;
     let dkm = crate::dkm::Dkm::parse(&bytes)?;
     Ok(Packed {
