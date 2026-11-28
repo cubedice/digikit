@@ -1,5 +1,6 @@
 // Linear PAD/ARP crossfade. R4=pad/output[32], R8=arp[32], R12=state[2].
-// State is {current,target} floats in [0,1]. Caller validates audio before/after
+// State is {current,target} floats in [0,1]. R9 is zero only after both
+// renderers clear PCM and render no samples. Caller validates audio before/after
 // this operation. R0=1 success, 0 invalid state (no writes). This helper owns no
 // voice state: muted groups must still receive gates and advance envelopes.
 .SECTION/PM seg_pmco;
@@ -22,6 +23,9 @@ _cp_blend:
     IF LT JUMP _cp_blend_bad;
     F2 = DM(0, I2);
     F3 = DM(1, I2);
+    R9 = PASS R9;
+    IF EQ JUMP _cp_blend_check_quiet;
+_cp_blend_audio:
     I0 = R4;
     I1 = R8;
     R10 = 32;
@@ -58,6 +62,22 @@ _cp_blend_output:
     RTS;
 _cp_blend_bad:
     R0 = 0;
+    RTS;
+_cp_blend_check_quiet:
+    // Both PCM lanes and the common-AMP scratch are already clear. Keep the
+    // full blend during a MIX ramp so the next note enters at the same gain.
+    COMP(R2, R3);
+    IF NE JUMP _cp_blend_audio;
+    R0 = DM(_cp_post_output);
+    R0 = PASS R0;
+    IF EQ JUMP _cp_blend_quiet_done;
+    I1 = R0;
+    R0 = 0;
+    LCNTR = 32, DO _cp_blend_quiet_last UNTIL LCE;
+_cp_blend_quiet_last:
+    DM(I1,M6) = R0;
+_cp_blend_quiet_done:
+    R0 = 1;
     RTS;
 // The mix at its target: every sample of the loop above snaps to it and weighs with the same two factors, so they are
 // taken once (the same operations on the same operands).

@@ -12,6 +12,7 @@
 .EXTERN _cp_pressure;
 .EXTERN _cp_retune;
 .EXTERN _cp_blend;
+.EXTERN _cv_pad_active;
 .EXTERN _cp_tune_changed;
 .EXTERN _cp_v2_instance;
 .EXTERN _cp_amp_copy;
@@ -22,12 +23,10 @@
 _ca_prepare:
     I0 = R4;
     I1 = _ca_pad_start;
-    R2 = 32;
-_ca_copy_pad_start:
+    LCNTR = 32, DO _ca_copy_pad_start UNTIL LCE;
     R0 = DM(I0, M6);
+_ca_copy_pad_start:
     DM(I1, M6) = R0;
-    R2 = R2 - 1;
-    IF NE JUMP _ca_copy_pad_start;
     RTS;
 _ca_process:
     DM(_ca_state) = R4;
@@ -366,6 +365,9 @@ _ca_render:
     R0 = DM(_ca_voice);
     R1 = 32;
     R12 = R0 + R1;
+    R9 = DM(_ca_active);
+    R0 = DM(_cv_pad_active);
+    R9 = R9 OR R0;
     CALL _cp_blend;
     R0 = PASS R0;
     IF EQ JUMP _ca_fault;

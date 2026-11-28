@@ -146,6 +146,7 @@ _cp_test_loop:
             regs={
                 "R4": OUTPUT,
                 "R8": other,
+                "R9": 1,
                 "R12": state,
                 "M5": 0,
                 "M6": 1,

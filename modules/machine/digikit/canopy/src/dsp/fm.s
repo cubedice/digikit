@@ -1113,7 +1113,6 @@ _fm_ramp_b_last:
     F5 = 2.0;
     F6 = 1024.0;
     R14 = _fm_sines;
-    R15 = 1023;
     F10 = DM(_fm_increment);
     F12 = DM(_fm_feedback_scale);
     F3 = DM(2,I0); // phase A
@@ -1128,8 +1127,8 @@ _fm_ramp_b_last:
     F1 = DM(-4,I2); // ratio A
     F13 = F1 * F10, F1 = DM(-3,I2); // ratio A x increment for both samples; ratio B
     F3 = F3 + F13; // phase A
-    F1 = F1 * F10;
-    F4 = F4 + F1; // phase B
+    F15 = F1 * F10; // ratio B x increment for both samples
+    F4 = F4 + F15; // phase B
     F7 = F7 + F10, F1 = DM(-1,I2); // phase X/Y; feedback
     // B delayed self feedback; one internal sample delay bounds recursion.
     F0 = F8 * F1;
@@ -1138,7 +1137,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1154,7 +1153,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1172,7 +1171,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1191,7 +1190,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1205,10 +1204,8 @@ _fm_ramp_b_last:
     F0 = F0 * F1;
     F0 = F0 + F11;
     DM(0,I4) = F0; // odd internal sample
-    F1 = DM(-3,I2); // ratio B
     F3 = F3 + F13; // phase A
-    F1 = F1 * F10;
-    F4 = F4 + F1; // phase B
+    F4 = F4 + F15; // phase B
     F7 = F7 + F10, F1 = DM(-1,I2); // phase X/Y; feedback
     // B delayed self feedback; one internal sample delay bounds recursion.
     F0 = F8 * F1;
@@ -1217,7 +1214,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1233,7 +1230,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1251,7 +1248,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
@@ -1270,7 +1267,7 @@ _fm_ramp_b_last:
     F0 = F0 + F5;
     F0 = F0 * F6;
     R2 = TRUNC F0;
-    R1 = R2 AND R15;
+    R1 = FEXT R2 BY 0:10;
     R1 = LSHIFT R1 BY 2;
     R1 = R1 + R14;
     I1 = R1;
