@@ -68,17 +68,37 @@ export const modeSummary = (tests, work = workCores()) => {
   return { count, cores: b.budget, slots: b.tasks, once: startAtOnce(count, b.budget, b.tasks) };
 };
 
-// The `run-many` calls for the selection. One call when the cross product of its projects and targets is exact (a project that does not
-// have a target is skipped by Nx); else one call per target.
+// A run-many call selects every existing target among its listed projects and targets.
+// Merge target groups while both directions of the expanded selection stay exact.
 export const invocations = (pairs, projects) => {
   const have = new Map(projects.map((p) => [p.name, new Set(p.targets)]));
-  const wanted = new Set(pairs.map((p) => `${p.project}:${p.target}`));
   const names = [...new Set(pairs.map((p) => p.project))];
-  const targets = [...new Set(pairs.map((p) => p.target))];
-  const exact = names.every((n) => targets.every((t) => !have.get(n)?.has(t) || wanted.has(`${n}:${t}`)));
-  const call = (ts, ns) => ['run-many', '-t', ts.join(','), '-p', ns.join(',')];
-  if (exact) return [call(targets, names)];
-  return targets.map((t) => call([t], [...new Set(pairs.filter((p) => p.target === t).map((p) => p.project))]));
+  const byTarget = new Map();
+  for (const { project, target } of pairs) {
+    if (!byTarget.has(target)) byTarget.set(target, new Set());
+    byTarget.get(target).add(project);
+  }
+  const batches = [];
+  for (const [target, selected] of byTarget) {
+    const batch = batches.find(
+      ({ projects, targets }) =>
+        [...projects].every((p) => selected.has(p) || !have.get(p)?.has(target)) &&
+        [...selected].every((p) => projects.has(p) || targets.every((t) => !have.get(p)?.has(t))),
+    );
+    if (batch) {
+      batch.targets.push(target);
+      for (const p of selected) batch.projects.add(p);
+    } else {
+      batches.push({ targets: [target], projects: selected });
+    }
+  }
+  return batches.map(({ targets, projects }) => [
+    'run-many',
+    '-t',
+    targets.join(','),
+    '-p',
+    names.filter((p) => projects.has(p)).join(','),
+  ]);
 };
 
 // `fixed`: the FIXED entries that Nx `affected` selects (see affectedFixed); the others are left out.
