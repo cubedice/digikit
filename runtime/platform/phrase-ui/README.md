@@ -12,7 +12,8 @@ x 16 to 123 below the header and the level strip under the tab: VOL, the effect'
 the effect row's own MIX, which stays at unity). Eight cells in two rows at the stock centres (x 33, 59, 85, 111) have a
 graphic above their caption. As on the stock pages a turned cell's caption shows its value while the view's own focus
 countdown runs (`fxv_focus_touch`, `fxv_focus_active`), and holding FUNC + FX shows every value (`fxv_values_shown`);
-release FX to return to the captions. Tap FUNC + FX to advance to the next effect.
+release FX to return to the captions. F is the exception to the first: its caption names the feedback route that its
+press chooses, and a turn keeps the name. Tap FUNC + FX to advance to the next effect.
 
 | | Turn | Press | Caption | Value (after a turn, FUNC + FX held) |
 | --- | --- | --- | --- | --- |
@@ -22,7 +23,7 @@ release FX to return to the captions. Tap FUNC + FX to advance to the next effec
 | C | RPTS, dashes to ∞ | HOLD | `RPTS`, `HOLD` inverted while HOLD is on | the number, or `INF` |
 | D | COLR | | `COLR` | signed distance from the uncoloured point (96, three quarters of the way up); negative darkens, positive thins and brightens |
 | E | HALO | | `HALO` | the number |
-| F | SKEW | Cycle SKEW, PONG, SWAP | `SKEW`, or `PONG` / `SWAP` | `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
+| F | SKEW | Cycle SKEW, PONG, SWAP | `SKEW`, `PONG` or `SWAP`, also after a turn | only with FUNC + FX held: `L 12` or `R 12` for the longer side and distance from centre, `0` in PONG |
 | G | INPT, a two-position switch: four ticks to the right LOOP, four to the left LIVE, at any time (also without a loop). A tick back toward where it is clears the count, so the tick a knob can make as it is let go of switches nothing | nothing. Held: the TRIG keys turn tracks on and off, their LEDs show them | `INPT`; `NO TRK` while no track is chosen, `SILENT` at LOOP while there is no loop; while G is held `TRIGS`, inverted | `LIVE` or `LOOP`; while G is held the tracks the effect hears (`5 TRK`) |
 | H | XFAD, Overloop's crossfader, a step a tick, only while there is a loop | ARM, while Overloop reports | `XFAD`, `ARMD` inverted while armed; the slider is the applied crossfader, without a knob before a loop exists | `LIVE`, a number, or `LOOP`; before a loop exists `--`, or while armed `16 ST`, `CUT` or `WAIT` |
 | FUNC + NO | | drop the loop | | |

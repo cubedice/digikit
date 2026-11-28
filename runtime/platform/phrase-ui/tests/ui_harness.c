@@ -466,10 +466,12 @@ static void rendering(void)
                saw_at(&values, cell_x(i), cell_y(i), formatted[i]));
         assert(!saw_at(&d, cell_x(i), cell_y(i), formatted[i]) &&
                !saw_at(&values, cell_x(i), cell_y(i), labels[i]));
-        /* a turn shows that cell's value for a moment (the view's focus), and only that cell's */
+        /* a turn shows that cell's value for a moment (the view's focus), and only that cell's; F's caption keeps naming
+         * its route (skew_caption) */
         draw_focused(&p, &focused, 0, 1u << i);
         for (int j = 0; j < 8; ++j)
-            assert(saw_at(&focused, cell_x(j), cell_y(j), j == i ? formatted[j] : labels[j]));
+            assert(saw_at(&focused, cell_x(j), cell_y(j),
+                          j == i && j != 5 ? formatted[j] : labels[j]));
     }
     /* Holding FUNC + FX swaps the captions while the underlying icon pixels stay the same. */
     for (int row = 14; row <= 28; ++row) {
@@ -522,6 +524,43 @@ static void rendering(void)
     pu_page(&s, &p);
     draw_page(&p, &d, 1);
     assert(saw_at(&d, cell_x(3), 32, "-96"));
+}
+/* F's caption names the feedback route that F's press chooses: SKEW, PONG or SWAP. A turn of F, a single tick either way
+ * included, keeps the name while the view's focus countdown runs (the owner saw the name give way to SKEW's distance after
+ * a small turn); only FUNC + FX held shows the distance, 0 in PONG, which holds the centre. */
+static void skew_caption(void)
+{
+    PhraseUi s;
+    PhrasePage p;
+    Drawn d;
+    init(&s);
+    static const char *const names[3] = {"SKEW", "PONG", "SWAP"};
+    /* the owner's stored SKEW: all the way to the left */
+    raw[PH_P_SKEW] = 0;
+    for (uint32_t route = PH_ROUTE_SKEW; route <= PH_ROUTE_SWAP; ++route) {
+        raw[PH_P_ROUTE] = route;
+        for (int32_t tick = 1; tick >= -1; tick -= 2) {
+            assert(pu_turn(&s, 5, tick, 0) == PU_OWN);
+            /* PONG holds the centre: its turns move nothing */
+            assert(raw[PH_P_SKEW] == (route == PH_ROUTE_PONG || tick < 0 ? 0u : 1u));
+            pu_page(&s, &p);
+            char distance[16];
+            pu_format(distance, PH_P_SKEW, route == PH_ROUTE_PONG ? 64 : raw[PH_P_SKEW]);
+            /* the turn's focus on F alone, and on F with the values held */
+            draw_focused(&p, &d, 0, 1u << 5);
+            assert(saw_at(&d, cell_x(5), 59, names[route]) && !saw_at(&d, cell_x(5), 59, distance));
+            draw_focused(&p, &d, 1, 1u << 5);
+            assert(saw_at(&d, cell_x(5), 59, distance) && !saw_at(&d, cell_x(5), 59, names[route]));
+            /* after the countdown */
+            draw_focused(&p, &d, 0, 0);
+            assert(saw_at(&d, cell_x(5), 59, names[route]));
+        }
+    }
+    /* the other cells still show their values while their focus runs */
+    raw[PH_P_ROUTE] = PH_ROUTE_SWAP;
+    pu_page(&s, &p);
+    draw_focused(&p, &d, 0, 1u << 4);
+    assert(saw_at(&d, cell_x(4), 59, "0") && saw_at(&d, cell_x(5), 59, "SWAP"));
 }
 static void rate_readout(void)
 {
@@ -1153,6 +1192,7 @@ int main(void)
     formats();
     page_cells();
     rendering();
+    skew_caption();
     rate_readout();
     mix_meter();
     loop_page();
