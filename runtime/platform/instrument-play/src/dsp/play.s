@@ -39,6 +39,7 @@
 .EXTERN _iv_shared_keyboard;
 .EXTERN _iv_mod_status;
 .EXTERN _iv_mod_ready;
+.EXTERN _dv_rec;
 
 // This adapter is absent from ordinary images. Linking it is the trusted
 // instrument capability; binding the session must precede lifecycle work.
@@ -64,6 +65,7 @@ _instrument_carrier_prepare:
     R1 = _iv_voice_render;
     DM(1, I1) = R1;
     DM(0, I1) = R0; // publish the admitted type last; never shadow a stock type
+    CALL _iv_budget;
     R0 = 0;
     DM(_iv_loop) = R0;
 _iv_prepare_slot:
@@ -82,6 +84,59 @@ _iv_prepare_next:
     R1 = DM(_iv_slot_count);
     COMP(R0, R1);
     IF LT JUMP _iv_prepare_slot;
+    RTS;
+
+// The DSP load budget (finding 377). The instances run before the stock voices of their block, so they are budgeted from
+// the block before: once per block, before the slots, the cost of the last block handler (word 0 of the reply record the
+// last block built, `_dv_rec[0]` of core/dsp-voice, rotated by 16 bits: finding 125; cycles on the device, instructions in
+// the emulator) is compared with `_iv_budget_limit`. A block over the limit raises `_iv_pressure` by one (at most 7);
+// `_iv_budget_calm` blocks in a row that each stay `_iv_budget_margin` or more under the limit lower it by one; a block
+// in between holds it and starts the count again. Every V5+ input carries the pressure in bits 12..14 of its timing flags
+// (word 12; sdk/include/dk/instrument.h), the same value for every slot, and the instrument sheds its own voices; an
+// instrument that does not read the bits renders as before. Without a record (no core/dsp-link block yet) nothing
+// changes. `_iv_budget_cost` is the cost last read and `_iv_budget_overs` counts the blocks over the limit, for a
+// reader on the link. Clobbers R0-R3, I0.
+_iv_budget:
+    R0 = DM(_dv_rec);
+    R0 = PASS R0;
+    IF EQ RTS;
+    I0 = R0;
+    R0 = DM(0, I0);
+    R1 = LSHIFT R0 BY -16;
+    R0 = LSHIFT R0 BY 16;
+    R0 = R0 OR R1;
+    DM(_iv_budget_cost) = R0;
+    R1 = DM(_iv_budget_limit);
+    R2 = DM(_iv_pressure);
+    COMP(R0, R1);
+    IF GT JUMP _iv_budget_over;
+    R3 = DM(_iv_budget_margin);
+    R1 = R1 - R3;
+    COMP(R0, R1);
+    IF GT JUMP _iv_budget_hold;
+    R0 = DM(_iv_budget_quiet);
+    R0 = R0 + 1;
+    R1 = DM(_iv_budget_calm);
+    COMP(R0, R1);
+    IF LT JUMP _iv_budget_count;
+    R2 = R2 - 1;
+    R0 = 0;
+    R2 = MAX(R2, R0);
+    DM(_iv_pressure) = R2;
+_iv_budget_count:
+    DM(_iv_budget_quiet) = R0;
+    RTS;
+_iv_budget_over:
+    R0 = DM(_iv_budget_overs);
+    R0 = R0 + 1;
+    DM(_iv_budget_overs) = R0;
+    R2 = R2 + 1;
+    R0 = 7;
+    R2 = MIN(R2, R0);
+    DM(_iv_pressure) = R2;
+_iv_budget_hold:
+    R0 = 0;
+    DM(_iv_budget_quiet) = R0;
     RTS;
 
 // Session loss or a lost row identity silences and unconfigures every slot.
@@ -133,6 +188,9 @@ _iv_run_slot:
     DM(23, I0) = R0;
     R0 = DM(12, I0);
     R1 = DM(_iv_timing_meta);
+    R0 = R0 OR R1;
+    R1 = DM(_iv_pressure); // the load budget's pressure, bits 12..14 (_iv_budget)
+    R1 = LSHIFT R1 BY 12;
     R0 = R0 OR R1;
     DM(12, I0) = R0;
     R0 = DM(_ir_process_flags);
@@ -1873,6 +1931,21 @@ _iv_voice_zero:
 .VAR _iv_revision = 0;
 .VAR _iv_active = 0;
 .VAR _iv_result = 0;
+// The load budget (_iv_budget): the cycles a block may cost before the instruments shed (85.5 % of an assumed 1 GHz block
+// of 666,667 cycles; the stock chord budget `_cs_limit` of core/dsp-voice is 560,000), how far under it a block must
+// stay to count as calm, and the calm blocks in a row that lower the pressure by one (150 blocks: 100 ms). Tunable
+// words: a test or a device session pokes them.
+.GLOBAL _iv_budget_limit;
+.GLOBAL _iv_budget_margin;
+.GLOBAL _iv_budget_calm;
+.GLOBAL _iv_pressure;
+.VAR _iv_budget_limit = 570000;
+.VAR _iv_budget_margin = 40000;
+.VAR _iv_budget_calm = 150;
+.VAR _iv_pressure = 0;
+.VAR _iv_budget_quiet = 0;
+.VAR _iv_budget_cost = 0;
+.VAR _iv_budget_overs = 0;
 .PKBSS _iv_packet, 4;
 .PKBSS _iv_values, 4;
 .PKBSS _iv_metadata, 4;
