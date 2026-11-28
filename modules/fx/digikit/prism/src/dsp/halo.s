@@ -404,17 +404,10 @@ _hl_late_run:
         F3 = F3 * F10;
         // Start new excitation at zero with zero slope. The first reading of
         // either refilled delay must not expose a full-amplitude sample.
+        // After PRISM_LATE_START pairs the weight is exactly 1.
         R0 = PRISM_LATE_START;
-        R0 = MIN(R12,R0);
-        F0 = FLOAT R0;
-        R1 = 0x3b800000; // 1 / PRISM_LATE_START
-        F0 = F0 * F1;
-        F0 = F0 * F0;
-        R1 = 0x40000000;
-        F1 = F1 - F0;
-        F0 = F0 * F1;
-        F2 = F2 * F0;
-        F3 = F3 * F0;
+        COMP(R12,R0);
+        IF LT CALL _hl_late_rise;
         F0 = F4 + F5;
         F1 = F4 - F5;
         F0 = F0 * F9;
@@ -444,4 +437,17 @@ _hl_late_pair: R12 = R12 + 1;
     DM(PL_VALID,I4) = R12;
     DM(PL_DAMP_L,I4) = R4;
     DM(PL_DAMP_R,I4) = R5;
+    RTS;
+// The excitation F2 and F3 of pair R12 of a network that starts (R12 below PRISM_LATE_START), times
+// w (2 - w), w = (R12 / PRISM_LATE_START)^2. Uses F0, F1.
+_hl_late_rise:
+    F0 = FLOAT R12;
+    R1 = 0x3b800000; // 1 / PRISM_LATE_START
+    F0 = F0 * F1;
+    F0 = F0 * F0;
+    R1 = 0x40000000;
+    F1 = F1 - F0;
+    F0 = F0 * F1;
+    F2 = F2 * F0;
+    F3 = F3 * F0;
     RTS;
