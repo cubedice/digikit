@@ -179,7 +179,7 @@ HOLD freezes the tape, and COLR and HALO continue to shape the output. See findi
 frames after that (4.8 s with HALO up, for its late network), and nothing is left to finish: no crossfade, no HOLD being
 taken or released, both sides playing. So HOLD on a sounding tape and repeats at unity never rest. A resting block checks
 the link, the controls and the input, writes silence to the tape and the output and publishes the same status as ever; it
-costs about a quarter of the lightest block that plays. A sound at the input (the tracks, or the loop at INPT LOOP) or a
+costs about a third of the lightest block that plays (1334 rig instructions against 3577). A sound at the input (the tracks, or the loop at INPT LOOP) or a
 turned control runs the block in full again, from silence: the filters, HALO's lines and the late network were emptied,
 RPTS, COLR, HALO and MIX take their values at once, and a time changed in silence is there without a glide. The slow drift
 of the dark colours and the turn of a reverse segment go on from where they stood. While PRISM rests it puts nothing in
@@ -208,6 +208,8 @@ the handover between the FX return and Overloop, the transition with PRISM sound
 `tests/rest.rig.test.ts` holds the rest: when it starts and when it must not, what wakes it, the status and the wet mailbox
 while it lasts, and a note after it against the same engine kept awake. `tests/active-pins.rig.test.ts` pins the output, the
 mailbox and the tape of five runs bit for bit, for changes that only shorten the path.
+A block that plays a steady tone costs 3577 rig instructions with HALO off and 8070 with HALO 0.5 (6127 and 11449 before
+finding 377), core/fx included; the dark colours cost about 5000 more, for the drift's glide.
 
 The device tests run the patched firmware with the SHARC core. `tests/ui.device.test.ts`: the page opens, each encoder
 and LEVEL moves its value, its control word and its cell, the three presses switch, FUNC + RATE is fine, G and H change

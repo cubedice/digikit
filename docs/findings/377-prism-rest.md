@@ -1,4 +1,4 @@
-# 377. PRISM rests while nothing sounds
+# 377. PRISM rests while nothing sounds, and a shorter block while it plays
 
 Work of 2026-11-27 on PRISM's engine (`modules/fx/digikit/prism/src/dsp`), Digitakt II OS 1.17. The engine ran on the
 SHARC-only rig and on the emulated Digitakt II; nothing here ran on hardware. Marks as in `docs/FINDINGS.md`: every
@@ -79,6 +79,8 @@ reverse segment or a held loop. A forward head at rest does not move against the
 
 ## Numbers
 
+As the rest was committed; the block that plays is shorter since (below).
+
 | | Before | Now |
 | --- | ---: | ---: |
 | A resting block | 6127 (it ran in full) | 1436 |
@@ -100,6 +102,56 @@ reverse segment or a held loop. A forward head at rest does not move against the
   where the other engine's went on: the echoes' rms 0.06149 against 0.06152, and no stretch less smooth.
 - RATE, MIX and HALO turned while resting: one block runs, the next is the first resting block again, the status shows the
   new time, and the next note differs from the engine that never rested by 1.4e-16 of a peak of 0.105.
+
+## A shorter block while it plays
+
+After the rest, the block that plays was gone through for work that changes no word of its output. Each change is its own
+commit, held by the pins of `tests/active-pins.rig.test.ts` (five runs: every mode of the heads, both ends of COLR, HALO
+and its late network, the limiter above its knee, glides, crossfades, the loop effect, single samples in silence; their
+hashes were taken from the engine before any of this). The numbers are a block that plays a steady tone (a synced time of
+2400 frames, RPTS 0.5, every control at rest), core/fx included.
+
+| Change | HALO off | HALO 0.5 | Heaviest block |
+| --- | ---: | ---: | ---: |
+| Before this finding | 6127 | 11449 | 22113 |
+| Rest: the written tape's largest magnitude, the counts, the check | 6304 | 11628 | 22138 |
+| A forward head at rest reads its 32 frames in a row (`heads.s`, the short way) | 4438 | 9762 | 22150 |
+| HALO's four lines in the sample's loop, a DO loop, the index in bytes (`halo.s`) | 4438 | 9059 | 21447 |
+| COLR standing at the uncoloured point or above: no step sums, no cube times 0 (`loop.s`, `_pc_plain_side`) | 3929 | 8550 | 21452 |
+| The control snapshot holds the eleven words the engine reads, not all 64 | 3827 | 8448 | 21352 |
+| The limiter's usual sample straight through a DO loop, the curve a routine (`_lp_side`, `_lp_bend`) | 3699 | 8320 | 21288 |
+| A gain and a MIX that stand: no step sums (`_lp_steady`) | 3577 | 8198 | 21166 |
+| The late network's start weight only while it starts (`_hl_late_rise`) | 3577 | 8070 | 21038 |
+
+- Into the loop effect (Overloop loaded) a block costs 230 more than these, where it cost 681: with the share of the
+  output at 1 the block is copied to the wet mailbox and cleared in one run (3807 with HALO off, 8300 with HALO 0.5; before
+  this finding 6808 and 12130).
+- With FLIP (segments of 2400 samples, the mean of 300 blocks) 5637: a reverse head between its seams reads its 32 frames
+  in a row too (6707 before that change).
+- A resting block is 1334 now (the snapshot), its first 1359, or 4445 with HALO up.
+- The heaviest block is the cost case of `tests/engine.rig.test.ts` (both sides gliding between frames through a
+  crossfade, HALO, the dark colour, the limiter, a write crossfade and both switches moving): `dsp_cost_fx = 21038`.
+- A DO loop in place of a counted jump, and a routine that is not called per sample, save cycles on the SHARC that an
+  instruction count does not show **[O]**.
+
+### Not done
+
+Each of these would be heard, moves a pin, or is a rewrite with real risk; the saving is an estimate in instructions a
+block.
+
+| Where | What | Saving | What would change |
+| --- | --- | ---: | --- |
+| `heads.s:442-501` | The glide's velocity is worked out for every sample (about 32 instructions a sample a side, and the read between two frames 8 more). It runs whenever COLR is below the uncoloured point (the drift) or a free time moves: a steady block at COLR 0 costs 8596 against 3577. Once a block, with a ramp between. | 1800 to 2400 | The path of a glide in its fourth decimal place: not audible, not the same words; the glide's pitch numbers of the engine test would be measured again. |
+| `heads.s:442-655` | The per-sample loop of a crossfade or a head between frames jumps 6 to 10 times a sample. DO loops by case (a crossfade without a glide, a steady fraction). | 400 to 500 while it applies, more in cycles | Nothing, if right: it is a rewrite of the seam and the turn. |
+| `prism.s:347-366` | INPT at LOOP with the switch at rest still mixes send times 0 plus tap times the trim, 18 instructions a sample. A plain loop of 4. | 900 while INPT is LOOP | The sign of an exact zero on the tape (send times 0 is -0 for a negative send). |
+| `loop.s:508-540` | RPTS at 0 or MIX at 0: the feedback or the output is the wet signal times 0. | 250 and 380 | The sign of an exact zero, as above. |
+| `loop.s:26-143, 508-540, 287-300` | The colour, the output and feedback, and the tape's write are three passes over the block's 64 words; one pass with HALO off and no ping pong. | 250 | Nothing, if right; four more variants of the loop. |
+| `loop.s:117-143` | COLR standing below the uncoloured point: the loop without its three step sums. | 190 | Nothing; small beside the glide the dark colours carry. |
+| `prism.s:698-1016` | The plan (the times, the hold state, two `_prism_program`) is worked out anew every block, about 250 instructions. Skip it while no control and no state it reads has moved. | 200 | Nothing, if every such state is found: the tape's length, the drift and a crossfade's end change it without a control. |
+| `halo.s:313-428` | The late network's pair loop loads its two ring addresses twice a pair and keeps three values in the state: every register is taken. The right side by fixed offsets frees two. | 100 | Nothing; a rewrite of the loop's addressing. |
+| `halo.s:137-139` | c and s standing (HALO at or below a half): no step sums. | 64 | Nothing. |
+| `services/fx/dks/dsp/fx-chain.inc` | Of a resting block's 1334 instructions about 690 are the engine's and the rest core/fx (the check of the output block, the send). An effect could say that its block is silence. | 450 of the resting block | The effect contract. |
+| The rule's first part | Resting after the deepest frame the heads can reach instead of the whole tape. | none a block; rest after the echo's time instead of 21.5 s | When the engine rests; a control that reaches deeper has to wake it. |
 
 ## What a player can notice
 
