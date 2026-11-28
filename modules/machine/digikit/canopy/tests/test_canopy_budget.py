@@ -22,6 +22,7 @@ from test_canopy_v2 import (
     presentation_controls,
     spread_controls,
     wavetable_controls,
+    wavetable_fm_controls,
     wt_float,
 )
 from test_canopy_v2 import canopy as canopy
@@ -42,6 +43,9 @@ def family_controls(family):
         "velvet": lambda: spread_controls(),
         "wavetable": lambda: wavetable_controls(mix=64),
         "fm": lambda: fm_controls(mix=64),
+        # the bank the UI sends for a wavetable sound (CPSB): WT FM at depth 0, and at depth 60
+        "wavetable-b": lambda: wavetable_fm_controls(mix=64),
+        "wavetable-fm": lambda: wavetable_fm_controls(fm_depth=60, mix=64),
     }[family]()
     values[6] = 64
     values[21] = (values[21] & 0xFFFF0000) | 64
@@ -105,12 +109,14 @@ def held_owners(state):
     }
 
 
-# The takes at pressure 0, recorded at the commit before the budget (ee79d7018): the budget and the bit-identical cost
-# work must keep them.
+# The takes at pressure 0, recorded at the commit before the budget (ee79d7018; the two CPSB takes at the budget's
+# commit, whose output the three others show to be the same): the budget and the bit-identical cost work must keep them.
 PINNED = {
     "velvet": "efa291cb3ede4d588eeb98be404c966c3bcbd54c5772c054991576d4d8e20e9d",
     "wavetable": "85a1a7f2b637fbe8c9516632c8fe422146b90833a1aecdc8dfb84cb6d9f6bc68",
     "fm": "62ec0a005c7db37e272af65ac81cc482305365b448e559e2abf37d297b8c41c6",
+    "wavetable-b": "85a1a7f2b637fbe8c9516632c8fe422146b90833a1aecdc8dfb84cb6d9f6bc68",
+    "wavetable-fm": "932238042f45a69a4542ff9d5a24cd7ece78d1b3c643af852cdbe81a641cf1f9",
 }
 
 DIRECT = pytest.mark.parametrize(
@@ -137,13 +143,13 @@ def takes(canopy_object):
 
 
 @DIRECT
-@FAMILIES
+@pytest.mark.parametrize("family", list(PINNED))
 def test_report(takes, family):
     if not os.environ.get("CANOPY_BUDGET_REPORT"):
         pytest.skip("a report, on request")
     out, states, cost = takes(family, 0)
     print(f"\n{family}: sha256 {digest(out)}")
-    for level in range(8):
+    for level in range(8) if family in ("velvet", "wavetable", "fm") else (0,):
         _, states, cost = takes(family, level)
         window = cost[ON + 10 : OFF]
         print(
@@ -153,7 +159,7 @@ def test_report(takes, family):
         )
 
 
-@pytest.mark.parametrize("family", ["velvet", "wavetable", "fm"])
+@pytest.mark.parametrize("family", list(PINNED))
 def test_pressure_zero_renders_the_pinned_take(canopy, family):
     out, _, _ = take(canopy, family)
     assert digest(out) == PINNED[family]
