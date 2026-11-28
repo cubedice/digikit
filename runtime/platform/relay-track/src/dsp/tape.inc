@@ -140,7 +140,11 @@ _tape_play:
 // Four playback taps can span three windows at the join of a short tail.
 _tape_address:
     R1 = LSHIFT R12 BY -8;
-    R0 = DM(_t_key0); COMP(R0,R1); IF EQ JUMP _t_hit0;
+    R0 = DM(_t_key0); COMP(R0,R1); IF NE JUMP _t_other_windows;
+_t_hit0: R0 = DM(_t_ptr0);
+_t_address_offset:
+    R1 = LSHIFT R12 BY 2; R0 = R0 + R1; I0 = R0; RTS;
+_t_other_windows:
     R0 = DM(_t_key1); COMP(R0,R1); IF EQ JUMP _t_hit1;
     R0 = DM(_t_key2); COMP(R0,R1); IF EQ JUMP _t_hit2;
     R0 = DM(_t_key1); DM(_t_key2) = R0; R0 = DM(_t_ptr1); DM(_t_ptr2) = R0;
@@ -148,19 +152,17 @@ _tape_address:
     DM(_t_key0) = R1;
     R8 = DM(_t_slot); R4 = RLY_READ_SPAN; CALL _relay_pool;
     // The slot is pinned by this motor's current revision for the whole block.
-    R1 = 255; R1 = R12 AND R1; R1 = LSHIFT R1 BY 2; R0 = R0 - R1; DM(_t_ptr0) = R0;
-    R8 = DM(_t_track); CALL _rt_row; CALL _tape_row;
-_t_hit0: R0 = DM(_t_ptr0); JUMP _t_address_offset;
+    // Bias this window by the full frame number once, so hits only add frame * 4.
+    R1 = LSHIFT R12 BY 2; R0 = R0 - R1; DM(_t_ptr0) = R0;
+    R8 = DM(_t_track); CALL _rt_row; CALL _tape_row; JUMP _t_hit0;
 _t_hit1: R0 = DM(_t_ptr1); JUMP _t_address_offset;
-_t_hit2: R0 = DM(_t_ptr2);
-_t_address_offset:
-    R1 = 255; R1 = R12 AND R1; R1 = LSHIFT R1 BY 2; R0 = R0 + R1; I0 = R0; RTS;
+_t_hit2: R0 = DM(_t_ptr2); JUMP _t_address_offset;
 _tape_pcm:
     CALL _tape_address;
     R0 = DM(0,I0);
 _tape_unpack_pcm:
     R1 = LSHIFT R0 BY 16; R1 = ASHIFT R1 BY -16; R0 = ASHIFT R0 BY -16;
-    F0 = FLOAT R0; F1 = FLOAT R1; R2 = 0x38000000; F0 = F0 * F2; F1 = F1 * F2; RTS;
+    R2 = -15; F0 = FLOAT R0 BY R2; F1 = FLOAT R1 BY R2; RTS;
 _tape_alt_gain:
     // Preserve the pool span contract while scaling an independent alternate.
     I0 = R4; I1 = R8; R8 = DM(_rt_writer); CALL _tape_row;
@@ -292,7 +294,7 @@ _tape_sample:
     DM(_t_interp_l) = R0; DM(_t_interp_r) = R1;
     R12 = DM(_t_read); R12 = R12 + 1; R3 = DM(_t_span); COMP(R12,R3); IF GE R12 = R12 - R3;
     CALL _tape_pcm;
-    R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
+    R2 = DM(T_FRAC,I5); R3 = -16; F2 = FLOAT R2 BY R3;
     F3 = DM(_t_interp_l); F0 = F0 - F3; F0 = F0 * F2; F0 = F0 + F3;
     F3 = DM(_t_interp_r); F1 = F1 - F3; F1 = F1 * F2; F1 = F1 + F3;
     JUMP _tape_heard;
@@ -322,7 +324,7 @@ _tape_cubic_wrap:
     CALL _tape_pcm;
 _tape_cubic_mix:
     // u = 1 - t, h = t*u/2. The weights sum to one at every phase.
-    R2 = DM(T_FRAC,I5); F2 = FLOAT R2; R3 = 0x37800000; F2 = F2 * F3;
+    R2 = DM(T_FRAC,I5); R3 = -16; F2 = FLOAT R2 BY R3;
     R3 = 0x3f800000; F3 = F3 - F2;
     R4 = 0x3f000000; F4 = F4 * F2; F4 = F4 * F3;
     F6 = F4 * F3; F7 = F4 * F2; // Magnitudes of the two outside weights.
