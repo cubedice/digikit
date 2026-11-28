@@ -508,6 +508,9 @@ _lp_ping_ramp:
 _lp_side:
     F10 = DM(PS_TEMP,I5);
     F11 = DM(PS_TEMP1,I5);
+    R0 = R4 OR R5;
+    R0 = PASS R0;
+    IF EQ JUMP _lp_steady;
     LCNTR = 32, DO _lp_sample UNTIL LCE;
         F0 = DM(I0,M6);
         F10 = F10 + F4;
@@ -521,6 +524,20 @@ _lp_side:
         F1 = MIN(F1,F6);
         F1 = MAX(F1,F7);
 _lp_sample: DM(I2,M6) = R1;
+    RTS;
+// The gain and MIX stand (both steps are 0): the same loop without the two sums, which would leave them as they are.
+_lp_steady:
+    LCNTR = 32, DO _lp_steady_sample UNTIL LCE;
+        F0 = DM(I0,M6);
+        F2 = F0 * F10;
+        F1 = ABS F2;
+        COMP(F1,F12);
+        IF GT CALL _lp_bend;
+        DM(I1,M6) = R2;
+        F1 = F0 * F11;
+        F1 = MIN(F1,F6);
+        F1 = MAX(F1,F7);
+_lp_steady_sample: DM(I2,M6) = R1;
     RTS;
 // F2 a sample above the knee and F1 its magnitude: F2 = knee + span * (u - u^3 / 3), u = (|x| - knee) * slope up to 1, with
 // the sign of x. Uses F1, F3.
