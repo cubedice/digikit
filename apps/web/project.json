@@ -108,7 +108,7 @@
         "{workspaceRoot}/vitest.host/web-wasm.json"
       ],
       "options": {
-        "command": "PATCHKIT_BIN=\"$PWD/dist/patchkit/patchkit\" pnpm --filter @digi/web test-wasm",
+        "command": "PATCHKIT_BIN=\"$PWD/dist/patchkit/patchkit\" pnpm --filter @digi/web exec vitest run --config ../../vitest.host.config.ts --project web-wasm",
         "cwd": "."
       }
     }
