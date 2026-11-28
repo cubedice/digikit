@@ -99,6 +99,14 @@ static uint32_t selected, alternate, now = 100, type_id = 9, generation = 1, sto
                                      stock_keys, invalidations, polls;
 static uint32_t manager[16], node[4], vtable[60], modal[24], modal_node[4];
 static uint32_t focus_mask, texts, graphs, toasts;
+static char last_toast[32];
+/* ip_help_draw: the header's boxes and text, recorded instead of painted */
+static int header_mode;
+static uint32_t header_boxes;
+static int32_t header_box_x, header_box_rows;
+static char drawn_header[32];
+static int32_t drawn_x, drawn_y, drawn_maxw;
+static uint8_t *drawn_font;
 static char label_text[8][32];
 static char body_text[8][32];
 static char arp_caption[32];
@@ -120,6 +128,7 @@ int32_t dk_ui_toast(dk_ui *ui, const char *text)
 {
     assert(ui && text[0]);
     ++toasts;
+    snprintf(last_toast, sizeof last_toast, "%s", text);
     return 0;
 }
 struct dk_ui {
@@ -214,6 +223,8 @@ void instrument_src_display(CvDisplay *d, uint32_t time, const char *t, const ch
     }
     d->rotary = 1u << 3;
     d->knob[3] = 64;
+    /* the source family picks the page's pictures (Velvet's FM ENV has none) */
+    d->family = (uint8_t)((state.metadata >> 4) & 3);
 }
 int32_t ip_src_value(uint8_t *v, uint32_t code, uint8_t *flags)
 {
@@ -338,14 +349,34 @@ int32_t dk_fw_text_draw_box(uint8_t *p, uint8_t *font, int32_t x, int32_t y, int
     if (x >= 33 && x <= 111 && (x - 33) % 26 == 0) {
         if (y == 0 || y == 27)
             strcpy(label_text[(x - 33) / 26 + (y == 0 ? 4 : 0)], s);
-        if (y == 14 || y == 41)
-            strcpy(body_text[(x - 33) / 26 + (y == 14 ? 4 : 0)], s);
+        /* a text value on the stock text graphic's rows (19 to 23, 46 to 50) */
+        if (y == 13 || y == 40)
+            strcpy(body_text[(x - 33) / 26 + (y == 13 ? 4 : 0)], s);
     }
     va_end(ap);
     return 0;
 }
+int32_t dk_fw_text_draw(uint8_t *p, uint8_t *font, int32_t x, int32_t y, int32_t maxw,
+                        const char *s)
+{
+    assert(header_mode && p);
+    drawn_font = font;
+    drawn_x = x;
+    drawn_y = y;
+    drawn_maxw = maxw;
+    snprintf(drawn_header, sizeof drawn_header, "%s", s);
+    return 0;
+}
 void dk_fw_draw_fill_rect(uint8_t *p, int32_t x0, int32_t y0, int32_t x1, int32_t y1, int32_t color)
 {
+    if (header_mode) {
+        /* the header's bar beside the stock text: rows 0 to the bubble's height, to the right edge */
+        assert(x0 > 17 && x1 == 127 && y0 >= 54 && y1 == 63 && (color == 0 || color == -1));
+        header_box_x = x0;
+        header_box_rows = 64 - y0;
+        ++header_boxes;
+        return;
+    }
     assert(x0 >= 23 && x1 < 124 && y0 >= 0 && y1 < 53 && (color == -1 || color == 0 || color == 1));
     for (int y = y0; y <= y1; ++y)
         for (int x = x0; x <= x1; ++x) {
@@ -521,11 +552,30 @@ int main(int argc, char **argv)
                     for (unsigned y = 14; y <= 26; ++y)
                         waveform |= canvas[y * 128 + 50];
                     assert(waveform == 1 && canvas[48 * 128 + 25] == 1);
+                    /* within the stock graphic rows 13 to 29: the frame rail on 28, the cursor from 14 */
                     for (unsigned x = 49; x <= 121; ++x)
-                        assert(canvas[29 * 128 + x] == 1);
-                    assert(canvas[13 * 128 + 73] == 1);
+                        assert(canvas[28 * 128 + x] == 1);
+                    assert(canvas[14 * 128 + 73] == 1 && canvas[13 * 128 + 73] == 1);
+                    for (unsigned x = 48; x <= 122; ++x)
+                        assert(canvas[12 * 128 + x] == 0 && canvas[30 * 128 + x] == 0);
                     assert(!(graph_mask & 0x1e));
                 }
+                if (source < 2 && page == CS_FM_ENV) {
+                    /* no FM ENV controls: the stock placeholder in all eight cells, no words */
+                    for (unsigned i = 0; i < 4; ++i)
+                        assert(canvas[13 * 128 + 26 + 26 * i] == 1 &&
+                               canvas[56 * 128 + 26 + 26 * i] == 1);
+                    for (unsigned i = 0; i < 8; ++i)
+                        assert(!body_text[i][0]);
+                    assert(!env_caption);
+                }
+                if (source == 3 && page == CS_FM_ENV)
+                    assert(canvas[40 * 128 + 104] == 1 &&
+                           canvas[56 * 128 + 118] == 1); /* H has no control */
+                if (source == 3 && page == CS_VOICE)
+                    for (unsigned x = 76; x <= 98; ++x)
+                        assert(!canvas[57 * 128 + x] &&
+                               !canvas[59 * 128 + x]); /* the operators end on row 56 */
                 if (source == 2 && page == CS_FM_ENV) {
                     expect_amp(0x0c00, 0, 0x7f00, 0x1a00, 0xd8);
                     assert(graph_value[3] == 88 && graph_value[7] == 0);
@@ -542,19 +592,25 @@ int main(int argc, char **argv)
                 if (source == 2 && page == CS_VOICE) {
                     assert(!strcmp(label_text[1], "3.33") && !strcmp(label_text[2], "45%") &&
                            !strcmp(label_text[3], "1.32") && !strcmp(label_text[4], "SINE"));
-                    assert(canvas[29 * 128 + 121] == 1 && canvas[13 * 128 + 73] == 1);
+                    /* the text cells keep their captions, as the stock NOTE and PROB: their graphic is the value */
+                    assert(!strcmp(label_text[0], "WAVE") && !strcmp(body_text[0], "ANLG"));
+                    assert(!strcmp(label_text[5], "CLK") && !strcmp(body_text[5], "FREE"));
+                    assert(canvas[28 * 128 + 121] == 1 && canvas[14 * 128 + 73] == 1);
                     v[0x190 / 4] = 0;
+                    uint32_t before_toasts = toasts;
                     event((uint8_t *)e, 2, 100, 0, 0);
                     assert(ip_src_turn((uint8_t *)v, (uint8_t *)e) == 1);
                     assert(state.value[CP_WT_POS] == 333);
+                    /* a number: in the caption, no toast */
+                    assert(toasts == before_toasts);
                     clear_paint(canvas);
                     ip_src_draw((uint8_t *)v, canvas);
                     assert(!strcmp(label_text[1], "4.33"));
-                    assert(canvas[13 * 128 + 73] == 0 && canvas[13 * 128 + 83] == 1);
+                    assert(canvas[14 * 128 + 73] == 0 && canvas[14 * 128 + 83] == 1);
                 }
                 if (source == 2 && page == CS_FM_ENV) {
-                    assert(!strcmp(label_text[3], "+40%") && !strcmp(label_text[5], "8.00") &&
-                           !strcmp(label_text[7], "-100%"));
+                    assert(!strcmp(label_text[3], "+40%") && !strcmp(label_text[5], "RAT") &&
+                           !strcmp(body_text[5], "8.00") && !strcmp(label_text[7], "-100%"));
                     expect_amp(0x0c00, 0, 0x7f00, 0x1a00, 0xd8);
                     /* Stored lock IDs still reach their controls in their new cells. */
                     const IlpSnapshot locks = {2, {{CP_WT_ENV, 96}, {CP_WTFM_ENV, 30}}};
@@ -584,7 +640,8 @@ int main(int argc, char **argv)
                 }
                 assert(!detail_caption);
                 if (source == 3 && page == CS_VOICE)
-                    assert(!strcmp(label_text[1], "CHAIN") && !strcmp(label_text[2], "100%"));
+                    assert(!strcmp(label_text[1], "ALG") && !strcmp(body_text[1], "CHAIN") &&
+                           !strcmp(label_text[2], "100%"));
                 protected_pixels(canvas, page == CS_DETAIL);
                 if (source == 2 && page == CS_VOICE) {
                     v[0x190 / 4] = 0;
@@ -698,7 +755,7 @@ int main(int argc, char **argv)
         state.value[CP_WT_DEPTH] = 100;
         clear_paint(canvas);
         ip_src_draw((uint8_t *)v, canvas);
-        assert(memcmp(before, canvas, sizeof(before)) && canvas[29 * 128 + 121]);
+        assert(memcmp(before, canvas, sizeof(before)) && canvas[28 * 128 + 121]);
         protected_pixels(canvas, 0);
     } else if (!strcmp(argv[1], "tone")) {
         real_display = 1;
@@ -726,12 +783,17 @@ int main(int argc, char **argv)
             ip_src_turn((uint8_t *)v, (uint8_t *)e);
             assert(state.value[CP_WT_SHAPE] == 0);
         }
+        /* numbers (POS, DRFT) and list ticks that change nothing say nothing in the header */
+        assert(!toasts);
         event((uint8_t *)e, 5, 1, 1000, 1);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         assert(state.value[CP_WT_SHAPE] == 1 && !stock_turns);
+        /* a changed choice names itself, as the track keyboard's ORDR ("Ascending") */
+        assert(toasts == 1 && !strcmp(last_toast, "Triangle"));
         event((uint8_t *)e, 5, 4, 1001, 0);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         assert(state.value[CP_WT_SHAPE] == 2 && !stock_turns);
+        assert(toasts == 2 && !strcmp(last_toast, "Random"));
         for (unsigned key = 41; key <= 48; ++key) {
             e[3] = key;
             assert(ip_src_key((uint8_t *)v, (uint8_t *)e) == 1);
@@ -800,7 +862,8 @@ int main(int argc, char **argv)
         event((uint8_t *)e, 7, 1, 0, 0);
         ip_src_turn((uint8_t *)v, (uint8_t *)e);
         ip_src_draw((uint8_t *)v, canvas);
-        assert(!strcmp(label_text[6], "64") && toasts == 1);
+        /* MIX is a number: its caption shows it while the focus runs, and no toast says it again */
+        assert(!strcmp(label_text[6], "64") && !toasts);
         focus_mask = 0;
         ip_src_draw((uint8_t *)v, canvas);
         assert(!strcmp(label_text[6], "COLR"));
@@ -815,6 +878,13 @@ int main(int argc, char **argv)
             ip_src_draw((uint8_t *)v, canvas);
             for (unsigned cell = 1; cell < 6; ++cell)
                 assert(!label_text[cell][0] && !body_text[cell][0] && !(graph_mask & (1u << cell)));
+            /* ... and the stock placeholder in each: B, C and D at the top, E and F at the bottom */
+            for (unsigned cell = 1; cell < 6; ++cell) {
+                unsigned x = 33 + 26 * (cell % 4), top = cell < 4 ? 13 : 40;
+                assert(canvas[top * 128 + x - 7] == 1 && canvas[top * 128 + x - 6] == 0);
+                assert(canvas[(top + 1) * 128 + x - 8] == 1 &&
+                       canvas[(top + 16) * 128 + x + 7] == 1);
+            }
             protected_pixels(canvas, 1);
         }
     } else if (!strcmp(argv[1], "delayed")) {
@@ -921,6 +991,94 @@ int main(int argc, char **argv)
         context((uint8_t *)v);
         /* unregistered: 0, and the machines service's hook takes the native page count */
         assert(mf_src_page_count(type_id) == 0);
+        selected = 0;
+    } else if (!strcmp(argv[1], "header")) {
+        /* SRC held: the sound's source in the header where a sample's name would stand, six pixels after the stock text's
+         * colon, painted after the help view's draw, in the bubble's font and at its height, once a frame */
+        real_display = 1;
+        cs_metadata(&state, 2u << 4);
+        state.value[CP_WT_TABLE] = 1;
+        v[0x90 / 4] = CS_VOICE;
+        context((uint8_t *)v);
+        static uint32_t plane[256];
+        uint32_t bitmap[] = {0, 128, 64, 2, (uint32_t)(uintptr_t)plane, 0};
+        /* the stock bar: rows 0 to 9 lit from x 18, its text dark, the colon (rows 4 and 6) at x 50 */
+        for (unsigned x = 18; x < 128; ++x)
+            plane[2 * x + 1] = 0x3ffu;
+        plane[2 * 30 + 1] &= ~0x3cu;
+        plane[2 * 50 + 1] &= ~((1u << 4) | (1u << 6));
+        static uint8_t help[0xa8], font[4];
+        uint8_t *font_pointer = font;
+        memcpy(help + 0x9c, &font_pointer, sizeof font_pointer);
+        int32_t height = 10;
+        memcpy(help + 0xa4, &height, sizeof height);
+        /* SRC not held: nothing */
+        v[0x190 / 4] = 0;
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!drawn_header[0] && !header_boxes);
+        /* held: GLASS at x 56, the bubble's text height, black on its white bar */
+        v[0x190 / 4] = 0x01010101;
+        clear_paint(canvas);
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!strcmp(drawn_header, "GLASS") && drawn_x == 56 && drawn_y == 0x42 - 10 &&
+               drawn_maxw == 72);
+        assert(drawn_font == font && header_boxes == 2 && header_box_x == 56 &&
+               header_box_rows == 10);
+        /* once: a help draw without the page's draw paints nothing */
+        drawn_header[0] = 0;
+        header_boxes = 0;
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!drawn_header[0] && !header_boxes);
+        /* the bubble sliding in: nothing until it is all in, then the place found stays while it slides */
+        height = 4;
+        memcpy(help + 0xa4, &height, sizeof height);
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!drawn_header[0] && !header_boxes);
+        for (int32_t h = 10; h >= 4; h -= 6) {
+            memcpy(help + 0xa4, &h, sizeof h);
+            ip_src_draw((uint8_t *)v, canvas);
+            header_mode = 1;
+            ip_help_draw(help, (uint8_t *)bitmap);
+            header_mode = 0;
+            assert(!strcmp(drawn_header, "GLASS") && drawn_x == 56 && drawn_y == 0x42 - h &&
+                   header_box_rows == h);
+        }
+        /* FM names its algorithm; Velvet and Reed their source */
+        cs_metadata(&state, 3u << 4);
+        state.value[CP_FM_ALG] = 1;
+        context((uint8_t *)v);
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!strcmp(drawn_header, "FM STACK"));
+        cs_metadata(&state, 1u << 4);
+        context((uint8_t *)v);
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!strcmp(drawn_header, "REED"));
+        /* another track's view (not CANOPY's): its draw sets nothing, the help draw paints nothing */
+        drawn_header[0] = 0;
+        selected = 1;
+        ip_src_draw((uint8_t *)v, canvas);
+        header_mode = 1;
+        ip_help_draw(help, (uint8_t *)bitmap);
+        header_mode = 0;
+        assert(!drawn_header[0]);
         selected = 0;
     } else
         return 2;

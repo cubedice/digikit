@@ -181,10 +181,19 @@ int main(int argc, char **argv)
             assert(!strcmp(d.label[i], labels[i]));
             assert(!strcmp(d.value[i], values[i]));
         }
+        /* numbers show in their caption: no toast; a named choice names itself */
         cv_feedback(feedback, &ui, 1);
-        assert(!strcmp(feedback, "Position=4.50*"));
+        assert(!feedback[0]);
         cv_feedback(feedback, &ui, 3);
-        assert(!strcmp(feedback, "Scan Rate=10.00 Hz*"));
+        assert(!feedback[0]);
+        cv_feedback(feedback, &ui, 0);
+        assert(!strcmp(feedback, "Analog"));
+        cv_feedback(feedback, &ui, 4);
+        assert(!strcmp(feedback, "Sine"));
+        cv_feedback(feedback, &ui, 5);
+        assert(!strcmp(feedback, "Free running"));
+        cv_feedback(feedback, &ui, 6);
+        assert(!strcmp(feedback, "Free running"));
         for (unsigned rate = 1; rate <= 1000; ++rate) {
             ui.value[CP_WT_RATE] = (uint16_t)rate;
             cv_build(&d, &ui, &status, now, "-60.00", "127", 0);
@@ -311,7 +320,7 @@ int main(int argc, char **argv)
         assert(cs_edit(&ui, token, 5, 1, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 4);
         assert(cs_edit(&ui, token, 5, 4, now, &id) == CS_EDIT && ui.value[CP_WTFM_RATIO] == 5);
         cv_feedback(feedback, &ui, 5);
-        assert(!strcmp(feedback, "WT FM Ratio=SQRT2*"));
+        assert(!strcmp(feedback, "Square root of 2"));
         assert(cs_edit(&ui, token, 7, INT32_MIN, now, &id) == CS_EDIT && id == CP_WTFM_ENV &&
                ui.value[id] == 0);
         assert(cs_edit(&ui, token, 2, INT32_MAX, now, &id) == CS_READONLY);
@@ -379,7 +388,11 @@ int main(int argc, char **argv)
         assert(cs_choice_value(&ui, CS_WAVE) == 7 && ui.token == token);
         assert(cs_edit(&ui, token, 3, 8, now, &id) == CS_EDIT && ui.value[CP_FM_RTA] == 5);
         cv_feedback(feedback, &ui, 3);
-        assert(!strcmp(feedback, "PAIR A RATIO=SQRT2*"));
+        assert(!strcmp(feedback, "Square root of 2"));
+        cv_feedback(feedback, &ui, 1);
+        assert(!strcmp(feedback, "Stack"));
+        cv_feedback(feedback, &ui, 2);
+        assert(!feedback[0]);
         cv_build(&d, &ui, &status, now, "0.00", "127", 0);
         assert(!strcmp(d.label[1], "ALG") && !strcmp(d.value[1], "STACK") &&
                !strcmp(d.label[2], "BAL"));
@@ -801,11 +814,12 @@ int main(int argc, char **argv)
         assert(!strcmp(display.value[0], "-12") && !strcmp(display.value[6], "50%") &&
                !strcmp(display.value[7], "100"));
         char feedback[32];
+        /* MIX is a number (PAD and ARP name its ends): its caption shows it, no toast */
         cv_feedback(feedback, &ui, 6);
-        assert(!strcmp(feedback, "Arp Mix=50%"));
+        assert(!feedback[0]);
         ui.value[CP_ARP_MIX] = 0;
         cv_feedback(feedback, &ui, 6);
-        assert(!strcmp(feedback, "Arp Mix=PAD"));
+        assert(!feedback[0]);
         ui.value[CP_ARP_MIX] = 127;
         cv_build(&display, &ui, &status, now, "-12", "100", 0);
         assert(!strcmp(display.value[6], "ARP"));

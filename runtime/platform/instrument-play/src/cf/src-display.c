@@ -258,51 +258,40 @@ static void value(char out[8], const CsState *s, uint32_t id, const char *tune, 
     else
         number(out, n);
 }
+/* The header's word for a turn, as the track keyboard's ARP and KEYS pages name a choice ("Ascending"): only a choice whose
+ * name says more than its caption's short value. A number shows in the cell's caption alone, as on the stock pages: empty. */
 void cv_feedback(char out[32], const CsState *s, uint32_t encoder)
 {
-    static const char *const names[] = {
-        "Chord",          "Voicing",        "Color",      "Drift",       "Strum",
-        "Arp Mix",        "Rate",           "Order",      "Octaves",     "Gate",
-        "Swing",          "Restart",        "",           "Source",      "Attack",
-        "Release",        "Wave",           "Position",   "Scan Depth",  "Scan Rate",
-        "Scan Shape",     "Scan Restart",   "Scan Clock", "Timbre Env",  "Timbre Attack",
-        "Timbre Release", "Velocity",       "Mod Wheel",  "WT FM Depth", "WT FM Ratio",
-        "WT FM Envelope", "WT FM Mod Wheel"};
     uint32_t id = cs_mapped_control(s, encoder);
-    out[0] = 0;
-    if (id >= CP_CONTROLS && id != CS_WAVE)
-        return;
-    if (id >= CP_WT_TABLE && id < CP_CONTROLS && ((s->metadata >> 4) & 3) < 2) {
-        text(out, 32, "WAVE: CHOOSE ANLG TO FM");
-        return;
-    }
-    const char *name = id == CS_WAVE                                ? "Wave"
-                       : fm_mode(s) && (id == CP_COLOR || id >= 16) ? label(s, id)
-                                                                    : names[id];
-    text(out, 32, name);
-    uint32_t at = length(out, 31);
-    out[at++] = '=';
-    char v[8];
-    value(v, s, id, "", "");
-    const char *full = v;
     uint32_t n = id < CP_CONTROLS ? s->value[id] : 0;
+    const char *say = 0;
+    out[0] = 0;
     if (id == CS_WAVE) {
-        static const char *const waves[] = {"VELVET", "REED",  "ANALOG", "GLASS",
-                                            "VOCAL",  "ORGAN", "METAL",  "FM"};
+        static const char *const waves[] = {"Velvet", "Reed",  "Analog", "Glass",
+                                            "Vocal",  "Organ", "Metal",  "FM"};
         uint32_t wave = cs_choice_value(s, id);
-        if (wave < 8)
-            full = waves[wave];
-    } else if ((id == CP_WTFM_RATIO || (fm_mode(s) && (id == CP_FM_RTA || id == CP_FM_RTB))) &&
-               (n == 5 || n == 7))
-        full = n == 5 ? "SQRT2" : "SQRT3";
-    text(out + at, 32 - at, full);
-    at = length(out, 31);
-    if (!fm_mode(s) && id == CP_WT_RATE && !s->value[CP_WT_CLOCK]) {
-        text(out + at, 32 - at, " Hz");
-        at = length(out, 31);
+        say = wave < 8 ? waves[wave] : 0;
+    } else if (fm_mode(s)) {
+        static const char *const algorithms[] = {"Twin", "Stack", "Sum", "Chain"};
+        if (id == CP_FM_ALG && n < 4)
+            say = algorithms[n];
+        else if ((id == CP_FM_RTA || id == CP_FM_RTB) && (n == 5 || n == 7))
+            say = n == 5 ? "Square root of 2" : "Square root of 3";
+    } else if (((s->metadata >> 4) & 3) == 2) {
+        static const char *const shapes[] = {"Sine", "Triangle", "Random"};
+        static const char *const resets[] = {"Free running", "Restart on trig",
+                                             "Restart on pattern"};
+        if (id == CP_WT_SHAPE && n < 3)
+            say = shapes[n];
+        else if (id == CP_WT_RESET && n < 3)
+            say = resets[n];
+        else if (id == CP_WT_CLOCK)
+            say = n ? "Tempo sync" : "Free running";
+        else if (id == CP_WTFM_RATIO && (n == 5 || n == 7))
+            say = n == 5 ? "Square root of 2" : "Square root of 3";
     }
-    if (pending(s, id))
-        text(out + at, 32 - at, "*");
+    if (say)
+        text(out, 32, say);
 }
 static void chord_name(char out[22], const uint8_t *pitch, uint32_t count)
 {

@@ -287,3 +287,12 @@ ip_src_update:
     jmp (%a1)
 1:
     jmp ip_src_stock_update
+    .globl ip_help_draw
+ip_help_draw:
+    move.l slot.instrument_vec,%d0
+    beq.s 1f
+    movea.l %d0,%a1
+    movea.l 120(%a1),%a1
+    jmp (%a1)
+1:
+    rts

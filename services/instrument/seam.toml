@@ -5,7 +5,7 @@
 # word i of the table the service filled it with, or does `absent` while the slot is 0 (no service loaded): `rts`, `zero`
 # (d0 = 0), `minus1` (d0 = -1) or `jmp:SYMBOL` (the stock handler or an image function, with the caller's arguments).
 # Changing the order or the count changes the layout: bump `version`.
-version = 3
+version = 4
 
 [[vector]]
 slot = "instrument_vec"
@@ -45,6 +45,9 @@ entries = [
     ["ip_src_parameter", "jmp:ip_src_stock_parameter"],
     ["ip_src_turn", "jmp:ip_src_stock_turn"],
     ["ip_src_update", "jmp:ip_src_stock_update"],
+    # core/fxview: the help view's draw (the header of a CANOPY track's SRC page while SRC is held: the source where a
+    # sample's name would stand)
+    ["ip_help_draw", "rts"],
 ]
 
 [[vector]]

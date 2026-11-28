@@ -71,6 +71,7 @@ test.each([
   'attach',
   'tick',
   'track',
+  'header',
 ])('native SRC: %s', (scenario) => {
   expect(execFileSync(binary, [scenario], { encoding: 'utf8', timeout: 2000 }).trim()).toBe('ok');
 });

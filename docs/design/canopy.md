@@ -2605,7 +2605,7 @@ WT FM. Its layout is:
 
 TUNE and LEV remain on SOUND. Shared timbre ATK/REL live on TONE alongside
 position, scanning and its envelope amount. The signed wheel contribution is
-SETTINGS > DIGIKIT > CANOPY > MODULATION > WHEEL TO WT FM.
+SETTINGS > DIGIKIT > Canopy > MODULATION > WHEEL WT FM.
 
 RAT uses the same four raw encoder ticks per choice as WAVE and SHAP. Choices
 are 0.25, 0.50, 0.75, 1.00, 1.25, sqrt(2), 1.50, sqrt(3), 2.00, 2.50, 3.00,

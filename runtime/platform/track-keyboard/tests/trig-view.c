@@ -132,6 +132,7 @@ static void widget_paint(uint8_t *parameter, uint32_t code, int32_t raw, uint32_
     assert(parameter == (uint8_t *)&widget && b == bitmap && !flags);
     unsigned encoder = (unsigned)(state - (view + 0xb4)) / 20u;
     assert(encoder < 8 && state == view + 0xb4 + 20 * encoder);
+    /* the stock widget origin of the cell, as on the stock TRIG and SRC pages */
     assert(x == 24 + 26 * (int)(encoder % 4) && y == (encoder < 4 ? 34 : 7));
     widget_draw[encoder].code = code;
     widget_draw[encoder].raw = raw;
@@ -206,9 +207,10 @@ int32_t dk_fw_text_draw_box(uint8_t *b, uint8_t *f, int32_t x, int32_t y, int32_
     assert(b == bitmap && x >= 23 && y >= 0 && x < 122 && y <= 52);
     assert(align == 1 && flags == 0 && !prefix);
     (void)f;
-    assert(x == 34 || x == 60 || x == 86 || x == 112);
-    unsigned encoder = (unsigned)(x - 34) / 26u + (y < 27 ? 4u : 0u);
-    unsigned line = y == 14 || y == 41;
+    /* the stock cell centres; a text value on the stock text graphic's rows (19 to 23, 46 to 50) */
+    assert(x == 33 || x == 59 || x == 85 || x == 111);
+    unsigned encoder = (unsigned)(x - 33) / 26u + (y < 27 ? 4u : 0u);
+    unsigned line = y == 13 || y == 40;
     assert(line || y == 0 || y == 27);
     va_list args;
     va_start(args, fmt);
@@ -370,8 +372,11 @@ int main(void)
     assert(widget_draw[3].code == 0x107 && widget_draw[3].raw == config.rate << 8);
     view[0x190] = 1;
     tk_trig_draw(view, bitmap);
-    assert(!strcmp(labels[0][0], "OFF") && !strcmp(labels[0][2], "50%"));
-    assert(!strcmp(labels[0][3], "1/16") && widget_draw[3].code == 0x107);
+    /* held: a knob's caption shows its value; the switch, the RATE box and the text values keep their captions, as the
+     * stock LFO.T, NOTE and PROB */
+    assert(!strcmp(labels[0][0], "ARP") && !strcmp(labels[0][2], "50%"));
+    assert(!strcmp(labels[0][3], "RATE") && widget_draw[3].code == 0x107);
+    assert(!strcmp(labels[0][1], "ORDR") && !strcmp(labels[1][1], "PLAY"));
     view[0x190] = 0;
     config.rate = TK_RATE_7Q;
     tk_trig_draw(view, bitmap);
@@ -380,7 +385,7 @@ int main(void)
     assert(turn(1, 2) && !track_writes && focus_touches == 1);
     assert(turn(1, 2) && track_writes == 1 && config.arp == 1);
     tk_trig_draw(view, bitmap);
-    assert(!strcmp(labels[0][0], "ON") && widget_draw[0].raw == 0x100);
+    assert(!strcmp(labels[0][0], "ARP") && widget_draw[0].raw == 0x100);
     focus = 0;
     tk_trig_draw(view, bitmap);
     assert(!strcmp(labels[0][0], "ARP"));
@@ -398,7 +403,7 @@ int main(void)
     held = true;
     write(editor, 0x258, 1u << 17);
     tk_trig_draw(view, bitmap);
-    assert(locks_drawn == 1 && !strcmp(labels[0][7], "MIN"));
+    assert(locks_drawn == 1 && !strcmp(labels[0][7], "CHRD") && !strcmp(labels[1][7], "MIN"));
     turn(8, 4);
     key(48, 1);
     key(48, 16);
