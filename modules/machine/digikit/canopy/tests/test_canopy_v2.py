@@ -76,6 +76,7 @@ _test_render_context:
     R0 = B3;
     R1 = I3;
     R2 = L3;
+    R4 = M0;
     RTS;
 """
     if request.param:
@@ -515,12 +516,12 @@ def test_native_fm_preserves_nonzero_circular_address_context(canopy, canopy_obj
         assert result["native"] == [1]
         return result
 
-    reference = render({"B3": 0, "I3": 0, "L3": 0})
-    context = {"B3": 0x20071000, "I3": 0x2007101C, "L3": 16}
+    reference = render({"B3": 0, "I3": 0, "L3": 0, "M0": 0})
+    context = {"B3": 0x20071000, "I3": 0x2007101C, "L3": 16, "M0": 31}
     hostile = render(context)
     assert hostile["out"] == reference["out"] and any(hostile["out"])
     assert hostile["state"] == reference["state"]
-    assert [hostile["regs"][name] for name in ("R0", "R1", "R2")] == list(
+    assert [hostile["regs"][name] for name in ("R0", "R1", "R2", "R4")] == list(
         context.values()
     )
 

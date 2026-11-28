@@ -452,8 +452,7 @@ _cp_legacy_samples:
     F9 = F0 + F1;
     F0 = F3 * F5;
     F1 = F2 * F4;
-    F3 = F0 - F1;
-    F2 = PASS F9;
+    F3 = F0 - F1, R2 = R9;
     // sin(2p)=2xy; sin(3p)=x(3-4x*x). Finite additive spectra,
     // not a clipped/waveshaped oscillator with unbounded high harmonics.
     F0 = F2 * F3;
@@ -471,8 +470,7 @@ _cp_legacy_samples:
     F0 = F9 + F0;
     F0 = F0 * F6;
     F0 = F0 * F7;
-    F0 = F0 * F8;
-    F1 = DM(I2, M5);
+    F0 = F0 * F8, F1 = DM(I2,M5);
     F0 = F0 + F1;
 _cp_sample:
     DM(I2, M6) = F0;
@@ -480,16 +478,14 @@ _cp_sample:
 _cp_native_samples:
     I1 = _cp_amp_samples;
     LCNTR = 32, DO _cp_native_sample UNTIL LCE;
-    F7 = DM(I1, M6);
-    F12 = F12 + F13;
+    F12 = F12 + F13, F7 = DM(I1,M6);
     F14 = F14 + F15;
     F0 = F2 * F5;
     F1 = F3 * F4;
     F9 = F0 + F1;
     F0 = F3 * F5;
     F1 = F2 * F4;
-    F3 = F0 - F1;
-    F2 = PASS F9;
+    F3 = F0 - F1, R2 = R9;
     // sin(2p)=2xy; sin(3p)=x(3-4x*x). Finite additive spectra,
     // not a clipped/waveshaped oscillator with unbounded high harmonics.
     F0 = F2 * F3;
@@ -507,8 +503,7 @@ _cp_native_samples:
     F0 = F9 + F0;
     F0 = F0 * F6;
     F0 = F0 * F7;
-    F0 = F0 * F8;
-    F1 = DM(I2, M5);
+    F0 = F0 * F8, F1 = DM(I2,M5);
     F0 = F0 + F1;
 _cp_native_sample:
     DM(I2, M6) = F0;
@@ -556,8 +551,7 @@ _cp_block_samples:
     F9 = F0 + F1;
     F0 = F3 * F5;
     F1 = F2 * F4;
-    F3 = F0 - F1;
-    F2 = PASS F9;
+    F3 = F0 - F1, R2 = R9;
     F0 = F2 * F3;
     F0 = F0 * F8;
     F0 = F0 * F12;
@@ -591,12 +585,10 @@ _cp_block_tables:
     LCNTR = 32, DO _cp_block_amp UNTIL LCE;
     F7 = F7 + F10;
     F7 = MAX(F7, F12);
-    F7 = MIN(F7, F13);
-    F0 = DM(I1,M4);
+    F7 = MIN(F7, F13), F0 = DM(I1,M4);
     F0 = F0 * F6;
     F0 = F0 * F7;
-    F0 = F0 * F11;
-    F1 = DM(I2,M5);
+    F0 = F0 * F11, F1 = DM(I2,M5);
     F0 = F0 + F1;
 _cp_block_amp:
     DM(I2,M6) = F0;
@@ -606,12 +598,10 @@ _cp_block_amp:
 _cp_block_native:
     I0 = _cp_amp_samples;
     LCNTR = 32, DO _cp_block_native_amp UNTIL LCE;
-    F7 = DM(I0,M6);
     F0 = DM(I1,M4);
-    F0 = F0 * F6;
+    F0 = F0 * F6, F7 = DM(I0,M6);
     F0 = F0 * F7;
-    F0 = F0 * F11;
-    F1 = DM(I2,M5);
+    F0 = F0 * F11, F1 = DM(I2,M5);
     F0 = F0 + F1;
 _cp_block_native_amp:
     DM(I2,M6) = F0;

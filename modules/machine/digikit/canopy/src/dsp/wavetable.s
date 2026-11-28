@@ -1003,8 +1003,44 @@ _wt_render_block:
     F4 = 0.0;
     F5 = 1.0;
     F6 = 7.0;
-    R7 = 1159;
+    R7 = 2318; // frame stride in bytes
     I0 = _wt_blk;
+    // Scan and note position sometimes stand still for a whole block. If
+    // the envelope is also stationary or has zero position depth, its frame
+    // and interpolation fraction are identical across the 32 records.
+    R0 = R12 OR R13;
+    IF NE JUMP _wt_control_moving;
+    R0 = PASS R3;
+    IF EQ JUMP _wt_control_fixed;
+    R0 = PASS R15;
+    IF NE JUMP _wt_control_moving;
+_wt_control_fixed:
+    F8 = F8 + F12;
+    F9 = F9 + F13;
+    F0 = F11 + F15;
+    F0 = MAX(F0, F4);
+    F0 = MIN(F0, F5);
+    F0 = F0 * F3;
+    F0 = F0 + F9;
+    F0 = F0 + F8;
+    F0 = MAX(F0, F4);
+    F0 = MIN(F0, F6);
+    R1 = TRUNC F0;
+    F2 = FLOAT R1;
+    F0 = F0 - F2;
+    R1 = R1 * R7 (SSI);
+    LCNTR = 32, DO _wt_control_fixed_last UNTIL LCE;
+    F10 = F10 + F14;
+    COMP(F10, F5);
+    IF GE F10 = F10 - F5;
+    F11 = F11 + F15, DM(3,I0) = F10;
+    F11 = MAX(F11, F4), DM(2,I0) = F0;
+    F11 = MIN(F11, F5);
+    DM(1,I0) = F11;
+_wt_control_fixed_last:
+    DM(I0,M4) = R1;
+    JUMP _wt_control_done;
+_wt_control_moving:
     LCNTR = 32, DO _wt_control_last UNTIL LCE;
     F8 = F8 + F12;
     F9 = F9 + F13;
@@ -1023,9 +1059,9 @@ _wt_render_block:
     F2 = FLOAT R1;
     F0 = F0 - F2;
     R1 = R1 * R7 (SSI), DM(2,I0) = F0;
-    R1 = LSHIFT R1 BY 1; // frame offset in 16-bit samples, as bytes
 _wt_control_last:
     DM(I0,M4) = R1;
+_wt_control_done:
     DM(_wt_scan_cursor) = F8;
     DM(_wt_note_position) = F9;
     DM(_wt_phase) = F10;

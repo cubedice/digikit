@@ -1103,20 +1103,26 @@ _fm_ramp_b_last:
     DM(38,I0) = F1;
     DM(39,I0) = F2;
     DM(40,I0) = F3;
-    // Each sine lookup loads its table pointer one instruction before the first read (the fraction's FLOAT sits
-    // between them), so the pointer's load-to-use distance is two.
     // Pass O: the operator graph, two internal samples per output sample, into
     // the halfband history pairs (odd at offset 0, even at 1). Phases and the
     // delayed B output stay in registers for the block.
     F5 = 2.0;
     F6 = 1024.0;
-    R14 = _fm_sines;
     F10 = DM(_fm_increment);
     F12 = DM(_fm_feedback_scale);
     F3 = DM(2,I0); // phase A
     F4 = DM(3,I0); // phase B
     F7 = DM(4,I0); // phase X/Y
     F8 = DM(7,I0); // B output
+    // The modifier holds the 10-bit sample index in words. Two fixed bases
+    // address the adjacent interpolation samples without rebuilding a byte
+    // address eight times per frame. Restore the caller's modifier afterward.
+    R0 = I0;
+    DM(_fm_rec) = R0;
+    R14 = M0;
+    I0 = _fm_sines;
+    I1 = _fm_sines;
+    MODIFY(I1,1) (NW);
     I2 = _fm_ctl;
     I4 = _fm_hist;
     MODIFY(I4,30) (NW);
@@ -1136,12 +1142,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-9,I2); // B->A;
@@ -1152,12 +1156,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-8,I2); // A->X;
@@ -1170,12 +1172,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-5,I2); // X->Y;
@@ -1189,12 +1189,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1;
@@ -1213,12 +1211,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-9,I2); // B->A;
@@ -1229,12 +1225,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-8,I2); // A->X;
@@ -1247,12 +1241,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1, F1 = DM(-5,I2); // X->Y;
@@ -1266,12 +1258,10 @@ _fm_ramp_b_last:
     F0 = F0 * F6;
     R2 = TRUNC F0;
     R1 = FEXT R2 BY 0:10;
-    R1 = LSHIFT R1 BY 2;
-    R1 = R1 + R14;
-    I1 = R1;
+    M0 = R1;
     F1 = FLOAT R2;
-    F0 = F0 - F1, F1 = DM(0,I1);
-    F2 = DM(1,I1);
+    F0 = F0 - F1, F1 = DM(M0,I0);
+    F2 = DM(M0,I1);
     F2 = F2 - F1;
     F0 = F0 * F2;
     F0 = F0 + F1;
@@ -1281,14 +1271,15 @@ _fm_ramp_b_last:
     DM(1,I4) = F0; // even internal sample
 _fm_osc_last:
     MODIFY(I4,2) (NW);
+    M0 = R14;
+    R0 = DM(_fm_rec);
+    I0 = R0;
     DM(2,I0) = F3;
     DM(3,I0) = F4;
     DM(4,I0) = F7;
     DM(7,I0) = F8;
     // Pass D: halfband decimation (even taps symmetric; the odd branch is only
     // the centre coefficient), amplitude and gain into the output.
-    R0 = I0;
-    DM(_fm_rec) = R0;
     I0 = _fm_ctl;
     MODIFY(I0,1) (NW); // amplitude word at offset 0
     I1 = _fm_halfband;
