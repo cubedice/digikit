@@ -503,41 +503,41 @@ _lp_ping_ramp:
 
 // One side: I0 the wet signal, I1 the feedback, I2 the output (all advanced by 32). PS_TEMP and PS_TEMP1 the gain and MIX
 // before the block, F4 and F5 their steps; F6 and F7 the output's bounds; F12 the limiter's knee, F13 its slope, F14 its
-// span, F15 a third.
+// span, F15 a third. A sample under the knee, the usual one, runs straight through the loop; the feedback comes first, so
+// that the call for one above the knee does not stand at the loop's end. Uses F0 to F3.
 _lp_side:
     F10 = DM(PS_TEMP,I5);
     F11 = DM(PS_TEMP1,I5);
-    R8 = 32;
-_lp_sample:
-    F0 = DM(I0,M6);
-    F10 = F10 + F4;
-    F11 = F11 + F5;
-    F1 = F0 * F11;
-    F1 = MIN(F1,F6);
-    F1 = MAX(F1,F7);
-    DM(I2,M6) = R1;
-    F0 = F0 * F10;
-    F1 = ABS F0;
-    COMP(F1,F12);
-    IF LE JUMP _lp_store;
-    // Above the knee: knee + span * (u - u^3 / 3), u = (|x| - knee) * slope up to 1, with the sign of x.
+    LCNTR = 32, DO _lp_sample UNTIL LCE;
+        F0 = DM(I0,M6);
+        F10 = F10 + F4;
+        F2 = F0 * F10;
+        F1 = ABS F2;
+        COMP(F1,F12);
+        IF GT CALL _lp_bend;
+        DM(I1,M6) = R2;
+        F11 = F11 + F5;
+        F1 = F0 * F11;
+        F1 = MIN(F1,F6);
+        F1 = MAX(F1,F7);
+_lp_sample: DM(I2,M6) = R1;
+    RTS;
+// F2 a sample above the knee and F1 its magnitude: F2 = knee + span * (u - u^3 / 3), u = (|x| - knee) * slope up to 1, with
+// the sign of x. Uses F1, F3.
+_lp_bend:
     F1 = F1 - F12;
     F1 = F1 * F13;
-    R2 = 0x3f800000;
-    F1 = MIN(F1,F2);
-    F2 = F1 * F1;
-    F2 = F2 * F1;
-    F2 = F2 * F15;
-    F1 = F1 - F2;
+    R3 = 0x3f800000;
+    F1 = MIN(F1,F3);
+    F3 = F1 * F1;
+    F3 = F3 * F1;
+    F3 = F3 * F15;
+    F1 = F1 - F3;
     F1 = F1 * F14;
     F1 = F1 + F12;
-    R0 = PASS R0;
+    R2 = PASS R2;
     IF LT F1 = -F1;
-    R0 = R1;
-_lp_store:
-    DM(I1,M6) = R0;
-    R8 = R8 - 1;
-    IF GT JUMP _lp_sample;
+    R2 = R1;
     RTS;
 
 // COLR's table: the low pass's coefficient, the high pass's and a third of the saturation, three floats a row, nine rows
