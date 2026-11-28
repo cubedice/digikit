@@ -153,7 +153,8 @@
 #define PS_PING_FB 60
 #define PS_PING_MONO 61
 #define PS_CONTROL 64
-/* The snapshot of the control mailbox (PH_CONTROL_WORDS words) and the words the engine reads in it. */
+/* The snapshot of the control mailbox (at the mailbox's offsets; PH_CONTROL_WORDS words of room) and the words the engine
+ * reads in it, which are the ones it copies: PRISM_IDLE_KEYS words from ZONE on, and the owner's generation. */
 #define PC_ZONE (PS_CONTROL + PH_C_ZONE / 4)
 #define PC_RATE (PS_CONTROL + PH_C_RATE / 4)
 #define PC_FLAGS (PS_CONTROL + PH_C_FLAGS / 4)

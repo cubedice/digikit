@@ -65,15 +65,22 @@ _prism_process:
     COMP(R6,R0);
     IF NE JUMP _prism_bad_link;
     // The snapshot is immutable for this call. The provider updates before the FX callback; the second sequence read
-    // rejects a mixed publication.
+    // rejects a mixed publication. It holds the words the engine reads: the ten from ZONE to INPUT and the owner's
+    // generation (the other words of PS_CONTROL stay 0).
+    R0 = I4;
+    R1 = PH_C_ZONE;
+    R0 = R0 + R1;
+    I4 = R0;
     R0 = I5;
-    R1 = PS_CONTROL * 4;
-    R2 = R0 + R1;
-    I3 = R2;
-    LCNTR = PH_CONTROL_WORDS, DO _prism_control_copy UNTIL LCE;
+    R1 = PC_ZONE * 4;
+    R0 = R0 + R1;
+    I3 = R0;
+    LCNTR = PRISM_IDLE_KEYS, DO _prism_control_copy UNTIL LCE;
         R0 = DM(I4,M6);
 _prism_control_copy: DM(I3,M6) = R0;
     I4 = _phrase_control_info;
+    R0 = DM(PH_C_OWNER_GENERATION / 4,I4);
+    DM(PC_OWNER,I5) = R0;
     R0 = DM(PH_C_SEQ / 4,I4);
     COMP(R0,R6);
     IF NE JUMP _prism_bad_link;
