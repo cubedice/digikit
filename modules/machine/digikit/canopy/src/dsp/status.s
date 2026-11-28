@@ -5,6 +5,7 @@
 // Physical-key/pedal/latch ownership is deliberately not inferred from gates.
 .SECTION/PM seg_pmco;
 .GLOBAL _cu_publish;
+.EXTERN _cv_quiet;
 _cu_publish:
     I3 = R8;
     R0 = DM(0, I3);
@@ -172,6 +173,9 @@ _cu_clock_pack:
     DM(1, I0) = R0;
     DM(2, I0) = R0;
     DM(3, I0) = R0;
+    R0 = DM(_cv_quiet);
+    R0 = PASS R0;
+    IF NE JUMP _cu_frame;
 _cu_note:
     R5 = DM(_cu_slot);
     R0 = LSHIFT R5 BY 5;

@@ -283,8 +283,8 @@ _rt_phase_track:
     R1 = DM(RT_PLAYING,I4); R0 = 1; R1 = R1 XOR R0; DM(RT_PLAYING,I4) = R1; DM(RT_LAUNCH,I4) = R1;
 _rt_step:
     CALL _tape_row; R0 = DM(T_ACTIVE,I5); R0 = PASS R0; IF NE JUMP _tape_track;
-    R0 = DM(RT_PLAYING,I4); R0 = PASS R0; IF EQ JUMP _rt_step_next;
-    R1 = DM(RT_LENGTH,I4); R1 = PASS R1; IF LE JUMP _rt_step_next;
+    R0 = DM(RT_PLAYING,I4); R0 = PASS R0; IF EQ JUMP _rt_passive;
+    R1 = DM(RT_LENGTH,I4); R1 = PASS R1; IF LE JUMP _rt_passive;
     R0 = DM(RT_POS,I4); R2 = 32; R0 = R0 + R2;
     R2 = DM(RT_PREVIEW_END,I4); R2 = PASS R2;
     IF EQ JUMP _rt_wrap;
@@ -295,13 +295,20 @@ _rt_wrap:
     R0 = R0 - R1; JUMP _rt_wrap;
 _rt_pos:
     DM(RT_POS,I4) = R0;
+_rt_passive:
+    // Only an active tape has a monitor. Legacy rows have no tape status.
+    R6 = 0;
+    JUMP _rt_masks;
 _rt_step_next:
-    R0 = DM(RT_DIRTY,I4); R0 = LSHIFT R0 BY R8; R1 = DM(_rt_dirty_mask); R1 = R1 OR R0; DM(_rt_dirty_mask) = R1;
-    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_tape_absent;
+    CALL _tape_row; R6 = DM(T_MONITOR,I5);
+_rt_masks:
+    R0 = DM(RT_DIRTY,I4); R0 = LSHIFT R0 BY R8; IF EQ JUMP _rt_mask_length;
+    R1 = DM(_rt_dirty_mask); R1 = R1 OR R0; DM(_rt_dirty_mask) = R1;
+_rt_mask_length:
+    R0 = DM(RT_LENGTH,I4); R0 = PASS R0; IF EQ JUMP _rt_gate;
     R0 = 1; R0 = LSHIFT R0 BY R8; R1 = DM(_rt_tape_mask); R1 = R1 OR R0; DM(_rt_tape_mask) = R1;
-_rt_tape_absent:
-    CALL _tape_row; R1 = DM(T_MONITOR,I5);
-    R0 = DM(RT_PLAYING,I4); R0 = R0 OR R1;
+_rt_gate:
+    R0 = DM(RT_PLAYING,I4); R0 = R0 OR R6; IF EQ JUMP _rt_next;
     R2 = LSHIFT R0 BY R8; R3 = DM(_rt_gate_mask); R3 = R3 OR R2; DM(_rt_gate_mask) = R3;
     R1 = DM(RT_LAUNCH,I4); R0 = R0 AND R1;
     IF EQ JUMP _rt_next;
@@ -615,6 +622,7 @@ _rt_hash_word: R0 = R1 + R2;
 .VAR _rt_tape_mask;
 .VAR _rt_sweep;
 .VAR _rt_repeat;
+.GLOBAL _rt_started;
 .VAR _rt_started;
 .VAR _rt_seq;
 .VAR _rt_focus;

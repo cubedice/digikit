@@ -363,7 +363,7 @@ _prism_heads:
     RTS;
 
 // One side. I3 its record, I1 the output (advanced by 32), R11 its plane, R12 the reference's advance, R13 the tape's
-// frames. In the loop R8 and F9 are head A's delay, R10 the reference frame of the sample, R14 the samples left, R15
+// frames. In the loop R8 and F9 are head A's delay, R10 the reference frame of the sample, R14 the glide flag for the block, R15
 // the fade table, R6 the samples left of the crossfade. Uses R0 to R10, R14, R15, I2.
 _ph_channel:
     R10 = DM(PS_REF,I5);
@@ -431,19 +431,17 @@ _ph_back:
     R1 = R1 + R11;
     I2 = R1;
     LCNTR = 32, DO _ph_back_run UNTIL LCE;
-        R4 = DM(0,I2);
-        MODIFY(I2,-1) (NW);
+        R4 = DM(I2,M7);
 _ph_back_run: DM(I1,M6) = R4;
     DM(CH_A_DINT,I3) = R2;
     RTS;
 _ph_slow:
-    R14 = 32;
+    R14 = DM(CH_GLIDE,I3);
     R15 = _prism_fade;
-_ph_sample:
+    LCNTR = 32, DO _ph_next UNTIL LCE;
     // ---- the glide of a forward head: the velocity follows (target - delay) / 1024, at most PRISM_GLIDE_MAX, over
     // 256 samples, so the pitch bends in and out instead of jumping.
-    R0 = DM(CH_GLIDE,I3);
-    R0 = PASS R0;
+    R14 = PASS R14;
     IF EQ JUMP _ph_read;
     R0 = DM(CH_TARGET,I3);
     R0 = R0 - R8;
@@ -643,8 +641,6 @@ _ph_turn:
     R9 = 0;
 _ph_next:
     R10 = R10 + R12;
-    R14 = R14 - 1;
-    IF GT JUMP _ph_sample;
     DM(CH_A_DINT,I3) = R8;
     DM(CH_A_FRAC,I3) = R9;
     RTS;

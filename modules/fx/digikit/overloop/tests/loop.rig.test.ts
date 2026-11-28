@@ -537,7 +537,7 @@ describe('Overloop engine: the boundary cases', () => {
     });
   });
 
-  test('START while the crossfader moves, and the seam while it stands between: the heaviest blocks', async () => {
+  test.each([false, true])('START during a crossfade and playback across the seam, with wet return %s', async (wet) => {
     await withRig({ tap: true }, async (rig) => {
       // This START is block 322 of the performance. Place it at the end of
       // a 16-block display interval so packing its extrema also runs here.
@@ -545,6 +545,7 @@ describe('Overloop engine: the boundary cases', () => {
       const { take, change } = await armedChange(rig, 3, 1);
       // STOP, and START again two blocks later, while the loop side still fades out: the restart's declick, the loop
       // side's fade in, the crossfader on its way and the mix, all in the same blocks
+      if (wet) rig.wet = { signal: SOUND_B };
       rig.stop();
       await rig.run(2, SOUND_B);
       rig.setXfad(30);
@@ -563,7 +564,7 @@ describe('Overloop engine: the boundary cases', () => {
       }
       expect(worst, 'the tap at a crossfader of 30').toBe(0);
       note(
-        `heaviest blocks: the restart with the crossfader moving ${Math.max(...moving.instructions)} instructions, the seam at a crossfader of 30 ${Math.max(...turn.instructions)}`,
+        `heaviest blocks (wet return ${wet}): the restart with the crossfader moving ${Math.max(...moving.instructions)} instructions, the seam at a crossfader of 30 ${Math.max(...turn.instructions)}`,
       );
     });
   });
@@ -1074,9 +1075,9 @@ describe("Overloop engine: a send effect's output (the wet mailbox)", () => {
       const stale = await rig.run(20, SOUND_A);
       expect(sameBits(stale.left, stale.dryLeft)).toBe(0);
       // a block that is not finite, or louder than 8: not added, and no fault
-      rig.wet = { signal: (n) => (n % BLOCK === 5 ? Number.NaN : 0.1) };
+      rig.wet = { signal: (n) => [0.1, n % BLOCK === BLOCK - 1 ? Number.NaN : 0.1] };
       const bad = await rig.run(4, SOUND_A);
-      expect(sameBits(bad.left, bad.dryLeft)).toBe(0);
+      expect(sameBits(bad.left, bad.dryLeft) + sameBits(bad.right, bad.dryRight)).toBe(0);
       rig.wet = { signal: () => 9 };
       const loud = await rig.run(4, SOUND_A);
       expect(sameBits(loud.left, loud.dryLeft)).toBe(0);

@@ -44,10 +44,12 @@ it('reconstructs a recorded stereo take at reduced rates through storage and loo
     0.6 * Math.sin((2 * Math.PI * (channel === 0 ? 71 : 93) * frame) / frames + channel * 0.35);
   const pcm = (channel: number, frame: number) => Math.round(signal(channel, wrap(frame)) * 32768) / 32768;
   let sequence = 0;
+  let peakInstructions = 0;
   async function block(op = 0, source = 0, rate = 0, arg = 0, end = 0) {
     [0, ++sequence, op, track, source, rate, arg, end].forEach((v, i) => rig.poke(command / 4 + i, v >>> 0));
     const result = await rig.call('_rtm_block', { M6: 1, M5: 0 }, { maxSteps: 300000, reads: [[tape + 32, 64]] });
     expect(result.halt, `command ${op}, PC ${result.final_pc.toString(16)}`).toBe('breakpoint');
+    peakInstructions = Math.max(peakInstructions, result.instructions);
     return result.reads[0]!.map((word) => w2f(word!));
   }
   const setRate = (rate: number) => block(11, (100 << 5) | (100 << 19), rate, q16);
@@ -90,6 +92,8 @@ it('reconstructs a recorded stereo take at reduced rates through storage and loo
       }
       if (rate !== q16) expect(Math.sqrt(playbackError / linearError)).toBeLessThan(0.4);
     }
+    // Includes reverse cubic reads across the last single-cell storage window.
+    expect(peakInstructions).toBeLessThan(9800);
   } finally {
     await rig.close();
   }

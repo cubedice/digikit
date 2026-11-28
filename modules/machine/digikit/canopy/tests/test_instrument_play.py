@@ -1755,6 +1755,41 @@ def test_slots_bind_by_hint_and_render_only_their_own_tracks(playback):
     assert owners[7] == owners[19] == 1
 
 
+def test_one_pending_batch_wakes_only_its_slot_after_idle(playback):
+    call, _, get, reset, configure, events, _ = playback
+    _four_instances(playback)
+    tracks = (3, 5, 9, 11)
+    assert reset(track=tracks[0], slot=0) == 1
+    call(0)
+    assert configure(track=tracks[0]) == 1
+    for _ in range(8):
+        call(0)
+    one_idle = call.last_instructions
+
+    for slot, track in enumerate(tracks[1:], 1):
+        assert reset(track=track, slot=slot) == 1
+        assert configure(track=track) == 1
+    for _ in range(8):
+        call(0)
+    four_idle = call.last_instructions
+
+    assert events([(7, 1, 64, 100, 0, 0)], track=tracks[1]) == 1
+    assert not events([(8, 1, 65, 100, 0, 0)], track=tracks[1])
+    call(0)
+    one_wake = call.last_instructions
+    for slot in range(4):
+        words = _slot(get, slot)
+        assert words[16] == 0  # input event count
+        assert any(words[SLOT_OUTPUT : SLOT_OUTPUT + 32]) == (slot == 1)
+    state = get("_test_state", 4 * 744)
+    assert [
+        {state[744 * slot + i] for i in range(0, 32, 8)} - {0} for slot in range(4)
+    ] == [set(), {7}, set(), set()]
+    print(
+        f"instrument event copies: idle 1={one_idle}, idle 4={four_idle}, wake 1 of 4={one_wake}"
+    )
+
+
 def test_concurrent_slots_receive_same_clock_snapshot(playback):
     """Track iteration must not advance, consume, or overwrite the shared clock."""
     call, put, get, reset, configure, _, _ = playback

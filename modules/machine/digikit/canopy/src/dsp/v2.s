@@ -880,6 +880,61 @@ _cv_seeded:
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     CALL _cs_prepare;
+    // Prove both lanes empty after events and strum. Delayed voices can
+    // temporarily have their pending slot hidden, and shared arp can wake
+    // without a pad token. Either must take the usual render path.
+    R4 = DM(_cv_state);
+    I0 = R4;
+    R9 = 0;
+    DM(_cv_quiet) = R9;
+    R0 = DM(0, I0);
+    R1 = DM(8, I0);
+    R0 = R0 OR R1;
+    IF NE JUMP _cv_render_voices;
+    R1 = DM(16, I0);
+    R0 = R0 OR R1;
+    R1 = DM(24, I0);
+    R0 = R0 OR R1;
+    R1 = DM(32, I0);
+    R0 = R0 OR R1;
+    R1 = DM(40, I0);
+    R0 = R0 OR R1;
+    R1 = DM(48, I0);
+    R0 = R0 OR R1;
+    R1 = DM(52, I0);
+    R0 = R0 OR R1;
+    R1 = DM(56, I0);
+    R0 = R0 OR R1;
+    R1 = DM(60, I0);
+    R0 = R0 OR R1;
+    R1 = DM(136, I0);
+    R0 = R0 OR R1;
+    R1 = DM(150, I0);
+    R0 = R0 OR R1;
+    R1 = DM(176, I0);
+    R0 = R0 OR R1;
+    R1 = DM(178, I0);
+    R0 = R0 OR R1;
+    R1 = DM(180, I0);
+    R0 = R0 OR R1;
+    R1 = DM(182, I0);
+    R0 = R0 OR R1;
+    R1 = DM(_cv_shared_arp_count);
+    R0 = R0 OR R1;
+    IF NE JUMP _cv_render_voices;
+    R9 = 1;
+    DM(_cv_quiet) = R9;
+    CALL _cp_post_init;
+    R0 = DM(_cv_input);
+    I2 = R0;
+    I0 = DM(5, I2);
+    R0 = 0;
+    LCNTR = 32, DO _cv_quiet_last UNTIL LCE;
+_cv_quiet_last:
+    DM(I0, M6) = R0;
+    DM(_cv_pad_active) = R0;
+    JUMP _cv_render_arp;
+_cv_render_voices:
     CALL _cp_post_init;
     R4 = DM(_cv_state);
     CALL _ca_prepare;
@@ -890,6 +945,7 @@ _cv_seeded:
     CALL _cp_render;
     DM(_cv_pad_active) = R0;
     CALL _cs_restore;
+_cv_render_arp:
     R4 = DM(_cv_state);
     R8 = DM(_cv_input);
     R12 = _cv_shared_arp_events;
@@ -1101,6 +1157,7 @@ _cv_bad:
 
 .EXTERN _ca_process;
 .PKBSS _cv_pad_active, 4;
+.PKBSS _cv_quiet, 4;
 
 .EXTERN _cs_prepare;
 .EXTERN _cs_restore;

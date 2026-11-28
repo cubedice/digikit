@@ -189,9 +189,8 @@ _tk_pool_bus:
     LCNTR = 64, DO _tk_pool_sample UNTIL LCE;
         R0 = DM(I0,M5);
         R1 = DM(I1,M5);
-        F1 = F1 + F0;
-        DM(I1,M6) = R1;
-_tk_pool_sample: DM(I0,M6) = R2;
+        F1 = F1 + F0, DM(I0,M6) = R2;
+_tk_pool_sample: DM(I1,M6) = R1;
 _tk_pool_next_bus:
     R5 = LSHIFT R5 BY -1;
     R5 = PASS R5;
@@ -273,14 +272,17 @@ _tk_pool_quiet_track:
     IF NE JUMP _tk_pool_quiet_next;
     I0 = R6;
     R4 = 0;
-    R3 = 0x33800000; // 2^-24, float magnitude bits
-    LCNTR = 64, DO _tk_pool_quiet_sample UNTIL LCE;
-        R0 = DM(I0,M6);
+    // Pipeline the next load, stopping before the end of this track's bus.
+    R0 = DM(I0,M6);
+    LCNTR = 63, DO _tk_pool_quiet_sample UNTIL LCE;
         R0 = FEXT R0 BY 0:31;
-        COMP(R0,R3);
-_tk_pool_quiet_sample: IF GE R4 = PASS R3; // also rejects infinity and NaN
-    R4 = PASS R4;
-    IF EQ R7 = BSET R7 BY 15;
+_tk_pool_quiet_sample: R4 = MAX(R4,R0), R0 = DM(I0,M6);
+    R0 = FEXT R0 BY 0:31;
+    R4 = MAX(R4,R0);
+    // Nonnegative float words sort by magnitude. Infinity and NaN are above the threshold.
+    R3 = 0x33800000; // 2^-24
+    COMP(R4,R3);
+    IF LT R7 = BSET R7 BY 15;
 _tk_pool_quiet_next:
     MODIFY(I1,0xec) (NW);
     R3 = 0x100;

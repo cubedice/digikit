@@ -2,8 +2,15 @@
 // ASTATX, L0, L1 and M6. The mixer owns every other incoming register.
 .SECTION/PM seg_pmco;
 .EXTERN _rtm_block;
+.EXTERN _rt_started;
+.EXTERN _rtm_command;
 .GLOBAL _rtm_capture;
 _rtm_capture:
+    // Before the first command, the recorder block has no work. The tap
+    // has already saved R0 and ASTATX, so leave the rest of the mixer alone.
+    R0 = DM(_rt_started); R0 = PASS R0; IF NE JUMP _rtm_capture_active;
+    R0 = DM(_rtm_command + 4); R0 = PASS R0; IF EQ RTS;
+_rtm_capture_active:
     R0 = R1; DM(_rtm_save + 0) = R0;
     R0 = R2; DM(_rtm_save + 4) = R0;
     R0 = R3; DM(_rtm_save + 8) = R0;

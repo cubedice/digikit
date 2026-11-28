@@ -12,6 +12,8 @@
 .EXTERN _cp_pressure;
 .EXTERN _cp_retune;
 .EXTERN _cp_blend;
+.EXTERN _cv_pad_active;
+.EXTERN _cv_quiet;
 .EXTERN _cp_tune_changed;
 .EXTERN _cp_v2_instance;
 .EXTERN _cp_amp_copy;
@@ -22,12 +24,10 @@
 _ca_prepare:
     I0 = R4;
     I1 = _ca_pad_start;
-    R2 = 32;
-_ca_copy_pad_start:
+    LCNTR = 32, DO _ca_copy_pad_start UNTIL LCE;
     R0 = DM(I0, M6);
+_ca_copy_pad_start:
     DM(I1, M6) = R0;
-    R2 = R2 - 1;
-    IF NE JUMP _ca_copy_pad_start;
     RTS;
 _ca_process:
     DM(_ca_state) = R4;
@@ -345,6 +345,9 @@ _ca_disabled_tempo_kept:
     R0 = 2;
     DM(1, I2) = R0;
 _ca_render:
+    R0 = DM(_cv_quiet);
+    R0 = PASS R0;
+    IF NE JUMP _ca_render_quiet;
     R0 = 0;
     DM(_ca_rendered) = R0;
     CALL _ca_try_start;
@@ -359,6 +362,11 @@ _ca_render:
     R0 = R0 OR R1;
     DM(_ca_active) = R0;
     CALL _ca_render_tails;
+    JUMP _ca_blend;
+_ca_render_quiet:
+    R0 = 0;
+    DM(_ca_active) = R0;
+_ca_blend:
     R0 = DM(_ca_input);
     I0 = R0;
     R4 = DM(5, I0);
@@ -366,6 +374,9 @@ _ca_render:
     R0 = DM(_ca_voice);
     R1 = 32;
     R12 = R0 + R1;
+    R9 = DM(_ca_active);
+    R0 = DM(_cv_pad_active);
+    R9 = R9 OR R0;
     CALL _cp_blend;
     R0 = PASS R0;
     IF EQ JUMP _ca_fault;
@@ -518,6 +529,9 @@ _ca_candidates:
     R0 = 0;
     DM(_ca_count) = R0;
     DM(_ca_slot) = R0;
+    R0 = DM(_cv_quiet);
+    R0 = PASS R0;
+    IF NE RTS;
 _ca_candidate:
     R0 = DM(_ca_slot);
     R1 = LSHIFT R0 BY 5;

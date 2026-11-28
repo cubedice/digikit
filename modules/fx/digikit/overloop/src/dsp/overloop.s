@@ -471,9 +471,9 @@ _ol_unrun:
     DM(OL_NEXT,I5) = R0;
 
     // ---- The crossfader's target: LIVE without a loop, LOOP while it is held there, else the home's value. First the
-    // master stage's gain for the tap and the wet mailbox.
+    // send effect's mailbox is checked even while the loop side is silent.
 _ol_target:
-    CALL _ol_master;
+    CALL _ol_check_wet;
     R14 = 0;
     R0 = DM(OL_LOOP,I5);
     R0 = PASS R0;
@@ -526,16 +526,10 @@ _ol_audio:
     IF NE JUMP _ol_live;
     CALL _ol_gone;
 _ol_live:
-    // ---- No loop, or none heard: the input as it is.
-    LCNTR = DK_BLOCK, DO _ol_live_end UNTIL LCE;
-        R0 = DM(I0,M6);
-        R1 = DM(I1,M6);
-        DM(I2,M6) = R0;
-_ol_live_end: DM(I3,M6) = R1;
-    // the tap is silent: cleared once
+    // ---- No loop, or none heard. Clear the silent tap once.
     R0 = DM(OL_TAP_SET,I5);
     R0 = PASS R0;
-    IF EQ JUMP _ol_record;
+    IF EQ JUMP _ol_live_record;
     R0 = _loop_tap;
     R1 = LT_LEFT * 4;
     R0 = R0 + R1;
@@ -544,22 +538,41 @@ _ol_live_end: DM(I3,M6) = R1;
     LCNTR = 2 * DK_BLOCK, DO _ol_tap_clear UNTIL LCE;
 _ol_tap_clear: DM(I4,M6) = R0;
     DM(OL_TAP_SET,I5) = R0;
-    JUMP _ol_record;
+_ol_live_record:
+    // Write the input to both the output and the tape in the same pass.
+    CALL _ol_record_buffer;
+    LCNTR = DK_BLOCK, DO _ol_live_end UNTIL LCE;
+        R4 = DM(I0,M6);
+        R8 = DM(I1,M6);
+        F9 = MIN(F9,F4), DM(I2,M6) = R4;
+        F10 = MAX(F10,F4), DM(I3,M6) = R8;
+        F11 = MIN(F11,F8), DM(M2,I4) = R8;
+_ol_live_end: F12 = MAX(F12,F8), DM(I4,M6) = R4;
+    JUMP _ol_record_advance;
 
     // ---- A loop is held. R5 the phase, R6 the loop's frames, R7 the buffer's frames, R15 the crossfader, R14 its
-    // target, R13 its step a frame (1/256), R12 the tap's next word, R11 1 while the transport's weight moves.
+    // target, R13 its step a frame (1/256), R12 the tap's next word, R11 the transport fade direction (-1, 0, +1).
 _ol_mix:
+    CALL _ol_tap_gain;
     R15 = DM(OL_GAIN,I5);
     R13 = 0x3b800000;
-    R11 = 0;
-    R0 = DM(OL_TF,I5);
+    // The target is fixed for this block. Once the remaining distance fits in
+    // a step, snap to the exact parameter word, including on later frames.
+    R1 = PASS R13;
+    F0 = F14 - F15;
+    IF LT F1 = -F13;
+    M3 = R1;
+    R11 = 1;
     R1 = OL_TFADE_FRAMES;
     R2 = DM(OL_TRUN,I5);
     R2 = PASS R2;
-    IF EQ R1 = R1 - R1;
+    IF NE JUMP _ol_transport_target;
+    R1 = 0;
+    R11 = -1;
+_ol_transport_target:
+    R0 = DM(OL_TF,I5);
     COMP(R0,R1);
-    R0 = 1;
-    IF NE R11 = PASS R0;
+    IF EQ R11 = R11 - R11;
     R5 = DM(OL_PHASE,I5);
     R6 = DM(OL_L,I5);
     R7 = DM(OL_N,I5);
@@ -567,14 +580,16 @@ _ol_mix:
     R12 = _loop_tap;
     R0 = LT_LEFT * 4;
     R12 = R12 + R0;
+    R0 = DM(OL_X,I5);
+    R1 = R6 - R0;
+    M1 = R1;                    // phase where the seam begins, fixed for this block
+    M4 = DK_BLOCK;              // offset from the left tap to the right
     LCNTR = DK_BLOCK, DO _ol_mix_end UNTIL LCE;
         // the loop's frame at this phase: R8 its index in the buffer, R9 and R10 its samples
         R0 = DM(OL_BASE,I5);
-        R0 = R0 + R5;
-        R1 = R0 - R7;
-        COMP(R0,R7);
-        IF GE R0 = PASS R1;
-        R8 = PASS R0;
+        R8 = R0 + R5;
+        R1 = R8 - R7;
+        IF GE R8 = PASS R1;
         R9 = 0;
         R10 = 0;
         R0 = DM(OL_SILENT,I5);
@@ -588,10 +603,8 @@ _ol_mix:
         R10 = DM(M2,I4);
 _ol_seam:
         // the last OL_X frames run into the frames before the loop's start, so the turn is as it was recorded
-        R0 = DM(OL_X,I5);
-        R1 = R6 - R0;
+        R1 = M1;
         R1 = R5 - R1;
-        R1 = PASS R1;
         IF LT JUMP _ol_jump;
         R1 = R1 + 1;
         F3 = FLOAT R1;
@@ -609,7 +622,6 @@ _ol_seam:
         R4 = PASS R4;
         IF EQ JUMP _ol_seam_mix;
         R4 = R8 - R6;
-        R4 = PASS R4;
         IF GE JUMP _ol_pre_at;
         R4 = R4 + R7;
 _ol_pre_at:
@@ -655,7 +667,6 @@ _ol_jump:
         R0 = DM(OL_BASE,I5);
         R0 = R0 + R4;
         R1 = R0 - R7;
-        COMP(R0,R7);
         IF GE R0 = PASS R1;
         R0 = LSHIFT R0 BY 2;
         R1 = DM(OL_LBUF,I5);
@@ -672,29 +683,19 @@ _ol_jump_mix:
         F10 = F10 + F2;
 _ol_gain:
         // the crossfader moves to its target by at most 1/256 a frame and lands on it exactly
+        R1 = M3;
         F0 = F14 - F15;
-        F1 = ABS F0;
-        COMP(F1,F13);
-        IF GT JUMP _ol_ramp;
-        R15 = PASS R14;
-        JUMP _ol_ramped;
-_ol_ramp:
-        F1 = -F13;
-        F2 = MAX(F0,F1);
-        F0 = MIN(F2,F13);
-        F15 = F15 + F0;
-_ol_ramped:
+        F15 = F15 + F1;
+        F0 = ABS F0;
+        COMP(F0,F13);
+        IF LE R15 = PASS R14;
         // F3, the loop's gain: the crossfader times the transport's weight, which moves a frame at a time towards the
         // loop side's state (OL_TF of OL_TFADE_FRAMES, eased) while it fades at STOP or when the transport runs again
         F3 = PASS F15;
         R11 = PASS R11;
         IF EQ JUMP _ol_weighed;
         R0 = DM(OL_TF,I5);
-        R1 = 1;
-        R2 = DM(OL_TRUN,I5);
-        R2 = PASS R2;
-        IF EQ R1 = -R1;
-        R0 = R0 + R1;
+        R0 = R0 + R11;
         R1 = 0;
         R0 = MAX(R0,R1);
         R1 = OL_TFADE_FRAMES;
@@ -710,19 +711,15 @@ _ol_ramped:
         F0 = F0 * F1;
         F3 = F3 * F0;
 _ol_weighed:
-        R4 = DM(I0,M6);
-        R8 = DM(I1,M6);
-        // the tap: what the loop adds to the output, at the level of the mix before the master stage
-        F0 = F9 * F3;
-        F1 = F10 * F3;
+        // Read the live input while scaling the loop for the tap.
+        F0 = F9 * F3, R4 = DM(I0,M6);
+        F1 = F10 * F3, R8 = DM(I1,M6);
         R2 = DM(OL_INV,I5);
-        F0 = F0 * F2;
         F1 = F1 * F2;
         I4 = R12;
-        DM(0,I4) = R0;
-        DM(DK_BLOCK,I4) = R1;
-        R0 = 4;
-        R12 = R12 + R0;
+        F0 = F0 * F2, DM(M4,I4) = R1;
+        DM(I4,M6) = R0;
+        R12 = I4;
         // LIVE is the input as it is, LOOP the loop as it is
         R0 = 0;
         COMP(F3,F0);
@@ -741,11 +738,10 @@ _ol_dry:
         R9 = PASS R4;
         R10 = PASS R8;
 _ol_out:
-        R5 = R5 + 1;
+        R5 = R5 + 1, DM(I2,M6) = R9;
         R0 = 0;
         COMP(R5,R6);
         IF GE R5 = PASS R0;
-        DM(I2,M6) = R9;
 _ol_mix_end: DM(I3,M6) = R10;
     DM(OL_PHASE,I5) = R5;
     DM(OL_GAIN,I5) = R15;
@@ -767,26 +763,14 @@ _ol_record:
     R1 = 128;
     R0 = R0 + R1;
     I3 = R0;
-    R7 = DM(OL_N,I5);
-    M2 = R7;
-    R2 = DM(OL_ROLL,I5);
-    R3 = DM(OL_BUF0,I5);
-    R4 = DM(OL_BUF1,I5);
-    R2 = PASS R2;
-    IF NE R3 = PASS R4;
-    R0 = DM(OL_W,I5);
-    R1 = LSHIFT R0 BY 2;
-    R3 = R3 + R1;
-    I4 = R3;
-    R9 = DM(OL_WAVE_MIN_L,I5); R10 = DM(OL_WAVE_MAX_L,I5);
-    R11 = DM(OL_WAVE_MIN_R,I5); R12 = DM(OL_WAVE_MAX_R,I5);
+    CALL _ol_record_buffer;
     LCNTR = DK_BLOCK, DO _ol_record_end UNTIL LCE;
         R4 = DM(I2,M6);
-        R8 = DM(I3,M6);
-        F9 = MIN(F9,F4); F10 = MAX(F10,F4);
-        F11 = MIN(F11,F8); F12 = MAX(F12,F8);
-        DM(M2,I4) = R8;
-_ol_record_end: DM(I4,M6) = R4;
+        F9 = MIN(F9,F4), R8 = DM(I3,M6);
+        F10 = MAX(F10,F4);
+        F11 = MIN(F11,F8), DM(M2,I4) = R8;
+_ol_record_end: F12 = MAX(F12,F8), DM(I4,M6) = R4;
+_ol_record_advance:
     R1 = DK_BLOCK;
     R0 = R0 + R1;
     R2 = 0;
@@ -872,8 +856,22 @@ _ol_wet:
     R0 = R0 + R1;
     I0 = R0;
     I2 = DM(OL_OUT,I5);
-    CALL _ol_wet_side;
-    CALL _ol_wet_side;
+    // Mix both channels with the same gain before advancing the volume ramp.
+    M4 = DK_BLOCK;
+    F3 = PASS F4;
+    LCNTR = DK_BLOCK, DO _ol_wet_sample UNTIL LCE;
+        R0 = DM(M4,I0);
+        F0 = F0 * F6, R2 = DM(I0,M6);
+        F2 = F2 * F6, R1 = DM(M4,I2);
+        F0 = F0 * F3;
+        F2 = F2 * F3, R8 = DM(I2,M5);
+        F1 = F1 + F0;
+        F8 = F8 + F2;
+        F1 = MIN(F1,F11);
+        F8 = MIN(F8,F11);
+        F1 = MAX(F1,F12);
+        F8 = MAX(F8,F12), DM(M4,I2) = R1;
+_ol_wet_sample: F3 = F5 + F3, DM(I2,M6) = R8;
 
     // ---- The tap's head and the status. The block-tail sender runs after this function on the same core.
 _ol_publish:
@@ -1048,11 +1046,26 @@ _ol_count_on:
     DM(OL_COUNT,I5) = R0;
     RTS;
 
-// The master stage's gain after its sum at the end of this block (OL_MASTER_BOOST times the volume ramp's end): its
-// reciprocal, at most 1/OL_INV_FLOOR, is the tap's factor (OL_INV; 0 when the gain is not a number). Then the wet mailbox:
-// OL_WET_OK is 1 when the send effect wrote a block since this engine's last one (not in the engine's first block) and every
-// sample is finite and at most 8 in magnitude. Uses R0 to R4, I4.
-_ol_master:
+// Locate the next tape block and fetch its rolling waveform extrema. The stereo audio pointers I0–I3 are kept.
+_ol_record_buffer:
+    R7 = DM(OL_N,I5);
+    M2 = R7;
+    R2 = DM(OL_ROLL,I5);
+    R3 = DM(OL_BUF0,I5);
+    R4 = DM(OL_BUF1,I5);
+    R2 = PASS R2;
+    IF NE R3 = PASS R4;
+    R0 = DM(OL_W,I5);
+    R1 = LSHIFT R0 BY 2;
+    R3 = R3 + R1;
+    I4 = R3;
+    R9 = DM(OL_WAVE_MIN_L,I5); R10 = DM(OL_WAVE_MAX_L,I5);
+    R11 = DM(OL_WAVE_MIN_R,I5); R12 = DM(OL_WAVE_MAX_R,I5);
+    RTS;
+
+// The master stage's gain after its sum at the end of this block (OL_MASTER_BOOST times the ramp's end).
+// Its reciprocal, at most 1/OL_INV_FLOOR, scales the tap (0 for a nonfinite gain). Only the loop mix reads it.
+_ol_tap_gain:
     I4 = _fw_master_gain;
     F0 = DM(0,I4);
     I4 = _fw_master_step;
@@ -1074,6 +1087,10 @@ _ol_master:
     R4 = PASS R0;
 _ol_master_inv:
     DM(OL_INV,I5) = R4;
+    RTS;
+
+// The wet mailbox must hold a new block, all finite and at most 8 in magnitude. Uses R0 to R4, I4.
+_ol_check_wet:
     R4 = 0;
     I4 = _loop_wet;
     R0 = DM(LW_MAGIC,I4);
@@ -1101,32 +1118,18 @@ _ol_master_inv:
     I4 = R0;
     R3 = 0;
     R1 = 0x7fffffff;
-    LCNTR = 2 * DK_BLOCK, DO _ol_master_scan UNTIL LCE;
-        R0 = DM(I4,M6);
+    R0 = DM(I4,M6);
+    LCNTR = 2 * DK_BLOCK - 1, DO _ol_master_scan UNTIL LCE;
         R0 = R0 AND R1;
-_ol_master_scan: R3 = MAX(R3,R0);
+_ol_master_scan: R3 = MAX(R3,R0), R0 = DM(I4,M6);
+    R0 = R0 AND R1;
+    R3 = MAX(R3,R0);
     R0 = 0x41000000;
     COMP(R3,R0);
     IF GT JUMP _ol_master_done;
     R4 = 1;
 _ol_master_done:
     DM(OL_WET_OK,I5) = R4;
-    RTS;
-
-// One side of the send effect's output: I0 the mailbox (read), I2 the output (read and write), each advanced by 32. F4 the
-// ramp's gain before the first sample, F5 its step, F6 the +10 dB stage, F11 and F12 the output's bounds. Uses F0, F1, F3.
-_ol_wet_side:
-    F3 = PASS F4;
-    LCNTR = DK_BLOCK, DO _ol_wet_sample UNTIL LCE;
-        F0 = DM(I0,M6);
-        F0 = F0 * F6;
-        F0 = F0 * F3;
-        F1 = DM(I2,M5);
-        F1 = F1 + F0;
-        F1 = MIN(F1,F11);
-        F1 = MAX(F1,F12);
-        DM(I2,M6) = R1;
-_ol_wet_sample: F3 = F5 + F3;
     RTS;
 
 // R0 a byte address, R8 bytes: R0 = 0 when [R0, R0 + R8) lies in external memory, else 1. Uses R1 and R4.

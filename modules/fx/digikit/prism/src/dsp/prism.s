@@ -322,24 +322,41 @@ _pi_mix:
     R11 = PRISM_LOOP_TRIM;
     R4 = PASS R4;
     IF EQ R11 = R11 - R11;
-    R9 = PRISM_SWITCH_STEP;
     R8 = 0x3f800000;
-    R10 = PASS R13;
     I0 = DM(PS_INPUT,I5);
-    R0 = _loop_tap;
-    R1 = LT_LEFT * 4;
-    R0 = R0 + R1;
-    I2 = R0;
+    I2 = _loop_tap;
+    MODIFY(I2,LT_LEFT) (NW);
     R0 = I5;
     R1 = PS_IN * 4;
     R0 = R0 + R1;
     I1 = R0;
     DM(PS_INPUT,I5) = R0;
+    COMP(R12,R13);
+    IF EQ JUMP _pi_loop;
+    R9 = PRISM_SWITCH_STEP;
+    R10 = PASS R13;
     CALL _pi_side;
     R13 = PASS R10;
     CALL _pi_side;
     DM(PS_INPT,I5) = R13;
     RTS;
+// Both shares are already at LOOP. The send times zero and the sum preserve the signed-zero behavior of the ramp.
+// The tap still uses the same trim, including zero when the provider reports no current loop.
+_pi_loop:
+    F4 = F8 - F8;
+    CALL _pi_loop_side;
+    CALL _pi_loop_side;
+    RTS;
+_pi_loop_side:
+    LCNTR = 32, DO _pi_loop_sample UNTIL LCE;
+        F2 = DM(I0,M6);
+        F3 = DM(I2,M6);
+        F3 = F3 * F11;
+        F2 = F2 * F4;
+        F2 = F2 + F3;
+_pi_loop_sample: DM(I1,M6) = R2;
+    RTS;
+
 // One side: I0 the send bus, I2 the tap, I1 the input (each advanced by 32); F13 the share before the first sample, F12 its
 // target, F9 its step, F11 the tap's factor, F8 1.0. The share moves in steps of 1/256 from 0 or 1, so it lands on its target
 // exactly; the mix takes the weight w = c c (3 - 2 c), which has no corner at either end and is exactly 0 and 1 there.
@@ -556,10 +573,12 @@ _rs_key: R2 = R2 OR R0;
     I0 = R0;
 _rs_scan:
     R2 = 0;
-    LCNTR = 64, DO _rs_scan_last UNTIL LCE;
-        F0 = DM(I0,M6);
-        F0 = ABS F0;
-_rs_scan_last: F2 = MAX(F2,F0);
+    R0 = DM(I0,M6);
+    LCNTR = 63, DO _rs_scan_last UNTIL LCE;
+        F1 = ABS F0, R0 = DM(I0,M6);
+_rs_scan_last: F2 = MAX(F2,F1);
+    F1 = ABS F0;
+    F2 = MAX(F2,F1);
     R0 = PRISM_IDLE_LEVEL;
     COMP(F2,F0);
     IF GE JUMP _rs_wake;
